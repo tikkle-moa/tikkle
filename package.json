@@ -1,0 +1,25 @@
+{
+  "name": "tikkle",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev:client": "pnpm -F client dev",
+    "dev:server": "cd apps/server && ./gradlew bootRun",
+    "prepare": "husky",
+    "lint-staged": "lint-staged --no-revert",
+    "format:client": "pnpm -F client format",
+    "format:server": "cd apps/server && ./gradlew ktlintFormat",
+    "format": "pnpm format:client && pnpm format:server",
+    "format:check:client": "pnpm -F client format:check",
+    "format:check:server": "cd apps/server && ./gradlew ktlintCheck",
+    "format:check": "pnpm format:check:client && pnpm format:check:server"
+  },
+  "packageManager": "pnpm@10.20.0",
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.1.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.8.1"
+  }
+}
