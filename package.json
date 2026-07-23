@@ -12,7 +12,12 @@
     "format": "pnpm format:client && pnpm format:server",
     "format:check:client": "pnpm -F client format:check",
     "format:check:server": "cd apps/server && ./gradlew ktlintCheck",
-    "format:check": "pnpm format:check:client && pnpm format:check:server"
+    "format:check": "pnpm format:check:client && pnpm format:check:server",
+    "docker": "docker compose -f infra/docker/docker-compose.yaml",
+    "docker:up": "docker compose -f infra/docker/docker-compose.yaml up -d",
+    "docker:down": "docker compose -f infra/docker/docker-compose.yaml down",
+    "docker:ps": "docker compose -f infra/docker/docker-compose.yaml ps",
+    "docker:logs": "docker compose -f infra/docker/docker-compose.yaml logs -f"
   },
   "packageManager": "pnpm@10.20.0",
   "devDependencies": {
