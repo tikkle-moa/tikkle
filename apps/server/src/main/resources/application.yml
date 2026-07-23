@@ -17,4 +17,8 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      # Flyway가 스키마를 완전히 관리하므로 Hibernate는 스키마에 손대지 않습니다.
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
