@@ -27,6 +27,8 @@ dependencies {
   implementation("org.jetbrains.kotlin:kotlin-reflect")
   implementation("tools.jackson.module:jackson-module-kotlin")
   implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
+  implementation("org.springframework.boot:spring-boot-starter-data-redis")
+  implementation("org.apache.commons:commons-pool2")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-mysql")
