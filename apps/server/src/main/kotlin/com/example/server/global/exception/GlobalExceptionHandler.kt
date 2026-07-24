@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
@@ -58,6 +59,16 @@ class GlobalExceptionHandler {
   fun handleMissingServletRequestParameterException(e: MissingServletRequestParameterException): ResponseEntity<ApiResponse.Failure> {
     val message = "${e.parameterName}: 필수 파라미터가 누락되었습니다."
     log.warn("MissingServletRequestParameterException: {}", message)
+    return ResponseEntity
+      .status(ErrorCode.BAD_REQUEST.status)
+      .body(ApiResponse.error(ErrorCode.BAD_REQUEST, message))
+  }
+
+  /** 경로 변수 / 쿼리 파라미터 타입 변환 실패 */
+  @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+  fun handleMethodArgumentTypeMismatchException(e: MethodArgumentTypeMismatchException): ResponseEntity<ApiResponse.Failure> {
+    val message = "${e.name}: 잘못된 타입의 값입니다."
+    log.warn("MethodArgumentTypeMismatchException: {}", message)
     return ResponseEntity
       .status(ErrorCode.BAD_REQUEST.status)
       .body(ApiResponse.error(ErrorCode.BAD_REQUEST, message))
