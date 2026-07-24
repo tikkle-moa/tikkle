@@ -8,6 +8,30 @@ services:
     volumes:
       - ../../apps/client:/app
       - client_node_modules:/app/node_modules
+
+  server:
+    build:
+      context: ../..
+      dockerfile: infra/docker/server.Dockerfile
+    environment:
+      LOAD_DOTENV: "false"
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../../apps/server:/app
+      - server_gradle_cache:/root/.gradle
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   mysql:
     image: mysql:8.4
     environment:
@@ -19,6 +43,15 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u root -p\"$${MYSQL_ROOT_PASSWORD}\" --silent",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7.4-alpine
@@ -30,5 +63,6 @@ services:
 
 volumes:
   client_node_modules:
+  server_gradle_cache:
   mysql_data:
   redis_data:
