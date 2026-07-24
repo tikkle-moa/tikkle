@@ -32,3 +32,9 @@ spring:
           max-idle: 8
           min-idle: 2
           max-wait: -1ms
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED}
