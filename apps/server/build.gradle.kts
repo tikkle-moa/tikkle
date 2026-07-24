@@ -32,6 +32,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-mysql")
+  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
   runtimeOnly("com.mysql:mysql-connector-j")
   testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
   testImplementation("org.springframework.boot:spring-boot-starter-validation-test")

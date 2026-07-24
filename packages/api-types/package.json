@@ -1,0 +1,11 @@
+{
+  "name": "@tikkle/api-types",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "openapi-typescript http://localhost:8080/v3/api-docs -o src/generated.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
+  }
+}

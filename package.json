@@ -12,7 +12,8 @@
     "format": "pnpm format:client && pnpm format:server",
     "format:check:client": "pnpm -F client format:check",
     "format:check:server": "cd apps/server && ./gradlew ktlintCheck",
-    "format:check": "pnpm format:check:client && pnpm format:check:server"
+    "format:check": "pnpm format:check:client && pnpm format:check:server",
+    "api:types": "pnpm -F @tikkle/api-types generate"
   },
   "packageManager": "pnpm@10.20.0",
   "devDependencies": {
