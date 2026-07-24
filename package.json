@@ -17,7 +17,8 @@
     "docker:up": "docker compose -f infra/docker/docker-compose.yaml up -d",
     "docker:down": "docker compose -f infra/docker/docker-compose.yaml down",
     "docker:ps": "docker compose -f infra/docker/docker-compose.yaml ps",
-    "docker:logs": "docker compose -f infra/docker/docker-compose.yaml logs -f"
+    "docker:logs": "docker compose -f infra/docker/docker-compose.yaml logs -f",
+    "api:types": "pnpm -F @tikkle/api-types generate"
   },
   "packageManager": "pnpm@10.20.0",
   "devDependencies": {
