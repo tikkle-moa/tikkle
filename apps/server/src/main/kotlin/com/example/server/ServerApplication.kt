@@ -8,9 +8,11 @@ import org.springframework.boot.runApplication
 class ServerApplication
 
 fun main(args: Array<String>) {
-  val dotenv = dotenv { ignoreIfMissing = true }
+  if (System.getenv("LOAD_DOTENV") != "false") {
+    val dotenv = dotenv { ignoreIfMissing = true }
 
-  dotenv.entries().forEach { System.setProperty(it.key, it.value) }
+    dotenv.entries().forEach { System.setProperty(it.key, it.value) }
+  }
 
   runApplication<ServerApplication>(*args)
 }
