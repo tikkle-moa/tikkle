@@ -1,3 +1,4 @@
+import { LoginButton } from "../../../features/auth";
 import { useCount } from "../model/use-count";
 
 const HomePage = () => {
@@ -14,6 +15,9 @@ const HomePage = () => {
         <button className="rounded bg-red-500 px-4 py-2 text-white" onClick={decrement}>
           Decrement
         </button>
+      </div>
+      <div className="mt-6">
+        <LoginButton />
       </div>
       <a href="https://www.youtube.com" className="mt-6 text-blue-600 underline">
         Watch on YouTube
