@@ -35,3 +35,29 @@ spring:
           max-idle: 8
           min-idle: 2
           max-wait: -1ms
+
+app:
+  base-url: ${SERVER_BASE_URL}
+
+oauth:
+  providers:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      client-secret: ${KAKAO_CLIENT_SECRET}
+      authorization-uri: https://kauth.kakao.com/oauth/authorize
+      scope: profile_nickname,profile_image
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+      client-secret: ${GOOGLE_CLIENT_SECRET}
+      authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+      scope: openid email profile
+    naver:
+      client-id: ${NAVER_CLIENT_ID}
+      client-secret: ${NAVER_CLIENT_SECRET}
+      authorization-uri: https://nid.naver.com/oauth2.0/authorize
+      scope: email profile_image nickname
+    github:
+      client-id: ${GITHUB_CLIENT_ID}
+      client-secret: ${GITHUB_CLIENT_SECRET}
+      authorization-uri: https://github.com/login/oauth/authorize
+      scope: user:email
