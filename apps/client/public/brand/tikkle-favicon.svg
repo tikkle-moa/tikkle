@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tikkleGradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C3AED" />
+      <stop offset="1" stop-color="#EC4899" />
+    </linearGradient>
+  </defs>
+
+  <path
+    d="M64 0H448C483.346 0 512 28.654 512 64V192C476.654 192 448 220.654 448 256C448 291.346 476.654 320 512 320V448C512 483.346 483.346 512 448 512H64C28.654 512 0 483.346 0 448V320C35.346 320 64 291.346 64 256C64 220.654 35.346 192 0 192V64C0 28.654 28.654 0 64 0Z"
+    fill="url(#tikkleGradient)" />
+
+  <path d="M96 64V448" stroke="white" stroke-opacity="0.5" stroke-width="10" stroke-linecap="round"
+    stroke-dasharray="16 25" />
+
+  <path d="M416 64V448" stroke="white" stroke-opacity="0.5" stroke-width="10" stroke-linecap="round"
+    stroke-dasharray="16 25" />
+
+  <path
+    d="M256 407C256 407 148 287 148 207C148 150.726 196.726 105 256 105C315.274 105 364 150.726 364 207C364 287 256 407 256 407Z"
+    fill="white" />
+  <circle cx="256" cy="203" r="52" fill="url(#tikkleGradient)" />
+  <circle cx="256" cy="203" r="20" fill="white" />
+</svg>
