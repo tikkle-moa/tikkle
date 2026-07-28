@@ -1,5 +1,7 @@
 services:
   client:
+    environment:
+      API_PROXY_TARGET: http://server:8080
     build:
       context: ../..
       dockerfile: infra/docker/client.Dockerfile
