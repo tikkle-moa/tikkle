@@ -17,7 +17,7 @@ class AuthController(private val authService: AuthService) {
   @GetMapping("/oauth/{oauth_provider}")
   fun getAuthorizationUrl(
     @PathVariable("oauth_provider") oauthProvider: OAuthProvider,
-    @RequestParam(defaultValue = "/") redirectUri: String,
+    @RequestParam("redirect_uri", defaultValue = "/") redirectUri: String,
     @RequestParam(defaultValue = "login") mode: Mode,
   ): ResponseEntity<Map<String, String>> {
     val authorizationUrl = authService.getAuthorizationUrl(oauthProvider, redirectUri, mode)
