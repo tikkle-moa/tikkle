@@ -34,6 +34,7 @@ dependencies {
   implementation("org.flywaydb:flyway-mysql")
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
   runtimeOnly("com.mysql:mysql-connector-j")
+  runtimeOnly("io.netty:netty-resolver-dns-native-macos:4.2.15.Final:osx-aarch_64")
   testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
   testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
   testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")

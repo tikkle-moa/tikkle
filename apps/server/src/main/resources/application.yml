@@ -19,9 +19,6 @@ spring:
     hibernate:
       # Flyway가 스키마를 완전히 관리하므로 Hibernate는 스키마에 손대지 않습니다.
       ddl-auto: none
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
 
   data:
     redis:
@@ -35,3 +32,9 @@ spring:
           max-idle: 8
           min-idle: 2
           max-wait: -1ms
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED}
