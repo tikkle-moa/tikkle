@@ -40,7 +40,9 @@ springdoc:
     enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED}
 
 app:
+  production: ${APP_PRODUCTION}
   base-url: ${SERVER_BASE_URL}
+  frontend-url: ${FRONTEND_URL}
 
 oauth:
   providers:
