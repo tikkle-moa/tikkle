@@ -44,6 +44,11 @@ app:
   base-url: ${SERVER_BASE_URL}
   frontend-url: ${FRONTEND_URL}
 
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration-minutes: 60
+  refresh-token-expiration-days: 30
+
 oauth:
   providers:
     kakao:
