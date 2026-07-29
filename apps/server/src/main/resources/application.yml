@@ -23,7 +23,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
       timeout: 2000ms
       lettuce:
@@ -35,12 +35,12 @@ spring:
 
 springdoc:
   api-docs:
-    enabled: ${SPRINGDOC_API_DOCS_ENABLED}
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
   swagger-ui:
-    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED}
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
 
 app:
-  production: ${APP_PRODUCTION}
+  production: ${APP_PRODUCTION:false}
   base-url: ${SERVER_BASE_URL}
   frontend-url: ${FRONTEND_URL}
 
