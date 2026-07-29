@@ -18,7 +18,7 @@ import java.time.LocalDateTime
   name = "oauth_accounts",
   uniqueConstraints = [UniqueConstraint(name = "uq_oauth_provider", columnNames = ["provider", "provider_user_id"])],
 )
-class OauthAccount(
+class OAuthAccount(
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   var id: Long = 0,

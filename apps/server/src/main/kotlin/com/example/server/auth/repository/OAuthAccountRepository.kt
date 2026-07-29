@@ -3,4 +3,4 @@ package com.example.server.auth.repository
 import com.example.server.auth.entity.OauthAccount
 import org.springframework.data.jpa.repository.JpaRepository
 
-interface OauthAccountRepository : JpaRepository<OauthAccount, Long>
+interface OAuthAccountRepository : JpaRepository<OauthAccount, Long>
