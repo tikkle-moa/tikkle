@@ -166,7 +166,7 @@ class AuthService(
         OAuthProvider.KAKAO -> parseKakaoUserInfo(userInfo)
         OAuthProvider.GOOGLE -> parseGoogleUserInfo(userInfo)
         OAuthProvider.NAVER -> parseNaverUserInfo(userInfo)
-        OAuthProvider.GITHUB -> parseGithubUserInfo(userInfo)
+        OAuthProvider.GITHUB -> parseGithubUserInfo(userInfo, oauthAccessToken)
       }
     }.getOrNull() ?: return null
 
@@ -226,8 +226,10 @@ class AuthService(
     )
   }
 
-  private fun parseGithubUserInfo(userInfo: Map<*, *>): OAuthUserInfo {
-    val email = userInfo["email"] as? String ?: throw IllegalStateException("email not found")
+  private fun parseGithubUserInfo(userInfo: Map<*, *>, oauthAccessToken: String): OAuthUserInfo {
+    val email = userInfo["email"] as? String
+      ?: getGithubEmail(oauthAccessToken)
+      ?: throw IllegalStateException("email not found")
     val nickname = userInfo["login"] as? String ?: throw IllegalStateException("login not found")
     val profileImageUrl = userInfo["avatar_url"] as? String
 
@@ -240,6 +242,27 @@ class AuthService(
       provider = OAuthProvider.GITHUB,
       providerUserId = providerUserId,
     )
+  }
+
+  private fun getGithubEmail(oauthAccessToken: String): String? {
+    val githubEmails = runCatching {
+      restClient.get()
+        .uri("https://api.github.com/user/emails")
+        .header("Authorization", "Bearer $oauthAccessToken")
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .body(List::class.java)
+    }.getOrNull() ?: return null
+
+    val emailMaps = githubEmails.filterIsInstance<Map<*, *>>()
+
+    val selectedEmail = emailMaps.firstOrNull {
+      it["primary"] == true && it["verified"] == true
+    } ?: emailMaps.firstOrNull {
+      it["verified"] == true
+    } ?: return null
+
+    return selectedEmail["email"] as? String
   }
 
   private fun validateRedirectUri(redirectUri: String): Boolean {
