@@ -1,5 +1,6 @@
 package com.example.server.auth
 
+import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.dto.OAuthUserInfo
 import com.example.server.auth.entity.OAuthAccount
 import com.example.server.auth.entity.User
@@ -11,10 +12,12 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AuthTransactionService(private val userRepository: UserRepository, private val oauthAccountRepository: OAuthAccountRepository) {
   @Transactional
-  fun loginUser(oauthUserInfo: OAuthUserInfo): User? {
+  fun loginUser(oauthUserInfo: OAuthUserInfo): LoginUserResult? {
     val oauthAccount = oauthAccountRepository.findByProviderAndProviderUserId(oauthUserInfo.provider, oauthUserInfo.providerUserId)
     if (oauthAccount != null) {
-      return oauthAccount.user
+      val user = oauthAccount.user
+
+      return LoginUserResult(userId = user.id, role = user.role)
     }
 
     val existingUser = userRepository.findByEmail(oauthUserInfo.email)
@@ -39,6 +42,6 @@ class AuthTransactionService(private val userRepository: UserRepository, private
       ),
     )
 
-    return newUser
+    return LoginUserResult(userId = newUser.id, role = newUser.role)
   }
 }

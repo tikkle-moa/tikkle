@@ -14,7 +14,6 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
@@ -73,7 +72,6 @@ class AuthService(
     return authorizationUrl
   }
 
-  @Transactional
   fun handleCallback(provider: OAuthProvider, code: String, state: String): CallbackResult {
     // 1. state 검증 및 데이터 추출 (one-time use)
     val stateData = oauthStateRedisTemplate.opsForValue().getAndDelete("$OAUTH_STATE_KEY_PREFIX$state")
@@ -98,15 +96,15 @@ class AuthService(
       ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_ACCOUNT_CONFLICT)
 
     // 5. 서비스 토큰 발급 (JWT access + refresh)
-    val accessToken = jwtTokenProvider.generateAccessToken(user.id, user.role)
-    val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.id)
+    val accessToken = jwtTokenProvider.generateAccessToken(user.userId, user.role)
+    val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.userId)
 
     val tokenId = issuedRefreshToken.tokenId
     val refreshToken = issuedRefreshToken.token
 
     stringRedisTemplate.opsForValue().set(
       "$REFRESH_TOKEN_KEY_PREFIX$tokenId",
-      user.id.toString(),
+      user.userId.toString(),
       Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
     )
 
