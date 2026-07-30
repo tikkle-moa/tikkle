@@ -32,8 +32,8 @@ export const OAUTH_ERROR_CONTENT_MAP: Record<OAuthErrorCode, OAuthErrorContent> 
     actionLabel: "다시 시도하기",
   },
   OAUTH_ACCOUNT_CONFLICT: {
-    title: "이미 연결된 계정이에요",
-    description: "이 소셜 계정은 다른 사용자 계정에 연결되어 있습니다.",
+    title: "같은 이메일로 가입된 계정이 있어요",
+    description: "기존에 사용하던 소셜 로그인으로 로그인해 주세요.",
     actionLabel: "다른 방법으로 로그인하기",
   },
 };
