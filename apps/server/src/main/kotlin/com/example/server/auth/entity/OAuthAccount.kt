@@ -1,7 +1,10 @@
 package com.example.server.auth.entity
 
+import com.example.server.auth.types.OAuthProvider
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -16,9 +19,12 @@ import java.time.LocalDateTime
 @Entity
 @Table(
   name = "oauth_accounts",
-  uniqueConstraints = [UniqueConstraint(name = "uq_oauth_provider", columnNames = ["provider", "provider_user_id"])],
+  uniqueConstraints = [
+    UniqueConstraint(name = "uq_oauth_user_provider", columnNames = ["user_id", "provider"]),
+    UniqueConstraint(name = "uq_oauth_provider", columnNames = ["provider", "provider_user_id"]),
+  ],
 )
-class OauthAccount(
+class OAuthAccount(
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   var id: Long = 0,
@@ -27,23 +33,15 @@ class OauthAccount(
   @JoinColumn(name = "user_id", nullable = false)
   var user: User,
 
-  @Column(nullable = false, length = 50)
-  var provider: String,
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  var provider: OAuthProvider,
 
   @Column(name = "provider_user_id", nullable = false, length = 255)
   var providerUserId: String,
 
-  @Column(name = "provider_email", length = 255)
-  var providerEmail: String? = null,
-
-  @Column(name = "access_token", columnDefinition = "TEXT")
-  var accessToken: String? = null,
-
-  @Column(name = "refresh_token", columnDefinition = "TEXT")
-  var refreshToken: String? = null,
-
-  @Column(name = "token_expires_at")
-  var tokenExpiresAt: LocalDateTime? = null,
+  @Column(name = "provider_email", nullable = false, length = 255)
+  var providerEmail: String,
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
