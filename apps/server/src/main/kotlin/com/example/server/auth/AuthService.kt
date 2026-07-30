@@ -3,10 +3,8 @@ package com.example.server.auth
 import com.example.server.auth.dto.CallbackResult
 import com.example.server.auth.dto.OAuthStateData
 import com.example.server.auth.dto.OAuthUserInfo
-import com.example.server.auth.types.Mode
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
-import com.example.server.auth.types.TokenType
 import com.example.server.config.properties.AppProperties
 import com.example.server.config.properties.JwtProperties
 import com.example.server.config.properties.OAuthProperties
@@ -39,24 +37,9 @@ class AuthService(
 ) {
   private val restClient = RestClient.create()
 
-  fun getAuthorizationUrl(provider: OAuthProvider, redirectUri: String, mode: Mode, accessToken: String?): String {
+  fun getAuthorizationUrl(provider: OAuthProvider, redirectUri: String): String {
     if (!validateRedirectUri(redirectUri)) {
       throw CustomException(ErrorCode.BAD_REQUEST, "유효하지 않은 redirect URI입니다.")
-    }
-
-    val userId = when (mode) {
-      Mode.LOGIN -> null
-      Mode.LINK -> {
-        val token = accessToken
-          ?: throw CustomException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.")
-        if (
-          !jwtTokenProvider.validateToken(token) ||
-          jwtTokenProvider.getTokenType(token) != TokenType.ACCESS
-        ) {
-          throw CustomException(ErrorCode.UNAUTHORIZED, "유효하지 않은 access token입니다.")
-        }
-        jwtTokenProvider.getUserId(token)
-      }
     }
 
     val providerConfig = oauthProperties.providers[provider.value]
@@ -66,8 +49,6 @@ class AuthService(
     val stateData = OAuthStateData(
       provider = provider,
       redirectUri = redirectUri,
-      mode = mode,
-      userId = userId,
     )
     // 콜백 완료 후 클라이언트를 원래 요청한 redirect_uri와 mode를 state에 연결하여 저장
     oauthStateRedisTemplate.opsForValue().set(
@@ -103,8 +84,6 @@ class AuthService(
     }
 
     val redirectUri = stateData.redirectUri
-    val mode = stateData.mode
-    val userId = stateData.userId
 
     // 2. 인가 코드 → 액세스 토큰 교환
     val oauthAccessToken = exchangeCodeForToken(code, provider)
@@ -114,33 +93,25 @@ class AuthService(
     val oauthUserInfo = fetchUserInfo(oauthAccessToken, provider)
       ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_PROFILE_FETCH_FAILED)
 
-    // 4. 사용자 저장 및 서비스 토큰 발급 (JWT access + refresh)
-    val user = when (mode) {
-      Mode.LOGIN -> authTransactionService.loginUser(oauthUserInfo)
-      Mode.LINK -> authTransactionService.linkUser(oauthUserInfo, userId)
-    } ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_ACCOUNT_CONFLICT)
+    // 4. 사용자 저장
+    val user = authTransactionService.loginUser(oauthUserInfo)
+      ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_ACCOUNT_CONFLICT)
 
-    // 5. 클라이언트의 원래 redirectUri로 리다이렉트
-    return when (mode) {
-      Mode.LOGIN -> {
-        val accessToken = jwtTokenProvider.generateAccessToken(user.id, user.role)
-        val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.id)
+    // 5. 서비스 토큰 발급 (JWT access + refresh)
+    val accessToken = jwtTokenProvider.generateAccessToken(user.id, user.role)
+    val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.id)
 
-        val tokenId = issuedRefreshToken.tokenId
-        val refreshToken = issuedRefreshToken.token
+    val tokenId = issuedRefreshToken.tokenId
+    val refreshToken = issuedRefreshToken.token
 
-        stringRedisTemplate.opsForValue().set(
-          "$REFRESH_TOKEN_KEY_PREFIX$tokenId",
-          user.id.toString(),
-          Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
-        )
+    stringRedisTemplate.opsForValue().set(
+      "$REFRESH_TOKEN_KEY_PREFIX$tokenId",
+      user.id.toString(),
+      Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
+    )
 
-        CallbackResult.LoginSuccess(accessToken, refreshToken, redirectUri)
-      }
-      Mode.LINK -> {
-        CallbackResult.LinkSuccess(redirectUri)
-      }
-    }
+    // 6. 클라이언트의 원래 redirectUri로 리다이렉트
+    return CallbackResult.Success(accessToken, refreshToken, redirectUri)
   }
 
   fun deleteOAuthState(state: String) {

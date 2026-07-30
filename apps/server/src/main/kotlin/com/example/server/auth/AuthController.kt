@@ -1,7 +1,6 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.CallbackResult
-import com.example.server.auth.types.Mode
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.config.properties.AppProperties
@@ -10,7 +9,6 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
@@ -26,10 +24,8 @@ class AuthController(private val authService: AuthService, private val appProper
   fun getAuthorizationUrl(
     @PathVariable("oauth_provider") oauthProvider: OAuthProvider,
     @RequestParam("redirect_uri", defaultValue = "/") redirectUri: String,
-    @RequestParam(defaultValue = "login") mode: Mode,
-    @CookieValue("access_token", required = false) accessToken: String?,
   ): ResponseEntity<Void> {
-    val authorizationUrl = authService.getAuthorizationUrl(oauthProvider, redirectUri, mode, accessToken)
+    val authorizationUrl = authService.getAuthorizationUrl(oauthProvider, redirectUri)
     return ResponseEntity.status(HttpStatus.FOUND)
       .location(URI.create(authorizationUrl))
       .build()
@@ -54,7 +50,7 @@ class AuthController(private val authService: AuthService, private val appProper
     }
 
     return when (val callbackResult = authService.handleCallback(oauthProvider, code, state)) {
-      is CallbackResult.LoginSuccess -> {
+      is CallbackResult.Success -> {
         val accessTokenCookie = ResponseCookie.from("access_token", callbackResult.accessToken)
           .httpOnly(true)
           .secure(appProperties.production)
@@ -72,11 +68,6 @@ class AuthController(private val authService: AuthService, private val appProper
         ResponseEntity.status(HttpStatus.FOUND)
           .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
           .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-          .location(URI.create("${appProperties.frontendUrl}${callbackResult.redirectUri}"))
-          .build()
-      }
-      is CallbackResult.LinkSuccess -> {
-        ResponseEntity.status(HttpStatus.FOUND)
           .location(URI.create("${appProperties.frontendUrl}${callbackResult.redirectUri}"))
           .build()
       }
