@@ -1,15 +1,15 @@
-import OAuthErrorModal from "./OAuthErrorModal";
+import { OAuthErrorModal } from "./OAuthErrorModal";
 
 import { OAuthButton, type OAuthProvider } from "../../../features/auth";
 import { OAUTH_PROVIDER_MAP } from "../model/login.constants";
 import { useLogin } from "../model/use-login";
 
 const LoginPage = () => {
-  const { errorGuide, hasOAuthError, handleCloseError, handleLogin } = useLogin();
+  const { errorContent, hasOAuthError, handleCloseError, handleLogin } = useLogin();
 
   return (
     <>
-      <main className="from-brand-primary/10 to-brand-accent/10 flex min-h-screen items-center justify-center bg-gradient-to-br via-white px-5 py-10">
+      <main className="from-brand-primary/10 to-brand-accent/10 flex min-h-screen items-center justify-center bg-linear-to-br via-white px-5 py-10">
         <section className="border-brand-primary/15 w-full max-w-110 rounded-3xl border bg-white p-7 shadow-xl sm:p-10">
           <img alt="Tikkle" className="mb-7 h-auto w-36" src="/brand/tikkle-logo.svg" />
           <div className="mb-10">
@@ -33,7 +33,7 @@ const LoginPage = () => {
         </section>
       </main>
 
-      {hasOAuthError && <OAuthErrorModal guide={errorGuide} onClose={handleCloseError} />}
+      {hasOAuthError && <OAuthErrorModal content={errorContent} onClose={handleCloseError} />}
     </>
   );
 };

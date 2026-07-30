@@ -1,33 +1,13 @@
-import { useEffect, useRef } from "react";
-
-import type { OAuthErrorContent } from "../model/oauth-error.constants";
+import type { OAuthErrorContent } from "../model/oauth-error.types";
+import { useOAuthErrorModal } from "../model/use-oauth-error-modal";
 
 interface OAuthErrorModalProps {
-  guide: OAuthErrorContent;
+  content: OAuthErrorContent;
   onClose: () => void;
 }
 
-const OAuthErrorModal = ({ guide, onClose }: OAuthErrorModalProps) => {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-
-    if (!dialog?.open) {
-      dialog?.showModal();
-    }
-
-    return () => {
-      if (dialog?.open) {
-        dialog.close();
-      }
-    };
-  }, []);
-
-  const handleCancel = (event: React.SyntheticEvent<HTMLDialogElement>) => {
-    event.preventDefault();
-    onClose();
-  };
+export const OAuthErrorModal = ({ content, onClose }: OAuthErrorModalProps) => {
+  const { dialogRef, handleCancel } = useOAuthErrorModal(onClose);
 
   return (
     <dialog
@@ -42,22 +22,20 @@ const OAuthErrorModal = ({ guide, onClose }: OAuthErrorModalProps) => {
         </div>
 
         <h2 className="mt-5 text-xl font-bold text-slate-950" id="oauth-error-title">
-          {guide.title}
+          {content.title}
         </h2>
 
-        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-pretty break-keep text-slate-500">{guide.description}</p>
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-pretty break-keep text-slate-500">{content.description}</p>
 
         <button
           autoFocus
-          className="from-brand-primary to-brand-accent focus-visible:outline-brand-primary mt-7 w-full rounded-xl bg-gradient-to-r px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="from-brand-primary to-brand-accent focus-visible:outline-brand-primary mt-7 w-full rounded-xl bg-linear-to-r px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2"
           onClick={onClose}
           type="button"
         >
-          {guide.actionLabel}
+          {content.actionLabel}
         </button>
       </section>
     </dialog>
   );
 };
-
-export default OAuthErrorModal;

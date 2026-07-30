@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router";
 
-import { getOAuthErrorGuide } from "./oauth-error.constants";
+import { getOAuthErrorContent } from "./oauth-error.utils";
 
 import type { OAuthProvider } from "../../../features/auth";
 import { ROUTE_PATHS } from "../../../shared/config/router.config";
@@ -9,7 +9,7 @@ export const useLogin = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const errorCode = searchParams.get("error_code");
-  const errorGuide = getOAuthErrorGuide(errorCode);
+  const errorContent = getOAuthErrorContent(errorCode);
 
   const handleLogin = (provider: OAuthProvider) => {
     const params = new URLSearchParams({
@@ -29,7 +29,7 @@ export const useLogin = () => {
   };
 
   return {
-    errorGuide,
+    errorContent,
     hasOAuthError: errorCode !== null,
     handleCloseError,
     handleLogin,

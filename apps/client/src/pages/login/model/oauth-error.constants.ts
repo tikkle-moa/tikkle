@@ -1,10 +1,6 @@
-export interface OAuthErrorContent {
-  title: string;
-  description: string;
-  actionLabel: string;
-}
+import type { OAuthErrorCode, OAuthErrorContent } from "./oauth-error.types";
 
-export const OAUTH_ERROR_CONTENT_MAP = {
+export const OAUTH_ERROR_CONTENT_MAP: Record<OAuthErrorCode, OAuthErrorContent> = {
   OAUTH_ACCESS_DENIED: {
     title: "로그인이 취소됐어요",
     description: "계정 접근에 동의하지 않아 로그인을 완료하지 못했습니다.",
@@ -40,18 +36,10 @@ export const OAUTH_ERROR_CONTENT_MAP = {
     description: "이 소셜 계정은 다른 사용자 계정에 연결되어 있습니다.",
     actionLabel: "다른 방법으로 로그인하기",
   },
-} satisfies Record<string, OAuthErrorContent>;
+};
 
-export const UNKNOWN_OAUTH_ERROR_GUIDE: OAuthErrorContent = {
+export const UNKNOWN_OAUTH_ERROR_CONTENT: OAuthErrorContent = {
   title: "로그인을 완료하지 못했어요",
   description: "알 수 없는 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
   actionLabel: "다시 로그인하기",
-};
-
-export const getOAuthErrorGuide = (errorCode: string | null): OAuthErrorContent => {
-  if (errorCode && Object.prototype.hasOwnProperty.call(OAUTH_ERROR_CONTENT_MAP, errorCode)) {
-    return OAUTH_ERROR_CONTENT_MAP[errorCode as keyof typeof OAUTH_ERROR_CONTENT_MAP];
-  }
-
-  return UNKNOWN_OAUTH_ERROR_GUIDE;
 };
