@@ -1,6 +1,7 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.IssuedRefreshToken
+import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.TokenType
 import com.example.server.auth.types.UserRole
 import com.example.server.config.properties.JwtProperties
@@ -60,6 +61,36 @@ class JwtTokenProvider(private val jwtProperties: JwtProperties) {
       token = token,
       tokenId = tokenId,
     )
+  }
+
+  fun parseAccessToken(token: String): LoginUserResult? {
+    return try {
+      val claims = parseClaims(token)
+
+      val tokenType = claims["type"] as? String
+      if (tokenType != TokenType.ACCESS.name) {
+        return null
+      }
+
+      val userId = claims.subject?.toLongOrNull()
+        ?: return null
+
+      val roleName = claims["role"] as? String
+        ?: return null
+
+      val role = runCatching {
+        UserRole.valueOf(roleName)
+      }.getOrNull() ?: return null
+
+      LoginUserResult(
+        userId = userId,
+        role = role,
+      )
+    } catch (_: JwtException) {
+      null
+    } catch (_: IllegalArgumentException) {
+      null
+    }
   }
 
   fun parseClaims(token: String): Claims = Jwts.parser()
