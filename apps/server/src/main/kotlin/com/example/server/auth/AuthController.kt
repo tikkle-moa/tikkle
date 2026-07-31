@@ -1,14 +1,18 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.CallbackResult
+import com.example.server.auth.dto.CurrentUserResponse
+import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.config.properties.AppProperties
 import com.example.server.config.properties.JwtProperties
+import com.example.server.global.response.ApiResponse
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
@@ -20,6 +24,11 @@ import java.time.Duration
 @RestController
 @RequestMapping("/auth")
 class AuthController(private val authService: AuthService, private val appProperties: AppProperties, private val jwtProperties: JwtProperties) {
+  @GetMapping("/me")
+  fun getCurrentUser(@AuthenticationPrincipal loginUser: LoginUserResult): ApiResponse.Success<CurrentUserResponse> = ApiResponse.ok(
+    authService.getCurrentUser(loginUser.userId),
+  )
+
   @GetMapping("/oauth/{oauth_provider}")
   fun getAuthorizationUrl(
     @PathVariable("oauth_provider") oauthProvider: OAuthProvider,

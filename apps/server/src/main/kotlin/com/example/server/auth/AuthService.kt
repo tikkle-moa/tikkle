@@ -1,8 +1,11 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.CallbackResult
+import com.example.server.auth.dto.CurrentUserResponse
 import com.example.server.auth.dto.OAuthStateData
 import com.example.server.auth.dto.OAuthUserInfo
+import com.example.server.auth.repository.OAuthAccountRepository
+import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.config.properties.AppProperties
@@ -14,6 +17,7 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
@@ -26,6 +30,8 @@ private const val REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:"
 
 @Service
 class AuthService(
+  private val userRepository: UserRepository,
+  private val oauthAccountRepository: OAuthAccountRepository,
   private val oauthProperties: OAuthProperties,
   private val appProperties: AppProperties,
   private val jwtProperties: JwtProperties,
@@ -261,6 +267,22 @@ class AuthService(
     } ?: return null
 
     return selectedEmail["email"] as? String
+  }
+
+  @Transactional(readOnly = true)
+  fun getCurrentUser(userId: Long): CurrentUserResponse {
+    val user = userRepository.findById(userId)
+      .orElseThrow {
+        CustomException(ErrorCode.UNAUTHORIZED)
+      }
+
+    val oauthProviders =
+      oauthAccountRepository.findAllByUserId(userId).map { it.provider }
+
+    return CurrentUserResponse.from(
+      user = user,
+      oauthProviders = oauthProviders,
+    )
   }
 
   private fun validateRedirectUri(redirectUri: String): Boolean {

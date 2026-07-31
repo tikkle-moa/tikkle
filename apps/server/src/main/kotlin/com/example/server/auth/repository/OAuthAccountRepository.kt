@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface OAuthAccountRepository : JpaRepository<OAuthAccount, Long> {
   fun findByUserIdAndProvider(userId: Long, provider: OAuthProvider): OAuthAccount?
   fun findByProviderAndProviderUserId(provider: OAuthProvider, providerUserId: String): OAuthAccount?
+  fun findAllByUserId(userId: Long): List<OAuthAccount>
 }
