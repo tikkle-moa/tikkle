@@ -24,6 +24,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("org.springframework.boot:spring-boot-starter-webmvc")
+  implementation("org.springframework.boot:spring-boot-restclient")
   implementation("org.jetbrains.kotlin:kotlin-reflect")
   implementation("tools.jackson.module:jackson-module-kotlin")
   implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
@@ -41,6 +42,11 @@ dependencies {
   testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
   testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
   testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+  testImplementation("org.springframework.boot:spring-boot-starter-test")
+  testImplementation("org.springframework.boot:spring-boot-testcontainers")
+  testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.5"))
+  testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+  testImplementation("org.testcontainers:testcontainers-mysql")
   testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -59,4 +65,8 @@ allOpen {
 
 tasks.withType<Test> {
   useJUnitPlatform()
+
+  testLogging {
+    events("passed", "skipped", "failed")
+  }
 }
