@@ -34,8 +34,9 @@ class AuthService(
   private val oauthStateRedisTemplate: RedisTemplate<String, OAuthStateData>,
   private val stringRedisTemplate: StringRedisTemplate,
   private val authTransactionService: AuthTransactionService,
+  restClientBuilder: RestClient.Builder,
 ) {
-  private val restClient = RestClient.create()
+  private val restClient = restClientBuilder.build()
 
   fun getAuthorizationUrl(provider: OAuthProvider, redirectUri: String): String {
     if (!validateRedirectUri(redirectUri)) {
