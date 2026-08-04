@@ -5,6 +5,8 @@
   "scripts": {
     "dev:client": "pnpm -F client dev",
     "dev:server": "cd apps/server && ./gradlew bootRun",
+    "test:client": "pnpm -F client test",
+    "test:client:coverage": "pnpm -F client test:coverage",
     "test:server": "cd apps/server && ./gradlew test",
     "test:server:rerun": "cd apps/server && ./gradlew test --rerun-tasks",
     "prepare": "husky",
