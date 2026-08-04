@@ -86,12 +86,15 @@ class AuthService(
 
     val redirectUri = stateData.redirectUri
 
+    val providerConfig = oauthProperties.providers[provider.value]
+      ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_CODE_EXCHANGE_FAILED)
+
     // 2. 인가 코드 → 액세스 토큰 교환
-    val oauthAccessToken = exchangeCodeForToken(code, provider)
+    val oauthAccessToken = exchangeCodeForToken(code, provider, providerConfig)
       ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_CODE_EXCHANGE_FAILED)
 
     // 3. 사용자 정보 조회
-    val oauthUserInfo = fetchUserInfo(oauthAccessToken, provider)
+    val oauthUserInfo = fetchUserInfo(oauthAccessToken, provider, providerConfig)
       ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_PROFILE_FETCH_FAILED)
 
     // 4. 사용자 저장
@@ -119,10 +122,7 @@ class AuthService(
     oauthStateRedisTemplate.delete("$OAUTH_STATE_KEY_PREFIX$state")
   }
 
-  private fun exchangeCodeForToken(code: String, provider: OAuthProvider): String? {
-    val providerConfig = oauthProperties.providers[provider.value]
-      ?: return null
-
+  private fun exchangeCodeForToken(code: String, provider: OAuthProvider, providerConfig: OAuthProperties.ProviderConfig): String? {
     val oauthRedirectUri = "${appProperties.baseUrl}/api/auth/oauth/${provider.value}/callback"
 
     val tokenParams = LinkedMultiValueMap<String, String>().apply {
@@ -149,10 +149,7 @@ class AuthService(
     return oauthAccessToken
   }
 
-  private fun fetchUserInfo(oauthAccessToken: String, provider: OAuthProvider): OAuthUserInfo? {
-    val providerConfig = oauthProperties.providers[provider.value]
-      ?: return null
-
+  private fun fetchUserInfo(oauthAccessToken: String, provider: OAuthProvider, providerConfig: OAuthProperties.ProviderConfig): OAuthUserInfo? {
     val userInfo = runCatching {
       restClient.get()
         .uri(providerConfig.userInfoUri)
