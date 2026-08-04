@@ -64,33 +64,32 @@ class JwtTokenProvider(private val jwtProperties: JwtProperties) {
   }
 
   fun parseAccessToken(token: String): LoginUserResult? {
-    return try {
-      val claims = parseClaims(token)
-
-      val tokenType = claims["type"] as? String
-      if (tokenType != TokenType.ACCESS.name) {
-        return null
-      }
-
-      val userId = claims.subject?.toLongOrNull()
-        ?: return null
-
-      val roleName = claims["role"] as? String
-        ?: return null
-
-      val role = runCatching {
-        UserRole.valueOf(roleName)
-      }.getOrNull() ?: return null
-
-      LoginUserResult(
-        userId = userId,
-        role = role,
-      )
+    val claims = try {
+      parseClaims(token)
     } catch (_: JwtException) {
-      null
+      return null
     } catch (_: IllegalArgumentException) {
-      null
+      return null
     }
+
+    if (claims["type"] as? String != TokenType.ACCESS.name) {
+      return null
+    }
+
+    val userId = claims.subject?.toLongOrNull()
+      ?: return null
+
+    val roleName = claims["role"] as? String
+      ?: return null
+
+    val role = runCatching {
+      UserRole.valueOf(roleName)
+    }.getOrNull() ?: return null
+
+    return LoginUserResult(
+      userId = userId,
+      role = role,
+    )
   }
 
   fun parseClaims(token: String): Claims = Jwts.parser()
