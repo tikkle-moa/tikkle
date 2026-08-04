@@ -2,9 +2,11 @@ package com.example.server.auth
 
 import com.example.server.auth.dto.CallbackResult
 import com.example.server.auth.dto.IssuedRefreshToken
+import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.dto.OAuthStateData
 import com.example.server.auth.dto.OAuthUserInfo
-import com.example.server.auth.entity.User
+import com.example.server.auth.repository.OAuthAccountRepository
+import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.auth.types.UserRole
@@ -43,6 +45,12 @@ import kotlin.test.assertTrue
 
 @ExtendWith(MockitoExtension::class)
 class AuthServiceTest {
+
+  @Mock
+  lateinit var userRepository: UserRepository
+
+  @Mock
+  lateinit var oauthAccountRepository: OAuthAccountRepository
 
   @Mock
   lateinit var oauthProperties: OAuthProperties
@@ -121,6 +129,8 @@ class AuthServiceTest {
       .build()
 
     service = AuthService(
+      userRepository = userRepository,
+      oauthAccountRepository = oauthAccountRepository,
       oauthProperties = oauthProperties,
       appProperties = appProperties,
       jwtProperties = jwtProperties,
@@ -1287,10 +1297,8 @@ class AuthServiceTest {
           ),
         )
 
-      val user = User(
-        id = 1L,
-        email = "test@example.com",
-        nickname = "테스터",
+      val loginUserResult = LoginUserResult(
+        userId = 1L,
         role = UserRole.USER,
       )
 
@@ -1298,19 +1306,20 @@ class AuthServiceTest {
         authTransactionService.loginUser(
           any(OAuthUserInfo::class.java),
         ),
-      ).willReturn(user)
+      ).willReturn(loginUserResult)
 
       val testAccessToken = "test-access-token"
       val testRefreshTokenId = "test-refresh-token-id"
       val testRefreshToken = "test-refresh-token"
       given(
         jwtTokenProvider.generateAccessToken(
-          user.id,
-          user.role,
+          loginUserResult.userId,
+          loginUserResult.role,
         ),
       ).willReturn(testAccessToken)
+
       given(
-        jwtTokenProvider.generateRefreshToken(user.id),
+        jwtTokenProvider.generateRefreshToken(loginUserResult.userId),
       ).willReturn(
         IssuedRefreshToken(
           tokenId = testRefreshTokenId,
@@ -1341,7 +1350,7 @@ class AuthServiceTest {
         .should()
         .set(
           "auth:refresh:$testRefreshTokenId",
-          user.id.toString(),
+          loginUserResult.userId.toString(),
           Duration.ofDays(30),
         )
 
