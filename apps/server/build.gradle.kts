@@ -150,9 +150,13 @@ tasks.withType<Test> {
           !name.startsWith("Gradle Test Executor")
       }
 
-      private fun displayName(descriptor: TestDescriptor): String = descriptor.displayName
-        .substringAfterLast(".")
-        .substringAfterLast("$")
+      private fun displayName(descriptor: TestDescriptor): String = if (descriptor.className != null && descriptor.name == descriptor.className) {
+        descriptor.className!!
+          .substringAfterLast(".")
+          .substringAfterLast("$")
+      } else {
+        descriptor.displayName
+      }
 
       private fun indent(descriptor: TestDescriptor): String {
         var depth = 0
@@ -173,6 +177,28 @@ tasks.withType<Test> {
 
 tasks.jacocoTestReport {
   dependsOn(tasks.test)
+
+  classDirectories.setFrom(
+    files(
+      classDirectories.files.map {
+        fileTree(it) {
+          include(
+            "**/*Controller*",
+            "**/*Service*",
+            "**/*Provider*",
+            "**/*Handler*",
+          )
+          exclude(
+            "**/dto/**",
+            "**/converter/**",
+            "**/entity/**",
+            "**/types/**",
+            "**/config/***",
+          )
+        }
+      },
+    ),
+  )
 
   reports {
     html.required.set(true)
