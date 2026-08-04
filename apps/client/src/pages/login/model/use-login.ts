@@ -14,7 +14,6 @@ export const useLogin = () => {
   const handleLogin = (provider: OAuthProvider) => {
     const params = new URLSearchParams({
       redirect_uri: ROUTE_PATHS.CONCERTS,
-      mode: "login",
     });
 
     window.location.assign(`/api/auth/oauth/${provider}?${params.toString()}`);

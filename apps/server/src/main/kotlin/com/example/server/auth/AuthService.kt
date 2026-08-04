@@ -51,7 +51,7 @@ class AuthService(
       provider = provider,
       redirectUri = redirectUri,
     )
-    // 콜백 완료 후 클라이언트를 원래 요청한 redirect_uri와 mode를 state에 연결하여 저장
+    // OAuth 콜백 시 state로 조회할 수 있도록 요청 정보를 Redis에 저장
     oauthStateRedisTemplate.opsForValue().set(
       "$OAUTH_STATE_KEY_PREFIX$state",
       stateData,
