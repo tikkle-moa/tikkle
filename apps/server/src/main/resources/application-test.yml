@@ -1,3 +1,7 @@
+logging:
+  level:
+    root: WARN
+
 spring:
   application:
     name: server-test
