@@ -1,8 +1,8 @@
 package com.example.server.config
 
 import com.example.server.auth.JwtTokenProvider
-import com.example.server.auth.security.JwtAuthenticationFilter
-import com.example.server.auth.security.RestAuthenticationEntryPoint
+import com.example.server.global.security.JwtAuthenticationFilter
+import com.example.server.global.security.RestAuthenticationEntryPoint
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod

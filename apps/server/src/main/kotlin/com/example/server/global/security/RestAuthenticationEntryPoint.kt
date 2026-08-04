@@ -1,4 +1,4 @@
-package com.example.server.auth.security
+package com.example.server.global.security
 
 import com.example.server.global.exception.ErrorCode
 import com.example.server.global.response.ApiResponse

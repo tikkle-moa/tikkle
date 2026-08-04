@@ -1,4 +1,4 @@
-package com.example.server.auth.security
+package com.example.server.global.security
 
 import com.example.server.auth.JwtTokenProvider
 import jakarta.servlet.FilterChain
