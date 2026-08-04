@@ -1,10 +1,13 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.CallbackResult
+import com.example.server.auth.dto.CurrentUserResponse
 import com.example.server.auth.dto.IssuedRefreshToken
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.dto.OAuthStateData
 import com.example.server.auth.dto.OAuthUserInfo
+import com.example.server.auth.entity.OAuthAccount
+import com.example.server.auth.entity.User
 import com.example.server.auth.repository.OAuthAccountRepository
 import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthErrorCode
@@ -14,6 +17,7 @@ import com.example.server.config.properties.AppProperties
 import com.example.server.config.properties.JwtProperties
 import com.example.server.config.properties.OAuthProperties
 import com.example.server.global.exception.CustomException
+import com.example.server.global.exception.ErrorCode
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -40,6 +44,7 @@ import org.springframework.test.web.client.response.MockRestResponseCreators.wit
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.RestClient
 import java.time.Duration
+import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -1355,6 +1360,69 @@ class AuthServiceTest {
         )
 
       mockServer.verify()
+    }
+  }
+
+  @Nested
+  @DisplayName("getCurrentUser")
+  inner class GetCurrentUser {
+
+    @Test
+    fun `사용자 정보와 연동된 OAuth provider 목록을 반환한다`() {
+      val userId = 1L
+      val user = User(
+        id = userId,
+        email = "test@example.com",
+        nickname = "테스터",
+        profileImageUrl = "https://example.com/profile.png",
+        role = UserRole.USER,
+      )
+      val googleAccount = OAuthAccount(
+        user = user,
+        provider = OAuthProvider.GOOGLE,
+        providerUserId = "google-123",
+        providerEmail = user.email,
+      )
+      val kakaoAccount = OAuthAccount(
+        user = user,
+        provider = OAuthProvider.KAKAO,
+        providerUserId = "kakao-123",
+        providerEmail = user.email,
+      )
+
+      given(userRepository.findById(userId)).willReturn(Optional.of(user))
+      given(oauthAccountRepository.findAllByUserId(userId))
+        .willReturn(listOf(googleAccount, kakaoAccount))
+
+      val result = service.getCurrentUser(userId)
+
+      assertEquals(
+        CurrentUserResponse(
+          id = userId,
+          email = "test@example.com",
+          nickname = "테스터",
+          profileImageUrl = "https://example.com/profile.png",
+          role = UserRole.USER,
+          oauthAccounts = listOf("google", "kakao"),
+        ),
+        result,
+      )
+
+      then(userRepository).should().findById(userId)
+      then(oauthAccountRepository).should().findAllByUserId(userId)
+    }
+
+    @Test
+    fun `사용자가 없으면 UNAUTHORIZED 예외를 던진다`() {
+      val userId = 999L
+      given(userRepository.findById(userId)).willReturn(Optional.empty())
+
+      val exception = assertThrows<CustomException> {
+        service.getCurrentUser(userId)
+      }
+
+      assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
+      then(oauthAccountRepository).shouldHaveNoInteractions()
     }
   }
 
