@@ -113,7 +113,9 @@ tasks.withType<Test> {
           }
         }
 
-        println("${indent(testDescriptor)}$status ${displayName(testDescriptor)}")
+        val durationMs = result.endTime - result.startTime
+
+        println("${indent(testDescriptor)}$status ${displayName(testDescriptor)} ${yellow}${durationMs}ms$reset")
 
         if (result.resultType == TestResult.ResultType.FAILURE) {
           result.exceptions.forEach { exception ->
@@ -125,6 +127,8 @@ tasks.withType<Test> {
       override fun afterSuite(suite: TestDescriptor, result: TestResult) {
         if (suite.parent == null) {
           val total = passed + failed + skipped
+          val durationMs = result.endTime - result.startTime
+
           println()
           println("${cyan}Test summary$reset")
           println("---------------------------")
@@ -132,6 +136,7 @@ tasks.withType<Test> {
           println("${green}Passed  : $passed$reset")
           println("${red}Failed  : $failed$reset")
           println("${yellow}Skipped : $skipped$reset")
+          println("Duration : ${durationMs}ms")
           println("---------------------------")
         }
       }
