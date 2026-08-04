@@ -1,8 +1,11 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.CallbackResult
+import com.example.server.auth.dto.CurrentUserResponse
 import com.example.server.auth.dto.OAuthStateData
 import com.example.server.auth.dto.OAuthUserInfo
+import com.example.server.auth.repository.OAuthAccountRepository
+import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.config.properties.AppProperties
@@ -27,6 +30,8 @@ private const val REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:"
 
 @Service
 class AuthService(
+  private val userRepository: UserRepository,
+  private val oauthAccountRepository: OAuthAccountRepository,
   private val oauthProperties: OAuthProperties,
   private val appProperties: AppProperties,
   private val jwtProperties: JwtProperties,
@@ -74,7 +79,6 @@ class AuthService(
     return authorizationUrl
   }
 
-  @Transactional
   fun handleCallback(provider: OAuthProvider, code: String, state: String): CallbackResult {
     // 1. state 검증 및 데이터 추출 (one-time use)
     val stateData = oauthStateRedisTemplate.opsForValue().getAndDelete("$OAUTH_STATE_KEY_PREFIX$state")
@@ -102,15 +106,15 @@ class AuthService(
       ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_ACCOUNT_CONFLICT)
 
     // 5. 서비스 토큰 발급 (JWT access + refresh)
-    val accessToken = jwtTokenProvider.generateAccessToken(user.id, user.role)
-    val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.id)
+    val accessToken = jwtTokenProvider.generateAccessToken(user.userId, user.role)
+    val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.userId)
 
     val tokenId = issuedRefreshToken.tokenId
     val refreshToken = issuedRefreshToken.token
 
     stringRedisTemplate.opsForValue().set(
       "$REFRESH_TOKEN_KEY_PREFIX$tokenId",
-      user.id.toString(),
+      user.userId.toString(),
       Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
     )
 
@@ -261,6 +265,22 @@ class AuthService(
     } ?: return null
 
     return selectedEmail["email"] as? String
+  }
+
+  @Transactional(readOnly = true)
+  fun getCurrentUser(userId: Long): CurrentUserResponse {
+    val user = userRepository.findById(userId)
+      .orElseThrow {
+        CustomException(ErrorCode.UNAUTHORIZED)
+      }
+
+    val oauthProviders =
+      oauthAccountRepository.findAllByUserId(userId).map { it.provider }
+
+    return CurrentUserResponse.from(
+      user = user,
+      oauthProviders = oauthProviders,
+    )
   }
 
   private fun validateRedirectUri(redirectUri: String): Boolean {
