@@ -39,8 +39,9 @@ class AuthService(
   private val oauthStateRedisTemplate: RedisTemplate<String, OAuthStateData>,
   private val stringRedisTemplate: StringRedisTemplate,
   private val authTransactionService: AuthTransactionService,
+  restClientBuilder: RestClient.Builder,
 ) {
-  private val restClient = RestClient.create()
+  private val restClient = restClientBuilder.build()
 
   fun getAuthorizationUrl(provider: OAuthProvider, redirectUri: String): String {
     if (!validateRedirectUri(redirectUri)) {
@@ -55,7 +56,7 @@ class AuthService(
       provider = provider,
       redirectUri = redirectUri,
     )
-    // 콜백 완료 후 클라이언트를 원래 요청한 redirect_uri와 mode를 state에 연결하여 저장
+    // OAuth 콜백 시 state로 조회할 수 있도록 요청 정보를 Redis에 저장
     oauthStateRedisTemplate.opsForValue().set(
       "$OAUTH_STATE_KEY_PREFIX$state",
       stateData,
@@ -89,12 +90,15 @@ class AuthService(
 
     val redirectUri = stateData.redirectUri
 
+    val providerConfig = oauthProperties.providers[provider.value]
+      ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_CODE_EXCHANGE_FAILED)
+
     // 2. 인가 코드 → 액세스 토큰 교환
-    val oauthAccessToken = exchangeCodeForToken(code, provider)
+    val oauthAccessToken = exchangeCodeForToken(code, provider, providerConfig)
       ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_CODE_EXCHANGE_FAILED)
 
     // 3. 사용자 정보 조회
-    val oauthUserInfo = fetchUserInfo(oauthAccessToken, provider)
+    val oauthUserInfo = fetchUserInfo(oauthAccessToken, provider, providerConfig)
       ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_PROFILE_FETCH_FAILED)
 
     // 4. 사용자 저장
@@ -122,10 +126,7 @@ class AuthService(
     oauthStateRedisTemplate.delete("$OAUTH_STATE_KEY_PREFIX$state")
   }
 
-  private fun exchangeCodeForToken(code: String, provider: OAuthProvider): String? {
-    val providerConfig = oauthProperties.providers[provider.value]
-      ?: return null
-
+  private fun exchangeCodeForToken(code: String, provider: OAuthProvider, providerConfig: OAuthProperties.ProviderConfig): String? {
     val oauthRedirectUri = "${appProperties.baseUrl}/api/auth/oauth/${provider.value}/callback"
 
     val tokenParams = LinkedMultiValueMap<String, String>().apply {
@@ -152,10 +153,7 @@ class AuthService(
     return oauthAccessToken
   }
 
-  private fun fetchUserInfo(oauthAccessToken: String, provider: OAuthProvider): OAuthUserInfo? {
-    val providerConfig = oauthProperties.providers[provider.value]
-      ?: return null
-
+  private fun fetchUserInfo(oauthAccessToken: String, provider: OAuthProvider, providerConfig: OAuthProperties.ProviderConfig): OAuthUserInfo? {
     val userInfo = runCatching {
       restClient.get()
         .uri(providerConfig.userInfoUri)

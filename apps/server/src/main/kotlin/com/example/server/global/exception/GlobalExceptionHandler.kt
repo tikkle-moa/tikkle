@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.HandlerMethodValidationException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
@@ -34,20 +35,30 @@ class GlobalExceptionHandler {
     val message =
       e.bindingResult.fieldErrors
         .joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
-        .ifBlank { ErrorCode.BAD_REQUEST.message }
     log.warn("MethodArgumentNotValidException: {}", message)
     return ResponseEntity
       .status(ErrorCode.BAD_REQUEST.status)
       .body(ApiResponse.error(ErrorCode.BAD_REQUEST, message))
   }
 
-  /** 경로 변수 / 쿼리 파라미터 Bean Validation 실패 */
+  /** 경로 변수 / 쿼리 파라미터 검증 실패 */
+  @ExceptionHandler(HandlerMethodValidationException::class)
+  fun handleHandlerMethodValidationException(e: HandlerMethodValidationException): ResponseEntity<ApiResponse.Failure> {
+    val message = e.parameterValidationResults
+      .flatMap { it.resolvableErrors }
+      .joinToString(", ") { "${it.defaultMessage}" }
+    log.warn("HandlerMethodValidationException: {}", message)
+    return ResponseEntity
+      .status(ErrorCode.BAD_REQUEST.status)
+      .body(ApiResponse.error(ErrorCode.BAD_REQUEST, message))
+  }
+
+  /** 서비스 계층 등 일반 Bean Validation 실패 */
   @ExceptionHandler(ConstraintViolationException::class)
   fun handleConstraintViolationException(e: ConstraintViolationException): ResponseEntity<ApiResponse.Failure> {
     val message =
       e.constraintViolations
         .joinToString(", ") { it.message }
-        .ifBlank { ErrorCode.BAD_REQUEST.message }
     log.warn("ConstraintViolationException: {}", message)
     return ResponseEntity
       .status(ErrorCode.BAD_REQUEST.status)
