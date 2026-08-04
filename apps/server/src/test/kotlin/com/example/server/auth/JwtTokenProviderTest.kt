@@ -1,5 +1,6 @@
 package com.example.server.auth
 
+import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.TokenType
 import com.example.server.auth.types.UserRole
 import com.example.server.config.properties.JwtProperties
@@ -15,6 +16,7 @@ import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class JwtTokenProviderTest {
@@ -77,6 +79,66 @@ class JwtTokenProviderTest {
       assertNotEquals(first.token, second.token)
       assertEquals(1L, jwtTokenProvider.getUserId(second.token))
       assertEquals(jwtTokenProvider.getUserId(first.token), jwtTokenProvider.getUserId(second.token))
+    }
+  }
+
+  @Nested
+  inner class ParseAccessToken {
+    @Test
+    fun `유효한 access token에서 로그인 사용자 정보를 반환한다`() {
+      val token = jwtTokenProvider.generateAccessToken(
+        userId = 1L,
+        role = UserRole.USER,
+      )
+
+      assertEquals(
+        LoginUserResult(
+          userId = 1L,
+          role = UserRole.USER,
+        ),
+        jwtTokenProvider.parseAccessToken(token),
+      )
+    }
+
+    @Test
+    fun `access token이 아닌 토큰이면 null을 반환한다`() {
+      val token = jwtTokenProvider.generateRefreshToken(1L).token
+
+      assertNull(jwtTokenProvider.parseAccessToken(token))
+    }
+
+    @Test
+    fun `유효하지 않은 토큰이면 null을 반환한다`() {
+      assertNull(jwtTokenProvider.parseAccessToken("invalid-token"))
+    }
+
+    @Test
+    fun `사용자 ID가 숫자가 아니면 null을 반환한다`() {
+      val token = createToken(
+        subject = "not-number",
+        claims = mapOf(
+          "type" to TokenType.ACCESS.name,
+          "role" to UserRole.USER.name,
+        ),
+      )
+
+      assertNull(jwtTokenProvider.parseAccessToken(token))
+    }
+
+    @Test
+    fun `role claim이 없거나 유효하지 않으면 null을 반환한다`() {
+      val missingRoleToken = createToken(
+        claims = mapOf("type" to TokenType.ACCESS.name),
+      )
+      val invalidRoleToken = createToken(
+        claims = mapOf(
+          "type" to TokenType.ACCESS.name,
+          "role" to "UNKNOWN",
+        ),
+      )
+
+      assertNull(jwtTokenProvider.parseAccessToken(missingRoleToken))
+      assertNull(jwtTokenProvider.parseAccessToken(invalidRoleToken))
     }
   }
 
