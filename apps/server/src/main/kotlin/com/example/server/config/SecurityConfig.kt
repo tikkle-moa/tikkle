@@ -2,6 +2,7 @@ package com.example.server.config
 
 import com.example.server.auth.JwtTokenProvider
 import com.example.server.auth.types.UserRole
+import com.example.server.config.properties.AppProperties
 import com.example.server.global.security.JwtAuthenticationFilter
 import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
@@ -15,6 +16,8 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.provisioning.InMemoryUserDetailsManager
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
@@ -23,12 +26,14 @@ class SecurityConfig(
   private val jwtTokenProvider: JwtTokenProvider,
   private val authenticationEntryPoint: RestAuthenticationEntryPoint,
   private val accessDeniedHandler: RestAccessDeniedHandler,
+  private val appProperties: AppProperties,
 ) {
   @Bean
   fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
     val jwtAuthenticationFilter = JwtAuthenticationFilter(jwtTokenProvider)
 
     http
+      .cors { }
       .csrf { it.spa() }
       .sessionManagement {
         it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -50,6 +55,20 @@ class SecurityConfig(
       .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 
     return http.build()
+  }
+
+  @Bean
+  fun corsConfigurationSource(): UrlBasedCorsConfigurationSource {
+    val configuration = CorsConfiguration().apply {
+      allowedOrigins = listOf(appProperties.frontendUrl)
+      allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
+      allowedHeaders = listOf("Content-Type", "X-XSRF-TOKEN")
+      allowCredentials = true
+    }
+
+    return UrlBasedCorsConfigurationSource().apply {
+      registerCorsConfiguration("/api/**", configuration)
+    }
   }
 
   // UserDetailsServiceAutoConfiguration 백오프를 위한 no-op 빈
