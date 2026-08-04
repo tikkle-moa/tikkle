@@ -62,7 +62,7 @@ class JwtTokenProvider(private val jwtProperties: JwtProperties) {
     )
   }
 
-  fun parseClaims(token: String): Claims = Jwts.parser()
+  private fun parseClaims(token: String): Claims = Jwts.parser()
     .verifyWith(secretKey)
     .build()
     .parseSignedClaims(token)
