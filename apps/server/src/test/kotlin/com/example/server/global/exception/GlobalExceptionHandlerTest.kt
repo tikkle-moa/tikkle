@@ -3,6 +3,7 @@ package com.example.server.global.exception
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -10,11 +11,37 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 
 @WebMvcTest(ExceptionTestController::class)
+@Import(ExceptionTestService::class)
 @ActiveProfiles("test")
 class GlobalExceptionHandlerTest {
 
   @Autowired
   lateinit var mockMvc: MockMvc
+
+  @Test
+  fun `HandlerMethodValidationException - 400 응답과 제약 조건 메시지를 반환한다`() {
+    mockMvc.get("/api/test/exception/handler-method-validation") {
+      param("page", "0")
+    }.andExpect {
+      status { isBadRequest() }
+      jsonPath("$.success") { value(false) }
+      jsonPath("$.error.code") { value(400) }
+    }
+  }
+
+  @Test
+  fun `ConstraintViolationException - 400 응답과 제약 조건 메시지를 반환한다`() {
+    mockMvc.get("/api/test/exception/constraint-violation") {
+      param("page", "0")
+    }.andExpect {
+      status { isBadRequest() }
+      jsonPath("$.success") { value(false) }
+      jsonPath("$.error.code") { value(400) }
+      jsonPath("$.error.message") {
+        value("page는 1 이상이어야 합니다.")
+      }
+    }
+  }
 
   @Test
   fun `CustomException - 에러 코드에 해당하는 HTTP 상태와 failure 응답을 반환한다`() {

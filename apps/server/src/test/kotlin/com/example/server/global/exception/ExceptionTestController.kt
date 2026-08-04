@@ -1,6 +1,7 @@
 package com.example.server.global.exception
 
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.MediaType
@@ -14,7 +15,17 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/test/exception")
-class ExceptionTestController {
+class ExceptionTestController(private val exceptionTestService: ExceptionTestService) {
+
+  @GetMapping("/handler-method-validation")
+  fun throwHandlerMethodValidationException(
+    @RequestParam
+    @Min(value = 1, message = "page는 1 이상이어야 합니다.")
+    page: Int,
+  ): String = page.toString()
+
+  @GetMapping("/constraint-violation")
+  fun throwConstraintViolationException(@RequestParam page: Int): String = exceptionTestService.validatePage(page).toString()
 
   @GetMapping("/custom")
   fun throwCustom(): String = throw CustomException(ErrorCode.NOT_FOUND)
