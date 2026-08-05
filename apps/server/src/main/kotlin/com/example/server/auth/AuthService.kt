@@ -160,6 +160,16 @@ class AuthService(
     )
   }
 
+  fun logout(refreshToken: String?) {
+    val refreshTokenPayload = refreshToken
+      ?.let(jwtTokenProvider::parseRefreshToken)
+      ?: return
+
+    stringRedisTemplate.delete(
+      "$REFRESH_TOKEN_KEY_PREFIX${refreshTokenPayload.tokenId}",
+    )
+  }
+
   fun deleteOAuthState(state: String) {
     oauthStateRedisTemplate.delete("$OAUTH_STATE_KEY_PREFIX$state")
   }
