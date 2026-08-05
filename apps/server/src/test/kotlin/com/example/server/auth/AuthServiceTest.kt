@@ -6,6 +6,8 @@ import com.example.server.auth.dto.IssuedRefreshToken
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.dto.OAuthStateData
 import com.example.server.auth.dto.OAuthUserInfo
+import com.example.server.auth.dto.RefreshTokenPayload
+import com.example.server.auth.dto.ReissuedTokenPair
 import com.example.server.auth.entity.OAuthAccount
 import com.example.server.auth.entity.User
 import com.example.server.auth.repository.OAuthAccountRepository
@@ -1360,6 +1362,98 @@ class AuthServiceTest {
         )
 
       mockServer.verify()
+    }
+  }
+
+  @Nested
+  @DisplayName("refresh")
+  inner class Refresh {
+    private val refreshToken = "old-refresh-token"
+    private val refreshTokenId = "old-refresh-token-id"
+    private val userId = 1L
+
+    @Test
+    fun `유효한 refresh token이면 새 토큰을 발급하고 이전 토큰을 교체한다`() {
+      givenValidRefreshToken()
+
+      val user = User(
+        id = userId,
+        email = "user@example.com",
+        nickname = "테스트 사용자",
+        role = UserRole.USER,
+      )
+      val issuedRefreshToken = IssuedRefreshToken(
+        token = "new-refresh-token",
+        tokenId = "new-refresh-token-id",
+      )
+
+      given(stringValueOperations.getAndDelete("auth:refresh:$refreshTokenId"))
+        .willReturn(userId.toString())
+      given(userRepository.findById(userId))
+        .willReturn(Optional.of(user))
+      given(jwtTokenProvider.generateAccessToken(userId, UserRole.USER))
+        .willReturn("new-access-token")
+      given(jwtTokenProvider.generateRefreshToken(userId))
+        .willReturn(issuedRefreshToken)
+      given(jwtProperties.refreshTokenExpirationDays)
+        .willReturn(30L)
+
+      val result = service.refresh(refreshToken)
+
+      assertEquals(
+        ReissuedTokenPair(
+          accessToken = "new-access-token",
+          refreshToken = "new-refresh-token",
+        ),
+        result,
+      )
+      then(stringValueOperations)
+        .should()
+        .set(
+          "auth:refresh:${issuedRefreshToken.tokenId}",
+          userId.toString(),
+          Duration.ofDays(30),
+        )
+    }
+
+    @Test
+    fun `Redis에 refresh token이 없으면 인증 예외를 던진다`() {
+      givenValidRefreshToken()
+      given(stringValueOperations.getAndDelete("auth:refresh:$refreshTokenId"))
+        .willReturn(null)
+
+      val exception = assertThrows<CustomException> {
+        service.refresh(refreshToken)
+      }
+
+      assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
+      then(userRepository).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `refresh token이 아닌 경우 인증 예외를 던진다`() {
+      given(jwtTokenProvider.parseRefreshToken("access-token"))
+        .willReturn(null)
+
+      val exception = assertThrows<CustomException> {
+        service.refresh("access-token")
+      }
+
+      assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
+      then(stringRedisTemplate).shouldHaveNoInteractions()
+    }
+
+    private fun givenValidRefreshToken() {
+      given(jwtTokenProvider.parseRefreshToken(refreshToken))
+        .willReturn(
+          RefreshTokenPayload(
+            userId = userId,
+            tokenId = refreshTokenId,
+          ),
+        )
+
+      given(stringRedisTemplate.opsForValue())
+        .willReturn(stringValueOperations)
     }
   }
 
