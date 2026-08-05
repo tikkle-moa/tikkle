@@ -17,8 +17,10 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -47,6 +49,32 @@ class AuthController(private val authService: AuthService, private val appProper
     val currentUserResponse = authService.getCurrentUser(loginUser.userId)
     return ResponseEntity.ok()
       .body(ApiResponse.ok(currentUserResponse))
+  }
+
+  @PostMapping("/refresh")
+  fun refresh(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
+    val reissuedTokenPair = authService.refresh(refreshToken)
+
+    val accessTokenCookie = ResponseCookie.from("access_token", reissuedTokenPair.accessToken)
+      .httpOnly(true)
+      .secure(appProperties.production)
+      .sameSite("Lax")
+      .path("/")
+      .maxAge(Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes))
+      .build()
+
+    val refreshTokenCookie = ResponseCookie.from("refresh_token", reissuedTokenPair.refreshToken)
+      .httpOnly(true)
+      .secure(appProperties.production)
+      .sameSite("Lax")
+      .path("/api/auth")
+      .maxAge(Duration.ofDays(jwtProperties.refreshTokenExpirationDays))
+      .build()
+
+    return ResponseEntity.ok()
+      .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
+      .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+      .body(ApiResponse.ok())
   }
 
   @Operation(
