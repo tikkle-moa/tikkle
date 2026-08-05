@@ -68,8 +68,6 @@ class JwtTokenProvider(private val jwtProperties: JwtProperties) {
       parseClaims(token)
     } catch (_: JwtException) {
       return null
-    } catch (_: IllegalArgumentException) {
-      return null
     }
 
     if (claims["type"] as? String != TokenType.ACCESS.name) {

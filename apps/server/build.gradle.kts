@@ -47,6 +47,7 @@ dependencies {
   testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
   testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
   testImplementation("org.springframework.boot:spring-boot-starter-test")
+  testImplementation("org.springframework.security:spring-security-test")
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
   testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.5"))
   testImplementation("org.testcontainers:testcontainers-junit-jupiter")
@@ -94,7 +95,7 @@ tasks.withType<Test> {
 
       override fun beforeSuite(suite: TestDescriptor) {
         if (shouldDisplaySuite(suite)) {
-          println("${indent(suite)}${cyan}${displayName(suite)}$reset")
+          println("${indent(suite)}${cyan}${suite.displayName}$reset")
         }
       }
 
@@ -116,7 +117,7 @@ tasks.withType<Test> {
 
         val durationMs = result.endTime - result.startTime
 
-        println("${indent(testDescriptor)}$status ${displayName(testDescriptor)} ${yellow}${durationMs}ms$reset")
+        println("${indent(testDescriptor)}$status ${testDescriptor.displayName} ${yellow}${durationMs}ms$reset")
 
         if (result.resultType == TestResult.ResultType.FAILURE) {
           result.exceptions.forEach { exception ->
@@ -156,14 +157,6 @@ tasks.withType<Test> {
           !name.startsWith("Gradle Test Executor")
       }
 
-      private fun displayName(descriptor: TestDescriptor): String = if (descriptor.className != null && descriptor.name == descriptor.className) {
-        descriptor.className!!
-          .substringAfterLast(".")
-          .substringAfterLast("$")
-      } else {
-        descriptor.displayName
-      }
-
       private fun indent(descriptor: TestDescriptor): String {
         var depth = 0
         var parent = descriptor.parent
@@ -193,6 +186,7 @@ tasks.jacocoTestReport {
             "**/*Service*",
             "**/*Provider*",
             "**/*Handler*",
+            "**/*EntryPoint*",
           )
           exclude(
             "**/dto/**",

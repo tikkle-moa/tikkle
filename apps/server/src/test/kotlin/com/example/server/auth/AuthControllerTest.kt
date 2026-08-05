@@ -6,9 +6,13 @@ import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.auth.types.UserRole
+import com.example.server.config.SecurityConfig
 import com.example.server.config.properties.AppProperties
 import com.example.server.config.properties.JwtProperties
+import com.example.server.global.exception.ErrorCode
 import com.example.server.global.response.ApiResponse
+import com.example.server.global.security.RestAccessDeniedHandler
+import com.example.server.global.security.RestAuthenticationEntryPoint
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -20,18 +24,29 @@ import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.Import
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
-import kotlin.test.assertEquals
+import tools.jackson.databind.ObjectMapper
 
 @WebMvcTest(AuthController::class)
+@Import(
+  SecurityConfig::class,
+  RestAuthenticationEntryPoint::class,
+  RestAccessDeniedHandler::class,
+)
 @ActiveProfiles("test")
 class AuthControllerTest {
 
   @Autowired
   lateinit var mockMvc: MockMvc
+
+  @Autowired
+  lateinit var objectMapper: ObjectMapper
 
   @Autowired
   lateinit var authController: AuthController
@@ -44,6 +59,9 @@ class AuthControllerTest {
 
   @MockitoBean
   lateinit var jwtProperties: JwtProperties
+
+  @MockitoBean
+  lateinit var jwtTokenProvider: JwtTokenProvider
 
   @BeforeEach
   fun setUp() {
@@ -72,10 +90,29 @@ class AuthControllerTest {
       )
       given(authService.getCurrentUser(loginUser.userId)).willReturn(currentUser)
 
-      val result = authController.getCurrentUser(loginUser)
+      val authenticationToken = UsernamePasswordAuthenticationToken(loginUser, null, emptyList())
 
-      assertEquals(ApiResponse.ok(currentUser), result)
+      mockMvc.get("/api/auth/me") {
+        with(authentication(authenticationToken))
+      }.andExpect {
+        status { isOk() }
+        content {
+          json(objectMapper.writeValueAsString(ApiResponse.ok(currentUser)))
+        }
+      }
+
       then(authService).should().getCurrentUser(loginUser.userId)
+    }
+
+    @Test
+    fun `인증되지 않은 사용자가 요청할 경우 401 응답을 반환한다`() {
+      mockMvc.get("/api/auth/me")
+        .andExpect {
+          status { isUnauthorized() }
+          content {
+            json(objectMapper.writeValueAsString(ApiResponse.error(ErrorCode.UNAUTHORIZED)))
+          }
+        }
     }
   }
 
