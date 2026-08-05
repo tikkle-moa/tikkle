@@ -3,16 +3,19 @@ package com.example.server.auth
 import com.example.server.auth.dto.CallbackResult
 import com.example.server.auth.dto.CurrentUserResponse
 import com.example.server.auth.dto.LoginUserResult
+import com.example.server.auth.dto.ReissuedTokenPair
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.auth.types.UserRole
 import com.example.server.config.SecurityConfig
 import com.example.server.config.properties.AppProperties
 import com.example.server.config.properties.JwtProperties
+import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.global.response.ApiResponse
 import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
+import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -27,10 +30,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import tools.jackson.databind.ObjectMapper
 
 @WebMvcTest(AuthController::class)
@@ -113,6 +118,55 @@ class AuthControllerTest {
             json(objectMapper.writeValueAsString(ApiResponse.error(ErrorCode.UNAUTHORIZED)))
           }
         }
+    }
+  }
+
+  @Nested
+  @DisplayName("POST /api/auth/refresh")
+  inner class Refresh {
+    @Test
+    fun `새 access token과 refresh token을 쿠키로 반환한다`() {
+      val refreshToken = "old-refresh-token"
+
+      given(authService.refresh(refreshToken))
+        .willReturn(
+          ReissuedTokenPair(
+            accessToken = "new-access-token",
+            refreshToken = "new-refresh-token",
+          ),
+        )
+
+      mockMvc.post("/api/auth/refresh") {
+        cookie(Cookie("refresh_token", refreshToken))
+        with(csrf())
+      }.andExpect {
+        status { isOk() }
+        cookie {
+          value("access_token", "new-access-token")
+          value("refresh_token", "new-refresh-token")
+        }
+        jsonPath("$.success") { value(true) }
+        jsonPath("$.data") { doesNotExist() }
+      }
+
+      then(authService).should().refresh(refreshToken)
+    }
+
+    @Test
+    fun `refresh token 쿠키가 없으면 401 응답을 반환한다`() {
+      given(authService.refresh(null))
+        .willThrow(CustomException(ErrorCode.UNAUTHORIZED))
+
+      mockMvc.post("/api/auth/refresh") {
+        with(csrf())
+      }.andExpect {
+        status { isUnauthorized() }
+        jsonPath("$.success") { value(false) }
+        jsonPath("$.error.code") { value(401) }
+        jsonPath("$.error.message") { value(ErrorCode.UNAUTHORIZED.message) }
+      }
+
+      then(authService).should().refresh(null)
     }
   }
 
