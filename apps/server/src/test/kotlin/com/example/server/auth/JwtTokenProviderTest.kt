@@ -1,6 +1,7 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.LoginUserResult
+import com.example.server.auth.dto.RefreshTokenPayload
 import com.example.server.auth.types.TokenType
 import com.example.server.auth.types.UserRole
 import com.example.server.config.properties.JwtProperties
@@ -144,6 +145,32 @@ class JwtTokenProviderTest {
 
       assertNull(jwtTokenProvider.parseAccessToken(missingRoleToken))
       assertNull(jwtTokenProvider.parseAccessToken(invalidRoleToken))
+    }
+  }
+
+  @Nested
+  inner class ParseRefreshToken {
+    @Test
+    fun `유효한 refresh token에서 사용자 ID와 token ID를 반환한다`() {
+      val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(1L)
+
+      assertEquals(
+        RefreshTokenPayload(
+          userId = 1L,
+          tokenId = issuedRefreshToken.tokenId,
+        ),
+        jwtTokenProvider.parseRefreshToken(issuedRefreshToken.token),
+      )
+    }
+
+    @Test
+    fun `access token은 refresh token으로 해석하지 않는다`() {
+      val accessToken = jwtTokenProvider.generateAccessToken(
+        userId = 1L,
+        role = UserRole.USER,
+      )
+
+      assertEquals(null, jwtTokenProvider.parseRefreshToken(accessToken))
     }
   }
 
