@@ -1,5 +1,6 @@
 package com.example.server.auth
 
+import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.dto.OAuthUserInfo
 import com.example.server.auth.entity.OAuthAccount
 import com.example.server.auth.entity.User
@@ -61,7 +62,10 @@ class AuthTransactionServiceTest {
 
       val result = service.loginUser(oauthUserInfo)
 
-      assertEquals(existingUser, result)
+      assertEquals(
+        LoginUserResult(existingUser.id, existingUser.role),
+        result,
+      )
 
       then(userRepository).shouldHaveNoInteractions()
 
@@ -109,7 +113,10 @@ class AuthTransactionServiceTest {
 
       val result = service.loginUser(oauthUserInfo)
 
-      assertEquals(newUser, result)
+      assertEquals(
+        LoginUserResult(newUser.id, newUser.role),
+        result,
+      )
 
       then(userRepository).should().save(any(User::class.java))
       then(oauthAccountRepository).should().save(any(OAuthAccount::class.java))

@@ -1,10 +1,14 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.CallbackResult
+import com.example.server.auth.dto.CurrentUserResponse
+import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
+import com.example.server.auth.types.UserRole
 import com.example.server.config.properties.AppProperties
 import com.example.server.config.properties.JwtProperties
+import com.example.server.global.response.ApiResponse
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -20,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import kotlin.test.assertEquals
 
 @WebMvcTest(AuthController::class)
 @ActiveProfiles("test")
@@ -27,6 +32,9 @@ class AuthControllerTest {
 
   @Autowired
   lateinit var mockMvc: MockMvc
+
+  @Autowired
+  lateinit var authController: AuthController
 
   @MockitoBean
   lateinit var authService: AuthService
@@ -43,6 +51,32 @@ class AuthControllerTest {
     given(appProperties.production).willReturn(false)
     given(jwtProperties.accessTokenExpirationMinutes).willReturn(30L)
     given(jwtProperties.refreshTokenExpirationDays).willReturn(7L)
+  }
+
+  @Nested
+  @DisplayName("GET /api/auth/me")
+  inner class GetCurrentUser {
+    @Test
+    fun `인증된 사용자의 정보를 반환한다`() {
+      val loginUser = LoginUserResult(
+        userId = 1L,
+        role = UserRole.USER,
+      )
+      val currentUser = CurrentUserResponse(
+        id = loginUser.userId,
+        email = "test@example.com",
+        nickname = "테스터",
+        profileImageUrl = null,
+        role = loginUser.role,
+        oauthAccounts = listOf("google"),
+      )
+      given(authService.getCurrentUser(loginUser.userId)).willReturn(currentUser)
+
+      val result = authController.getCurrentUser(loginUser)
+
+      assertEquals(ApiResponse.ok(currentUser), result)
+      then(authService).should().getCurrentUser(loginUser.userId)
+    }
   }
 
   @Nested
