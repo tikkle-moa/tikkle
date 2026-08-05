@@ -55,21 +55,15 @@ class AuthController(private val authService: AuthService, private val appProper
   fun refresh(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
     val reissuedTokenPair = authService.refresh(refreshToken)
 
-    val accessTokenCookie = ResponseCookie.from("access_token", reissuedTokenPair.accessToken)
-      .httpOnly(true)
-      .secure(appProperties.production)
-      .sameSite("Lax")
-      .path("/")
-      .maxAge(Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes))
-      .build()
+    val accessTokenCookie = accessTokenCookie(
+      reissuedTokenPair.accessToken,
+      Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes),
+    )
 
-    val refreshTokenCookie = ResponseCookie.from("refresh_token", reissuedTokenPair.refreshToken)
-      .httpOnly(true)
-      .secure(appProperties.production)
-      .sameSite("Lax")
-      .path("/api/auth")
-      .maxAge(Duration.ofDays(jwtProperties.refreshTokenExpirationDays))
-      .build()
+    val refreshTokenCookie = refreshTokenCookie(
+      reissuedTokenPair.refreshToken,
+      Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
+    )
 
     return ResponseEntity.ok()
       .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
@@ -80,10 +74,12 @@ class AuthController(private val authService: AuthService, private val appProper
   @PostMapping("/logout")
   fun logout(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
     authService.logout(refreshToken)
+    val expiredAccessTokenCookie = accessTokenCookie("", Duration.ZERO)
+    val expiredRefreshTokenCookie = refreshTokenCookie("", Duration.ZERO)
 
     return ResponseEntity.ok()
-      .header(HttpHeaders.SET_COOKIE, expiredTokenCookie("access_token", "/").toString())
-      .header(HttpHeaders.SET_COOKIE, expiredTokenCookie("refresh_token", "/api/auth").toString())
+      .header(HttpHeaders.SET_COOKIE, expiredAccessTokenCookie.toString())
+      .header(HttpHeaders.SET_COOKIE, expiredRefreshTokenCookie.toString())
       .body(ApiResponse.ok())
   }
 
@@ -128,20 +124,14 @@ class AuthController(private val authService: AuthService, private val appProper
 
     return when (val callbackResult = authService.handleCallback(oauthProvider, code, state)) {
       is CallbackResult.Success -> {
-        val accessTokenCookie = ResponseCookie.from("access_token", callbackResult.accessToken)
-          .httpOnly(true)
-          .secure(appProperties.production)
-          .sameSite("Lax")
-          .path("/")
-          .maxAge(Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes))
-          .build()
-        val refreshTokenCookie = ResponseCookie.from("refresh_token", callbackResult.refreshToken)
-          .httpOnly(true)
-          .secure(appProperties.production)
-          .sameSite("Lax")
-          .path("/api/auth")
-          .maxAge(Duration.ofDays(jwtProperties.refreshTokenExpirationDays))
-          .build()
+        val accessTokenCookie = accessTokenCookie(
+          callbackResult.accessToken,
+          Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes),
+        )
+        val refreshTokenCookie = refreshTokenCookie(
+          callbackResult.refreshToken,
+          Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
+        )
         ResponseEntity.status(HttpStatus.FOUND)
           .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
           .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
@@ -153,6 +143,22 @@ class AuthController(private val authService: AuthService, private val appProper
       }
     }
   }
+
+  private fun accessTokenCookie(value: String, maxAge: Duration): ResponseCookie = ResponseCookie.from("access_token", value)
+    .httpOnly(true)
+    .secure(appProperties.production)
+    .sameSite("Lax")
+    .path("/")
+    .maxAge(maxAge)
+    .build()
+
+  private fun refreshTokenCookie(value: String, maxAge: Duration): ResponseCookie = ResponseCookie.from("refresh_token", value)
+    .httpOnly(true)
+    .secure(appProperties.production)
+    .sameSite("Lax")
+    .path("/api/auth")
+    .maxAge(maxAge)
+    .build()
 
   private fun expiredTokenCookie(name: String, path: String): ResponseCookie = ResponseCookie.from(name, "")
     .httpOnly(true)
