@@ -77,6 +77,16 @@ class AuthController(private val authService: AuthService, private val appProper
       .body(ApiResponse.ok())
   }
 
+  @PostMapping("/logout")
+  fun logout(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
+    authService.logout(refreshToken)
+
+    return ResponseEntity.ok()
+      .header(HttpHeaders.SET_COOKIE, expiredTokenCookie("access_token", "/").toString())
+      .header(HttpHeaders.SET_COOKIE, expiredTokenCookie("refresh_token", "/api/auth").toString())
+      .body(ApiResponse.ok())
+  }
+
   @Operation(
     summary = "OAuth 인증 URL로 리다이렉트",
     description = "지원하는 OAuth provider로 요청 시 인증 URL로 리다이렉트합니다.",
@@ -143,6 +153,14 @@ class AuthController(private val authService: AuthService, private val appProper
       }
     }
   }
+
+  private fun expiredTokenCookie(name: String, path: String): ResponseCookie = ResponseCookie.from(name, "")
+    .httpOnly(true)
+    .secure(appProperties.production)
+    .sameSite("Lax")
+    .path(path)
+    .maxAge(Duration.ZERO)
+    .build()
 
   private fun errorRedirect(errorCode: OAuthErrorCode): ResponseEntity<Void> = ResponseEntity.status(HttpStatus.FOUND)
     .location(URI.create("${appProperties.frontendUrl}/login?error_code=${errorCode.name}"))
