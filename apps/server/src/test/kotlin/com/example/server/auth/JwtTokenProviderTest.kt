@@ -113,6 +113,7 @@ class JwtTokenProviderTest {
 
     @Test
     fun `유효하지 않은 토큰이면 null을 반환한다`() {
+      assertNull(jwtTokenProvider.parseAccessToken(""))
       assertNull(jwtTokenProvider.parseAccessToken("invalid-token"))
     }
 
