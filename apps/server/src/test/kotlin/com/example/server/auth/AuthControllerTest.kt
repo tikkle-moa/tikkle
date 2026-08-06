@@ -168,6 +168,17 @@ class AuthControllerTest {
 
       then(authService).should().refresh(null)
     }
+
+    @Test
+    fun `CSRF 토큰 없이 요청하면 403 응답을 반환한다`() {
+      mockMvc.post("/api/auth/refresh") {
+        cookie(Cookie("refresh_token", "refresh-token"))
+      }.andExpect {
+        status { isForbidden() }
+      }
+
+      then(authService).shouldHaveNoInteractions()
+    }
   }
 
   @Nested
@@ -195,6 +206,17 @@ class AuthControllerTest {
       }
 
       then(authService).should().logout(refreshToken)
+    }
+
+    @Test
+    fun `CSRF 토큰 없이 요청하면 403 응답을 반환한다`() {
+      mockMvc.post("/api/auth/logout") {
+        cookie(Cookie("refresh_token", "refresh-token"))
+      }.andExpect {
+        status { isForbidden() }
+      }
+
+      then(authService).shouldHaveNoInteractions()
     }
   }
 
