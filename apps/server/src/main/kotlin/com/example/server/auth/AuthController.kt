@@ -17,8 +17,10 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -47,6 +49,67 @@ class AuthController(private val authService: AuthService, private val appProper
     val currentUserResponse = authService.getCurrentUser(loginUser.userId)
     return ResponseEntity.ok()
       .body(ApiResponse.ok(currentUserResponse))
+  }
+
+  @Operation(
+    summary = "인증 토큰 재발급",
+    description = "refresh_token 쿠키를 검증하여 새 access_token과 refresh_token 쿠키를 발급합니다. 기존 Refresh Token은 즉시 무효화됩니다.",
+    responses = [
+      SwaggerApiResponse(responseCode = "200", description = "새 인증 쿠키 발급"),
+      SwaggerApiResponse(
+        responseCode = "401",
+        description = "Refresh Token이 없거나 유효하지 않음",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+      SwaggerApiResponse(
+        responseCode = "403",
+        description = "CSRF 검증 실패",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+    ],
+  )
+  @PostMapping("/refresh")
+  fun refresh(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
+    val reissuedTokenPair = authService.refresh(refreshToken)
+
+    val accessTokenCookie = accessTokenCookie(
+      reissuedTokenPair.accessToken,
+      Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes),
+    )
+
+    val refreshTokenCookie = refreshTokenCookie(
+      reissuedTokenPair.refreshToken,
+      Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
+    )
+
+    return ResponseEntity.ok()
+      .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
+      .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+      .body(ApiResponse.ok())
+  }
+
+  @Operation(
+    summary = "로그아웃",
+    description = "유효한 refresh_token이 있으면 서버에서 무효화하고, 항상 인증 쿠키를 만료합니다.",
+    responses = [
+      SwaggerApiResponse(responseCode = "200", description = "로그아웃 및 인증 쿠키 삭제 완료"),
+      SwaggerApiResponse(
+        responseCode = "403",
+        description = "CSRF 검증 실패",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+    ],
+  )
+  @PostMapping("/logout")
+  fun logout(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
+    authService.logout(refreshToken)
+    val expiredAccessTokenCookie = accessTokenCookie("", Duration.ZERO)
+    val expiredRefreshTokenCookie = refreshTokenCookie("", Duration.ZERO)
+
+    return ResponseEntity.ok()
+      .header(HttpHeaders.SET_COOKIE, expiredAccessTokenCookie.toString())
+      .header(HttpHeaders.SET_COOKIE, expiredRefreshTokenCookie.toString())
+      .body(ApiResponse.ok())
   }
 
   @Operation(
@@ -90,20 +153,14 @@ class AuthController(private val authService: AuthService, private val appProper
 
     return when (val callbackResult = authService.handleCallback(oauthProvider, code, state)) {
       is CallbackResult.Success -> {
-        val accessTokenCookie = ResponseCookie.from("access_token", callbackResult.accessToken)
-          .httpOnly(true)
-          .secure(appProperties.production)
-          .sameSite("Lax")
-          .path("/")
-          .maxAge(Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes))
-          .build()
-        val refreshTokenCookie = ResponseCookie.from("refresh_token", callbackResult.refreshToken)
-          .httpOnly(true)
-          .secure(appProperties.production)
-          .sameSite("Lax")
-          .path("/api/auth")
-          .maxAge(Duration.ofDays(jwtProperties.refreshTokenExpirationDays))
-          .build()
+        val accessTokenCookie = accessTokenCookie(
+          callbackResult.accessToken,
+          Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes),
+        )
+        val refreshTokenCookie = refreshTokenCookie(
+          callbackResult.refreshToken,
+          Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
+        )
         ResponseEntity.status(HttpStatus.FOUND)
           .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
           .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
@@ -115,6 +172,22 @@ class AuthController(private val authService: AuthService, private val appProper
       }
     }
   }
+
+  private fun accessTokenCookie(value: String, maxAge: Duration): ResponseCookie = ResponseCookie.from("access_token", value)
+    .httpOnly(true)
+    .secure(appProperties.production)
+    .sameSite("Lax")
+    .path("/")
+    .maxAge(maxAge)
+    .build()
+
+  private fun refreshTokenCookie(value: String, maxAge: Duration): ResponseCookie = ResponseCookie.from("refresh_token", value)
+    .httpOnly(true)
+    .secure(appProperties.production)
+    .sameSite("Lax")
+    .path("/api/auth")
+    .maxAge(maxAge)
+    .build()
 
   private fun errorRedirect(errorCode: OAuthErrorCode): ResponseEntity<Void> = ResponseEntity.status(HttpStatus.FOUND)
     .location(URI.create("${appProperties.frontendUrl}/login?error_code=${errorCode.name}"))

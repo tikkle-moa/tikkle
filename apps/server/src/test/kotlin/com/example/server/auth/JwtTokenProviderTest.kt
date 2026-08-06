@@ -1,6 +1,7 @@
 package com.example.server.auth
 
 import com.example.server.auth.dto.LoginUserResult
+import com.example.server.auth.dto.RefreshTokenPayload
 import com.example.server.auth.types.TokenType
 import com.example.server.auth.types.UserRole
 import com.example.server.config.properties.JwtProperties
@@ -144,6 +145,69 @@ class JwtTokenProviderTest {
 
       assertNull(jwtTokenProvider.parseAccessToken(missingRoleToken))
       assertNull(jwtTokenProvider.parseAccessToken(invalidRoleToken))
+    }
+  }
+
+  @Nested
+  inner class ParseRefreshToken {
+    @Test
+    fun `유효한 refresh token에서 사용자 ID와 token ID를 반환한다`() {
+      val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(1L)
+
+      assertEquals(
+        RefreshTokenPayload(
+          userId = 1L,
+          tokenId = issuedRefreshToken.tokenId,
+        ),
+        jwtTokenProvider.parseRefreshToken(issuedRefreshToken.token),
+      )
+    }
+
+    @Test
+    fun `access token은 refresh token으로 해석하지 않는다`() {
+      val accessToken = jwtTokenProvider.generateAccessToken(
+        userId = 1L,
+        role = UserRole.USER,
+      )
+
+      assertEquals(null, jwtTokenProvider.parseRefreshToken(accessToken))
+    }
+
+    @Test
+    fun `유효하지 않은 형식의 토큰이면 null을 반환한다`() {
+      assertNull(jwtTokenProvider.parseRefreshToken(""))
+      assertNull(jwtTokenProvider.parseRefreshToken("invalid-token"))
+    }
+
+    @Test
+    fun `사용자 ID가 숫자가 아니면 null을 반환한다`() {
+      val token = createToken(
+        subject = "not-number",
+        claims = mapOf("type" to TokenType.REFRESH.name),
+      )
+
+      assertNull(jwtTokenProvider.parseRefreshToken(token))
+    }
+
+    @Test
+    fun `token ID가 없으면 null을 반환한다`() {
+      val token = createToken(
+        claims = mapOf("type" to TokenType.REFRESH.name),
+      )
+
+      assertNull(jwtTokenProvider.parseRefreshToken(token))
+    }
+
+    @Test
+    fun `type claim이 없거나 refresh token이 아닌 토큰이면 null을 반환한다`() {
+      val missingTypeToken = createToken()
+      val accessToken = jwtTokenProvider.generateAccessToken(
+        userId = 1L,
+        role = UserRole.USER,
+      )
+
+      assertNull(jwtTokenProvider.parseRefreshToken(missingTypeToken))
+      assertNull(jwtTokenProvider.parseRefreshToken(accessToken))
     }
   }
 

@@ -4,6 +4,7 @@ import com.example.server.auth.dto.CallbackResult
 import com.example.server.auth.dto.CurrentUserResponse
 import com.example.server.auth.dto.OAuthStateData
 import com.example.server.auth.dto.OAuthUserInfo
+import com.example.server.auth.dto.ReissuedTokenPair
 import com.example.server.auth.repository.OAuthAccountRepository
 import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthErrorCode
@@ -120,6 +121,53 @@ class AuthService(
 
     // 6. 클라이언트의 원래 redirectUri로 리다이렉트
     return CallbackResult.Success(accessToken, refreshToken, redirectUri)
+  }
+
+  fun refresh(refreshToken: String?): ReissuedTokenPair {
+    // 1. Refresh Token 파싱
+    val refreshTokenPayload = refreshToken
+      ?.let(jwtTokenProvider::parseRefreshToken)
+      ?: throw CustomException(ErrorCode.UNAUTHORIZED)
+
+    // 2. Redis에서 jti를 읽는 동시에 삭제
+    val storedUserId = stringRedisTemplate.opsForValue()
+      .getAndDelete("$REFRESH_TOKEN_KEY_PREFIX${refreshTokenPayload.tokenId}")
+      ?: throw CustomException(ErrorCode.UNAUTHORIZED)
+
+    // 3. Redis에서 읽은 userId와 JWT의 userId 비교
+    if (storedUserId != refreshTokenPayload.userId.toString()) {
+      throw CustomException(ErrorCode.UNAUTHORIZED)
+    }
+
+    // 4. DB에서 현재 사용자 조회
+    val user = userRepository.findById(refreshTokenPayload.userId)
+      .orElseThrow { CustomException(ErrorCode.UNAUTHORIZED) }
+
+    // 5. 새로운 AccessToken과 Refresh Token 발급
+    val reissuedAccessToken = jwtTokenProvider.generateAccessToken(user.id, user.role)
+    val reissuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.id)
+
+    // 6. 새로운 Refresh Token을 Redis에 TTL과 함께 저장
+    stringRedisTemplate.opsForValue().set(
+      "$REFRESH_TOKEN_KEY_PREFIX${reissuedRefreshToken.tokenId}",
+      user.id.toString(),
+      Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
+    )
+
+    return ReissuedTokenPair(
+      accessToken = reissuedAccessToken,
+      refreshToken = reissuedRefreshToken.token,
+    )
+  }
+
+  fun logout(refreshToken: String?) {
+    val refreshTokenPayload = refreshToken
+      ?.let(jwtTokenProvider::parseRefreshToken)
+      ?: return
+
+    stringRedisTemplate.delete(
+      "$REFRESH_TOKEN_KEY_PREFIX${refreshTokenPayload.tokenId}",
+    )
   }
 
   fun deleteOAuthState(state: String) {
