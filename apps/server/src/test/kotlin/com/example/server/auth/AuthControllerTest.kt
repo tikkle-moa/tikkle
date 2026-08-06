@@ -171,6 +171,34 @@ class AuthControllerTest {
   }
 
   @Nested
+  @DisplayName("POST /api/auth/logout")
+  inner class Logout {
+    @Test
+    fun `refresh token을 무효화하고 인증 쿠키를 삭제한다`() {
+      val refreshToken = "refresh-token"
+
+      mockMvc.post("/api/auth/logout") {
+        cookie(Cookie("refresh_token", refreshToken))
+        with(csrf())
+      }.andExpect {
+        status { isOk() }
+        cookie {
+          value("access_token", "")
+          value("refresh_token", "")
+          maxAge("access_token", 0)
+          maxAge("refresh_token", 0)
+          path("access_token", "/")
+          path("refresh_token", "/api/auth")
+        }
+        jsonPath("$.success") { value(true) }
+        jsonPath("$.data") { doesNotExist() }
+      }
+
+      then(authService).should().logout(refreshToken)
+    }
+  }
+
+  @Nested
   @DisplayName("GET /api/auth/oauth/{oauth_provider}")
   inner class GetAuthorizationUrl {
     @Test
