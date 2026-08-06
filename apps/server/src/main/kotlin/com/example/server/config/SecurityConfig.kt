@@ -53,6 +53,7 @@ class SecurityConfig(
         it
           .requestMatchers(HttpMethod.GET, "/api/auth/oauth/**").permitAll()
           .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+          .requestMatchers(HttpMethod.POST, "/api/auth/refresh", "/api/auth/logout").permitAll()
           .requestMatchers("/api/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
           .anyRequest().hasRole(UserRole.ADMIN.name)
       }
