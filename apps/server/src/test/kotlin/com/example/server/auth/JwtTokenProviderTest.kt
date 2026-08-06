@@ -101,14 +101,19 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    fun `access token이 아닌 토큰이면 null을 반환한다`() {
-      val token = jwtTokenProvider.generateRefreshToken(1L).token
+    fun `type claim이 없거나 access token이 아닌 토큰이면 null을 반환한다`() {
+      val missingTypeToken = createToken(
+        claims = mapOf(),
+      )
+      val refreshToken = jwtTokenProvider.generateRefreshToken(1L).token
 
-      assertNull(jwtTokenProvider.parseAccessToken(token))
+      assertNull(jwtTokenProvider.parseAccessToken(missingTypeToken))
+      assertNull(jwtTokenProvider.parseAccessToken(refreshToken))
     }
 
     @Test
     fun `유효하지 않은 토큰이면 null을 반환한다`() {
+      assertNull(jwtTokenProvider.parseAccessToken(""))
       assertNull(jwtTokenProvider.parseAccessToken("invalid-token"))
     }
 

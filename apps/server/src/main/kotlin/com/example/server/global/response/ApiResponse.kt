@@ -1,11 +1,17 @@
 package com.example.server.global.response
 
 import com.example.server.global.exception.ErrorCode
+import io.swagger.v3.oas.annotations.media.Schema
 
 sealed class ApiResponse<out T> {
   data class Success<out T>(val success: Boolean = true, val data: T?) : ApiResponse<T>()
 
-  data class Failure(val success: Boolean = false, val error: Error) : ApiResponse<Nothing>()
+  data class Failure(
+    @field:Schema(example = "false")
+    val success: Boolean = false,
+
+    val error: Error,
+  ) : ApiResponse<Nothing>()
 
   data class Error(val code: Int, val message: String)
 
