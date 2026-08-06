@@ -51,6 +51,23 @@ class AuthController(private val authService: AuthService, private val appProper
       .body(ApiResponse.ok(currentUserResponse))
   }
 
+  @Operation(
+    summary = "인증 토큰 재발급",
+    description = "refresh_token 쿠키를 검증하여 새 access_token과 refresh_token 쿠키를 발급합니다. 기존 Refresh Token은 즉시 무효화됩니다.",
+    responses = [
+      SwaggerApiResponse(responseCode = "200", description = "새 인증 쿠키 발급"),
+      SwaggerApiResponse(
+        responseCode = "401",
+        description = "Refresh Token이 없거나 유효하지 않음",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+      SwaggerApiResponse(
+        responseCode = "403",
+        description = "CSRF 검증 실패",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+    ],
+  )
   @PostMapping("/refresh")
   fun refresh(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
     val reissuedTokenPair = authService.refresh(refreshToken)
@@ -71,6 +88,18 @@ class AuthController(private val authService: AuthService, private val appProper
       .body(ApiResponse.ok())
   }
 
+  @Operation(
+    summary = "로그아웃",
+    description = "유효한 refresh_token이 있으면 서버에서 무효화하고, 항상 인증 쿠키를 만료합니다.",
+    responses = [
+      SwaggerApiResponse(responseCode = "200", description = "로그아웃 및 인증 쿠키 삭제 완료"),
+      SwaggerApiResponse(
+        responseCode = "403",
+        description = "CSRF 검증 실패",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+    ],
+  )
   @PostMapping("/logout")
   fun logout(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
     authService.logout(refreshToken)
