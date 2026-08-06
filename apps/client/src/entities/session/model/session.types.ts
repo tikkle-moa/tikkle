@@ -1,4 +1,4 @@
-export type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated" | "error";
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 export type OAuthProvider = "kakao" | "google" | "naver" | "github";
 

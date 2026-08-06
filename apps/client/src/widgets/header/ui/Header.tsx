@@ -22,7 +22,7 @@ const Header = () => {
             Concerts
           </button>
 
-          {status === "loading" || status === "idle" ? (
+          {status === "loading" ? (
             <span className="text-sm text-blue-100">로그인 확인 중</span>
           ) : status === "authenticated" && user ? (
             <span>{user.nickname}</span>

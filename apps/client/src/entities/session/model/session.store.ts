@@ -2,61 +2,23 @@ import { create } from "zustand";
 
 import type { AuthStatus, User } from "./session.types";
 
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-}
-
-interface SessionState {
+interface SessionStore {
   user: User | null;
   status: AuthStatus;
 
-  initialize: () => Promise<void>;
+  setSession: (user: User) => void;
   clearSession: () => void;
 }
 
-export const useSessionStore = create<SessionState>((set, get) => ({
+export const useSessionStore = create<SessionStore>((set) => ({
   user: null,
-  status: "idle",
+  status: "loading",
 
-  initialize: async () => {
-    if (get().status === "loading") {
-      return;
-    }
-
+  setSession: (user) =>
     set({
-      status: "loading",
-    });
-
-    try {
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
-
-      if (response.status === 401) {
-        set({
-          user: null,
-          status: "unauthenticated",
-        });
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error("로그인 상태를 확인하지 못했습니다.");
-      }
-
-      const body = (await response.json()) as ApiResponse<User>;
-
-      set({
-        user: body.data,
-        status: "authenticated",
-      });
-    } catch {
-      set((state) => ({
-        status: state.user ? "authenticated" : "error",
-      }));
-    }
-  },
+      user,
+      status: "authenticated",
+    }),
 
   clearSession: () =>
     set({
