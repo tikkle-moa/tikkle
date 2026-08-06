@@ -160,14 +160,6 @@ class AuthController(private val authService: AuthService, private val appProper
     .maxAge(maxAge)
     .build()
 
-  private fun expiredTokenCookie(name: String, path: String): ResponseCookie = ResponseCookie.from(name, "")
-    .httpOnly(true)
-    .secure(appProperties.production)
-    .sameSite("Lax")
-    .path(path)
-    .maxAge(Duration.ZERO)
-    .build()
-
   private fun errorRedirect(errorCode: OAuthErrorCode): ResponseEntity<Void> = ResponseEntity.status(HttpStatus.FOUND)
     .location(URI.create("${appProperties.frontendUrl}/login?error_code=${errorCode.name}"))
     .build()
