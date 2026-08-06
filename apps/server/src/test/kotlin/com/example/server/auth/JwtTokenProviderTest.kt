@@ -172,6 +172,43 @@ class JwtTokenProviderTest {
 
       assertEquals(null, jwtTokenProvider.parseRefreshToken(accessToken))
     }
+
+    @Test
+    fun `유효하지 않은 형식의 토큰이면 null을 반환한다`() {
+      assertNull(jwtTokenProvider.parseRefreshToken(""))
+      assertNull(jwtTokenProvider.parseRefreshToken("invalid-token"))
+    }
+
+    @Test
+    fun `사용자 ID가 숫자가 아니면 null을 반환한다`() {
+      val token = createToken(
+        subject = "not-number",
+        claims = mapOf("type" to TokenType.REFRESH.name),
+      )
+
+      assertNull(jwtTokenProvider.parseRefreshToken(token))
+    }
+
+    @Test
+    fun `token ID가 없으면 null을 반환한다`() {
+      val token = createToken(
+        claims = mapOf("type" to TokenType.REFRESH.name),
+      )
+
+      assertNull(jwtTokenProvider.parseRefreshToken(token))
+    }
+
+    @Test
+    fun `type claim이 없거나 refresh token이 아닌 토큰이면 null을 반환한다`() {
+      val missingTypeToken = createToken()
+      val accessToken = jwtTokenProvider.generateAccessToken(
+        userId = 1L,
+        role = UserRole.USER,
+      )
+
+      assertNull(jwtTokenProvider.parseRefreshToken(missingTypeToken))
+      assertNull(jwtTokenProvider.parseRefreshToken(accessToken))
+    }
   }
 
   @Nested

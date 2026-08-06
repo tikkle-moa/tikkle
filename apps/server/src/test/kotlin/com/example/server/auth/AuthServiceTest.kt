@@ -1416,46 +1416,18 @@ class AuthServiceTest {
         )
     }
 
-    @Nested
-    @DisplayName("logout")
-    inner class Logout {
-      private val refreshToken = "refresh-token"
-      private val refreshTokenId = "refresh-token-id"
+    @Test
+    fun `Redis 사용자 ID가 refresh token의 사용자 ID와 다르면 인증 예외를 던진다`() {
+      givenValidRefreshToken()
+      given(stringValueOperations.getAndDelete("auth:refresh:$refreshTokenId"))
+        .willReturn("2")
 
-      @Test
-      fun `유효한 refresh token이면 Redis에서 해당 토큰을 삭제한다`() {
-        given(jwtTokenProvider.parseRefreshToken(refreshToken))
-          .willReturn(
-            RefreshTokenPayload(
-              userId = 1L,
-              tokenId = refreshTokenId,
-            ),
-          )
-
-        service.logout(refreshToken)
-
-        then(stringRedisTemplate)
-          .should()
-          .delete("auth:refresh:$refreshTokenId")
+      val exception = assertThrows<CustomException> {
+        service.refresh(refreshToken)
       }
 
-      @Test
-      fun `refresh token이 없으면 Redis에 접근하지 않는다`() {
-        service.logout(null)
-
-        then(jwtTokenProvider).shouldHaveNoInteractions()
-        then(stringRedisTemplate).shouldHaveNoInteractions()
-      }
-
-      @Test
-      fun `유효하지 않은 refresh token이면 Redis에 접근하지 않는다`() {
-        given(jwtTokenProvider.parseRefreshToken("invalid-token"))
-          .willReturn(null)
-
-        service.logout("invalid-token")
-
-        then(stringRedisTemplate).shouldHaveNoInteractions()
-      }
+      assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
+      then(userRepository).shouldHaveNoInteractions()
     }
 
     @Test
@@ -1496,6 +1468,63 @@ class AuthServiceTest {
 
       given(stringRedisTemplate.opsForValue())
         .willReturn(stringValueOperations)
+    }
+
+    @Test
+    fun `Refresh Token의 사용자가 없으면 인증 예외를 던진다`() {
+      givenValidRefreshToken()
+      given(stringValueOperations.getAndDelete("auth:refresh:$refreshTokenId"))
+        .willReturn(userId.toString())
+      given(userRepository.findById(userId))
+        .willReturn(Optional.empty())
+
+      val exception = assertThrows<CustomException> {
+        service.refresh(refreshToken)
+      }
+
+      assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
+    }
+  }
+
+  @Nested
+  @DisplayName("logout")
+  inner class Logout {
+    private val refreshToken = "refresh-token"
+    private val refreshTokenId = "refresh-token-id"
+
+    @Test
+    fun `유효한 refresh token이면 Redis에서 해당 토큰을 삭제한다`() {
+      given(jwtTokenProvider.parseRefreshToken(refreshToken))
+        .willReturn(
+          RefreshTokenPayload(
+            userId = 1L,
+            tokenId = refreshTokenId,
+          ),
+        )
+
+      service.logout(refreshToken)
+
+      then(stringRedisTemplate)
+        .should()
+        .delete("auth:refresh:$refreshTokenId")
+    }
+
+    @Test
+    fun `refresh token이 없으면 Redis에 접근하지 않는다`() {
+      service.logout(null)
+
+      then(jwtTokenProvider).shouldHaveNoInteractions()
+      then(stringRedisTemplate).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `유효하지 않은 refresh token이면 Redis에 접근하지 않는다`() {
+      given(jwtTokenProvider.parseRefreshToken("invalid-token"))
+        .willReturn(null)
+
+      service.logout("invalid-token")
+
+      then(stringRedisTemplate).shouldHaveNoInteractions()
     }
   }
 
