@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 
-import { type User, useSessionStore } from "../../entities/session";
-import type { ApiResponse } from "../../shared/api";
+import { apiClient } from "@/shared/api";
+
+import { useSessionStore } from "../../entities/session";
 
 export const useSessionInitializer = () => {
   const initializedRef = useRef(false);
@@ -19,25 +20,14 @@ export const useSessionInitializer = () => {
 
     const initializeSession = async () => {
       try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
+        const { data, error } = await apiClient.GET("/api/auth/me");
 
-        if (!response.ok) {
-          clearSession();
-          return;
+        if (error || !data.success || data.data == null) {
+          throw new Error("Failed to fetch user data");
         }
 
-        const body = (await response.json()) as ApiResponse<User>;
-
-        if (!body.success || body.data === undefined || body.data === null) {
-          clearSession();
-          return;
-        }
-
-        setSession(body.data);
+        setSession(data.data);
       } catch {
-        // 모든 예외에서 세션 해제
         clearSession();
       }
     };

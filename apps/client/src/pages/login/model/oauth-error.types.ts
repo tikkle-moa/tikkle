@@ -1,11 +1,6 @@
-export type OAuthErrorCode =
-  | "OAUTH_ACCESS_DENIED"
-  | "OAUTH_STATE_MISSING"
-  | "OAUTH_STATE_MISMATCH"
-  | "OAUTH_STATE_EXPIRED"
-  | "OAUTH_CODE_EXCHANGE_FAILED"
-  | "OAUTH_PROFILE_FETCH_FAILED"
-  | "OAUTH_ACCOUNT_CONFLICT";
+import type { components } from "@tikkle/api-types";
+
+export type OAuthErrorCode = components["schemas"]["OAuthErrorCode"];
 
 export interface OAuthErrorContent {
   title: string;
