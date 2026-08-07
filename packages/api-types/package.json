@@ -2,8 +2,12 @@
   "name": "@tikkle/api-types",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
   "scripts": {
-    "generate": "openapi-typescript http://localhost:8080/v3/api-docs -o src/generated.ts"
+    "generate": "openapi-typescript --redocly ./redocly.yaml --properties-required-by-default && prettier --write src"
   },
   "devDependencies": {
     "openapi-typescript": "^7.13.0"

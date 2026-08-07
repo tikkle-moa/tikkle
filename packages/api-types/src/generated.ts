@@ -3,15 +3,303 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+  "/api/auth/refresh": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 인증 토큰 재발급
+     * @description refresh_token 쿠키를 검증하여 새 access_token과 refresh_token 쿠키를 발급합니다. 기존 Refresh Token은 즉시 무효화됩니다.
+     */
+    post: operations["refresh"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 로그아웃
+     * @description 유효한 refresh_token이 있으면 서버에서 무효화하고, 항상 인증 쿠키를 만료합니다.
+     */
+    post: operations["logout"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/auth/oauth/{oauth_provider}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * OAuth 인증 URL로 리다이렉트
+     * @description 지원하는 OAuth provider로 요청 시 인증 URL로 리다이렉트합니다.
+     */
+    get: operations["getAuthorizationUrl"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/auth/oauth/{oauth_provider}/callback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * OAuth 인증 콜백 처리
+     * @description OAuth 인증 후 콜백을 처리하고, 로그인 성공 시 access_token과 refresh_token을 쿠키에 저장하고 프론트엔드로 리다이렉트합니다. 로그인 실패 시 에러 코드와 함께 프론트엔드로 리다이렉트합니다.
+     */
+    get: operations["handleOAuthCallback"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/auth/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 내 정보 조회
+     * @description 로그인한 사용자의 정보를 반환합니다.
+     */
+    get: operations["getCurrentUser"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+}
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    Error: {
+      /** Format: int32 */
+      code: number;
+      message: string;
+    };
+    Failure: {
+      /** @example false */
+      success: boolean;
+      error: components["schemas"]["Error"];
+    };
+    SuccessUnit: {
+      success: boolean;
+    };
+    CurrentUserResponse: {
+      /** Format: int64 */
+      id: number;
+      email: string;
+      nickname: string;
+      profileImageUrl: string | null;
+      /** @enum {string} */
+      role: "USER" | "ADMIN";
+      oauthAccounts: string[];
+    };
+    SuccessCurrentUserResponse: {
+      success: boolean;
+      data: components["schemas"]["CurrentUserResponse"] | null;
+    };
+    /** @enum {string} */
+    OAuthErrorCode:
+      | "OAUTH_ACCESS_DENIED"
+      | "OAUTH_STATE_MISSING"
+      | "OAUTH_STATE_MISMATCH"
+      | "OAUTH_STATE_EXPIRED"
+      | "OAUTH_CODE_EXCHANGE_FAILED"
+      | "OAUTH_PROFILE_FETCH_FAILED"
+      | "OAUTH_ACCOUNT_CONFLICT";
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+  refresh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: {
+        refresh_token?: string;
+      };
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 새 인증 쿠키 발급 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["SuccessUnit"];
+        };
+      };
+      /** @description Refresh Token이 없거나 유효하지 않음 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+      /** @description CSRF 검증 실패 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  logout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: {
+        refresh_token?: string;
+      };
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 로그아웃 및 인증 쿠키 삭제 완료 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["SuccessUnit"];
+        };
+      };
+      /** @description CSRF 검증 실패 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  getAuthorizationUrl: {
+    parameters: {
+      query?: {
+        /** @description OAuth 인증 후 리다이렉트할 프론트엔드 URL. 기본값은 '/'입니다. */
+        redirect_uri?: string;
+      };
+      header?: never;
+      path: {
+        /** @description OAuth provider 이름. */
+        oauth_provider: "kakao" | "naver" | "google" | "github";
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OAuth 인증 페이지로 리다이렉트 */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  handleOAuthCallback: {
+    parameters: {
+      query?: {
+        code?: string;
+        state?: string;
+        error?: string;
+      };
+      header?: never;
+      path: {
+        /** @description OAuth provider 이름. */
+        oauth_provider: "kakao" | "naver" | "google" | "github";
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 로그인 성공 또는 실패 후 프론트엔드로 리다이렉트 */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getCurrentUser: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 현재 로그인한 사용자 정보 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["SuccessCurrentUserResponse"];
+        };
+      };
+      /** @description 로그인하지 않은 사용자 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+}
