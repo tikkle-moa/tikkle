@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
-import { ROUTE_PATHS } from "../../../shared/config/router.config";
+import { ROUTE_PATHS } from "@shared/config/router.config";
+
 import { useCount } from "../model/use-count";
 
 const HomePage = () => {

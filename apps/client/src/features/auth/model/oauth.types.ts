@@ -1,4 +1,6 @@
-export type OAuthProvider = "kakao" | "google" | "naver" | "github";
+import type { operations } from "@tikkle/api-types";
+
+export type OAuthProvider = operations["getAuthorizationUrl"]["parameters"]["path"]["oauth_provider"];
 
 export interface OAuthProviderConfig {
   label: string;

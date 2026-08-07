@@ -1,1 +1,1 @@
-export type { ApiError, ApiResponse } from "./api.types";
+export { apiClient } from "./api-client";

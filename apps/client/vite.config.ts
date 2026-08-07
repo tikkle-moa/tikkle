@@ -1,13 +1,12 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
 import { defineConfig } from "vitest/config";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    tsconfigPaths: true,
   },
   test: {
     globals: true,
@@ -18,7 +17,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/main.tsx", "src/**/index.ts", "src/**/*.{d,types,constants}.ts"],
+      exclude: ["src/main.tsx", "src/**/index.ts", "src/**/*.{d,types,constants}.ts", "src/**/*.test.{ts,tsx}", "src/**/api-client.ts"],
     },
   },
   server: {

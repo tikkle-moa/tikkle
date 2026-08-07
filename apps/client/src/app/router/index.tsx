@@ -1,11 +1,12 @@
 import { createBrowserRouter } from "react-router";
 
-import Layout from "./Layout";
+import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { ConcertListPage } from "../../pages/concertList";
-import { HomePage } from "../../pages/home";
-import { LoginPage } from "../../pages/login";
-import { ROUTE_PATHS } from "../../shared/config/router.config";
+import { ConcertListPage } from "@pages/concertList";
+import { HomePage } from "@pages/home";
+import { LoginPage } from "@pages/login";
+
+import Layout from "./Layout";
 
 export const router = createBrowserRouter([
   {

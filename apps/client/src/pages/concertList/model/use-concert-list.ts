@@ -1,4 +1,4 @@
-import { useConcert } from "../../../features/concert/model/use-concert";
+import { useConcert } from "@features/concert";
 
 export const useConcertList = () => {
   const { concerts, handleNewConcert, handleRemoveConcert } = useConcert();

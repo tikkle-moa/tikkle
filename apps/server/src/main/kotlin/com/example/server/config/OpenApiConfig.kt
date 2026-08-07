@@ -1,10 +1,13 @@
 package com.example.server.config
 
+import com.example.server.auth.types.OAuthErrorCode
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeIn
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType
 import io.swagger.v3.oas.annotations.security.SecurityScheme
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
+import io.swagger.v3.oas.models.media.StringSchema
+import org.springdoc.core.customizers.OpenApiCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -23,4 +26,12 @@ class OpenApiConfig {
       .description("Tikkle 콘서트 예매 서비스 API 문서입니다.")
       .version("v1"),
   )
+
+  @Bean
+  fun oauthErrorCodeSchemaCustomizer(): OpenApiCustomizer = OpenApiCustomizer { openApi ->
+    openApi.components.addSchemas(
+      "OAuthErrorCode",
+      StringSchema()._enum(OAuthErrorCode.entries.map { it.name }),
+    )
+  }
 }

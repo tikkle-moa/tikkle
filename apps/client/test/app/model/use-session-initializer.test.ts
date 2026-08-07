@@ -1,6 +1,18 @@
-import { useSessionInitializer } from "@/app/model/use-session-initializer";
-import { type User, useSessionStore } from "@/entities/session";
 import { act, renderHook, waitFor } from "@testing-library/react";
+
+import { type User, useSessionStore } from "@entities/session";
+
+import { useSessionInitializer } from "@app/model/use-session-initializer";
+
+const { getMock } = vi.hoisted(() => ({
+  getMock: vi.fn(),
+}));
+
+vi.mock("@shared/api", () => ({
+  apiClient: {
+    GET: getMock,
+  },
+}));
 
 const TEST_USER: User = {
   id: 1,
@@ -11,19 +23,9 @@ const TEST_USER: User = {
   oauthAccounts: ["google"],
 };
 
-const createResponse = (status: number, body?: unknown): Response =>
-  ({
-    ok: status >= 200 && status < 300,
-    status,
-    json: vi.fn().mockResolvedValue(body),
-  }) as unknown as Response;
-
-const fetchMock = vi.fn<typeof fetch>();
-
 describe("useSessionInitializer", () => {
   beforeEach(() => {
-    fetchMock.mockReset();
-    vi.stubGlobal("fetch", fetchMock);
+    getMock.mockReset();
 
     useSessionStore.setState({
       user: null,
@@ -31,17 +33,13 @@ describe("useSessionInitializer", () => {
     });
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it("/auth/me 성공 시 사용자 세션을 저장한다", async () => {
-    fetchMock.mockResolvedValue(
-      createResponse(200, {
+    getMock.mockResolvedValue({
+      data: {
         success: true,
         data: TEST_USER,
-      }),
-    );
+      },
+    });
 
     renderHook(() => useSessionInitializer());
 
@@ -52,13 +50,19 @@ describe("useSessionInitializer", () => {
       });
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/auth/me", {
-      credentials: "include",
-    });
+    expect(getMock).toHaveBeenCalledWith("/api/auth/me");
   });
 
-  it.each([401, 500])("/auth/me가 %s이면 세션을 초기화한다", async (status) => {
-    fetchMock.mockResolvedValue(createResponse(status));
+  it("API 오류 응답이면 세션을 초기화한다", async () => {
+    getMock.mockResolvedValue({
+      error: {
+        success: false,
+        error: {
+          code: 401,
+          message: "인증이 필요합니다.",
+        },
+      },
+    });
 
     renderHook(() => useSessionInitializer());
 
@@ -71,28 +75,7 @@ describe("useSessionInitializer", () => {
   });
 
   it("네트워크 오류가 발생하면 세션을 초기화한다", async () => {
-    fetchMock.mockRejectedValue(new Error("Network error"));
-
-    renderHook(() => useSessionInitializer());
-
-    await waitFor(() => {
-      expect(useSessionStore.getState()).toMatchObject({
-        user: null,
-        status: "unauthenticated",
-      });
-    });
-  });
-
-  it("success가 false이면 세션을 초기화한다", async () => {
-    fetchMock.mockResolvedValue(
-      createResponse(200, {
-        success: false,
-        error: {
-          code: 500,
-          message: "오류가 발생했습니다.",
-        },
-      }),
-    );
+    getMock.mockRejectedValue(new Error("Network error"));
 
     renderHook(() => useSessionInitializer());
 
@@ -105,11 +88,12 @@ describe("useSessionInitializer", () => {
   });
 
   it("사용자 정보가 없으면 세션을 초기화한다", async () => {
-    fetchMock.mockResolvedValue(
-      createResponse(200, {
+    getMock.mockResolvedValue({
+      data: {
         success: true,
-      }),
-    );
+        data: null,
+      },
+    });
 
     renderHook(() => useSessionInitializer());
 
@@ -122,16 +106,15 @@ describe("useSessionInitializer", () => {
   });
 
   it("Effect가 다시 실행되어도 초기화 요청을 중복 실행하지 않는다", async () => {
-    fetchMock.mockReturnValue(new Promise<Response>(() => undefined));
+    getMock.mockReturnValue(new Promise(() => undefined));
 
     const originalSetSession = useSessionStore.getState().setSession;
-
     const replacementSetSession = vi.fn<typeof originalSetSession>();
 
     const { unmount } = renderHook(() => useSessionInitializer());
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(getMock).toHaveBeenCalledTimes(1);
     });
 
     act(() => {
@@ -140,7 +123,7 @@ describe("useSessionInitializer", () => {
       });
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getMock).toHaveBeenCalledTimes(1);
 
     unmount();
 

@@ -1,11 +1,13 @@
 import { MemoryRouter } from "react-router";
 
-import type { OAuthProvider } from "@/features/auth";
-import { LoginPage } from "@/pages/login";
-import { OAUTH_PROVIDER_MAP } from "@/pages/login/model/login.constants";
-import type { OAuthErrorCode } from "@/pages/login/model/oauth-error.types";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import type { OAuthProvider } from "@features/auth";
+
+import { LoginPage } from "@pages/login";
+import { OAUTH_PROVIDER_MAP } from "@pages/login/model/login.constants";
+import type { OAuthErrorCode } from "@pages/login/model/oauth-error.types";
 
 const renderLoginPage = (oauthErrorCode?: OAuthErrorCode) => {
   const search = oauthErrorCode ? `?error_code=${oauthErrorCode}` : "";
