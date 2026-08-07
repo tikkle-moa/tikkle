@@ -1,6 +1,7 @@
+import { OAuthButton, type OAuthProvider } from "@features/auth";
+
 import { OAuthErrorModal } from "./OAuthErrorModal";
 
-import { OAuthButton, type OAuthProvider } from "../../../features/auth";
 import { OAUTH_PROVIDER_MAP } from "../model/login.constants";
 import { useLogin } from "../model/use-login";
 

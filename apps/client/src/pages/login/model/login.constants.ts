@@ -1,8 +1,9 @@
-import type { OAuthProvider, OAuthProviderConfig } from "../../../features/auth/model/oauth.types";
-import githubLogo from "../../../shared/assets/oauth/github.svg";
-import googleLogo from "../../../shared/assets/oauth/google.svg";
-import kakaoLogo from "../../../shared/assets/oauth/kakao-symbol.png";
-import naverLogo from "../../../shared/assets/oauth/naver.svg";
+import githubLogo from "@shared/assets/oauth/github.svg";
+import googleLogo from "@shared/assets/oauth/google.svg";
+import kakaoLogo from "@shared/assets/oauth/kakao-symbol.png";
+import naverLogo from "@shared/assets/oauth/naver.svg";
+
+import type { OAuthProvider, OAuthProviderConfig } from "@features/auth";
 
 export const OAUTH_PROVIDER_MAP: Record<OAuthProvider, OAuthProviderConfig> = {
   google: {

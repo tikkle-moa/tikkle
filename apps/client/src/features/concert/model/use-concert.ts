@@ -1,4 +1,4 @@
-import { useConcertStore } from "../../../entities/concert/model/concert.store";
+import { useConcertStore } from "@entities/concert";
 
 export const useConcert = () => {
   const concerts = useConcertStore((state) => state.concerts);

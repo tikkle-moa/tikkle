@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 
-import { apiClient } from "@/shared/api";
+import { apiClient } from "@shared/api";
 
-import { useSessionStore } from "../../entities/session";
+import { useSessionStore } from "@entities/session";
 
 export const useSessionInitializer = () => {
   const initializedRef = useRef(false);

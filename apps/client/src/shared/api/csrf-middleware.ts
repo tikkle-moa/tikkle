@@ -1,6 +1,6 @@
 import type { Middleware } from "openapi-fetch";
 
-import { getCookie } from "../lib/cookie.utils";
+import { getCookie } from "@shared/lib/cookie.utils";
 
 const CSRF_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 

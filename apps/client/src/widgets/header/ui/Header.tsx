@@ -1,5 +1,7 @@
-import { useSessionStore } from "../../../entities/session";
-import { ROUTE_PATHS } from "../../../shared/config/router.config";
+import { ROUTE_PATHS } from "@shared/config/router.config";
+
+import { useSessionStore } from "@entities/session";
+
 import { useHeader } from "../model/use-header";
 
 const Header = () => {

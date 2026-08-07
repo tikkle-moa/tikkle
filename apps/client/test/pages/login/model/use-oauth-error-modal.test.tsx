@@ -1,5 +1,6 @@
-import { useOAuthErrorModal } from "@/pages/login/model/use-oauth-error-modal";
 import { act, render, renderHook } from "@testing-library/react";
+
+import { useOAuthErrorModal } from "@pages/login/model/use-oauth-error-modal";
 
 describe("useOAuthErrorModal", () => {
   beforeEach(() => {

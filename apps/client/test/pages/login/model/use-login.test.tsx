@@ -1,10 +1,12 @@
 import { MemoryRouter } from "react-router";
 
-import { OAUTH_ERROR_CONTENT_MAP, UNKNOWN_OAUTH_ERROR_CONTENT } from "@/pages/login/model/oauth-error.constants";
-import type { OAuthErrorCode } from "@/pages/login/model/oauth-error.types";
-import { useLogin } from "@/pages/login/model/use-login";
-import { ROUTE_PATHS } from "@/shared/config/router.config";
 import { act, renderHook } from "@testing-library/react";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
+
+import { OAUTH_ERROR_CONTENT_MAP, UNKNOWN_OAUTH_ERROR_CONTENT } from "@pages/login/model/oauth-error.constants";
+import type { OAuthErrorCode } from "@pages/login/model/oauth-error.types";
+import { useLogin } from "@pages/login/model/use-login";
 
 const renderUseLogin = (oauthErrorCode?: OAuthErrorCode | "UNKNOWN_CODE") => {
   const search = oauthErrorCode ? `?error_code=${oauthErrorCode}` : "";

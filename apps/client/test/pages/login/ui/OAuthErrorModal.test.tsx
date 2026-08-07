@@ -1,7 +1,8 @@
-import type { OAuthErrorContent } from "@/pages/login/model/oauth-error.types";
-import { OAuthErrorModal } from "@/pages/login/ui/OAuthErrorModal";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import type { OAuthErrorContent } from "@pages/login/model/oauth-error.types";
+import { OAuthErrorModal } from "@pages/login/ui/OAuthErrorModal";
 
 const mockContent: OAuthErrorContent = {
   title: "로그인이 취소됐어요",

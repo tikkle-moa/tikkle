@@ -1,7 +1,8 @@
-import type { OAuthProviderConfig } from "@/features/auth/model/oauth.types";
-import OAuthButton from "@/features/auth/ui/OAuthButton";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import type { OAuthProviderConfig } from "@features/auth/model/oauth.types";
+import OAuthButton from "@features/auth/ui/OAuthButton";
 
 const mockConfig: OAuthProviderConfig = {
   label: "Google로 계속하기",

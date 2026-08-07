@@ -1,6 +1,8 @@
-import { useSessionInitializer } from "@/app/model/use-session-initializer";
-import { type User, useSessionStore } from "@/entities/session";
 import { act, renderHook, waitFor } from "@testing-library/react";
+
+import { type User, useSessionStore } from "@entities/session";
+
+import { useSessionInitializer } from "@app/model/use-session-initializer";
 
 const { getMock } = vi.hoisted(() => ({
   getMock: vi.fn(),

@@ -1,5 +1,5 @@
-import { OAUTH_ERROR_CONTENT_MAP, UNKNOWN_OAUTH_ERROR_CONTENT } from "@/pages/login/model/oauth-error.constants";
-import { getOAuthErrorContent } from "@/pages/login/model/oauth-error.utils";
+import { OAUTH_ERROR_CONTENT_MAP, UNKNOWN_OAUTH_ERROR_CONTENT } from "@pages/login/model/oauth-error.constants";
+import { getOAuthErrorContent } from "@pages/login/model/oauth-error.utils";
 
 describe("getOAuthErrorContent", () => {
   it("null을 받으면 UNKNOWN 에러 콘텐츠를 반환한다", () => {

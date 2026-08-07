@@ -1,9 +1,11 @@
 import { MemoryRouter } from "react-router";
 
-import { useSessionStore } from "@/entities/session";
-import type { User } from "@/entities/session";
-import Header from "@/widgets/header/ui/Header";
 import { render, screen } from "@testing-library/react";
+
+import { useSessionStore } from "@entities/session";
+import type { User } from "@entities/session";
+
+import Header from "@widgets/header/ui/Header";
 
 const TEST_USER: User = {
   id: 1,

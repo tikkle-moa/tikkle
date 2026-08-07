@@ -1,9 +1,10 @@
 import { useSearchParams } from "react-router";
 
-import { getOAuthErrorContent } from "./oauth-error.utils";
+import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import type { OAuthProvider } from "../../../features/auth";
-import { ROUTE_PATHS } from "../../../shared/config/router.config";
+import type { OAuthProvider } from "@features/auth";
+
+import { getOAuthErrorContent } from "./oauth-error.utils";
 
 export const useLogin = () => {
   const [searchParams, setSearchParams] = useSearchParams();
