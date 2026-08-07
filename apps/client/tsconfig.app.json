@@ -6,7 +6,12 @@
     "module": "esnext",
     "types": ["vite/client", "vitest/globals"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@app/*": ["./src/app/*"],
+      "@pages/*": ["./src/pages/*"],
+      "@widgets/*": ["./src/widgets/*"],
+      "@features/*": ["./src/features/*"],
+      "@entities/*": ["./src/entities/*"],
+      "@shared/*": ["./src/shared/*"]
     },
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
