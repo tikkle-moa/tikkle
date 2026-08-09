@@ -1,0 +1,78 @@
+import { renderHook } from "@testing-library/react";
+
+import { useSessionStore } from "@entities/session";
+import type { User } from "@entities/session";
+
+import { useLogout } from "@features/auth/model/use-logout";
+
+const { mockPost } = vi.hoisted(() => ({
+  mockPost: vi.fn(),
+}));
+vi.mock("@shared/api", () => ({
+  apiClient: { POST: mockPost },
+}));
+
+const mockNavigate = vi.fn();
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
+const TEST_USER: User = {
+  id: 1,
+  email: "test@example.com",
+  nickname: "테스트 사용자",
+  profileImageUrl: null,
+  role: "USER",
+  oauthAccounts: ["google"],
+};
+
+describe("useLogout", () => {
+  beforeEach(() => {
+    mockPost.mockResolvedValue({ data: { success: true } });
+    mockNavigate.mockClear();
+    useSessionStore.setState({ user: TEST_USER, status: "authenticated" });
+  });
+
+  it("POST /api/auth/logout을 호출한다", async () => {
+    const { result } = renderHook(() => useLogout());
+
+    await result.current.handleLogout();
+
+    expect(mockPost).toHaveBeenCalledWith("/api/auth/logout");
+  });
+
+  it("로그아웃 성공 시 세션을 초기화하고 로그인 페이지로 이동한다", async () => {
+    const { result } = renderHook(() => useLogout());
+
+    await result.current.handleLogout();
+
+    expect(useSessionStore.getState().status).toBe("unauthenticated");
+    expect(useSessionStore.getState().user).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
+  });
+
+  it("API 실패 시에도 세션을 초기화하고 로그인 페이지로 이동한다", async () => {
+    mockPost.mockResolvedValue({ error: { message: "Server error" } });
+
+    const { result } = renderHook(() => useLogout());
+
+    await result.current.handleLogout();
+
+    expect(useSessionStore.getState().status).toBe("unauthenticated");
+    expect(useSessionStore.getState().user).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
+  });
+
+  it("네트워크 오류 시에도 세션을 초기화하고 로그인 페이지로 이동한다", async () => {
+    mockPost.mockRejectedValue(new Error("Network error"));
+
+    const { result } = renderHook(() => useLogout());
+
+    await result.current.handleLogout();
+
+    expect(useSessionStore.getState().status).toBe("unauthenticated");
+    expect(useSessionStore.getState().user).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
+  });
+});
