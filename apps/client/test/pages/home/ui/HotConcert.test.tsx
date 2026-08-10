@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { HOT_CONCERTS } from "@pages/home/model/dummy-data.constants";
 import HotConcert from "@pages/home/ui/HotConcert";
@@ -28,5 +29,9 @@ describe("HotConcert", () => {
     for (const { period } of HOT_CONCERTS) {
       expect(screen.getByText(period)).toBeInTheDocument();
     }
+  });
+
+  it("전체보기 버튼을 클릭할 수 있다", async () => {
+    await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
   });
 });

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { UPCOMING_CONCERTS } from "@pages/home/model/dummy-data.constants";
 import UpcomingConcert from "@pages/home/ui/UpcomingConcert";
@@ -29,5 +30,9 @@ describe("UpcomingConcert", () => {
     for (const { openDate } of UPCOMING_CONCERTS) {
       expect(screen.getByText(`오픈 ${openDate}`)).toBeInTheDocument();
     }
+  });
+
+  it("전체보기 버튼을 클릭할 수 있다", async () => {
+    await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
   });
 });

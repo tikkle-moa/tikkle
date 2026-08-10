@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { DAILY_RANKINGS } from "@pages/home/model/dummy-data.constants";
 import DailyRanking from "@pages/home/ui/DailyRanking";
@@ -28,5 +29,9 @@ describe("DailyRanking", () => {
     for (const { venue, period } of DAILY_RANKINGS) {
       expect(screen.getByText(`${venue} · ${period}`)).toBeInTheDocument();
     }
+  });
+
+  it("전체보기 버튼을 클릭할 수 있다", async () => {
+    await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
   });
 });
