@@ -6,12 +6,18 @@ import { ConcertListPage } from "@pages/concertList";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 
+import GuestGuard from "./GuestGuard";
 import Layout from "./Layout";
 
 export const router = createBrowserRouter([
   {
-    path: ROUTE_PATHS.LOGIN,
-    element: <LoginPage />,
+    element: <GuestGuard />,
+    children: [
+      {
+        path: ROUTE_PATHS.LOGIN,
+        element: <LoginPage />,
+      },
+    ],
   },
   {
     element: <Layout />,
