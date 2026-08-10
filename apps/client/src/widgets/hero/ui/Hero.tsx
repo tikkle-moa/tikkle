@@ -10,7 +10,14 @@ import HeroBanner from "./HeroBanner";
 
 const Hero = () => (
   <div className="flex flex-col gap-6">
-    <ContentSlider items={[<HeroBanner />]} />
+    <ContentSlider
+      items={[
+        <HeroBanner />,
+        <img key="1" src="https://picsum.photos/1600/600?random=1" className="h-full w-full object-cover" />,
+        <img key="2" src="https://picsum.photos/1600/600?random=2" className="h-full w-full object-cover" />,
+        <img key="3" src="https://picsum.photos/1600/600?random=3" className="h-full w-full object-cover" />,
+      ]}
+    />
 
     <div className="border-b border-gray-100">
       <div className="flex flex-wrap justify-center gap-6 px-4 py-3 md:gap-10 md:px-0">
