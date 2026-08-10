@@ -5,7 +5,7 @@ import { CARD_COLORS, HOT_CONCERTS } from "../model/dummy-data.constants";
 const HotConcert = () => {
   return (
     <>
-      <SectionTitle title="지금 HOT한 공연" subtitle="놓치면 후회하는 이번 달 공연" />
+      <SectionTitle title="지금 HOT한 공연" subtitle="놓치면 후회하는 이번 달 공연" onClickMore={() => {}} />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {HOT_CONCERTS.map(({ id, title, genre, period }) => (

@@ -5,7 +5,7 @@ import { CARD_COLORS, UPCOMING_CONCERTS } from "../model/dummy-data.constants";
 const UpcomingConcert = () => {
   return (
     <>
-      <SectionTitle title="오픈 예정" subtitle="지금 바로 알림 설정하세요" />
+      <SectionTitle title="오픈 예정" subtitle="지금 바로 알림 설정하세요" onClickMore={() => {}} />
 
       <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
         {UPCOMING_CONCERTS.map(({ id, title, venue, openDate, badge }) => (

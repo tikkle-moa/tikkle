@@ -5,7 +5,7 @@ import { CARD_COLORS, DAILY_RANKINGS } from "../model/dummy-data.constants";
 const DailyRanking = () => {
   return (
     <>
-      <SectionTitle title="일간 랭킹" subtitle="오늘 가장 인기 있는 공연" />
+      <SectionTitle title="일간 랭킹" subtitle="오늘 가장 인기 있는 공연" onClickMore={() => {}} />
 
       <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {DAILY_RANKINGS.map(({ rank, title, venue, period }) => (
