@@ -2,8 +2,6 @@ import type { Middleware } from "openapi-fetch";
 
 import { getCookie } from "@shared/lib/cookie.utils";
 
-import { useSessionStore } from "@entities/session";
-
 let refreshPromise: Promise<boolean> | null = null;
 
 const refreshToken = async (): Promise<boolean> => {
@@ -18,7 +16,7 @@ const refreshToken = async (): Promise<boolean> => {
   return response.ok;
 };
 
-export const refreshTokenMiddleware: Middleware = {
+export const createRefreshTokenMiddleware = (onSessionExpired: () => void): Middleware => ({
   async onResponse({ request, response }) {
     if (response.status !== 401 || request.url.includes("/api/auth/refresh")) {
       return response;
@@ -33,10 +31,10 @@ export const refreshTokenMiddleware: Middleware = {
     const refreshed = await refreshPromise.catch(() => false);
 
     if (!refreshed) {
-      useSessionStore.getState().clearSession();
+      onSessionExpired();
       return response;
     }
 
     return fetch(request.clone());
   },
-};
+});

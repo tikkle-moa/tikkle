@@ -5,7 +5,7 @@ import { useSessionStore } from "@entities/session";
 import { useHeader } from "../model/use-header";
 
 const Header = () => {
-  const { handleNavigation } = useHeader();
+  const { handleNavigation, handleLogout } = useHeader();
 
   const user = useSessionStore((state) => state.user);
   const status = useSessionStore((state) => state.status);
@@ -27,7 +27,12 @@ const Header = () => {
           {status === "loading" ? (
             <span className="text-sm text-blue-100">로그인 확인 중</span>
           ) : status === "authenticated" && user ? (
-            <span>{user.nickname}</span>
+            <>
+              <span>{user.nickname}</span>
+              <button type="button" onClick={() => void handleLogout()}>
+                로그아웃
+              </button>
+            </>
           ) : (
             <button type="button" onClick={() => handleNavigation(ROUTE_PATHS.LOGIN)}>
               로그인
