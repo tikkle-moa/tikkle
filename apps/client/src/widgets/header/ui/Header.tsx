@@ -11,34 +11,34 @@ const Header = () => {
   const status = useSessionStore((state) => state.status);
 
   return (
-    <header className="bg-blue-500 p-4 text-white">
-      <nav className="flex items-center justify-between">
-        <div className="text-lg font-bold">Tikkle</div>
+    <header className="border-b border-gray-200 bg-white">
+      <nav aria-label="주요 메뉴" className="mx-auto flex h-16 w-full max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <button aria-label="Tikkle 홈으로 이동" className="flex items-center" type="button" onClick={() => handleNavigation(ROUTE_PATHS.HOME)}>
+          <img alt="Tikkle" className="h-10 w-auto" src="/brand/tikkle-logo.svg" />
+        </button>
 
-        <div className="flex items-center gap-4">
-          <button className="hover:underline" onClick={() => handleNavigation(ROUTE_PATHS.HOME)}>
-            Home
-          </button>
-
-          <button className="hover:underline" onClick={() => handleNavigation(ROUTE_PATHS.CONCERTS)}>
-            Concerts
-          </button>
-
-          {status === "loading" ? (
-            <span className="text-sm text-blue-100">로그인 확인 중</span>
-          ) : status === "authenticated" && user ? (
-            <>
-              <span>{user.nickname}</span>
-              <button type="button" onClick={() => void handleLogout()}>
-                로그아웃
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => handleNavigation(ROUTE_PATHS.LOGIN)}>
-              로그인
+        {status === "loading" ? (
+          <span className="text-sm text-gray-500">로그인 확인 중</span>
+        ) : status === "authenticated" && user ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">{user.nickname}</span>
+            <button
+              className="hover:text-brand-primary text-sm font-medium text-gray-500 transition-colors"
+              type="button"
+              onClick={() => void handleLogout()}
+            >
+              로그아웃
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <button
+            className="bg-brand-primary rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+            type="button"
+            onClick={() => handleNavigation(ROUTE_PATHS.LOGIN)}
+          >
+            로그인
+          </button>
+        )}
       </nav>
     </header>
   );
