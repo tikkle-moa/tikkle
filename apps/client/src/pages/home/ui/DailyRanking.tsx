@@ -5,6 +5,7 @@ import { CARD_COLORS, DAILY_RANKINGS } from "../model/dummy-data.constants";
 const DailyRanking = () => {
   return (
     <>
+      {/* 대상 페이지 미구현으로 임시 빈 함수를 전달합니다. 추후 onClickMore 연결 필요 */}
       <SectionTitle title="일간 랭킹" subtitle="오늘 가장 인기 있는 공연" onClickMore={() => {}} />
 
       <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">

@@ -5,6 +5,7 @@ import { CARD_COLORS, UPCOMING_CONCERTS } from "../model/dummy-data.constants";
 const UpcomingConcert = () => {
   return (
     <>
+      {/* 대상 페이지 미구현으로 임시 빈 함수를 전달합니다. 추후 onClickMore 연결 필요 */}
       <SectionTitle title="오픈 예정" subtitle="지금 바로 알림 설정하세요" onClickMore={() => {}} />
 
       <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
