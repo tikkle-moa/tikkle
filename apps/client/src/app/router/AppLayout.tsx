@@ -4,10 +4,12 @@ import { Header } from "@widgets/header";
 
 const AppLayout = () => {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col">
       <Header />
-      <main className="grow">
-        <Outlet />
+      <main className="grow scrollbar-thin overflow-y-auto">
+        <div className="mx-auto min-h-0 w-full max-w-7xl px-4 pt-10">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
