@@ -25,9 +25,9 @@ const Header = () => {
         </button>
 
         <div className="flex items-center">
-          {status === "loading" ? (
-            <span className="text-sm text-gray-500">로그인 확인 중</span>
-          ) : status === "authenticated" && user ? (
+          {status === "loading" && <span className="text-sm text-gray-500">로그인 확인 중</span>}
+
+          {status === "authenticated" && user && (
             <div className="relative">
               <button
                 aria-controls="user-menu"
@@ -54,7 +54,8 @@ const Header = () => {
                 </div>
               )}
             </div>
-          ) : (
+          )}
+          {status === "unauthenticated" && (
             <button
               className="bg-brand-primary rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
               type="button"
