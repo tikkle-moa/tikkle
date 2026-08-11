@@ -1,18 +1,14 @@
-import { refreshTokenMiddleware } from "@shared/api/refresh-token-middleware";
+import { createRefreshTokenMiddleware } from "@shared/api/refresh-token-middleware";
 import type { getCookie } from "@shared/lib/cookie.utils";
 
 const mockClearSession = vi.hoisted(() => vi.fn());
 const mockGetCookie = vi.hoisted(() => vi.fn<typeof getCookie>());
 
-vi.mock("@entities/session", () => ({
-  useSessionStore: {
-    getState: () => ({ clearSession: mockClearSession }),
-  },
-}));
-
 vi.mock("@shared/lib/cookie.utils", () => ({
   getCookie: mockGetCookie,
 }));
+
+const middleware = createRefreshTokenMiddleware(mockClearSession);
 
 function makeRequest(url: string, method = "GET"): Request {
   return new Request(url, { method });
@@ -23,10 +19,10 @@ function makeResponse(status: number): Response {
 }
 
 function callOnResponse(request: Request, response: Response) {
-  return refreshTokenMiddleware.onResponse!({
+  return middleware.onResponse!({
     request,
     response,
-  } as Parameters<NonNullable<typeof refreshTokenMiddleware.onResponse>>[0]);
+  } as Parameters<NonNullable<typeof middleware.onResponse>>[0]);
 }
 
 describe("refreshTokenMiddleware", () => {
