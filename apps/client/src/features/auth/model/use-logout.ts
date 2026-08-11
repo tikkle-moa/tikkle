@@ -1,13 +1,9 @@
-import { useNavigate } from "react-router";
-
 import { apiClient } from "@shared/api";
-import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { useSessionStore } from "@entities/session";
 
 export const useLogout = () => {
-  const navigate = useNavigate();
-  const clearSession = useSessionStore((state) => state.clearSession);
+  const logoutSession = useSessionStore((state) => state.logoutSession);
 
   const handleLogout = async () => {
     try {
@@ -19,8 +15,7 @@ export const useLogout = () => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      clearSession();
-      void navigate(ROUTE_PATHS.LOGIN, { replace: true });
+      logoutSession();
     }
   };
 

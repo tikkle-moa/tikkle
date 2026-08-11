@@ -2,7 +2,7 @@ import { Outlet } from "react-router";
 
 import { Header } from "@widgets/header";
 
-const Layout = () => {
+const AppLayout = () => {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -13,4 +13,4 @@ const Layout = () => {
   );
 };
 
-export default Layout;
+export default AppLayout;
