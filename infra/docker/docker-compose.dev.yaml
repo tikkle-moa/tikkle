@@ -35,6 +35,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 환경 변수가 필요합니다}
     ports:
       - "8080:8080"
     volumes:
@@ -45,6 +46,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health > /dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 30s
 
   mysql:
     image: mysql:8.4
@@ -86,7 +93,7 @@ services:
       client:
         condition: service_healthy
       server:
-        condition: service_started
+        condition: service_healthy
     init: true
     shm_size: 1gb
     volumes:

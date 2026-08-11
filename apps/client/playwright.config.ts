@@ -1,10 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL;
-
-if (!baseURL) {
-  throw new Error("PLAYWRIGHT_BASE_URL 환경 변수가 필요합니다.");
-}
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
 
 export default defineConfig({
   testDir: "./e2e",
