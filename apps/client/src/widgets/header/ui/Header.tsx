@@ -1,14 +1,12 @@
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
 
-import { ROUTE_PATHS } from "@shared/config/router.config";
-
 import { useSessionStore } from "@entities/session";
 
 import { useHeader } from "../model/use-header";
 import { useHeaderUserMenu } from "../model/use-header-user-menu";
 
 const Header = () => {
-  const { handleNavigation, handleLogout } = useHeader();
+  const { goToHome, goToLogin, handleLogout } = useHeader();
   const { isUserMenuOpen, handleUserMenuClose, handleUserMenuToggle } = useHeaderUserMenu();
 
   const user = useSessionStore((state) => state.user);
@@ -22,7 +20,7 @@ const Header = () => {
   return (
     <header className="border-b border-gray-200 bg-white">
       <nav aria-label="주요 메뉴" className="mx-auto flex h-16 w-full max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <button aria-label="Tikkle 홈으로 이동" className="flex items-center" type="button" onClick={() => handleNavigation(ROUTE_PATHS.HOME)}>
+        <button aria-label="Tikkle 홈으로 이동" className="flex items-center" type="button" onClick={goToHome}>
           <img alt="Tikkle" className="h-10 w-auto" src="/brand/tikkle-logo.svg" />
         </button>
 
@@ -60,7 +58,7 @@ const Header = () => {
             <button
               className="bg-brand-primary rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
               type="button"
-              onClick={() => handleNavigation(ROUTE_PATHS.LOGIN)}
+              onClick={goToLogin}
             >
               로그인
             </button>

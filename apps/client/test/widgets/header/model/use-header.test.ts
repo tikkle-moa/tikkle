@@ -1,5 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 
+import { ROUTE_PATHS } from "@shared/config/router.config";
+
 import { useHeader } from "@widgets/header/model/use-header";
 
 const { mockHandleLogout, mockNavigate } = vi.hoisted(() => ({
@@ -21,14 +23,24 @@ describe("useHeader", () => {
     mockNavigate.mockClear();
   });
 
-  it("경로를 전달받아 이동한다", () => {
+  it("홈으로 이동한다", () => {
     const { result } = renderHook(() => useHeader());
 
     act(() => {
-      result.current.handleNavigation("/concerts");
+      result.current.goToHome();
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith("/concerts");
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.HOME);
+  });
+
+  it("로그인 페이지로 이동한다", () => {
+    const { result } = renderHook(() => useHeader());
+
+    act(() => {
+      result.current.goToLogin();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.LOGIN);
   });
 
   it("로그아웃 핸들러를 제공한다", () => {

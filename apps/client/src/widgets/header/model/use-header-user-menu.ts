@@ -1,8 +1,6 @@
 import { useState } from "react";
 
-import type { UseHeaderUserMenuResult } from "./header.types";
-
-export const useHeaderUserMenu = (): UseHeaderUserMenuResult => {
+export const useHeaderUserMenu = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const handleUserMenuToggle = () => {
