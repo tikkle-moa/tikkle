@@ -1,18 +1,16 @@
-FROM node:22-alpine
+FROM mcr.microsoft.com/playwright:v1.62.0-noble
 
-WORKDIR /app
+WORKDIR /workspace
+
+RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/client/package.json ./apps/client/package.json
 COPY packages/api-types/package.json ./packages/api-types/package.json
 
-RUN corepack enable && pnpm install --frozen-lockfile --filter client...
+RUN pnpm install --frozen-lockfile --filter client...
 
 COPY apps/client ./apps/client
 COPY packages/api-types ./packages/api-types
 
-WORKDIR /app/apps/client
-
-EXPOSE 5173
-
-CMD ["pnpm", "dev", "--host", "0.0.0.0"]
+CMD ["pnpm", "-F", "client", "test:e2e"]
