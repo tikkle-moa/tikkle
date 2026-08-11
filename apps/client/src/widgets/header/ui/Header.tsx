@@ -1,14 +1,23 @@
+import { ChevronDown, LogOut, UserRound } from "lucide-react";
+
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { useSessionStore } from "@entities/session";
 
 import { useHeader } from "../model/use-header";
+import { useHeaderUserMenu } from "../model/use-header-user-menu";
 
 const Header = () => {
   const { handleNavigation, handleLogout } = useHeader();
+  const { isUserMenuOpen, handleUserMenuClose, handleUserMenuToggle } = useHeaderUserMenu();
 
   const user = useSessionStore((state) => state.user);
   const status = useSessionStore((state) => state.status);
+
+  const handleUserLogout = () => {
+    handleUserMenuClose();
+    void handleLogout();
+  };
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -17,28 +26,46 @@ const Header = () => {
           <img alt="Tikkle" className="h-10 w-auto" src="/brand/tikkle-logo.svg" />
         </button>
 
-        {status === "loading" ? (
-          <span className="text-sm text-gray-500">로그인 확인 중</span>
-        ) : status === "authenticated" && user ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-gray-700">{user.nickname}</span>
+        <div className="flex items-center">
+          {status === "loading" ? (
+            <span className="text-sm text-gray-500">로그인 확인 중</span>
+          ) : status === "authenticated" && user ? (
+            <div className="relative">
+              <button
+                aria-controls="user-menu"
+                aria-expanded={isUserMenuOpen}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                type="button"
+                onClick={handleUserMenuToggle}
+              >
+                <UserRound aria-hidden="true" size={18} />
+                <span>{user.nickname}</span>
+                <ChevronDown aria-hidden="true" className={isUserMenuOpen ? "rotate-180 transition-transform" : "transition-transform"} size={16} />
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 z-10 mt-2 w-36 rounded-lg border border-gray-200 bg-white p-1 shadow-lg" id="user-menu">
+                  <button
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+                    type="button"
+                    onClick={handleUserLogout}
+                  >
+                    <LogOut aria-hidden="true" size={16} />
+                    로그아웃
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
             <button
-              className="hover:text-brand-primary text-sm font-medium text-gray-500 transition-colors"
+              className="bg-brand-primary rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
               type="button"
-              onClick={() => void handleLogout()}
+              onClick={() => handleNavigation(ROUTE_PATHS.LOGIN)}
             >
-              로그아웃
+              로그인
             </button>
-          </div>
-        ) : (
-          <button
-            className="bg-brand-primary rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
-            type="button"
-            onClick={() => handleNavigation(ROUTE_PATHS.LOGIN)}
-          >
-            로그인
-          </button>
-        )}
+          )}
+        </div>
       </nav>
     </header>
   );
