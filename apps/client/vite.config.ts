@@ -21,6 +21,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ["client"],
     proxy: {
       "/api": {
         target: process.env.API_PROXY_TARGET ?? "http://localhost:8080",
