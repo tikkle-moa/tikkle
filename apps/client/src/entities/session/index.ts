@@ -1,3 +1,3 @@
 export { useSessionStore } from "./model/session.store";
 
-export type { AuthStatus, OAuthProvider, User, UserRole } from "./model/session.types";
+export type { AuthStatus, User } from "./model/session.types";
