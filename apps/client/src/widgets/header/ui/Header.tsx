@@ -9,7 +9,7 @@ import UserMenu from "./UserMenu";
 import { useHeader } from "../model/use-header";
 
 const Header = () => {
-  const { goToLogin, handleLogout } = useHeader();
+  const { handleLogout } = useHeader();
 
   const user = useSessionStore((state) => state.user);
   const status = useSessionStore((state) => state.status);
@@ -36,13 +36,12 @@ const Header = () => {
           {status === "loading" && <span className="text-sm text-gray-500">로그인 확인 중</span>}
           {status === "authenticated" && user && <UserMenu nickname={user.nickname} onLogout={() => void handleLogout()} />}
           {status === "unauthenticated" && (
-            <button
+            <NavLink
               className="bg-brand-primary rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
-              type="button"
-              onClick={goToLogin}
+              to={ROUTE_PATHS.LOGIN}
             >
               로그인
-            </button>
+            </NavLink>
           )}
         </div>
       </nav>

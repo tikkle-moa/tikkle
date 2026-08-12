@@ -70,32 +70,21 @@ describe("Header", () => {
     expect(screen.getByRole("link", { name: "콘서트" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("로그인 버튼 클릭 시 로그인 페이지로 이동한다", async () => {
-    const user = userEvent.setup();
-    useSessionStore.setState({ status: "unauthenticated" });
-
-    renderHeader();
-
-    await user.click(screen.getByRole("button", { name: "로그인" }));
-
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.LOGIN);
-  });
-
   it("loading 상태에서는 로그인 확인 중을 표시한다", () => {
     useSessionStore.setState({ status: "loading" });
 
     renderHeader();
 
     expect(screen.getByText("로그인 확인 중")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "로그인" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "로그인" })).not.toBeInTheDocument();
   });
 
-  it("비로그인 상태에서는 로그인 버튼을 표시한다", () => {
+  it("비로그인 상태에서는 로그인 링크를 표시한다", () => {
     useSessionStore.setState({ status: "unauthenticated" });
 
     renderHeader();
 
-    expect(screen.getByRole("button", { name: "로그인" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "로그인" })).toHaveAttribute("href", ROUTE_PATHS.LOGIN);
   });
 
   it("로그인 상태에서는 사용자 닉네임을 표시한다", () => {
@@ -104,7 +93,7 @@ describe("Header", () => {
     renderHeader();
 
     expect(screen.getByText(TEST_USER.nickname)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "로그인" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "로그인" })).not.toBeInTheDocument();
   });
 
   it("로그인 상태에서는 사용자 메뉴 버튼을 표시한다", () => {

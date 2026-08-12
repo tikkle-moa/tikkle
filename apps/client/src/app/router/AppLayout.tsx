@@ -9,7 +9,7 @@ const AppLayout = () => {
         <Header />
       </div>
 
-      <main className="min-h-0 grow overflow-y-auto">
+      <main className="min-h-0 grow scrollbar-thin overflow-y-auto">
         <div className="mx-auto min-h-full w-full max-w-7xl px-4 py-10">
           <Outlet />
         </div>
