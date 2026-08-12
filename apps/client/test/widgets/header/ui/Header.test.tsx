@@ -48,14 +48,26 @@ describe("Header", () => {
     mockHandleLogout.mockClear();
   });
 
-  it("로고 클릭 시 홈으로 이동한다", async () => {
-    const user = userEvent.setup();
-
+  it("로고는 홈으로 이동하는 링크다", () => {
     renderHeader();
 
-    await user.click(screen.getByRole("button", { name: "Tikkle 홈으로 이동" }));
+    expect(screen.getByRole("link", { name: "Tikkle 홈으로 이동" })).toHaveAttribute("href", ROUTE_PATHS.HOME);
+  });
 
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.HOME);
+  it("콘서트 탐색 링크를 표시한다", () => {
+    renderHeader();
+
+    expect(screen.getByRole("link", { name: "콘서트" })).toHaveAttribute("href", ROUTE_PATHS.CONCERTS);
+  });
+
+  it("콘서트 목록에서는 콘서트 링크를 현재 페이지로 표시한다", () => {
+    render(
+      <MemoryRouter initialEntries={[ROUTE_PATHS.CONCERTS]}>
+        <Header />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "콘서트" })).toHaveAttribute("aria-current", "page");
   });
 
   it("로그인 버튼 클릭 시 로그인 페이지로 이동한다", async () => {

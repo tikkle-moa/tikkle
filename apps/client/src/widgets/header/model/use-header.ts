@@ -8,16 +8,11 @@ export const useHeader = () => {
   const navigate = useNavigate();
   const { handleLogout } = useLogout();
 
-  const goToHome = () => {
-    navigate(ROUTE_PATHS.HOME);
-  };
-
   const goToLogin = () => {
     navigate(ROUTE_PATHS.LOGIN);
   };
 
   return {
-    goToHome,
     goToLogin,
     handleLogout,
   };

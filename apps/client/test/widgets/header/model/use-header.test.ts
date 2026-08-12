@@ -23,16 +23,6 @@ describe("useHeader", () => {
     mockNavigate.mockClear();
   });
 
-  it("홈으로 이동한다", () => {
-    const { result } = renderHook(() => useHeader());
-
-    act(() => {
-      result.current.goToHome();
-    });
-
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.HOME);
-  });
-
   it("로그인 페이지로 이동한다", () => {
     const { result } = renderHook(() => useHeader());
 
