@@ -37,7 +37,7 @@ describe("ConcertCard", () => {
   });
 
   it("posterUrl이 없으면 img 대신 텍스트 플레이스홀더를 렌더링한다", () => {
-    render(<ConcertCard concert={makeConcert({ posterUrl: undefined })} showTitle />);
+    render(<ConcertCard concert={makeConcert({ posterUrl: undefined })} displayOptions={{ showTitle: true }} />);
 
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     // 플레이스홀더와 하단 텍스트 영역에 각각 한 번씩 표시
@@ -45,37 +45,37 @@ describe("ConcertCard", () => {
   });
 
   it("공연 제목을 렌더링한다", () => {
-    render(<ConcertCard concert={makeConcert()} showTitle />);
+    render(<ConcertCard concert={makeConcert()} displayOptions={{ showTitle: true }} />);
 
     expect(screen.getByText("테스트 콘서트")).toBeInTheDocument();
   });
 
   it("장소명을 렌더링한다", () => {
-    render(<ConcertCard concert={makeConcert()} showPlaceName />);
+    render(<ConcertCard concert={makeConcert()} displayOptions={{ showPlaceName: true }} />);
 
     expect(screen.getByText("올림픽공원")).toBeInTheDocument();
   });
 
   it("available 상태 배지를 렌더링한다", () => {
-    render(<ConcertCard concert={makeConcert()} showStatus />);
+    render(<ConcertCard concert={makeConcert()} displayOptions={{ showStatus: true }} />);
 
     expect(screen.getByText("예매 중")).toBeInTheDocument();
   });
 
   it("soldout 상태 배지를 렌더링한다", () => {
-    render(<ConcertCard concert={makeConcert({ performances: [makePerf({ bookedSeats: 100 })] })} showStatus />);
+    render(<ConcertCard concert={makeConcert({ performances: [makePerf({ bookedSeats: 100 })] })} displayOptions={{ showStatus: true }} />);
 
     expect(screen.getByText("매진")).toBeInTheDocument();
   });
 
   it("ended 상태 배지를 렌더링한다", () => {
-    render(<ConcertCard concert={makeConcert({ performances: [makePerf({ startsAt: PAST })] })} showStatus />);
+    render(<ConcertCard concert={makeConcert({ performances: [makePerf({ startsAt: PAST })] })} displayOptions={{ showStatus: true }} />);
 
     expect(screen.getByText("공연 종료")).toBeInTheDocument();
   });
 
   it("upcoming 상태 배지를 렌더링한다", () => {
-    render(<ConcertCard concert={makeConcert({ performances: [makePerf({ bookingOpensAt: FUTURE })] })} showStatus />);
+    render(<ConcertCard concert={makeConcert({ performances: [makePerf({ bookingOpensAt: FUTURE })] })} displayOptions={{ showStatus: true }} />);
 
     expect(screen.getByText("오픈 예정")).toBeInTheDocument();
   });
