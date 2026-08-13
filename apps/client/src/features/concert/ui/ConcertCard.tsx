@@ -1,5 +1,7 @@
 import { MapPin, Music } from "lucide-react";
 
+import ButtonWrapper from "@shared/ui/ButtonWrapper";
+
 import type { ConcertResponse } from "@entities/concert";
 
 import { useConcertCard } from "../model/use-concert-card";
@@ -16,14 +18,13 @@ const ConcertCard = ({ concert, onClick }: ConcertCardProps) => {
   const { cardRef, tilt, glare, isHovered, outerShadow, handleMouseMove, handleMouseEnter, handleMouseLeave } = useConcertCardTilt();
 
   return (
-    <div className="flex flex-col">
+    <ButtonWrapper className="flex flex-col" buttonClassName="flex w-full cursor-pointer flex-col text-left" onClick={onClick}>
       <div
         ref={cardRef}
-        className="cursor-pointer perspective-midrange"
+        className="perspective-midrange"
         onMouseMove={handleMouseMove}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onClick={onClick}
       >
         <div
           className="relative overflow-hidden rounded-xl bg-white transition-[transform,box-shadow] ease-out will-change-transform transform-3d"
@@ -66,9 +67,7 @@ const ConcertCard = ({ concert, onClick }: ConcertCardProps) => {
       </div>
 
       <div className="flex flex-col gap-1 px-1 py-2">
-        <h3 className="cursor-pointer truncate text-sm font-bold text-gray-900 transition-colors hover:text-violet-700" onClick={onClick}>
-          {title}
-        </h3>
+        <p className="truncate text-sm font-bold text-gray-900 transition-colors hover:text-violet-700">{title}</p>
 
         <p className="flex items-center gap-1 truncate text-xs text-gray-500">
           <MapPin size={12} className="shrink-0" />
@@ -77,7 +76,7 @@ const ConcertCard = ({ concert, onClick }: ConcertCardProps) => {
 
         <p className="truncate text-xs text-gray-400">{period}</p>
       </div>
-    </div>
+    </ButtonWrapper>
   );
 };
 
