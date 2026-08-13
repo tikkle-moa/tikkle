@@ -1,6 +1,6 @@
 import { MemoryRouter } from "react-router";
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
@@ -58,6 +58,40 @@ describe("Header", () => {
     renderHeader();
 
     expect(screen.getByRole("searchbox", { name: "공연 검색" })).toBeInTheDocument();
+  });
+
+  it("검색창에 포커스하면 검색 패널을 표시한다", async () => {
+    const user = userEvent.setup();
+
+    renderHeader();
+
+    await user.click(screen.getByRole("searchbox", { name: "공연 검색" }));
+
+    expect(screen.getByRole("region", { name: "공연 검색" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "추천 검색어" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "인기 공연" })).toBeInTheDocument();
+  });
+
+  it("검색 패널 외부를 클릭하면 패널을 닫는다", async () => {
+    const user = userEvent.setup();
+
+    renderHeader();
+
+    await user.click(screen.getByRole("searchbox", { name: "공연 검색" }));
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole("region", { name: "공연 검색" })).not.toBeInTheDocument();
+  });
+
+  it("검색 패널이 열린 상태에서 Escape를 누르면 패널을 닫는다", async () => {
+    const user = userEvent.setup();
+
+    renderHeader();
+
+    await user.click(screen.getByRole("searchbox", { name: "공연 검색" }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("region", { name: "공연 검색" })).not.toBeInTheDocument();
   });
 
   it("loading 상태에서는 로그인 확인 중을 표시한다", () => {
