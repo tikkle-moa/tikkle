@@ -43,6 +43,19 @@ describe("getBookingStatus", () => {
   it("ended는 soldout보다 우선한다", () => {
     expect(getBookingStatus(makeConcert([makePerf({ startsAt: PAST, bookedSeats: 100 })]))).toBe("ended");
   });
+
+  it("과거 공연과 미래 공연이 섞여 있고 미래 공연의 예매가 열리지 않았으면 upcoming을 반환한다", () => {
+    const perfs = [makePerf({ startsAt: PAST, bookingOpensAt: PAST }), makePerf({ id: 2, startsAt: FUTURE, bookingOpensAt: FUTURE })];
+    expect(getBookingStatus(makeConcert(perfs))).toBe("upcoming");
+  });
+
+  it("bookingOpensAt이 없는 미래 공연은 예매 오픈으로 간주해 available을 반환한다", () => {
+    expect(getBookingStatus(makeConcert([makePerf({ bookingOpensAt: undefined })]))).toBe("available");
+  });
+
+  it("예매 오픈일이 지난 미래 공연이 모두 매진이면 soldout을 반환한다", () => {
+    expect(getBookingStatus(makeConcert([makePerf({ bookingOpensAt: PAST, bookedSeats: 100 })]))).toBe("soldout");
+  });
 });
 
 describe("getPeriod", () => {

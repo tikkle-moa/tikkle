@@ -43,10 +43,10 @@ describe("ConcertCard", () => {
     expect(screen.getAllByText("테스트 콘서트")).toHaveLength(2);
   });
 
-  it("공연 제목을 h3으로 렌더링한다", () => {
+  it("공연 제목을 렌더링한다", () => {
     render(<ConcertCard concert={makeConcert()} />);
 
-    expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent("테스트 콘서트");
+    expect(screen.getByText("테스트 콘서트")).toBeInTheDocument();
   });
 
   it("장소명을 렌더링한다", () => {
@@ -79,22 +79,55 @@ describe("ConcertCard", () => {
     expect(screen.getByText("오픈 예정")).toBeInTheDocument();
   });
 
-  it("제목 클릭 시 onClick이 호출된다", async () => {
+  it("onClick이 있으면 button으로 렌더링한다", () => {
+    render(<ConcertCard concert={makeConcert()} onClick={vi.fn()} />);
+
+    expect(screen.getByRole("button")).toBeInTheDocument();
+  });
+
+  it("onClick이 없으면 button을 렌더링하지 않는다", () => {
+    render(<ConcertCard concert={makeConcert()} />);
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("카드 클릭 시 onClick이 호출된다", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
 
     render(<ConcertCard concert={makeConcert()} onClick={onClick} />);
-    await user.click(screen.getByRole("heading", { level: 3 }));
+    await user.click(screen.getByRole("button"));
 
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("포스터 클릭 시 onClick이 호출된다", async () => {
+  it("마우스를 올리면 글레어 오버레이를 렌더링한다", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ConcertCard concert={makeConcert()} />);
+
+    await user.hover(container.querySelector(".perspective-midrange")!);
+
+    expect(container.querySelector(".pointer-events-none")).toBeInTheDocument();
+  });
+
+  it("마우스가 떠나면 글레어 오버레이를 제거한다", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ConcertCard concert={makeConcert()} />);
+    const tiltEl = container.querySelector(".perspective-midrange")!;
+
+    await user.hover(tiltEl);
+    await user.unhover(tiltEl);
+
+    expect(container.querySelector(".pointer-events-none")).not.toBeInTheDocument();
+  });
+
+  it("Enter 키로 onClick이 호출된다", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
 
     render(<ConcertCard concert={makeConcert()} onClick={onClick} />);
-    await user.click(screen.getByRole("img", { name: "테스트 콘서트" }));
+    screen.getByRole("button").focus();
+    await user.keyboard("{Enter}");
 
     expect(onClick).toHaveBeenCalledTimes(1);
   });
