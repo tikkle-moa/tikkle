@@ -6,6 +6,7 @@ import { ConcertListPage } from "@pages/concertList";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { MyPage } from "@pages/my";
+import { SearchPage } from "@pages/search";
 
 import AppLayout from "./AppLayout";
 import AuthGuard from "./AuthGuard";
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
           {
             path: ROUTE_PATHS.CONCERTS,
             element: <ConcertListPage />,
+          },
+          {
+            path: ROUTE_PATHS.SEARCH,
+            element: <SearchPage />,
           },
           {
             element: <AuthGuard />,
