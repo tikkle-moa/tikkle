@@ -1,10 +1,13 @@
+import type { LucideIcon } from "lucide-react";
+
 import type { RoutePaths } from "@shared/config/router.config";
 
-export type ConcertCategory = "ballad" | "rock-metal" | "rap-hiphop" | "jazz-soul" | "trot" | "international-artist" | "festival" | "indie";
+export type ConcertGenre = "ballad" | "rock-metal" | "rap-hiphop" | "jazz-soul" | "trot" | "international-artist" | "festival" | "indie";
 
-export interface ConcertCategoryItem {
-  emoji: string;
+export interface ConcertGenreItem {
+  icon: LucideIcon;
   label: string;
+  className: string;
   to: RoutePaths;
 }
 
@@ -32,6 +35,7 @@ export interface PerformanceResponse {
 export interface ConcertResponse {
   id: number;
   title: string;
+  genre: ConcertGenre;
   placeName: string;
   posterUrl?: string;
   description?: string;
