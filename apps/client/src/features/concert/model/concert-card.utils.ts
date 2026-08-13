@@ -4,9 +4,13 @@ export const getBookingStatus = (concert: ConcertResponse): BookingStatus => {
   const { performances } = concert;
 
   const now = new Date();
-  if (performances.every(({ startsAt }) => startsAt < now)) return "ended";
-  if (performances.every(({ bookingOpensAt }) => bookingOpensAt && bookingOpensAt > now)) return "upcoming";
-  if (performances.every(({ bookedSeats, totalSeats }) => bookedSeats === totalSeats)) return "soldout";
+  const futurePerformances = performances.filter(({ startsAt }) => startsAt >= now);
+
+  if (futurePerformances.length === 0) return "ended";
+  if (futurePerformances.every(({ bookingOpensAt }) => bookingOpensAt && bookingOpensAt > now)) return "upcoming";
+
+  const bookingOpenPerformances = futurePerformances.filter(({ bookingOpensAt }) => !bookingOpensAt || bookingOpensAt <= now);
+  if (bookingOpenPerformances.every(({ bookedSeats, totalSeats }) => bookedSeats === totalSeats)) return "soldout";
 
   return "available";
 };
