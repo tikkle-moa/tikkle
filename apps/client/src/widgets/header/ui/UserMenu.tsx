@@ -1,13 +1,16 @@
-import { ChevronDown, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
+
+import ProfileImage from "@shared/ui/ProfileImage";
 
 import { useHeaderUserMenu } from "../model/use-header-user-menu";
 
 interface UserMenuProps {
   nickname: string;
+  profileImageUrl: string | null;
   onLogout: () => void;
 }
 
-const UserMenu = ({ nickname, onLogout }: UserMenuProps) => {
+const UserMenu = ({ nickname, profileImageUrl, onLogout }: UserMenuProps) => {
   const { isUserMenuOpen, userMenuRef, handleUserMenuClose, handleUserMenuToggle } = useHeaderUserMenu();
 
   const handleLogout = () => {
@@ -24,7 +27,7 @@ const UserMenu = ({ nickname, onLogout }: UserMenuProps) => {
         type="button"
         onClick={handleUserMenuToggle}
       >
-        <UserRound aria-hidden="true" size={18} />
+        <ProfileImage alt={`${nickname} 프로필 이미지`} className="size-7" src={profileImageUrl} />
         <span>{nickname}</span>
         <ChevronDown aria-hidden="true" className={isUserMenuOpen ? "rotate-180 transition-transform" : "transition-transform"} size={16} />
       </button>

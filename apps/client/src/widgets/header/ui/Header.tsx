@@ -54,7 +54,9 @@ const Header = () => {
 
         <div className="ml-auto flex items-center">
           {status === "loading" && <span className="text-sm text-gray-500">로그인 확인 중</span>}
-          {status === "authenticated" && user && <UserMenu nickname={user.nickname} onLogout={() => void handleLogout()} />}
+          {status === "authenticated" && user && (
+            <UserMenu nickname={user.nickname} profileImageUrl={user.profileImageUrl} onLogout={() => void handleLogout()} />
+          )}
           {status === "unauthenticated" && (
             <NavLink
               className="bg-brand-primary rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
