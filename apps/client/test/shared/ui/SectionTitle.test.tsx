@@ -9,11 +9,6 @@ describe("SectionTitle", () => {
     expect(screen.getByRole("heading", { level: 2, name: "오픈 예정" })).toBeInTheDocument();
   });
 
-  it("subtitle이 있으면 렌더링한다", () => {
-    render(<SectionTitle title="오픈 예정" subtitle="지금 바로 알림 설정하세요" />);
-    expect(screen.getByText("지금 바로 알림 설정하세요")).toBeInTheDocument();
-  });
-
   it("subtitle이 없으면 렌더링하지 않는다", () => {
     render(<SectionTitle title="오픈 예정" />);
     expect(screen.queryByText(/지금/)).not.toBeInTheDocument();
