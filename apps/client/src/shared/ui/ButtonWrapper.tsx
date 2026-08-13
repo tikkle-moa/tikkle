@@ -3,14 +3,13 @@ import type { ReactNode } from "react";
 interface ButtonWrapperProps {
   children: ReactNode;
   className?: string;
-  buttonClassName?: string;
   onClick?: () => void;
 }
 
-const ButtonWrapper = ({ children, className, buttonClassName, onClick }: ButtonWrapperProps) => {
+const ButtonWrapper = ({ children, className, onClick }: ButtonWrapperProps) => {
   if (onClick) {
     return (
-      <button type="button" className={buttonClassName} onClick={onClick}>
+      <button type="button" className={className} onClick={onClick}>
         {children}
       </button>
     );
