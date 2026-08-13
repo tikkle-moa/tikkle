@@ -20,7 +20,7 @@ export default defineConfig({
       exclude: [
         "src/main.tsx",
         "src/**/index.ts",
-        "src/**/*.{d,types,constants}.ts",
+        "src/**/*.{d,types,constants,queries}.ts",
         "src/**/*.test.{ts,tsx}",
         "src/**/api-client.ts",
         "src/**/query-client.ts",
