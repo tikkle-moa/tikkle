@@ -54,20 +54,10 @@ describe("Header", () => {
     expect(screen.getByRole("link", { name: "Tikkle 홈으로 이동" })).toHaveAttribute("href", ROUTE_PATHS.HOME);
   });
 
-  it("콘서트 탐색 링크를 표시한다", () => {
+  it("데스크톱 검색 입력창을 표시한다", () => {
     renderHeader();
 
-    expect(screen.getByRole("link", { name: "콘서트" })).toHaveAttribute("href", ROUTE_PATHS.CONCERTS);
-  });
-
-  it("콘서트 목록에서는 콘서트 링크를 현재 페이지로 표시한다", () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTE_PATHS.CONCERTS]}>
-        <Header />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole("link", { name: "콘서트" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("searchbox", { name: "공연 검색" })).toBeInTheDocument();
   });
 
   it("loading 상태에서는 로그인 확인 중을 표시한다", () => {

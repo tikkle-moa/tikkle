@@ -6,6 +6,7 @@ import AppLayout from "@app/router/AppLayout";
 
 vi.mock("@widgets/header", () => ({
   Header: () => <header>공통 헤더</header>,
+  SecondaryHeader: () => <nav>보조 헤더</nav>,
 }));
 
 const makeRouter = () =>
