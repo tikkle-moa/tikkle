@@ -5,7 +5,7 @@ import ButtonWrapper from "@shared/ui/ButtonWrapper";
 import type { ConcertResponse } from "@entities/concert";
 
 import { ASPECT_RATIO_CLASS, DEFAULT_MAX_TILT, DEFAULT_SHADOW_OFFSET } from "../model/concert-card.constants";
-import type { AspectRatio } from "../model/concert-card.types";
+import type { AspectRatio, DisplayOptions, EffectOptions } from "../model/concert-card.types";
 import { useConcertCard } from "../model/use-concert-card";
 import { useConcertCardTilt } from "../model/use-concert-card-tilt";
 
@@ -16,15 +16,8 @@ interface ConcertCardProps {
   maxTilt?: number;
   shadowOffset?: number;
   ratio?: AspectRatio;
-  disableTilt?: boolean;
-  disableScale?: boolean;
-  disableGlare?: boolean;
-  disableShadow?: boolean;
-  showStatus?: boolean;
-  showGenre?: boolean;
-  showTitle?: boolean;
-  showPlaceName?: boolean;
-  showPeriod?: boolean;
+  displayOptions?: DisplayOptions;
+  effectOptions?: EffectOptions;
 }
 
 const ConcertCard = ({
@@ -34,15 +27,8 @@ const ConcertCard = ({
   maxTilt = DEFAULT_MAX_TILT,
   shadowOffset = DEFAULT_SHADOW_OFFSET,
   ratio = "3/4",
-  disableTilt = false,
-  disableScale = false,
-  disableGlare = false,
-  disableShadow = false,
-  showStatus = false,
-  showGenre = false,
-  showTitle = false,
-  showPlaceName = false,
-  showPeriod = false,
+  displayOptions: { showStatus = false, showGenre = false, showTitle = false, showPlaceName = false, showPeriod = false } = {},
+  effectOptions: { disableTilt = false, disableScale = false, disableGlare = false, disableShadow = false } = {},
 }: ConcertCardProps) => {
   const { posterUrl, title, placeName, period, statusLabel, statusClassName, GenreIcon, genreLabel, genreClassName } = useConcertCard({ concert });
 

@@ -13,7 +13,13 @@ const HotConcert = () => {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {hotConcerts.map((concert) => (
-          <ConcertCard key={concert.id} concert={concert} ratio={"4/3"} maxTilt={3} showStatus showGenre showTitle showPeriod />
+          <ConcertCard
+            key={concert.id}
+            concert={concert}
+            ratio={"4/3"}
+            maxTilt={3}
+            displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }}
+          />
         ))}
       </div>
     </>

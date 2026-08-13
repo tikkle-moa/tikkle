@@ -22,7 +22,12 @@ const DailyRanking = () => {
             <article key={concert.id} className="flex cursor-pointer items-center gap-4 px-4 py-3.5 transition-colors hover:bg-gray-50">
               <span className={`w-6 shrink-0 text-center text-base font-extrabold ${rank <= 3 ? "text-violet-600" : "text-gray-400"}`}>{rank}</span>
 
-              <ConcertCard concert={concert} ratio="1/1" className="w-12 shrink-0" disableTilt disableScale disableGlare disableShadow />
+              <ConcertCard
+                concert={concert}
+                ratio="1/1"
+                className="w-12 shrink-0"
+                effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true, disableShadow: true }}
+              />
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
