@@ -4,8 +4,6 @@ import { Search } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { useSessionStore } from "@entities/session";
-
 import { SearchSuggestions } from "@features/concert-search";
 
 import UserMenu from "./UserMenu";
@@ -13,10 +11,7 @@ import UserMenu from "./UserMenu";
 import { useHeader } from "../model/use-header";
 
 const Header = () => {
-  const { handleLogout, handleSearchOverlayOpen, isSearchOverlayOpen, searchOverlayRef } = useHeader();
-
-  const user = useSessionStore((state) => state.user);
-  const status = useSessionStore((state) => state.status);
+  const { handleLogout, handleSearchOverlayOpen, isSearchOverlayOpen, searchOverlayRef, status, user } = useHeader();
 
   return (
     <header className="bg-white">

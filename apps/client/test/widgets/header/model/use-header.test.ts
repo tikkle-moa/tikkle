@@ -1,5 +1,8 @@
 import { act, fireEvent, renderHook } from "@testing-library/react";
 
+import { useSessionStore } from "@entities/session";
+import type { User } from "@entities/session";
+
 import { useHeader } from "@widgets/header/model/use-header";
 
 const mockHandleLogout = vi.hoisted(() => vi.fn());
@@ -11,6 +14,7 @@ vi.mock("@features/auth", () => ({
 describe("useHeader", () => {
   beforeEach(() => {
     mockHandleLogout.mockClear();
+    useSessionStore.setState({ user: null, status: "loading" });
   });
 
   it("로그아웃 핸들러를 제공한다", () => {
@@ -102,5 +106,23 @@ describe("useHeader", () => {
     fireEvent.keyDown(document, { key: "Enter" });
 
     expect(result.current.isSearchOverlayOpen).toBe(true);
+  });
+
+  it("세션 사용자와 인증 상태를 제공한다", () => {
+    const user = {
+      id: 1,
+      email: "test@example.com",
+      nickname: "테스트 사용자",
+      profileImageUrl: null,
+      role: "USER",
+      oauthAccounts: ["google"],
+    } satisfies User;
+
+    useSessionStore.setState({ user, status: "authenticated" });
+
+    const { result } = renderHook(() => useHeader());
+
+    expect(result.current.user).toBe(user);
+    expect(result.current.status).toBe("authenticated");
   });
 });

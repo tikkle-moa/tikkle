@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 
+import { useSessionStore } from "@entities/session";
+
 import { useLogout } from "@features/auth";
 
 export const useHeader = () => {
   const { handleLogout } = useLogout();
   const [isSearchOverlayOpen, setIsSearchOverlayOpen] = useState(false);
   const searchOverlayRef = useRef<HTMLDivElement>(null);
+
+  const user = useSessionStore((state) => state.user);
+  const status = useSessionStore((state) => state.status);
 
   const handleSearchOverlayOpen = () => {
     setIsSearchOverlayOpen(true);
@@ -46,5 +51,7 @@ export const useHeader = () => {
     handleSearchOverlayOpen,
     isSearchOverlayOpen,
     searchOverlayRef,
+    status,
+    user,
   };
 };
