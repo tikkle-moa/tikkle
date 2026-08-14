@@ -1,3 +1,4 @@
+import type { RefCallback } from "react";
 import { Link } from "react-router";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
@@ -8,10 +9,12 @@ import { ContentSlider } from "@features/content-slider";
 
 import HeroBanner from "./HeroBanner";
 
-import type { HeroProps } from "../model/hero.types";
+interface HeroProps {
+  heroRef?: RefCallback<HTMLDivElement>;
+}
 
-const Hero = ({ categoryRef }: HeroProps) => (
-  <div className="flex flex-col gap-6">
+const Hero = ({ heroRef }: HeroProps) => (
+  <div ref={heroRef} className="flex flex-col gap-6">
     {/* 배너 데이터 미구현으로 임시 이미지를 사용합니다. 추후 실제 배너 데이터로 교체 필요 */}
     <ContentSlider
       items={[
@@ -22,7 +25,7 @@ const Hero = ({ categoryRef }: HeroProps) => (
       ]}
     />
 
-    <div ref={categoryRef} className="border-b border-gray-100">
+    <div className="border-b border-gray-100">
       <div className="flex flex-wrap justify-center gap-6 px-4 py-3 md:gap-10 md:px-0">
         <Link to={ROUTE_PATHS.CONCERTS} className="hover:text-brand-primary flex flex-col items-center gap-2 text-gray-600 transition">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-gray-50 text-2xl transition hover:bg-violet-50">🎵</div>

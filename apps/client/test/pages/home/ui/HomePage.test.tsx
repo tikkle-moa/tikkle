@@ -12,7 +12,7 @@ vi.mock("@features/content-slider", () => ({
 
 const renderHomePage = () => {
   const outletContext = {
-    categoryRef: vi.fn(),
+    heroRef: vi.fn(),
   } satisfies AppLayoutOutletContext;
 
   const router = createMemoryRouter(

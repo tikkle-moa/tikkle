@@ -11,7 +11,7 @@ import { useSecondaryHeaderVisibility } from "../model/use-secondary-header-visi
 const AppLayout = () => {
   const { pathname } = useLocation();
   const isMobileHeaderHidden = MOBILE_HEADER_HIDDEN_PATHS.includes(pathname as (typeof MOBILE_HEADER_HIDDEN_PATHS)[number]);
-  const { categoryRef, isSecondaryHeaderVisible, scrollContainerRef } = useSecondaryHeaderVisibility();
+  const { heroRef, isSecondaryHeaderVisible, scrollContainerRef } = useSecondaryHeaderVisibility();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -23,7 +23,7 @@ const AppLayout = () => {
 
       <main ref={scrollContainerRef} className="min-h-0 grow scrollbar-thin overflow-y-auto">
         <div className="mx-auto min-h-full w-full max-w-7xl px-4 py-10 pb-16 md:pb-10">
-          <Outlet context={{ categoryRef } satisfies AppLayoutOutletContext} />
+          <Outlet context={{ heroRef } satisfies AppLayoutOutletContext} />
         </div>
       </main>
 

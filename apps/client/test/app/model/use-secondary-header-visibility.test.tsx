@@ -33,12 +33,12 @@ class MockIntersectionObserver {
 }
 
 const VisibilityHarness = () => {
-  const { categoryRef, isSecondaryHeaderVisible, scrollContainerRef } = useSecondaryHeaderVisibility();
+  const { heroRef, isSecondaryHeaderVisible, scrollContainerRef } = useSecondaryHeaderVisibility();
 
   return (
     <>
       <main ref={scrollContainerRef} />
-      <div ref={categoryRef} />
+      <div ref={heroRef} />
       <output>{String(isSecondaryHeaderVisible)}</output>
     </>
   );
@@ -56,7 +56,7 @@ describe("useSecondaryHeaderVisibility", () => {
     vi.unstubAllGlobals();
   });
 
-  it("홈 카테고리를 지나기 전에는 보조 헤더를 표시한다", () => {
+  it("홈 히어로를 지나기 전에는 보조 헤더를 표시한다", () => {
     render(<VisibilityHarness />);
 
     expect(mockObserve).toHaveBeenCalledOnce();
@@ -81,7 +81,7 @@ describe("useSecondaryHeaderVisibility", () => {
     expect(screen.getByText("false")).toBeInTheDocument();
   });
 
-  it("카테고리 표시 상태가 같으면 현재 상태를 유지한다", () => {
+  it("히어로 영역 표시 상태가 같으면 현재 상태를 유지한다", () => {
     render(<VisibilityHarness />);
 
     act(() => {
@@ -99,7 +99,7 @@ describe("useSecondaryHeaderVisibility", () => {
     expect(screen.getByText("true")).toBeInTheDocument();
   });
 
-  it("카테고리 영역을 위로 지나면 보조 헤더를 숨긴다", () => {
+  it("히어로 영역을 위로 지나면 보조 헤더를 숨긴다", () => {
     render(<VisibilityHarness />);
 
     act(() => {
@@ -117,7 +117,7 @@ describe("useSecondaryHeaderVisibility", () => {
     expect(screen.getByText("false")).toBeInTheDocument();
   });
 
-  it("카테고리 영역이 다시 보이면 보조 헤더를 다시 표시한다", () => {
+  it("히어로 영역이 다시 보이면 보조 헤더를 다시 표시한다", () => {
     render(<VisibilityHarness />);
 
     act(() => {

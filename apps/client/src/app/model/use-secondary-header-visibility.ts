@@ -8,17 +8,17 @@ export const useSecondaryHeaderVisibility = () => {
   const isHome = pathname === ROUTE_PATHS.HOME;
 
   const scrollContainerRef = useRef<HTMLElement>(null);
-  const [categoryElement, setCategoryElement] = useState<HTMLDivElement | null>(null);
-  const [isSecondaryHeaderVisible, setIsSecondaryHeaderVisible] = useState(true);
+  const [heroElement, setHeroElement] = useState<HTMLDivElement | null>(null);
+  const [isHeroVisible, setIsHeroVisible] = useState(true);
 
-  const categoryRef = useCallback((element: HTMLDivElement | null) => {
-    setCategoryElement(element);
+  const heroRef = useCallback((element: HTMLDivElement | null) => {
+    setHeroElement(element);
   }, []);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
 
-    if (!isHome || !categoryElement || !scrollContainer) {
+    if (!isHome || !heroElement || !scrollContainer) {
       return;
     }
 
@@ -26,7 +26,7 @@ export const useSecondaryHeaderVisibility = () => {
       ([entry]) => {
         const isVisible = entry.boundingClientRect.bottom > (entry.rootBounds?.top ?? 0);
 
-        setIsSecondaryHeaderVisible((previous) => (previous === isVisible ? previous : isVisible));
+        setIsHeroVisible(isVisible);
       },
       {
         root: scrollContainer,
@@ -34,16 +34,16 @@ export const useSecondaryHeaderVisibility = () => {
       },
     );
 
-    observer.observe(categoryElement);
+    observer.observe(heroElement);
 
     return () => {
       observer.disconnect();
     };
-  }, [categoryElement, isHome]);
+  }, [heroElement, isHome]);
 
   return {
-    categoryRef,
-    isSecondaryHeaderVisible: !isHome || isSecondaryHeaderVisible,
+    heroRef,
+    isSecondaryHeaderVisible: !isHome || isHeroVisible,
     scrollContainerRef,
   };
 };

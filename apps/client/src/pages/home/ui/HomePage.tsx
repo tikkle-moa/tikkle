@@ -9,11 +9,11 @@ import HotConcert from "./HotConcert";
 import UpcomingConcert from "./UpcomingConcert";
 
 const HomePage = () => {
-  const { categoryRef } = useOutletContext<AppLayoutOutletContext>();
+  const { heroRef } = useOutletContext<AppLayoutOutletContext>();
 
   return (
     <div className="bg-white">
-      <Hero categoryRef={categoryRef} />
+      <Hero heroRef={heroRef} />
 
       <div className="mx-auto max-w-6xl space-y-12 px-4 py-8 sm:px-6 lg:px-8">
         <section>
