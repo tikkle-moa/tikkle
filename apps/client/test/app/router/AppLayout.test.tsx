@@ -37,10 +37,10 @@ describe("AppLayout", () => {
     expect(main).toContainElement(screen.getByText("페이지 콘텐츠"));
   });
 
-  it.each([ROUTE_PATHS.SEARCH, ROUTE_PATHS.MY])("%s에서는 모바일 상단 헤더를 숨긴다", (path) => {
+  it.each([ROUTE_PATHS.SEARCH, ROUTE_PATHS.MY])("%s에서는 상단 헤더를 숨긴다", (path) => {
     render(<RouterProvider router={makeRouter(path)} />);
 
-    expect(screen.getByTestId("header").parentElement).toHaveClass("hidden", "md:block");
+    expect(screen.getByTestId("header").parentElement).toHaveClass("hidden");
   });
 
   it.each([ROUTE_PATHS.HOME, ROUTE_PATHS.CONCERTS])("%s에서는 모바일 상단 헤더를 표시한다", (path) => {

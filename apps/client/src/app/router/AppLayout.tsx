@@ -3,18 +3,18 @@ import { Outlet } from "react-router";
 import { Header, SecondaryHeader } from "@widgets/header";
 import { MobileBottomNavigation } from "@widgets/mobile-navigation";
 
-import { useMobileHeaderVisibility } from "@app/model/use-mobile-header-visibility";
+import { useHeaderVisibility } from "@app/model/use-header-visibility";
 
 import type { AppLayoutOutletContext } from "../model/app-layout-outlet-context.types";
 import { useSecondaryHeaderVisibility } from "../model/use-secondary-header-visibility";
 
 const AppLayout = () => {
-  const { isMobileHeaderHidden } = useMobileHeaderVisibility();
+  const { isHeaderHidden } = useHeaderVisibility();
   const { heroRef, isSecondaryHeaderVisible, scrollContainerRef } = useSecondaryHeaderVisibility();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <div className={`shrink-0 border-b border-gray-200 bg-white ${isMobileHeaderHidden ? "hidden md:block" : ""}`}>
+      <div className={`shrink-0 border-b border-gray-200 bg-white ${isHeaderHidden ? "hidden" : ""}`}>
         <Header />
 
         {isSecondaryHeaderVisible && <SecondaryHeader />}
