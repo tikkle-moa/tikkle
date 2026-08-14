@@ -1,0 +1,3 @@
+export const UPCOMING_SKELETON_COUNT = 5;
+export const DAILY_RANKINGS_SKELETON_COUNT = 5;
+export const HOT_SKELETON_COUNT = 6;

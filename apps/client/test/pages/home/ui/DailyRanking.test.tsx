@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 
 import DailyRanking from "@pages/home/ui/DailyRanking";
 
-const { mockConcerts } = vi.hoisted(() => ({
+const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
+  mockUseDailyRankings: vi.fn(),
   mockConcerts: [
     {
       id: 1,
@@ -86,43 +87,68 @@ const { mockConcerts } = vi.hoisted(() => ({
 
 vi.mock("@entities/concert", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@entities/concert")>();
-  return { ...actual, useDailyRankings: () => ({ data: mockConcerts }) };
+  return { ...actual, useDailyRankings: mockUseDailyRankings };
 });
 
 describe("DailyRanking", () => {
-  beforeEach(() => {
-    render(<DailyRanking />);
-  });
+  describe("정상 상태", () => {
+    beforeEach(() => {
+      mockUseDailyRankings.mockReturnValue({ data: mockConcerts, isPending: false, isError: false });
+      render(<DailyRanking />);
+    });
 
-  it("섹션 제목을 렌더링한다", () => {
-    expect(screen.getByText("일간 랭킹")).toBeInTheDocument();
-  });
+    it("섹션 제목을 렌더링한다", () => {
+      expect(screen.getByText("일간 랭킹")).toBeInTheDocument();
+    });
 
-  it("모든 공연 제목을 렌더링한다", () => {
-    for (const { title } of mockConcerts) {
-      expect(screen.getByText(title)).toBeInTheDocument();
-    }
-  });
+    it("모든 공연 제목을 렌더링한다", () => {
+      for (const { title } of mockConcerts) {
+        expect(screen.getByText(title)).toBeInTheDocument();
+      }
+    });
 
-  it("순위 번호를 렌더링한다", () => {
-    mockConcerts.forEach((_, i) => {
-      expect(screen.getByText(String(i + 1))).toBeInTheDocument();
+    it("순위 번호를 렌더링한다", () => {
+      mockConcerts.forEach((_, i) => {
+        expect(screen.getByText(String(i + 1))).toBeInTheDocument();
+      });
+    });
+
+    it("예매 중 상태 배지를 렌더링한다", () => {
+      expect(screen.getAllByText("예매 중").length).toBeGreaterThan(0);
+    });
+
+    it("오픈 예정 상태 배지를 렌더링한다", () => {
+      expect(screen.getByText("오픈 예정")).toBeInTheDocument();
+    });
+
+    it("매진 상태 배지를 렌더링한다", () => {
+      expect(screen.getByText("매진")).toBeInTheDocument();
+    });
+
+    it("전체보기 버튼을 클릭할 수 있다", async () => {
+      await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
     });
   });
 
-  it("예매 중 상태 배지를 렌더링한다", () => {
-    expect(screen.getAllByText("예매 중").length).toBeGreaterThan(0);
+  it("로딩 중이면 스켈레톤을 렌더링한다", () => {
+    mockUseDailyRankings.mockReturnValue({ data: undefined, isPending: true, isError: false });
+    const { container } = render(<DailyRanking />);
+
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(screen.queryByText(mockConcerts[0].title)).not.toBeInTheDocument();
   });
 
-  it("오픈 예정 상태 배지를 렌더링한다", () => {
-    expect(screen.getByText("오픈 예정")).toBeInTheDocument();
+  it("에러 상태이면 에러 메시지를 렌더링한다", () => {
+    mockUseDailyRankings.mockReturnValue({ data: undefined, isPending: false, isError: true });
+    render(<DailyRanking />);
+
+    expect(screen.getByText("랭킹 정보를 불러오지 못했습니다.")).toBeInTheDocument();
   });
 
-  it("매진 상태 배지를 렌더링한다", () => {
-    expect(screen.getByText("매진")).toBeInTheDocument();
-  });
+  it("목록이 비어 있으면 빈 상태 메시지를 렌더링한다", () => {
+    mockUseDailyRankings.mockReturnValue({ data: [], isPending: false, isError: false });
+    render(<DailyRanking />);
 
-  it("전체보기 버튼을 클릭할 수 있다", async () => {
-    await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
+    expect(screen.getByText("랭킹 데이터가 없습니다.")).toBeInTheDocument();
   });
 });
