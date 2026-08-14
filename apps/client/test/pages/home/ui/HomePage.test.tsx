@@ -2,9 +2,9 @@ import { Outlet, RouterProvider, createMemoryRouter } from "react-router";
 
 import { render, screen } from "@testing-library/react";
 
-import HomePage from "@pages/home/ui/HomePage";
+import type { AppLayoutOutletContext } from "@shared/model/outlet-context.types";
 
-import type { AppLayoutOutletContext } from "@app/model/app-layout-outlet-context.types";
+import HomePage from "@pages/home/ui/HomePage";
 
 vi.mock("@features/content-slider", () => ({
   ContentSlider: () => <div data-testid="content-slider" />,

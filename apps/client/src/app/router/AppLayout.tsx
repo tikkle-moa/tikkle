@@ -1,11 +1,12 @@
 import { Outlet } from "react-router";
 
+import type { AppLayoutOutletContext } from "@shared/model/outlet-context.types";
+
 import { Header, SecondaryHeader } from "@widgets/header";
 import { MobileBottomNavigation } from "@widgets/mobile-navigation";
 
 import { useHeaderVisibility } from "@app/model/use-header-visibility";
 
-import type { AppLayoutOutletContext } from "../model/app-layout-outlet-context.types";
 import { useSecondaryHeaderVisibility } from "../model/use-secondary-header-visibility";
 
 const AppLayout = () => {

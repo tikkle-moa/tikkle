@@ -1,8 +1,8 @@
 import { useOutletContext } from "react-router";
 
-import { Hero } from "@widgets/hero";
+import type { AppLayoutOutletContext } from "@shared/model/outlet-context.types";
 
-import type { AppLayoutOutletContext } from "@app/model/app-layout-outlet-context.types";
+import { Hero } from "@widgets/hero";
 
 import DailyRanking from "./DailyRanking";
 import HotConcert from "./HotConcert";
