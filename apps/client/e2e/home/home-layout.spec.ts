@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const DESKTOP = { width: 1280, height: 800 };
-const MOBILE = { width: 390, height: 844 };
+import { VIEWPORT_CONFIG } from "../config/viewport.config";
 
 const MOBILE_CARD_WIDTH = 160;
 const DESKTOP_CARD_WIDTH = 240;
@@ -17,7 +16,7 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
   });
 
   test("데스크톱에서 HotConcert가 3열로 표시된다", async ({ page }) => {
-    await page.setViewportSize(DESKTOP);
+    await page.setViewportSize(VIEWPORT_CONFIG.DESKTOP);
     await page.goto("/");
 
     const grid = page.getByTestId("hot-concert-section").getByTestId("hot-concert-grid");
@@ -31,7 +30,7 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
   });
 
   test("모바일에서 HotConcert가 2열로 표시된다", async ({ page }) => {
-    await page.setViewportSize(MOBILE);
+    await page.setViewportSize(VIEWPORT_CONFIG.MOBILE);
     await page.goto("/");
 
     const grid = page.getByTestId("hot-concert-section").getByTestId("hot-concert-grid");
@@ -45,7 +44,7 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
   });
 
   test("모바일에서 UpcomingConcert 콘텐츠를 가로 스크롤할 수 있다", async ({ page }) => {
-    await page.setViewportSize(MOBILE);
+    await page.setViewportSize(VIEWPORT_CONFIG.MOBILE);
     await page.goto("/");
 
     const scrollContainer = page.getByTestId("upcoming-concert-section").getByTestId("upcoming-concert-scroll");
@@ -65,7 +64,7 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
   });
 
   test("모바일에서 UpcomingConcert 카드 너비가 160px이다", async ({ page }) => {
-    await page.setViewportSize(MOBILE);
+    await page.setViewportSize(VIEWPORT_CONFIG.MOBILE);
     await page.goto("/");
 
     const card = page.getByTestId("upcoming-concert-section").getByTestId("concert-card").first();
@@ -81,7 +80,7 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
   });
 
   test("데스크톱에서 UpcomingConcert 카드 너비가 240px이다", async ({ page }) => {
-    await page.setViewportSize(DESKTOP);
+    await page.setViewportSize(VIEWPORT_CONFIG.DESKTOP);
     await page.goto("/");
 
     const card = page.getByTestId("upcoming-concert-section").getByTestId("concert-card").first();
@@ -97,7 +96,7 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
   });
 
   test("모바일에서 Hero 슬라이드가 16:10 비율에 가깝게 표시된다", async ({ page }) => {
-    await page.setViewportSize(MOBILE);
+    await page.setViewportSize(VIEWPORT_CONFIG.MOBILE);
     await page.goto("/");
 
     const slide = page.locator(".swiper-slide").first();
@@ -114,7 +113,7 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
   });
 
   test("데스크톱에서 Hero 슬라이드가 16:6 비율에 가깝게 표시된다", async ({ page }) => {
-    await page.setViewportSize(DESKTOP);
+    await page.setViewportSize(VIEWPORT_CONFIG.DESKTOP);
     await page.goto("/");
 
     const slide = page.locator(".swiper-slide").first();
