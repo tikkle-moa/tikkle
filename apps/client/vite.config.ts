@@ -9,6 +9,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    dir: "./test",
     globals: true,
     environment: "jsdom",
     setupFiles: ["./test/setup.ts"],
