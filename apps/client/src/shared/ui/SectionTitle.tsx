@@ -1,14 +1,12 @@
 interface SectionTitleProps {
   title: string;
-  subtitle?: string;
   onClickMore?: () => void;
 }
 
-const SectionTitle = ({ title, subtitle, onClickMore }: SectionTitleProps) => (
-  <div className="mb-4 flex items-end justify-between">
+const SectionTitle = ({ title, onClickMore }: SectionTitleProps) => (
+  <div className="mb-4 flex items-center justify-between">
     <div>
       <h2 className="text-lg font-bold text-gray-900 sm:text-xl">{title}</h2>
-      {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
     </div>
 
     {onClickMore && (

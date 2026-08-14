@@ -4,6 +4,16 @@ import { render, screen } from "@testing-library/react";
 
 import HomePage from "@pages/home/ui/HomePage";
 
+vi.mock("@entities/concert", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@entities/concert")>();
+  return {
+    ...actual,
+    useUpcomingConcerts: () => ({ data: [] }),
+    useHotConcerts: () => ({ data: [] }),
+    useDailyRankings: () => ({ data: [] }),
+  };
+});
+
 vi.mock("@features/content-slider", () => ({
   ContentSlider: () => <div data-testid="content-slider" />,
 }));
