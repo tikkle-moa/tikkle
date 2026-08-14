@@ -67,6 +67,7 @@ describe("Header", () => {
 
     await user.click(screen.getByRole("searchbox", { name: "공연 검색" }));
 
+    expect(screen.getAllByRole("searchbox", { name: "공연 검색" })).toHaveLength(1);
     expect(screen.getByRole("region", { name: "공연 검색" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "추천 검색어" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "인기 공연" })).toBeInTheDocument();

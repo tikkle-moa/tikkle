@@ -6,7 +6,7 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { useSessionStore } from "@entities/session";
 
-import { SearchContent } from "@features/concert-search";
+import { SearchSuggestions } from "@features/concert-search";
 
 import UserMenu from "./UserMenu";
 
@@ -47,7 +47,7 @@ const Header = () => {
               aria-label="공연 검색"
               className="absolute top-full left-0 z-30 mt-2 w-xl max-w-[calc(100vw-3rem)] rounded-xl border border-gray-200 bg-white p-6 shadow-lg"
             >
-              <SearchContent />
+              <SearchSuggestions />
             </section>
           )}
         </div>
