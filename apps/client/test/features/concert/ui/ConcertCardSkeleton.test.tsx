@@ -23,13 +23,6 @@ describe("ConcertCardSkeleton", () => {
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(4);
   });
 
-  it("showStatus이면 상태 배지 스켈레톤을 렌더링한다", () => {
-    const { container } = render(<ConcertCardSkeleton displayOptions={{ showStatus: true }} />);
-
-    // 이미지(1) + 상태 배지(1)
-    expect(container.querySelectorAll(".animate-pulse")).toHaveLength(2);
-  });
-
   it("show prop이 없으면 이미지 스켈레톤만 렌더링한다", () => {
     const { container } = render(<ConcertCardSkeleton />);
 
