@@ -5,8 +5,11 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 import { ConcertListPage } from "@pages/concertList";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
+import { MyPage } from "@pages/my";
+import { SearchPage } from "@pages/search";
 
 import AppLayout from "./AppLayout";
+import AuthGuard from "./AuthGuard";
 import GuestGuard from "./GuestGuard";
 import RootLayout from "./RootLayout";
 
@@ -26,13 +29,17 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
+          { path: ROUTE_PATHS.HOME, element: <HomePage /> },
+          { path: ROUTE_PATHS.CONCERTS, element: <ConcertListPage /> },
+        ],
+      },
+      {
+        element: <AppLayout showHeader={false} />,
+        children: [
+          { path: ROUTE_PATHS.SEARCH, element: <SearchPage /> },
           {
-            path: ROUTE_PATHS.HOME,
-            element: <HomePage />,
-          },
-          {
-            path: ROUTE_PATHS.CONCERTS,
-            element: <ConcertListPage />,
+            element: <AuthGuard />,
+            children: [{ path: ROUTE_PATHS.MY, element: <MyPage /> }],
           },
         ],
       },

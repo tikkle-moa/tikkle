@@ -1,3 +1,5 @@
+import type { RefCallback } from "react";
+
 import { ListMusic } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
@@ -9,8 +11,12 @@ import { ContentSlider } from "@features/content-slider";
 import ConcertGenreLink from "./ConcertGenreLink";
 import HeroBanner from "./HeroBanner";
 
-const Hero = () => (
-  <div className="flex flex-col gap-6">
+interface HeroProps {
+  heroRef?: RefCallback<HTMLDivElement>;
+}
+
+const Hero = ({ heroRef }: HeroProps) => (
+  <div ref={heroRef} className="flex flex-col gap-6">
     {/* 배너 데이터 미구현으로 임시 이미지를 사용합니다. 추후 실제 배너 데이터로 교체 필요 */}
     <ContentSlider
       items={[

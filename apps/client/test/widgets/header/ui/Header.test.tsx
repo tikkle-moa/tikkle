@@ -1,6 +1,6 @@
 import { MemoryRouter } from "react-router";
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
@@ -54,20 +54,45 @@ describe("Header", () => {
     expect(screen.getByRole("link", { name: "Tikkle 홈으로 이동" })).toHaveAttribute("href", ROUTE_PATHS.HOME);
   });
 
-  it("콘서트 탐색 링크를 표시한다", () => {
+  it("데스크톱 검색 입력창을 표시한다", () => {
     renderHeader();
 
-    expect(screen.getByRole("link", { name: "콘서트" })).toHaveAttribute("href", ROUTE_PATHS.CONCERTS);
+    expect(screen.getByRole("searchbox", { name: "공연 검색" })).toBeInTheDocument();
   });
 
-  it("콘서트 목록에서는 콘서트 링크를 현재 페이지로 표시한다", () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTE_PATHS.CONCERTS]}>
-        <Header />
-      </MemoryRouter>,
-    );
+  it("검색창에 포커스하면 검색 패널을 표시한다", async () => {
+    const user = userEvent.setup();
 
-    expect(screen.getByRole("link", { name: "콘서트" })).toHaveAttribute("aria-current", "page");
+    renderHeader();
+
+    await user.click(screen.getByRole("searchbox", { name: "공연 검색" }));
+
+    expect(screen.getAllByRole("searchbox", { name: "공연 검색" })).toHaveLength(1);
+    expect(screen.getByRole("region", { name: "공연 검색" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "추천 검색어" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "인기 공연" })).toBeInTheDocument();
+  });
+
+  it("검색 패널 외부를 클릭하면 패널을 닫는다", async () => {
+    const user = userEvent.setup();
+
+    renderHeader();
+
+    await user.click(screen.getByRole("searchbox", { name: "공연 검색" }));
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole("region", { name: "공연 검색" })).not.toBeInTheDocument();
+  });
+
+  it("검색 패널이 열린 상태에서 Escape를 누르면 패널을 닫는다", async () => {
+    const user = userEvent.setup();
+
+    renderHeader();
+
+    await user.click(screen.getByRole("searchbox", { name: "공연 검색" }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("region", { name: "공연 검색" })).not.toBeInTheDocument();
   });
 
   it("loading 상태에서는 로그인 확인 중을 표시한다", () => {

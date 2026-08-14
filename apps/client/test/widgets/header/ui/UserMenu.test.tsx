@@ -6,12 +6,18 @@ import UserMenu from "@widgets/header/ui/UserMenu";
 const mockLogout = vi.fn();
 
 const renderUserMenu = () => {
-  render(<UserMenu nickname="테스트 사용자" onLogout={mockLogout} />);
+  render(<UserMenu nickname="테스트 사용자" profileImageUrl={null} onLogout={mockLogout} />);
 };
 
 describe("UserMenu", () => {
   beforeEach(() => {
     mockLogout.mockClear();
+  });
+
+  it("프로필 이미지 URL이 있으면 사용자 이미지를 표시한다", () => {
+    render(<UserMenu nickname="테스트 사용자" profileImageUrl="https://example.com/profile.png" onLogout={mockLogout} />);
+
+    expect(screen.getByAltText("테스트 사용자 프로필 이미지")).toHaveAttribute("src", "https://example.com/profile.png");
   });
 
   it("외부 영역을 클릭하면 열린 메뉴를 닫는다", async () => {

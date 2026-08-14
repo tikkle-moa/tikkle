@@ -1,27 +1,35 @@
+import { useOutletContext } from "react-router";
+
+import type { AppLayoutOutletContext } from "@shared/model/outlet-context.types";
+
 import { Hero } from "@widgets/hero";
 
 import DailyRanking from "./DailyRanking";
 import HotConcert from "./HotConcert";
 import UpcomingConcert from "./UpcomingConcert";
 
-const HomePage = () => (
-  <div className="bg-white">
-    <Hero />
+const HomePage = () => {
+  const { heroRef } = useOutletContext<AppLayoutOutletContext>();
 
-    <div className="mx-auto max-w-6xl space-y-12 px-4 py-8 sm:px-6 lg:px-8">
-      <section>
-        <UpcomingConcert />
-      </section>
+  return (
+    <div className="bg-white">
+      <Hero heroRef={heroRef} />
 
-      <section>
-        <DailyRanking />
-      </section>
+      <div className="mx-auto max-w-6xl space-y-12 px-4 py-8 sm:px-6 lg:px-8">
+        <section>
+          <UpcomingConcert />
+        </section>
 
-      <section>
-        <HotConcert />
-      </section>
+        <section>
+          <DailyRanking />
+        </section>
+
+        <section>
+          <HotConcert />
+        </section>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default HomePage;

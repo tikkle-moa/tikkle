@@ -2,21 +2,34 @@ import { RouterProvider, createMemoryRouter } from "react-router";
 
 import { render, screen } from "@testing-library/react";
 
+import { ROUTE_PATHS, type RoutePaths } from "@shared/config/router.config";
+
 import AppLayout from "@app/router/AppLayout";
 
 vi.mock("@widgets/header", () => ({
-  Header: () => <header>공통 헤더</header>,
+  Header: () => <header data-testid="header">공통 헤더</header>,
+  SecondaryHeader: () => <nav>보조 헤더</nav>,
 }));
 
-const makeRouter = () =>
+const makeRouter = (initialEntry: RoutePaths = ROUTE_PATHS.HOME) =>
   createMemoryRouter(
     [
       {
         element: <AppLayout />,
-        children: [{ path: "/", element: <div>페이지 콘텐츠</div> }],
+        children: [
+          { path: ROUTE_PATHS.HOME, element: <div>페이지 콘텐츠</div> },
+          { path: ROUTE_PATHS.CONCERTS, element: <div>페이지 콘텐츠</div> },
+        ],
+      },
+      {
+        element: <AppLayout showHeader={false} />,
+        children: [
+          { path: ROUTE_PATHS.SEARCH, element: <div>페이지 콘텐츠</div> },
+          { path: ROUTE_PATHS.MY, element: <div>페이지 콘텐츠</div> },
+        ],
       },
     ],
-    { initialEntries: ["/"] },
+    { initialEntries: [initialEntry] },
   );
 
 describe("AppLayout", () => {
@@ -27,5 +40,17 @@ describe("AppLayout", () => {
 
     const main = screen.getByRole("main");
     expect(main).toContainElement(screen.getByText("페이지 콘텐츠"));
+  });
+
+  it.each([ROUTE_PATHS.SEARCH, ROUTE_PATHS.MY])("%s에서는 상단 헤더를 렌더링하지 않는다", (path) => {
+    render(<RouterProvider router={makeRouter(path)} />);
+
+    expect(screen.queryByTestId("header")).not.toBeInTheDocument();
+  });
+
+  it.each([ROUTE_PATHS.HOME, ROUTE_PATHS.CONCERTS])("%s에서는 상단 헤더를 렌더링한다", (path) => {
+    render(<RouterProvider router={makeRouter(path)} />);
+
+    expect(screen.getByTestId("header")).toBeInTheDocument();
   });
 });
