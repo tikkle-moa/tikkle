@@ -29,26 +29,17 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          {
-            path: ROUTE_PATHS.HOME,
-            element: <HomePage />,
-          },
-          {
-            path: ROUTE_PATHS.CONCERTS,
-            element: <ConcertListPage />,
-          },
-          {
-            path: ROUTE_PATHS.SEARCH,
-            element: <SearchPage />,
-          },
+          { path: ROUTE_PATHS.HOME, element: <HomePage /> },
+          { path: ROUTE_PATHS.CONCERTS, element: <ConcertListPage /> },
+        ],
+      },
+      {
+        element: <AppLayout showHeader={false} />,
+        children: [
+          { path: ROUTE_PATHS.SEARCH, element: <SearchPage /> },
           {
             element: <AuthGuard />,
-            children: [
-              {
-                path: ROUTE_PATHS.MY,
-                element: <MyPage />,
-              },
-            ],
+            children: [{ path: ROUTE_PATHS.MY, element: <MyPage /> }],
           },
         ],
       },
