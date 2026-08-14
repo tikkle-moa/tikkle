@@ -26,7 +26,7 @@ const HotConcert = () => {
       {!isPending && !isError && hotConcerts.length === 0 && <p className="text-sm text-gray-400">HOT한 공연이 없습니다.</p>}
 
       {!isPending && !isError && hotConcerts.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div data-testid="hot-concert-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {hotConcerts.map((concert) => (
             <ConcertCard
               key={concert.id}

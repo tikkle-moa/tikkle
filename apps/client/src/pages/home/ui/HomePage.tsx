@@ -16,15 +16,15 @@ const HomePage = () => {
       <Hero heroRef={heroRef} />
 
       <div className="mx-auto max-w-6xl space-y-12 px-4 py-8 sm:px-6 lg:px-8">
-        <section>
+        <section data-testid="upcoming-concert-section">
           <UpcomingConcert />
         </section>
 
-        <section>
+        <section data-testid="daily-ranking-section">
           <DailyRanking />
         </section>
 
-        <section>
+        <section data-testid="hot-concert-section">
           <HotConcert />
         </section>
       </div>
