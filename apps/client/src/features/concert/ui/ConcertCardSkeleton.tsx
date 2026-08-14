@@ -21,12 +21,12 @@ const ConcertCardSkeleton = ({
       </div>
 
       {(showTitle || showPlaceName || showPeriod) && (
-        <div className="flex flex-col gap-1.5 px-1 py-2">
-          {showTitle && <div className="h-3.5 w-4/5 animate-pulse rounded bg-gray-200" />}
+        <div className="flex flex-col gap-1 px-1 py-2 text-left">
+          {showTitle && <div className="h-5 w-4/5 animate-pulse rounded bg-gray-200" />}
 
-          {showPlaceName && <div className="h-3 w-3/5 animate-pulse rounded bg-gray-200" />}
+          {showPlaceName && <div className="h-4 w-3/5 animate-pulse rounded bg-gray-200" />}
 
-          {showPeriod && <div className="h-3 w-2/5 animate-pulse rounded bg-gray-200" />}
+          {showPeriod && <div className="h-4 w-2/5 animate-pulse rounded bg-gray-200" />}
         </div>
       )}
     </div>
