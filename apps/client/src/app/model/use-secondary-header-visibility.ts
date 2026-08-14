@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router";
-
-import { ROUTE_PATHS } from "@shared/config/router.config";
 
 export const useSecondaryHeaderVisibility = () => {
-  const { pathname } = useLocation();
-  const isHome = pathname === ROUTE_PATHS.HOME;
-
   const scrollContainerRef = useRef<HTMLElement>(null);
   const [heroElement, setHeroElement] = useState<HTMLDivElement | null>(null);
   const [isHeroVisible, setIsHeroVisible] = useState(true);
@@ -18,7 +12,7 @@ export const useSecondaryHeaderVisibility = () => {
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
 
-    if (!isHome || !heroElement || !scrollContainer) {
+    if (!heroElement || !scrollContainer) {
       return;
     }
 
@@ -39,11 +33,11 @@ export const useSecondaryHeaderVisibility = () => {
     return () => {
       observer.disconnect();
     };
-  }, [heroElement, isHome]);
+  }, [heroElement]);
 
   return {
     heroRef,
-    isSecondaryHeaderVisible: !isHome || isHeroVisible,
+    isSecondaryHeaderVisible: heroElement === null || isHeroVisible,
     scrollContainerRef,
   };
 };

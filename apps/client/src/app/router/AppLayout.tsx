@@ -1,16 +1,15 @@
-import { Outlet, useLocation } from "react-router";
-
-import { MOBILE_HEADER_HIDDEN_PATHS } from "@shared/config/router.config";
+import { Outlet } from "react-router";
 
 import { Header, SecondaryHeader } from "@widgets/header";
 import { MobileBottomNavigation } from "@widgets/mobile-navigation";
+
+import { useMobileHeaderVisibility } from "@app/model/use-mobile-header-visibility";
 
 import type { AppLayoutOutletContext } from "../model/app-layout-outlet-context.types";
 import { useSecondaryHeaderVisibility } from "../model/use-secondary-header-visibility";
 
 const AppLayout = () => {
-  const { pathname } = useLocation();
-  const isMobileHeaderHidden = MOBILE_HEADER_HIDDEN_PATHS.includes(pathname as (typeof MOBILE_HEADER_HIDDEN_PATHS)[number]);
+  const { isMobileHeaderHidden } = useMobileHeaderVisibility();
   const { heroRef, isSecondaryHeaderVisible, scrollContainerRef } = useSecondaryHeaderVisibility();
 
   return (

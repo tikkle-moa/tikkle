@@ -1,23 +1,10 @@
 import { act, render, screen } from "@testing-library/react";
 
-import { ROUTE_PATHS, type RoutePaths } from "@shared/config/router.config";
-
 import { useSecondaryHeaderVisibility } from "@app/model/use-secondary-header-visibility";
 
-let mockPathname: RoutePaths = ROUTE_PATHS.HOME;
 let observerCallback: IntersectionObserverCallback;
 const mockObserve = vi.fn();
 const mockDisconnect = vi.fn();
-
-vi.mock("react-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-router")>();
-
-  return {
-    ...actual,
-    useLocation: () => ({ pathname: mockPathname }),
-  };
-});
-
 class MockIntersectionObserver {
   constructor(callback: IntersectionObserverCallback) {
     observerCallback = callback;
@@ -44,9 +31,19 @@ const VisibilityHarness = () => {
   );
 };
 
+const WithoutHeroHarness = () => {
+  const { isSecondaryHeaderVisible, scrollContainerRef } = useSecondaryHeaderVisibility();
+
+  return (
+    <>
+      <main ref={scrollContainerRef} />
+      <output>{String(isSecondaryHeaderVisible)}</output>
+    </>
+  );
+};
+
 describe("useSecondaryHeaderVisibility", () => {
   beforeEach(() => {
-    mockPathname = ROUTE_PATHS.HOME;
     mockObserve.mockClear();
     mockDisconnect.mockClear();
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
@@ -147,10 +144,8 @@ describe("useSecondaryHeaderVisibility", () => {
     expect(screen.getByText("true")).toBeInTheDocument();
   });
 
-  it("홈이 아닌 경로에서는 관찰하지 않고 보조 헤더를 표시한다", () => {
-    mockPathname = ROUTE_PATHS.CONCERTS;
-
-    render(<VisibilityHarness />);
+  it("히어로가 없으면 보조 헤더를 표시하고 관찰하지 않는다", () => {
+    render(<WithoutHeroHarness />);
 
     expect(mockObserve).not.toHaveBeenCalled();
     expect(screen.getByText("true")).toBeInTheDocument();
