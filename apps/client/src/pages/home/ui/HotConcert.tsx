@@ -2,26 +2,42 @@ import SectionTitle from "@shared/ui/SectionTitle";
 
 import { useHotConcerts } from "@entities/concert";
 
-import { ConcertCard } from "@features/concert";
+import { ConcertCard, ConcertCardSkeleton } from "@features/concert";
+
+import { HOT_SKELETON_COUNT } from "../model/home.constants";
 
 const HotConcert = () => {
-  const { data: hotConcerts = [] } = useHotConcerts();
+  const { data: hotConcerts = [], isPending, isError } = useHotConcerts();
+
   return (
     <>
       {/* 대상 페이지 미구현으로 임시 빈 함수를 전달합니다. 추후 onClickMore 연결 필요 */}
       <SectionTitle title="지금 HOT한 공연" onClickMore={() => {}} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {hotConcerts.map((concert) => (
-          <ConcertCard
-            key={concert.id}
-            concert={concert}
-            ratio={"4/3"}
-            maxTilt={3}
-            displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }}
-          />
-        ))}
+        {isPending &&
+          Array.from({ length: HOT_SKELETON_COUNT }).map((_, i) => (
+            <ConcertCardSkeleton key={i} ratio="4/3" displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }} />
+          ))}
       </div>
+
+      {isError && <p className="text-sm text-gray-400">공연 정보를 불러오지 못했습니다.</p>}
+
+      {!isPending && !isError && hotConcerts.length === 0 && <p className="text-sm text-gray-400">HOT한 공연이 없습니다.</p>}
+
+      {!isPending && !isError && hotConcerts.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {hotConcerts.map((concert) => (
+            <ConcertCard
+              key={concert.id}
+              concert={concert}
+              ratio="4/3"
+              maxTilt={3}
+              displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
 };
