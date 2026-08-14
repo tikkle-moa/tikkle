@@ -1,0 +1,73 @@
+import { MemoryRouter } from "react-router";
+
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
+
+import { useSessionStore } from "@entities/session";
+import type { User } from "@entities/session";
+
+import MyPage from "@pages/my/ui/MyPage";
+
+const mockHandleLogout = vi.hoisted(() => vi.fn());
+
+vi.mock("@features/auth", () => ({
+  useLogout: () => ({ handleLogout: mockHandleLogout }),
+}));
+
+const TEST_USER = {
+  id: 1,
+  email: "test@example.com",
+  nickname: "테스트 사용자",
+  profileImageUrl: "https://example.com/profile.png",
+  role: "USER",
+  oauthAccounts: ["google"],
+} satisfies User;
+
+const renderMyPage = () => {
+  render(
+    <MemoryRouter>
+      <MyPage />
+    </MemoryRouter>,
+  );
+};
+
+describe("MyPage", () => {
+  beforeEach(() => {
+    mockHandleLogout.mockClear();
+    useSessionStore.setState({ user: TEST_USER, status: "authenticated" });
+  });
+
+  it("사용자 프로필 정보를 표시한다", () => {
+    renderMyPage();
+
+    expect(screen.getByText("테스트 사용자님, 반가워요")).toBeInTheDocument();
+    expect(screen.getByAltText("테스트 사용자 프로필 이미지")).toBeInTheDocument();
+  });
+
+  it("세션 사용자가 없으면 마이 화면을 렌더링하지 않는다", () => {
+    useSessionStore.setState({ user: null, status: "loading" });
+
+    renderMyPage();
+
+    expect(screen.queryByRole("heading", { name: "마이" })).not.toBeInTheDocument();
+  });
+
+  it("관심과 내 예약 메뉴 링크를 표시한다", () => {
+    renderMyPage();
+
+    expect(screen.getByRole("link", { name: /내 예약/ })).toHaveAttribute("href", ROUTE_PATHS.MY_RESERVATIONS);
+    expect(screen.getByRole("link", { name: /관심/ })).toHaveAttribute("href", ROUTE_PATHS.MY_FAVORITES);
+  });
+
+  it("로그아웃 버튼을 누르면 로그아웃을 요청한다", async () => {
+    const user = userEvent.setup();
+
+    renderMyPage();
+
+    await user.click(screen.getByRole("button", { name: "로그아웃" }));
+
+    expect(mockHandleLogout).toHaveBeenCalledTimes(1);
+  });
+});
