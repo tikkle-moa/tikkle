@@ -1,6 +1,5 @@
 import type { ConcertResponse, PerformanceResponse } from "@entities/concert";
-
-import { getBookingStatus, getPeriod } from "@features/concert/model/concert-card.utils";
+import { getBookingStatus, getPeriod } from "@entities/concert";
 
 const PAST = new Date("2000-01-01");
 const FUTURE = new Date("2099-01-01");
@@ -18,6 +17,7 @@ const makePerf = (overrides: Partial<PerformanceResponse> = {}): PerformanceResp
 const makeConcert = (performances: PerformanceResponse[]): ConcertResponse => ({
   id: 1,
   title: "테스트 콘서트",
+  genre: "ballad",
   placeName: "올림픽공원",
   createdAt: new Date("2026-01-01"),
   performances,

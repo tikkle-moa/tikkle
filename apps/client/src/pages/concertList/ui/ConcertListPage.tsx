@@ -1,19 +1,7 @@
-import { useConcertList } from "../model/use-concert-list";
-
 const ConcertListPage = () => {
-  const { concerts, handleNewConcert, handleRemoveConcert } = useConcertList();
-
   return (
-    <div>
-      <h1>Concert List</h1>
-      <ul>
-        {concerts.map((concert, index) => (
-          <li key={index}>
-            {concert} <button onClick={() => handleRemoveConcert(concert)}>Remove</button>
-          </li>
-        ))}
-      </ul>
-      <button onClick={() => handleNewConcert(`Concert ${concerts.length + 1}`)}>Add Concert</button>
+    <div className="flex flex-col gap-6">
+      <h1 className="px-4 text-lg font-bold text-gray-900 md:px-0">공연 목록</h1>
     </div>
   );
 };

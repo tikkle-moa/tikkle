@@ -1,4 +1,4 @@
-import type { BookingStatus, ConcertResponse, PerformanceResponse } from "@entities/concert";
+import type { BookingStatus, ConcertResponse, PerformanceResponse } from "./concert.types";
 
 export const getBookingStatus = (concert: ConcertResponse): BookingStatus => {
   const { performances } = concert;

@@ -2,7 +2,7 @@ import { MemoryRouter } from "react-router";
 
 import { render, screen } from "@testing-library/react";
 
-import { CONCERT_CATEGORY_MAP } from "@entities/concert";
+import { CONCERT_GENRE_MAP } from "@entities/concert";
 
 import Hero from "@widgets/hero/ui/Hero";
 
@@ -31,7 +31,7 @@ describe("Hero", () => {
 
   it("모든 장르 카테고리 링크를 렌더링한다", () => {
     renderHero();
-    for (const { label } of Object.values(CONCERT_CATEGORY_MAP)) {
+    for (const { label } of Object.values(CONCERT_GENRE_MAP)) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });

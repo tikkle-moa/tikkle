@@ -1,12 +1,14 @@
 import type { RefCallback } from "react";
-import { Link } from "react-router";
+
+import { ListMusic } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { CONCERT_CATEGORY_MAP } from "@entities/concert";
+import { CONCERT_GENRE_MAP } from "@entities/concert";
 
 import { ContentSlider } from "@features/content-slider";
 
+import ConcertGenreLink from "./ConcertGenreLink";
 import HeroBanner from "./HeroBanner";
 
 interface HeroProps {
@@ -27,16 +29,10 @@ const Hero = ({ heroRef }: HeroProps) => (
 
     <div className="border-b border-gray-100">
       <div className="flex flex-wrap justify-center gap-6 px-4 py-3 md:gap-10 md:px-0">
-        <Link to={ROUTE_PATHS.CONCERTS} className="hover:text-brand-primary flex flex-col items-center gap-2 text-gray-600 transition">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-gray-50 text-2xl transition hover:bg-violet-50">🎵</div>
-          <span className="text-xs font-medium whitespace-nowrap">전체</span>
-        </Link>
+        <ConcertGenreLink config={{ icon: ListMusic, label: "전체", className: "bg-gray-100 text-gray-600", to: ROUTE_PATHS.CONCERTS }} />
 
-        {Object.values(CONCERT_CATEGORY_MAP).map(({ emoji, label, to }) => (
-          <Link key={label} to={to} className="hover:text-brand-primary flex flex-col items-center gap-2 text-gray-600 transition">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-gray-50 text-2xl transition hover:bg-violet-50">{emoji}</div>
-            <span className="text-xs font-medium whitespace-nowrap">{label}</span>
-          </Link>
+        {Object.values(CONCERT_GENRE_MAP).map((config, idx) => (
+          <ConcertGenreLink key={idx} config={config} />
         ))}
       </div>
     </div>

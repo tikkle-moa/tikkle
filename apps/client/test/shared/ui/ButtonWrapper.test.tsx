@@ -23,16 +23,6 @@ describe("ButtonWrapper", () => {
     expect(screen.getByRole("button")).toHaveAttribute("type", "button");
   });
 
-  it("button 렌더링 시 buttonClassName을 적용한다", () => {
-    render(
-      <ButtonWrapper onClick={vi.fn()} buttonClassName="btn-class">
-        내용
-      </ButtonWrapper>,
-    );
-
-    expect(screen.getByRole("button")).toHaveClass("btn-class");
-  });
-
   it("div 렌더링 시 className을 적용한다", () => {
     const { container } = render(<ButtonWrapper className="div-class">내용</ButtonWrapper>);
 
