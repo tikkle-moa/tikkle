@@ -21,7 +21,7 @@ const makePerf = (overrides: Partial<PerformanceResponse> = {}): PerformanceResp
 const makeConcert = (overrides: Partial<ConcertResponse> = {}): ConcertResponse => ({
   id: 1,
   title: "테스트 콘서트",
-  genre: "ballad",
+  genre: "BALLAD",
   placeName: "올림픽공원",
   posterUrl: "https://example.com/poster.jpg",
   createdAt: new Date("2026-01-01"),

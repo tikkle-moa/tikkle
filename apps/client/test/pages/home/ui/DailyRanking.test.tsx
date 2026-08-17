@@ -9,7 +9,7 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
     {
       id: 1,
       title: "랭킹 콘서트 1",
-      genre: "ballad" as const,
+      genre: "BALLAD" as const,
       placeName: "올림픽공원",
       posterUrl: "https://example.com/1.jpg",
       createdAt: new Date("2026-01-01"),
@@ -28,7 +28,7 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
     {
       id: 2,
       title: "랭킹 콘서트 2",
-      genre: "rock-metal" as const,
+      genre: "ROCK_METAL" as const,
       placeName: "잠실실내체육관",
       posterUrl: "https://example.com/2.jpg",
       createdAt: new Date("2026-01-01"),
@@ -47,7 +47,7 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
     {
       id: 3,
       title: "랭킹 콘서트 3",
-      genre: "festival" as const,
+      genre: "FESTIVAL" as const,
       placeName: "고척스카이돔",
       posterUrl: "https://example.com/3.jpg",
       createdAt: new Date("2026-01-01"),
@@ -66,7 +66,7 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
     {
       id: 4,
       title: "랭킹 콘서트 4",
-      genre: "indie" as const,
+      genre: "INDIE" as const,
       placeName: "블루스퀘어",
       posterUrl: "https://example.com/4.jpg",
       createdAt: new Date("2026-01-01"),

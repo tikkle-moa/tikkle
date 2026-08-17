@@ -9,7 +9,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 1,
     posterUrl: "https://picsum.photos/seed/concert1/400/600",
     title: "2026 Summer Festival",
-    genre: "festival",
+    genre: "FESTIVAL",
     placeName: "올림픽공원 KSPO DOME",
     performances: [
       {
@@ -28,7 +28,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 2,
     posterUrl: "https://picsum.photos/seed/concert2/400/600",
     title: "찰리 푸스 내한공연",
-    genre: "international-artist",
+    genre: "INTERNATIONAL_ARTIST",
     placeName: "고양종합운동장",
     performances: [
       {
@@ -47,7 +47,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 3,
     posterUrl: "https://picsum.photos/seed/concert3/400/600",
     title: "IU Concert Tour 2026",
-    genre: "ballad",
+    genre: "BALLAD",
     placeName: "서울 잠실종합운동장",
     performances: [
       {
@@ -66,7 +66,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 4,
     posterUrl: "https://picsum.photos/seed/concert4/400/600",
     title: "NCT DREAM 10TH ANNIVERSARY",
-    genre: "rap-hiphop",
+    genre: "RAP_HIPHOP",
     placeName: "인스파이어 아레나",
     performances: [
       {
@@ -85,7 +85,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 5,
     posterUrl: "https://picsum.photos/seed/concert5/400/600",
     title: "DAY6 SPECIAL CONCERT",
-    genre: "rock-metal",
+    genre: "ROCK_METAL",
     placeName: "고척스카이돔",
     performances: [],
     createdAt: new Date("2026-08-05T10:00:00"),
@@ -93,7 +93,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
   {
     id: 6,
     title: "Jason Mraz 아시아 투어 2026",
-    genre: "international-artist",
+    genre: "INTERNATIONAL_ARTIST",
     placeName: "블루스퀘어 마스터카드홀",
     performances: [
       {
@@ -112,7 +112,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 7,
     posterUrl: "https://picsum.photos/seed/concert7/400/600",
     title: "그랜드 민트 페스티벌 2026",
-    genre: "festival",
+    genre: "FESTIVAL",
     placeName: "올림픽공원 88잔디마당",
     performances: [
       {
@@ -149,7 +149,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 8,
     posterUrl: "https://picsum.photos/seed/concert8/400/600",
     title: "IVE WORLD TOUR",
-    genre: "rap-hiphop",
+    genre: "RAP_HIPHOP",
     placeName: "인천문학경기장",
     performances: [
       {
@@ -177,7 +177,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 9,
     posterUrl: "https://picsum.photos/seed/concert9/400/600",
     title: "Coldplay Live in Seoul",
-    genre: "international-artist",
+    genre: "INTERNATIONAL_ARTIST",
     placeName: "서울월드컵경기장",
     performances: [
       {
@@ -205,7 +205,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 10,
     posterUrl: "https://picsum.photos/seed/concert10/400/600",
     title: "AKMU SPECIAL CONCERT",
-    genre: "indie",
+    genre: "INDIE",
     placeName: "세종문화회관 대극장",
     performances: [
       {
@@ -233,7 +233,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 11,
     posterUrl: "https://picsum.photos/seed/concert11/400/600",
     title: "2026 대한민국 인디 뮤직 페스티벌 스페셜 라이브 콘서트",
-    genre: "indie",
+    genre: "INDIE",
     placeName: "서울특별시 송파구 올림픽공원 야외특설공연장",
     performances: [
       {
@@ -252,7 +252,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 12,
     posterUrl: "https://picsum.photos/seed/concert12/400/600",
     title: "잔나비 전국투어",
-    genre: "rock-metal",
+    genre: "ROCK_METAL",
     placeName: "부산 벡스코 오디토리움",
     performances: [
       {
@@ -271,7 +271,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 13,
     posterUrl: "https://picsum.photos/seed/concert13/400/600",
     title: "BTS WORLD TOUR",
-    genre: "rap-hiphop",
+    genre: "RAP_HIPHOP",
     placeName: "서울 잠실종합운동장",
     performances: [
       {
@@ -299,7 +299,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 14,
     posterUrl: "https://picsum.photos/seed/concert14/400/600",
     title: "2026 Summer Festival",
-    genre: "festival",
+    genre: "FESTIVAL",
     placeName: "올림픽공원 KSPO DOME",
     performances: [
       {
@@ -317,7 +317,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 15,
     posterUrl: "https://picsum.photos/seed/concert15/400/600",
     title: "서울 재즈 나이트 2026",
-    genre: "jazz-soul",
+    genre: "JAZZ_SOUL",
     placeName: "세종문화회관 M씨어터",
     performances: [
       {
@@ -336,7 +336,7 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
     id: 16,
     posterUrl: "https://picsum.photos/seed/concert16/400/600",
     title: "2026 전국 트로트 대축제",
-    genre: "trot",
+    genre: "TROT",
     placeName: "잠실실내체육관",
     performances: [
       {
