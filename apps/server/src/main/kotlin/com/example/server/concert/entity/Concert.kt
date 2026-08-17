@@ -1,7 +1,10 @@
 package com.example.server.concert.entity
 
+import com.example.server.concert.types.ConcertGenre
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -18,6 +21,10 @@ class Concert(
 
   @Column(nullable = false, length = 255)
   var title: String,
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  var genre: ConcertGenre,
 
   @Column(name = "place_name", nullable = false, length = 255)
   var placeName: String,
