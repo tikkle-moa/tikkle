@@ -1,13 +1,8 @@
-import { CalendarDays, Heart, type LucideIcon } from "lucide-react";
+import { CalendarDays, Heart } from "lucide-react";
 
-import { ROUTE_PATHS, type RoutePaths } from "@shared/config/router.config";
+import { ROUTE_PATHS } from "@shared/config/router.config";
 
-interface MyMenuItem {
-  description: string;
-  icon: LucideIcon;
-  label: string;
-  to: RoutePaths;
-}
+import type { MyMenuItem } from "./my-menu.types";
 
 export const MY_MENU_ITEMS: MyMenuItem[] = [
   {
