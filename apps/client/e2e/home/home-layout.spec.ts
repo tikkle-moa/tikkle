@@ -1,29 +1,35 @@
 import { expect, test } from "@playwright/test";
 
-import { VIEWPORT_CONFIG, Viewport } from "../config/viewport.config";
+import { BREAKPOINT_VIEWPORT_CONFIG, BreakpointBoundary } from "../config/viewport.config";
 
 const WIDTH_TOLERANCE = 4;
 const ASPECT_RATIO_TOLERANCE = 0.1;
 
-const VIEWPORT_UPCOMING_CONCERT_WIDTH: Record<Viewport, number> = {
-  MOBILE: 160,
-  SMALL_TABLET: 160,
-  TABLET: 240,
-  DESKTOP: 240,
+const VIEWPORT_UPCOMING_CONCERT_WIDTH: Record<BreakpointBoundary, number> = {
+  SM_BEFORE: 160,
+  SM: 160,
+  MD_BEFORE: 160,
+  MD: 240,
+  LG_BEFORE: 240,
+  LG: 240,
 };
 
-const VIEWPORT_HOT_CONCERT_COLUMNS: Record<Viewport, number> = {
-  MOBILE: 2,
-  SMALL_TABLET: 3,
-  TABLET: 3,
-  DESKTOP: 3,
+const VIEWPORT_HOT_CONCERT_COLUMNS: Record<BreakpointBoundary, number> = {
+  SM_BEFORE: 2,
+  SM: 3,
+  MD_BEFORE: 3,
+  MD: 3,
+  LG_BEFORE: 3,
+  LG: 3,
 };
 
-const VIEWPORT_HERO_SLIDE_ASPECT_RATIO: Record<Viewport, { width: number; height: number }> = {
-  MOBILE: { width: 16, height: 10 },
-  SMALL_TABLET: { width: 16, height: 7 },
-  TABLET: { width: 16, height: 7 },
-  DESKTOP: { width: 16, height: 6 },
+const VIEWPORT_HERO_SLIDE_ASPECT_RATIO: Record<BreakpointBoundary, { width: number; height: number }> = {
+  SM_BEFORE: { width: 16, height: 10 },
+  SM: { width: 16, height: 7 },
+  MD_BEFORE: { width: 16, height: 7 },
+  MD: { width: 16, height: 7 },
+  LG_BEFORE: { width: 16, height: 7 },
+  LG: { width: 16, height: 6 },
 };
 
 test.describe("홈 페이지 반응형 레이아웃", () => {
@@ -35,8 +41,8 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
     await expect(page.getByTestId("hot-concert-section")).toBeVisible();
   });
 
-  for (const [viewportKey, expectedCardWidth] of Object.entries(VIEWPORT_UPCOMING_CONCERT_WIDTH) as [Viewport, number][]) {
-    const { label, width, height } = VIEWPORT_CONFIG[viewportKey];
+  for (const [viewportKey, expectedCardWidth] of Object.entries(VIEWPORT_UPCOMING_CONCERT_WIDTH) as [BreakpointBoundary, number][]) {
+    const { label, width, height } = BREAKPOINT_VIEWPORT_CONFIG[viewportKey];
 
     test(`${label}에서 UpcomingConcert 카드 너비가 ${expectedCardWidth}px이다`, async ({ page }) => {
       await page.setViewportSize({ width, height });
@@ -55,8 +61,8 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
     });
   }
 
-  for (const [viewportKey, expectedColumnCount] of Object.entries(VIEWPORT_HOT_CONCERT_COLUMNS) as [Viewport, number][]) {
-    const { label, width, height } = VIEWPORT_CONFIG[viewportKey];
+  for (const [viewportKey, expectedColumnCount] of Object.entries(VIEWPORT_HOT_CONCERT_COLUMNS) as [BreakpointBoundary, number][]) {
+    const { label, width, height } = BREAKPOINT_VIEWPORT_CONFIG[viewportKey];
 
     test(`${label}에서 HotConcert가 ${expectedColumnCount}열로 표시된다`, async ({ page }) => {
       await page.setViewportSize({ width, height });
@@ -74,10 +80,10 @@ test.describe("홈 페이지 반응형 레이아웃", () => {
   }
 
   for (const [viewportKey, { width: expectedWidth, height: expectedHeight }] of Object.entries(VIEWPORT_HERO_SLIDE_ASPECT_RATIO) as [
-    Viewport,
+    BreakpointBoundary,
     { width: number; height: number },
   ][]) {
-    const { label, width, height } = VIEWPORT_CONFIG[viewportKey];
+    const { label, width, height } = BREAKPOINT_VIEWPORT_CONFIG[viewportKey];
 
     test(`${label}에서 Hero 슬라이드가 ${expectedWidth}:${expectedHeight} 비율에 가깝게 표시된다`, async ({ page }) => {
       await page.setViewportSize({ width, height });
