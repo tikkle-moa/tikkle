@@ -180,3 +180,40 @@ test.describe("로그인 사용자 헤더 반응형 전환", () => {
     });
   }
 });
+
+test.describe("비로그인 모바일 마이 접근", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/auth/me", (route) =>
+      route.fulfill({
+        json: {
+          success: false,
+          data: null,
+        },
+      }),
+    );
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await page.goto("/");
+  });
+
+  test("마이 화면에서 로그인을 유도하고 보호 경로는 로그인 화면으로 이동한다", async ({ page }) => {
+    const mobileNavigation = page.getByRole("navigation", {
+      name: "모바일 주요 메뉴",
+    });
+
+    await expect(page.getByRole("link", { name: "로그인", exact: true })).toBeVisible();
+
+    await mobileNavigation.getByRole("link", { name: "마이", exact: true }).click();
+
+    await expect(page).toHaveURL("/my");
+    await expect(page.getByText("로그인하여 원하는 공연을 찾아보세요")).toBeVisible();
+
+    await page.getByRole("link", { name: "로그인하고 공연 찾아보기" }).click();
+
+    await expect(page).toHaveURL("/login");
+    await expect(page.getByRole("heading", { name: "함께 고르고, 함께 예매하세요." })).toBeVisible();
+
+    await page.goto("/my/reservations");
+
+    await expect(page).toHaveURL("/login");
+  });
+});
