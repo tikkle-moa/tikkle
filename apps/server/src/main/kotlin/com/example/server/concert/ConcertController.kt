@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -77,5 +78,29 @@ class ConcertController(private val concertService: ConcertService) {
   ): ResponseEntity<ApiResponse.Success<ConcertResponse>> {
     val concertResponse = concertService.update(id, updateConcertRequest)
     return ResponseEntity.ok(ApiResponse.ok(concertResponse))
+  }
+
+  @Operation(
+    summary = "콘서트 삭제",
+    description = "기존 콘서트를 삭제합니다.",
+    responses = [
+      SwaggerApiResponse(responseCode = "200", description = "콘서트 삭제 성공"),
+      SwaggerApiResponse(
+        responseCode = "403",
+        description = "권한 없음",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+      SwaggerApiResponse(
+        responseCode = "404",
+        description = "콘서트를 찾을 수 없음",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+    ],
+    security = [SecurityRequirement(name = "access_token")],
+  )
+  @DeleteMapping("/{id}")
+  fun delete(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<Unit>> {
+    concertService.delete(id)
+    return ResponseEntity.ok(ApiResponse.ok())
   }
 }

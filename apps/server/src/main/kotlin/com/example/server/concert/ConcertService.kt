@@ -44,4 +44,12 @@ class ConcertService(private val concertRepository: ConcertRepository) {
 
     return ConcertResponse.from(concert)
   }
+
+  @Transactional
+  fun delete(id: Long) {
+    val concert = concertRepository.findById(id)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND) }
+
+    concertRepository.delete(concert)
+  }
 }
