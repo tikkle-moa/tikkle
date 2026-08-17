@@ -27,18 +27,21 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        element: <AppLayout />,
+        element: <AppLayout showSecondaryHeader />,
         children: [
           { path: ROUTE_PATHS.HOME, element: <HomePage /> },
           { path: ROUTE_PATHS.CONCERTS, element: <ConcertListPage /> },
         ],
       },
       {
-        element: <AppLayout showHeader={false} />,
+        element: <AppLayout />,
+        children: [{ path: ROUTE_PATHS.SEARCH, element: <SearchPage /> }],
+      },
+      {
+        element: <AuthGuard />,
         children: [
-          { path: ROUTE_PATHS.SEARCH, element: <SearchPage /> },
           {
-            element: <AuthGuard />,
+            element: <AppLayout />,
             children: [
               { path: ROUTE_PATHS.MY, element: <MyPage /> },
               { path: ROUTE_PATHS.MY_FAVORITES, element: <FavoritePage /> },
