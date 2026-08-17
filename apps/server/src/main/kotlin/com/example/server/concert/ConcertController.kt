@@ -1,5 +1,6 @@
 package com.example.server.concert
 
+import com.example.server.concert.dto.ConcertListResponse
 import com.example.server.concert.dto.ConcertResponse
 import com.example.server.concert.dto.CreateConcertRequest
 import com.example.server.concert.dto.UpdateConcertRequest
@@ -12,6 +13,7 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -118,4 +120,17 @@ class ConcertController(private val concertService: ConcertService) {
     concertService.delete(id)
     return ResponseEntity.ok(ApiResponse.ok())
   }
+
+  @Operation(
+    summary = "콘서트 목록 조회",
+    description = "최신 생성순으로 콘서트 목록을 반환합니다.",
+    responses = [
+      SwaggerApiResponse(
+        responseCode = "200",
+        description = "콘서트 목록 조회 성공",
+      ),
+    ],
+  )
+  @GetMapping
+  fun getConcerts(): ResponseEntity<ApiResponse.Success<List<ConcertListResponse>>> = ResponseEntity.ok(ApiResponse.ok(concertService.getConcerts()))
 }

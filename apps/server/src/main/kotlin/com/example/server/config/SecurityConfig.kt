@@ -51,7 +51,7 @@ class SecurityConfig(
       }
       .authorizeHttpRequests {
         it
-          .requestMatchers(HttpMethod.GET, "/api/auth/oauth/**").permitAll()
+          .requestMatchers(HttpMethod.GET, "/api/auth/oauth/**", "/api/concerts").permitAll()
           .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
           .requestMatchers(HttpMethod.POST, "/api/auth/refresh", "/api/auth/logout").permitAll()
           .requestMatchers(HttpMethod.POST, "/api/concerts").hasRole(UserRole.ADMIN.name)
