@@ -3,6 +3,7 @@ import { NavLink } from "react-router";
 import { Search } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
+import ProfileImage from "@shared/ui/ProfileImage";
 
 import { SearchSuggestions } from "@features/concert-search";
 
@@ -50,7 +51,15 @@ const Header = () => {
         <div className="ml-auto flex items-center">
           {status === "loading" && <span className="text-sm text-gray-500">로그인 확인 중</span>}
           {status === "authenticated" && user && (
-            <UserMenu nickname={user.nickname} profileImageUrl={user.profileImageUrl} onLogout={() => void handleLogout()} />
+            <>
+              <NavLink aria-label={`${user.nickname} 마이 페이지로 이동`} className="flex rounded-md p-2 md:hidden" to={ROUTE_PATHS.MY}>
+                <ProfileImage alt={`${user.nickname} 프로필 이미지`} className="size-7" src={user.profileImageUrl} />
+              </NavLink>
+
+              <div className="hidden md:block">
+                <UserMenu nickname={user.nickname} profileImageUrl={user.profileImageUrl} onLogout={() => void handleLogout()} />
+              </div>
+            </>
           )}
           {status === "unauthenticated" && (
             <NavLink
