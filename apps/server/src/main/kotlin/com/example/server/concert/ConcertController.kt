@@ -71,7 +71,10 @@ class ConcertController(private val concertService: ConcertService) {
     security = [SecurityRequirement(name = "access_token")],
   )
   @PatchMapping("/{id}")
-  fun update(@PathVariable id: Long, @RequestBody updateConcertRequest: UpdateConcertRequest): ResponseEntity<ApiResponse.Success<ConcertResponse>> {
+  fun update(
+    @PathVariable id: Long,
+    @Valid @RequestBody updateConcertRequest: UpdateConcertRequest,
+  ): ResponseEntity<ApiResponse.Success<ConcertResponse>> {
     val concertResponse = concertService.update(id, updateConcertRequest)
     return ResponseEntity.ok(ApiResponse.ok(concertResponse))
   }
