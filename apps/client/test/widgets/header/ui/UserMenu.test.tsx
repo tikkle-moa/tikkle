@@ -1,12 +1,20 @@
+import { MemoryRouter } from "react-router";
+
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import UserMenu from "@widgets/header/ui/UserMenu";
 
 const mockLogout = vi.fn();
 
 const renderUserMenu = () => {
-  render(<UserMenu nickname="테스트 사용자" profileImageUrl={null} onLogout={mockLogout} />);
+  render(
+    <MemoryRouter>
+      <UserMenu nickname="테스트 사용자" profileImageUrl={null} onLogout={mockLogout} />
+    </MemoryRouter>,
+  );
 };
 
 describe("UserMenu", () => {
@@ -51,6 +59,17 @@ describe("UserMenu", () => {
     fireEvent.keyDown(document, { key: "Tab" });
 
     expect(screen.getByRole("button", { name: "로그아웃" })).toBeInTheDocument();
+  });
+
+  it("내 예약과 관심 메뉴 링크를 표시한다", async () => {
+    const user = userEvent.setup();
+
+    renderUserMenu();
+
+    await user.click(screen.getByRole("button", { name: "테스트 사용자" }));
+
+    expect(screen.getByRole("link", { name: "내 예약" })).toHaveAttribute("href", ROUTE_PATHS.MY_RESERVATIONS);
+    expect(screen.getByRole("link", { name: "관심" })).toHaveAttribute("href", ROUTE_PATHS.MY_FAVORITES);
   });
 
   it("로그아웃 메뉴를 클릭하면 메뉴를 닫고 로그아웃을 호출한다", async () => {
