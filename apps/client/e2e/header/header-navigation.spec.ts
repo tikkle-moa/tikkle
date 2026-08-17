@@ -115,16 +115,22 @@ test.describe("로그인 모바일 헤더와 마이 화면", () => {
     await page.goto("/");
   });
 
-  test("프로필 링크와 하단 내비게이션으로 마이 화면에 접근한다", async ({ page }) => {
+  test("헤더 프로필 링크로 마이 화면으로 이동한다", async ({ page }) => {
+    await page
+      .getByRole("link", {
+        name: `${AUTHENTICATED_USER.nickname} 마이 페이지로 이동`,
+      })
+      .click();
+
+    await expect(page).toHaveURL("/my");
+    await expect(page.getByText(`${AUTHENTICATED_USER.nickname}님, 반가워요`)).toBeVisible();
+  });
+
+  test("하단 내비게이션으로 마이 화면에 접근한다", async ({ page }) => {
     const mobileNavigation = page.getByRole("navigation", {
       name: "모바일 주요 메뉴",
     });
 
-    await expect(
-      page.getByRole("link", {
-        name: `${AUTHENTICATED_USER.nickname} 마이 페이지로 이동`,
-      }),
-    ).toBeVisible();
     await expect(mobileNavigation).toBeVisible();
 
     await mobileNavigation.getByRole("link", { name: "마이", exact: true }).click();
