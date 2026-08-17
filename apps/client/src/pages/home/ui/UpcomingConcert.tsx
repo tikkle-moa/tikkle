@@ -14,7 +14,7 @@ const UpcomingConcert = () => {
       {/* 대상 페이지 미구현으로 임시 빈 함수를 전달합니다. 추후 onClickMore 연결 필요 */}
       <SectionTitle title="오픈 예정" onClickMore={() => {}} />
 
-      <div className="scrollbar-thumb-rounded flex scrollbar-thumb-gray-400 gap-3 overflow-x-auto py-3">
+      <div data-testid="upcoming-concert-scroll" className="scrollbar-thumb-rounded flex scrollbar-thumb-gray-400 gap-3 overflow-x-auto py-3">
         {isPending &&
           Array.from({ length: UPCOMING_SKELETON_COUNT }).map((_, i) => (
             <ConcertCardSkeleton

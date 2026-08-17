@@ -41,12 +41,14 @@ const ConcertCard = ({
     <ButtonWrapper className={`flex flex-col ${className ?? ""}`} onClick={onClick}>
       <div
         ref={cardRef}
+        data-testid="concert-card"
         className="perspective-midrange"
         onPointerMove={handlePointerMove}
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
       >
         <div
+          data-testid="concert-card-transform"
           className="relative overflow-hidden rounded-xl bg-white transition-[transform,box-shadow] ease-out will-change-transform transform-3d"
           style={{
             transform: `${!disableTilt ? `rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg) ` : ""}scale(${isHovered && !disableScale ? 1.02 : 1})`,
@@ -87,6 +89,7 @@ const ConcertCard = ({
 
             {isHovered && !disableGlare && (
               <div
+                data-testid="concert-card-glare"
                 className="pointer-events-none absolute inset-0"
                 style={{
                   background: `radial-gradient(circle at ${glare.x}% ${glare.y}%,rgba(255, 255, 255, 0.18),transparent 70%)`,
