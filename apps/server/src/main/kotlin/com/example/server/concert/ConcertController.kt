@@ -34,6 +34,11 @@ class ConcertController(private val concertService: ConcertService) {
         content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
       ),
       SwaggerApiResponse(
+        responseCode = "401",
+        description = "인증 실패",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+      SwaggerApiResponse(
         responseCode = "403",
         description = "권한 없음",
         content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
@@ -56,6 +61,11 @@ class ConcertController(private val concertService: ConcertService) {
       SwaggerApiResponse(
         responseCode = "400",
         description = "잘못된 요청",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
+      SwaggerApiResponse(
+        responseCode = "401",
+        description = "인증 실패",
         content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
       ),
       SwaggerApiResponse(
@@ -85,6 +95,11 @@ class ConcertController(private val concertService: ConcertService) {
     description = "기존 콘서트를 삭제합니다.",
     responses = [
       SwaggerApiResponse(responseCode = "200", description = "콘서트 삭제 성공"),
+      SwaggerApiResponse(
+        responseCode = "401",
+        description = "인증 실패",
+        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
+      ),
       SwaggerApiResponse(
         responseCode = "403",
         description = "권한 없음",
