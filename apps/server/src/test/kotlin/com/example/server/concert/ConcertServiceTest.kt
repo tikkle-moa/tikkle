@@ -1,5 +1,6 @@
 package com.example.server.concert
 
+import com.example.server.concert.dto.ConcertListResponse
 import com.example.server.concert.dto.CreateConcertRequest
 import com.example.server.concert.dto.UpdateConcertRequest
 import com.example.server.concert.entity.Concert
@@ -7,6 +8,7 @@ import com.example.server.concert.repository.ConcertRepository
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -223,6 +225,45 @@ class ConcertServiceTest {
       }
 
       assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
+    }
+  }
+
+  @Nested
+  @DisplayName("getConcerts")
+  inner class GetConcerts {
+    @Test
+    fun `최신 생성순 콘서트 목록을 반환한다`() {
+      val latestConcert = concert(
+        id = 2L,
+        title = "최신 콘서트",
+        genre = ConcertGenre.ROCK_METAL,
+      )
+      val previousConcert = concert(
+        id = 1L,
+        title = "이전 콘서트",
+        genre = ConcertGenre.BALLAD,
+      )
+      given(concertRepository.findAllByOrderByCreatedAtDesc())
+        .willReturn(listOf(latestConcert, previousConcert))
+
+      val result = concertService.getConcerts()
+
+      assertThat(result).containsExactly(
+        ConcertListResponse.from(latestConcert),
+        ConcertListResponse.from(previousConcert),
+      )
+      then(concertRepository).should().findAllByOrderByCreatedAtDesc()
+    }
+
+    @Test
+    fun `콘서트가 없으면 빈 목록을 반환한다`() {
+      given(concertRepository.findAllByOrderByCreatedAtDesc())
+        .willReturn(emptyList())
+
+      val result = concertService.getConcerts()
+
+      assertThat(result).isEmpty()
+      then(concertRepository).should().findAllByOrderByCreatedAtDesc()
     }
   }
 }

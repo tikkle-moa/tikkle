@@ -3,6 +3,7 @@ package com.example.server.concert
 import com.example.server.auth.JwtTokenProvider
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
+import com.example.server.concert.dto.ConcertListResponse
 import com.example.server.concert.dto.ConcertResponse
 import com.example.server.concert.dto.CreateConcertRequest
 import com.example.server.concert.dto.UpdateConcertRequest
@@ -12,6 +13,7 @@ import com.example.server.config.properties.AppProperties
 import com.example.server.config.properties.JwtProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.global.response.ApiResponse
 import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -39,6 +41,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import tools.jackson.databind.ObjectMapper
@@ -466,6 +469,35 @@ class ConcertControllerTest {
       }
 
       then(concertService).shouldHaveNoInteractions()
+    }
+  }
+
+  @Nested
+  @DisplayName("GET /api/concerts")
+  inner class GetConcerts {
+    @Test
+    fun `콘서트 목록을 반환한다`() {
+      val concerts = listOf(
+        ConcertListResponse(
+          id = 2L,
+          title = "최신 콘서트",
+          genre = ConcertGenre.ROCK_METAL,
+          placeName = "수원",
+          posterUrl = "https://example.com/poster.png",
+          createdAt = LocalDateTime.of(2026, 8, 17, 15, 0),
+        ),
+      )
+      given(concertService.getConcerts()).willReturn(concerts)
+
+      mockMvc.get("/api/concerts")
+        .andExpect {
+          status { isOk() }
+          content {
+            json(objectMapper.writeValueAsString(ApiResponse.ok(concerts)))
+          }
+        }
+
+      then(concertService).should().getConcerts()
     }
   }
 }
