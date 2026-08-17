@@ -2,15 +2,16 @@ import { Link } from "react-router";
 
 import { ChevronRight, LogOut } from "lucide-react";
 
+import { ROUTE_PATHS } from "@shared/config/router.config";
 import ProfileImage from "@shared/ui/ProfileImage";
 
 import { MY_MENU_ITEMS } from "../model/my-menu.constants";
 import { useMyPage } from "../model/use-my-page";
 
 const MyPage = () => {
-  const { user, handleLogout } = useMyPage();
+  const { handleLogout, status, user } = useMyPage();
 
-  if (!user) {
+  if (status === "loading") {
     return null;
   }
 
@@ -21,13 +22,26 @@ const MyPage = () => {
           마이
         </h1>
 
-        <section className="mt-5 flex items-center gap-4 rounded-2xl bg-white px-5 py-6 shadow-sm ring-1 ring-black/5 sm:px-6">
-          <ProfileImage alt={`${user.nickname} 프로필 이미지`} className="size-14 ring-4 ring-violet-100" src={user.profileImageUrl} />
-          <div>
-            <p className="text-brand-ink text-lg font-bold tracking-tight">{user.nickname}님, 반가워요</p>
-            <p className="mt-1 text-sm text-gray-500">일행과 함께 고를 공연을 찾아보세요.</p>
-          </div>
-        </section>
+        {user ? (
+          <section className="mt-5 flex items-center gap-4 rounded-2xl bg-white px-5 py-6 shadow-sm ring-1 ring-black/5 sm:px-6">
+            <ProfileImage alt={`${user.nickname} 프로필 이미지`} className="size-14 ring-4 ring-violet-100" src={user.profileImageUrl} />
+            <div>
+              <p className="text-brand-ink text-lg font-bold tracking-tight">{user.nickname}님, 반가워요</p>
+              <p className="mt-1 text-sm text-gray-500">일행과 함께 고를 공연을 찾아보세요.</p>
+            </div>
+          </section>
+        ) : (
+          <section className="mt-5 rounded-2xl bg-white px-5 py-6 shadow-sm ring-1 ring-black/5 sm:px-6">
+            <p className="text-brand-ink mt-1 text-lg font-bold tracking-tight">로그인하여 원하는 공연을 찾아보세요</p>
+
+            <Link
+              className="bg-brand-primary mt-5 flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+              to={ROUTE_PATHS.LOGIN}
+            >
+              로그인하고 공연 찾아보기
+            </Link>
+          </section>
+        )}
 
         <section aria-labelledby="my-ticket-title" className="mt-10">
           <div className="mb-3 flex items-center">
@@ -62,14 +76,16 @@ const MyPage = () => {
           </div>
         </section>
 
-        <button
-          className="mt-10 flex w-full items-center justify-center gap-2 text-sm font-medium text-gray-400 transition hover:text-gray-700"
-          type="button"
-          onClick={() => void handleLogout()}
-        >
-          <LogOut aria-hidden="true" size={16} />
-          로그아웃
-        </button>
+        {user && (
+          <button
+            className="mt-10 flex w-full items-center justify-center gap-2 text-sm font-medium text-gray-400 transition hover:text-gray-700"
+            type="button"
+            onClick={() => void handleLogout()}
+          >
+            <LogOut aria-hidden="true" size={16} />
+            로그아웃
+          </button>
+        )}
       </section>
     </main>
   );

@@ -35,7 +35,10 @@ export const router = createBrowserRouter([
       },
       {
         element: <AppLayout />,
-        children: [{ path: ROUTE_PATHS.SEARCH, element: <SearchPage /> }],
+        children: [
+          { path: ROUTE_PATHS.SEARCH, element: <SearchPage /> },
+          { path: ROUTE_PATHS.MY, element: <MyPage /> },
+        ],
       },
       {
         element: <AuthGuard />,
@@ -43,7 +46,6 @@ export const router = createBrowserRouter([
           {
             element: <AppLayout />,
             children: [
-              { path: ROUTE_PATHS.MY, element: <MyPage /> },
               { path: ROUTE_PATHS.MY_FAVORITES, element: <FavoritePage /> },
               { path: ROUTE_PATHS.MY_RESERVATIONS, element: <ReservationPage /> },
             ],

@@ -39,6 +39,24 @@ describe("MyPage", () => {
     useSessionStore.setState({ user: TEST_USER, status: "authenticated" });
   });
 
+  it("비로그인 상태에서는 로그인 유도 카드와 로그인 링크를 표시한다", () => {
+    useSessionStore.setState({ user: null, status: "unauthenticated" });
+
+    renderMyPage();
+
+    expect(screen.getByText("로그인하여 원하는 공연을 찾아보세요")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "로그인하고 공연 찾아보기" })).toHaveAttribute("href", ROUTE_PATHS.LOGIN);
+    expect(screen.queryByRole("button", { name: "로그아웃" })).not.toBeInTheDocument();
+  });
+
+  it("세션 상태를 확인하는 동안에는 화면을 표시하지 않는다", () => {
+    useSessionStore.setState({ user: null, status: "loading" });
+
+    renderMyPage();
+
+    expect(screen.queryByRole("heading", { name: "마이" })).not.toBeInTheDocument();
+  });
+
   it("사용자 프로필 정보를 표시한다", () => {
     renderMyPage();
 

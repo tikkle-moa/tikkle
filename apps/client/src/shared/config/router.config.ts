@@ -10,4 +10,4 @@ export const ROUTE_PATHS = {
 
 export type RoutePaths = (typeof ROUTE_PATHS)[keyof typeof ROUTE_PATHS];
 
-export const AUTH_GUARD_PATHS: RoutePaths[] = [ROUTE_PATHS.MY, ROUTE_PATHS.MY_FAVORITES, ROUTE_PATHS.MY_RESERVATIONS];
+export const AUTH_GUARD_PATHS: RoutePaths[] = [ROUTE_PATHS.MY_FAVORITES, ROUTE_PATHS.MY_RESERVATIONS];
