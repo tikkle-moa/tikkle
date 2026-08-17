@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { BREAKPOINT_VIEWPORT_CONFIG } from "../config/viewport.config";
+
 const AUTHENTICATED_USER = {
   id: 1,
   email: "e2e@example.com",
@@ -9,8 +11,8 @@ const AUTHENTICATED_USER = {
   oauthAccounts: ["google"],
 };
 
-const MOBILE_VIEWPORT = { width: 767, height: 800 };
-const DESKTOP_VIEWPORT = { width: 768, height: 800 };
+const MOBILE_VIEWPORT = BREAKPOINT_VIEWPORT_CONFIG.MD_BEFORE;
+const DESKTOP_VIEWPORT = BREAKPOINT_VIEWPORT_CONFIG.MD;
 
 test.describe("비로그인 데스크톱 헤더 탐색", () => {
   test.beforeEach(async ({ page }) => {
@@ -36,8 +38,8 @@ test.describe("비로그인 데스크톱 헤더 탐색", () => {
   });
 
   test("본문을 스크롤해도 헤더는 상단에 유지된다", async ({ page }) => {
-    const header = page.locator("header");
-    const main = page.locator("main").first();
+    const header = page.getByRole("banner");
+    const main = page.getByRole("main");
     const headerBox = await header.boundingBox();
 
     await main.evaluate((element) => {
