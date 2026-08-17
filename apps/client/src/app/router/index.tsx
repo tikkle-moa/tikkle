@@ -38,13 +38,8 @@ export const router = createBrowserRouter([
         children: [
           { path: ROUTE_PATHS.SEARCH, element: <SearchPage /> },
           { path: ROUTE_PATHS.MY, element: <MyPage /> },
-        ],
-      },
-      {
-        element: <AuthGuard />,
-        children: [
           {
-            element: <AppLayout />,
+            element: <AuthGuard />,
             children: [
               { path: ROUTE_PATHS.MY_FAVORITES, element: <FavoritePage /> },
               { path: ROUTE_PATHS.MY_RESERVATIONS, element: <ReservationPage /> },
