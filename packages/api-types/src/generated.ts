@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+  "/api/concerts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 콘서트 생성
+     * @description 새로운 콘서트를 생성합니다.
+     */
+    post: operations["create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/auth/refresh": {
     parameters: {
       query?: never;
@@ -42,6 +62,30 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/concerts/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * 콘서트 삭제
+     * @description 기존 콘서트를 삭제합니다.
+     */
+    delete: operations["delete"];
+    options?: never;
+    head?: never;
+    /**
+     * 콘서트 수정
+     * @description 기존 콘서트 정보를 수정합니다.
+     */
+    patch: operations["update"];
     trace?: never;
   };
   "/api/auth/oauth/{oauth_provider}": {
@@ -118,8 +162,39 @@ export interface components {
       success: boolean;
       error: components["schemas"]["Error"];
     };
+    /** @enum {string} */
+    ConcertGenre: "BALLAD" | "ROCK_METAL" | "RAP_HIPHOP" | "JAZZ_SOUL" | "TROT" | "INTERNATIONAL_ARTIST" | "FESTIVAL" | "INDIE";
+    CreateConcertRequest: {
+      title: string;
+      genre: components["schemas"]["ConcertGenre"];
+      placeName: string;
+      posterUrl: string | null;
+      description: string | null;
+    };
+    ConcertResponse: {
+      /** Format: int64 */
+      id: number;
+      title: string;
+      genre: components["schemas"]["ConcertGenre"];
+      placeName: string;
+      posterUrl: string | null;
+      description: string | null;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    SuccessConcertResponse: {
+      success: boolean;
+      data: components["schemas"]["ConcertResponse"] | null;
+    };
     SuccessUnit: {
       success: boolean;
+    };
+    UpdateConcertRequest: {
+      title?: string;
+      genre: components["schemas"]["ConcertGenre"];
+      placeName?: string;
+      posterUrl?: string | null;
+      description?: string | null;
     };
     CurrentUserResponse: {
       /** Format: int64 */
@@ -127,14 +202,15 @@ export interface components {
       email: string;
       nickname: string;
       profileImageUrl: string | null;
-      /** @enum {string} */
-      role: "USER" | "ADMIN";
+      role: components["schemas"]["UserRole"];
       oauthAccounts: string[];
     };
     SuccessCurrentUserResponse: {
       success: boolean;
       data: components["schemas"]["CurrentUserResponse"] | null;
     };
+    /** @enum {string} */
+    UserRole: "USER" | "ADMIN";
     /** @enum {string} */
     OAuthErrorCode:
       | "OAUTH_ACCESS_DENIED"
@@ -153,6 +229,57 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateConcertRequest"];
+      };
+    };
+    responses: {
+      /** @description 콘서트 생성 성공 */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["SuccessConcertResponse"];
+        };
+      };
+      /** @description 잘못된 요청 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 권한 없음 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
   refresh: {
     parameters: {
       query?: never;
@@ -215,6 +342,117 @@ export interface operations {
       };
       /** @description CSRF 검증 실패 */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 콘서트 삭제 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["SuccessUnit"];
+        };
+      };
+      /** @description 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 권한 없음 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 콘서트를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateConcertRequest"];
+      };
+    };
+    responses: {
+      /** @description 콘서트 수정 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["SuccessConcertResponse"];
+        };
+      };
+      /** @description 잘못된 요청 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증 실패 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 권한 없음 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 콘서트를 찾을 수 없음 */
+      404: {
         headers: {
           [name: string]: unknown;
         };
