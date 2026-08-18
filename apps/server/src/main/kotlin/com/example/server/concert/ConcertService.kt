@@ -50,7 +50,9 @@ class ConcertService(private val concertRepository: ConcertRepository) {
   }
 
   @Transactional(readOnly = true)
-  fun getConcerts(): List<ConcertListResponse> = concertRepository
-    .findAllByOrderByCreatedAtDesc()
-    .map(ConcertListResponse::from)
+  fun getConcerts(): List<ConcertListResponse> {
+    val concertList = concertRepository.findAllByOrderByCreatedAtDesc()
+
+    return concertList.map(ConcertListResponse::from)
+  }
 }

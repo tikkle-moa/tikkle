@@ -132,5 +132,9 @@ class ConcertController(private val concertService: ConcertService) {
     ],
   )
   @GetMapping
-  fun getConcerts(): ResponseEntity<ApiResponse.Success<List<ConcertListResponse>>> = ResponseEntity.ok(ApiResponse.ok(concertService.getConcerts()))
+  fun getConcerts(): ResponseEntity<ApiResponse.Success<List<ConcertListResponse>>> {
+    val concertListResponse = concertService.getConcerts()
+
+    return ResponseEntity.ok(ApiResponse.ok(concertListResponse))
+  }
 }
