@@ -116,7 +116,7 @@ class ConcertController(private val concertService: ConcertService) {
     security = [SecurityRequirement(name = "access_token")],
   )
   @DeleteMapping("/{id}")
-  fun delete(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<Unit>> {
+  fun delete(@PathVariable id: Long): ResponseEntity<ApiResponse.EmptySuccess> {
     concertService.delete(id)
     return ResponseEntity.ok(ApiResponse.ok())
   }
@@ -124,12 +124,7 @@ class ConcertController(private val concertService: ConcertService) {
   @Operation(
     summary = "콘서트 목록 조회",
     description = "최신 생성순으로 콘서트 목록을 반환합니다.",
-    responses = [
-      SwaggerApiResponse(
-        responseCode = "200",
-        description = "콘서트 목록 조회 성공",
-      ),
-    ],
+    responses = [SwaggerApiResponse(responseCode = "200", description = "콘서트 목록 조회 성공")],
   )
   @GetMapping
   fun getConcerts(): ResponseEntity<ApiResponse.Success<List<ConcertListResponse>>> {

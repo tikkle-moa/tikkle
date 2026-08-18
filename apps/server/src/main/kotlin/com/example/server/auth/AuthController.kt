@@ -71,7 +71,7 @@ class AuthController(private val authService: AuthService, private val appProper
     ],
   )
   @PostMapping("/refresh")
-  fun refresh(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
+  fun refresh(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.EmptySuccess> {
     val reissuedTokenPair = authService.refresh(refreshToken)
 
     val accessTokenCookie = accessTokenCookie(
@@ -103,7 +103,7 @@ class AuthController(private val authService: AuthService, private val appProper
     ],
   )
   @PostMapping("/logout")
-  fun logout(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
+  fun logout(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.EmptySuccess> {
     authService.logout(refreshToken)
     val expiredAccessTokenCookie = accessTokenCookie("", Duration.ZERO)
     val expiredRefreshTokenCookie = refreshTokenCookie("", Duration.ZERO)
