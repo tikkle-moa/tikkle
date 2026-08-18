@@ -53,9 +53,6 @@ class AuthControllerTest {
   @Autowired
   lateinit var objectMapper: ObjectMapper
 
-  @Autowired
-  lateinit var authController: AuthController
-
   @MockitoBean
   lateinit var authService: AuthService
 

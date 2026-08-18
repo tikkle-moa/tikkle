@@ -54,6 +54,9 @@ class SecurityConfig(
           .requestMatchers(HttpMethod.GET, "/api/auth/oauth/**").permitAll()
           .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
           .requestMatchers(HttpMethod.POST, "/api/auth/refresh", "/api/auth/logout").permitAll()
+          .requestMatchers(HttpMethod.POST, "/api/concerts").hasRole(UserRole.ADMIN.name)
+          .requestMatchers(HttpMethod.PATCH, "/api/concerts/{id}").hasRole(UserRole.ADMIN.name)
+          .requestMatchers(HttpMethod.DELETE, "/api/concerts/{id}").hasRole(UserRole.ADMIN.name)
           .requestMatchers("/api/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
           .anyRequest().hasRole(UserRole.ADMIN.name)
       }

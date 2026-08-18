@@ -37,6 +37,7 @@ dependencies {
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-mysql")
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+  implementation("org.openapitools:jackson-databind-nullable:0.2.11")
   implementation("io.jsonwebtoken:jjwt-api:0.12.6")
   implementation("org.springframework.boot:spring-boot-starter-security")
   runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
