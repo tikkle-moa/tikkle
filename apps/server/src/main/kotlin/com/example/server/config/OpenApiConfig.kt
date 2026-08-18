@@ -2,6 +2,7 @@ package com.example.server.config
 
 import com.example.server.auth.types.OAuthErrorCode
 import com.fasterxml.jackson.databind.JavaType
+import com.fasterxml.jackson.databind.type.TypeFactory
 import io.swagger.v3.core.converter.AnnotatedType
 import io.swagger.v3.core.converter.ModelConverter
 import io.swagger.v3.core.converter.ModelConverterContext
@@ -19,7 +20,6 @@ import org.openapitools.jackson.nullable.JsonNullable
 import org.openapitools.jackson.nullable.JsonNullableModule
 import org.springdoc.core.customizers.OpenApiCustomizer
 import org.springdoc.core.customizers.PropertyCustomizer
-import org.springdoc.core.providers.ObjectMapperProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.context.annotation.Configuration
@@ -67,13 +67,13 @@ class OpenApiConfig {
   }
 
   @Bean
-  fun jsonNullableModelConverter(objectMapperProvider: ObjectMapperProvider): ModelConverter {
+  fun jsonNullableModelConverter(): ModelConverter {
     return object : ModelConverter {
       override fun resolve(type: AnnotatedType, context: ModelConverterContext, chain: MutableIterator<ModelConverter>): Schema<*>? {
         val javaType = when (val rawType = type.type) {
           is JavaType -> rawType
           null -> return next(type, context, chain)
-          else -> objectMapperProvider.jsonMapper().constructType(rawType)
+          else -> TypeFactory.defaultInstance().constructType(rawType)
         }
 
         if (!JsonNullable::class.java.isAssignableFrom(javaType.rawClass)) {
