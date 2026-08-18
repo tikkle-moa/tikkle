@@ -156,16 +156,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    Error: {
-      /** Format: int32 */
-      code: number;
-      message: string;
-    };
-    Failure: {
-      /** @example false */
-      success: boolean;
-      error: components["schemas"]["Error"];
-    };
     /** @enum {string} */
     ConcertGenre: "BALLAD" | "ROCK_METAL" | "RAP_HIPHOP" | "JAZZ_SOUL" | "TROT" | "INTERNATIONAL_ARTIST" | "FESTIVAL" | "INDIE";
     CreateConcertRequest: {
@@ -187,11 +177,15 @@ export interface components {
       createdAt: string;
     };
     SuccessConcertResponse: {
-      success: boolean;
-      data: components["schemas"]["ConcertResponse"] | null;
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["ConcertResponse"];
     };
-    SuccessUnit: {
-      success: boolean;
+    EmptySuccess: {
+      /** @enum {boolean} */
+      success: true;
+      /** @enum {string|null} */
+      data: null;
     };
     UpdateConcertRequest: {
       title?: string;
@@ -211,8 +205,9 @@ export interface components {
       createdAt: string;
     };
     SuccessListConcertListResponse: {
-      success: boolean;
-      data: components["schemas"]["ConcertListResponse"][] | null;
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["ConcertListResponse"][];
     };
     CurrentUserResponse: {
       /** Format: int64 */
@@ -224,11 +219,25 @@ export interface components {
       oauthAccounts: string[];
     };
     SuccessCurrentUserResponse: {
-      success: boolean;
-      data: components["schemas"]["CurrentUserResponse"] | null;
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["CurrentUserResponse"];
     };
     /** @enum {string} */
     UserRole: "USER" | "ADMIN";
+    Error: {
+      /** Format: int32 */
+      code: number;
+      message: string;
+    };
+    Failure: {
+      /**
+       * @example false
+       * @enum {boolean}
+       */
+      success: false;
+      error: components["schemas"]["Error"];
+    };
     /** @enum {string} */
     OAuthErrorCode:
       | "OAUTH_ACCESS_DENIED"
@@ -262,7 +271,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["SuccessListConcertListResponse"];
+          "application/json": components["schemas"]["SuccessListConcertListResponse"];
         };
       };
     };
@@ -286,34 +295,61 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["SuccessConcertResponse"];
+          "application/json": components["schemas"]["SuccessConcertResponse"];
         };
       };
-      /** @description 잘못된 요청 */
+      /** @description 잘못된 요청입니다. */
       400: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
-      /** @description 인증 실패 */
+      /** @description 인증이 필요합니다. */
       401: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
-      /** @description 권한 없음 */
+      /** @description 접근 권한이 필요합니다. */
       403: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
     };
@@ -335,16 +371,25 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["SuccessUnit"];
+          "application/json": components["schemas"]["EmptySuccess"];
         };
       };
-      /** @description Refresh Token이 없거나 유효하지 않음 */
+      /** @description 인증이 필요합니다. */
       401: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
       /** @description CSRF 검증 실패 */
@@ -353,7 +398,16 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
     };
@@ -375,7 +429,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["SuccessUnit"];
+          "application/json": components["schemas"]["EmptySuccess"];
         };
       };
       /** @description CSRF 검증 실패 */
@@ -384,7 +438,16 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
     };
@@ -406,25 +469,43 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["SuccessUnit"];
+          "application/json": components["schemas"]["EmptySuccess"];
         };
       };
-      /** @description 인증 실패 */
+      /** @description 인증이 필요합니다. */
       401: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
-      /** @description 권한 없음 */
+      /** @description 접근 권한이 필요합니다. */
       403: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
       /** @description 콘서트를 찾을 수 없음 */
@@ -433,7 +514,16 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
     };
@@ -459,34 +549,61 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["SuccessConcertResponse"];
+          "application/json": components["schemas"]["SuccessConcertResponse"];
         };
       };
-      /** @description 잘못된 요청 */
+      /** @description 잘못된 요청입니다. */
       400: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
-      /** @description 인증 실패 */
+      /** @description 인증이 필요합니다. */
       401: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
-      /** @description 권한 없음 */
+      /** @description 접근 권한이 필요합니다. */
       403: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
       /** @description 콘서트를 찾을 수 없음 */
@@ -495,7 +612,16 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
     };
@@ -564,16 +690,25 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["SuccessCurrentUserResponse"];
+          "application/json": components["schemas"]["SuccessCurrentUserResponse"];
         };
       };
-      /** @description 로그인하지 않은 사용자 */
+      /** @description 인증이 필요합니다. */
       401: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "*/*": components["schemas"]["Failure"];
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
         };
       };
     };
