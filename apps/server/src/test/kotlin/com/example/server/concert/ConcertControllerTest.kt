@@ -14,14 +14,19 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.argThat
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
+import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Import
@@ -47,7 +52,6 @@ import java.time.LocalDateTime
 )
 @ActiveProfiles("test")
 class ConcertControllerTest {
-
   @Autowired
   lateinit var mockMvc: MockMvc
 
@@ -92,20 +96,19 @@ class ConcertControllerTest {
     given(jwtProperties.refreshTokenExpirationDays).willReturn(7L)
   }
 
-  private fun concertResponse(id: Long = 1L) = ConcertResponse(
+  private fun concertResponse(id: Long = 1L, title: String = "아이유 콘서트"): ConcertResponse = ConcertResponse(
     id = id,
-    title = "아이유 콘서트",
+    title = title,
     genre = ConcertGenre.BALLAD,
     placeName = "올림픽 체조경기장",
     posterUrl = null,
     description = null,
-    createdAt = LocalDateTime.now(),
+    createdAt = LocalDateTime.of(2026, 8, 18, 12, 0),
   )
 
   @Nested
   @DisplayName("POST /api/concerts")
   inner class CreateConcert {
-
     @Test
     fun `관리자가 유효한 요청으로 콘서트를 생성한다`() {
       val request = CreateConcertRequest(
@@ -124,21 +127,63 @@ class ConcertControllerTest {
         with(csrf())
       }.andExpect {
         status { isCreated() }
+        content { contentTypeCompatibleWith(MediaType.APPLICATION_JSON) }
         jsonPath("$.success") { value(true) }
+        jsonPath("$.data.id") { value(1) }
         jsonPath("$.data.title") { value("아이유 콘서트") }
+        jsonPath("$.data.genre") { value("BALLAD") }
+        jsonPath("$.data.placeName") { value("올림픽 체조경기장") }
+        jsonPath("$.data.posterUrl") { doesNotExist() }
+        jsonPath("$.data.description") { doesNotExist() }
+        jsonPath("$.data.createdAt") { exists() }
       }
     }
 
     @Test
-    fun `title이 없으면 400을 반환한다`() {
-      val request = mapOf(
-        "genre" to "BALLAD",
-        "placeName" to "올림픽 체조경기장",
-      )
-
+    fun `필수 필드가 없으면 400을 반환한다`() {
       mockMvc.post("/api/concerts") {
         contentType = MediaType.APPLICATION_JSON
-        content = objectMapper.writeValueAsString(request)
+        content = """{"genre":"BALLAD"}"""
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isBadRequest() }
+      }
+
+      then(concertService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `title이 공백이면 400을 반환한다`() {
+      mockMvc.post("/api/concerts") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """
+          {
+            "title": "   ",
+            "genre": "BALLAD",
+            "placeName": "올림픽 체조경기장"
+          }
+        """.trimIndent()
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isBadRequest() }
+      }
+
+      then(concertService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `지원하지 않는 genre이면 400을 반환한다`() {
+      mockMvc.post("/api/concerts") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """
+          {
+            "title": "아이유 콘서트",
+            "genre": "INVALID",
+            "placeName": "올림픽 체조경기장"
+          }
+        """.trimIndent()
         with(authentication(adminAuth))
         with(csrf())
       }.andExpect {
@@ -191,6 +236,8 @@ class ConcertControllerTest {
   @Nested
   @DisplayName("PATCH /api/concerts/{id}")
   inner class UpdateConcert {
+    private fun <T> org.openapitools.jackson.nullable.JsonNullable<T>.hasValue(value: T): Boolean = isPresent && get() == value
+
     private fun updateRequestThat(predicate: (UpdateConcertRequest) -> Boolean): UpdateConcertRequest = argThat<UpdateConcertRequest> {
       predicate(it)
     } ?: UpdateConcertRequest()
@@ -200,15 +247,15 @@ class ConcertControllerTest {
       given(
         concertService.update(
           eq(1L),
-          updateRequestThat { it.title == "새 제목" },
+          updateRequestThat { it.title.hasValue("새 제목") },
         ),
       ).willReturn(
-        concertResponse().copy(title = "새 제목"),
+        concertResponse(title = "새 제목"),
       )
 
       mockMvc.patch("/api/concerts/1") {
         contentType = MediaType.APPLICATION_JSON
-        content = "{\"title\": \"새 제목\"}"
+        content = """{"title":"새 제목"}"""
         with(authentication(adminAuth))
         with(csrf())
       }.andExpect {
@@ -219,17 +266,101 @@ class ConcertControllerTest {
     }
 
     @Test
-    fun `유효하지 않은 요청이면 400을 반환한다`() {
+    fun `최대 길이를 초과하면 400을 반환한다`() {
       val title = "a".repeat(101)
 
       mockMvc.patch("/api/concerts/1") {
         contentType = MediaType.APPLICATION_JSON
-        content = "{\"title\": \"$title\"}"
+        content = """{"title":"$title"}"""
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isBadRequest() }
+        jsonPath("$.success") { value(false) }
+        jsonPath("$.error.code") { value(400) }
+        jsonPath("$.error.message") { exists() }
+      }
+
+      then(concertService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `null을 허용하지 않는 수정 필드에 null을 전달하면 400을 반환한다`() {
+      mockMvc.patch("/api/concerts/1") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"title":null,"genre":null,"placeName":null}"""
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isBadRequest() }
+        jsonPath("$.success") { value(false) }
+        jsonPath("$.error.code") { value(400) }
+      }
+
+      then(concertService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `nullable 필드의 null과 미전달 상태를 구분한다`() {
+      given(
+        concertService.update(
+          eq(1L),
+          updateRequestThat { true },
+        ),
+      ).willReturn(concertResponse())
+
+      mockMvc.patch("/api/concerts/1") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"posterUrl":null}"""
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.success") { value(true) }
+      }
+
+      val captor = ArgumentCaptor.forClass(UpdateConcertRequest::class.java)
+
+      verify(concertService).update(
+        eq(1L),
+        captor.capture() ?: UpdateConcertRequest(),
+      )
+
+      val request = captor.value
+
+      assertTrue(request.posterUrl.isPresent)
+      assertNull(request.posterUrl.get())
+      assertFalse(request.description.isPresent)
+    }
+
+    @Test
+    fun `nullable 필드에 빈 문자열을 전달하면 400을 반환한다`() {
+      mockMvc.patch("/api/concerts/1") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"description":"   "}"""
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isBadRequest() }
+        jsonPath("$.success") { value(false) }
+        jsonPath("$.error.code") { value(400) }
+      }
+
+      then(concertService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `지원하지 않는 genre이면 400을 반환한다`() {
+      mockMvc.patch("/api/concerts/1") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"genre":"INVALID"}"""
         with(authentication(adminAuth))
         with(csrf())
       }.andExpect {
         status { isBadRequest() }
       }
+
+      then(concertService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -237,7 +368,7 @@ class ConcertControllerTest {
       given(
         concertService.update(
           eq(99L),
-          updateRequestThat { it.title == "새 제목" },
+          updateRequestThat { it.title.hasValue("새 제목") },
         ),
       ).willThrow(
         CustomException(ErrorCode.NOT_FOUND),
@@ -245,7 +376,7 @@ class ConcertControllerTest {
 
       mockMvc.patch("/api/concerts/99") {
         contentType = MediaType.APPLICATION_JSON
-        content = "{\"title\": \"새 제목\"}"
+        content = """{"title":"새 제목"}"""
         with(authentication(adminAuth))
         with(csrf())
       }.andExpect {
@@ -258,7 +389,7 @@ class ConcertControllerTest {
     fun `일반 사용자가 콘서트를 수정하면 403을 반환한다`() {
       mockMvc.patch("/api/concerts/1") {
         contentType = MediaType.APPLICATION_JSON
-        content = "{\"title\": \"새 제목\"}"
+        content = """{"title":"새 제목"}"""
         with(authentication(userAuth))
         with(csrf())
       }.andExpect {
@@ -272,7 +403,7 @@ class ConcertControllerTest {
     fun `인증 없이 콘서트를 수정하면 401을 반환한다`() {
       mockMvc.patch("/api/concerts/1") {
         contentType = MediaType.APPLICATION_JSON
-        content = "{\"title\": \"새 제목\"}"
+        content = """{"title":"새 제목"}"""
         with(csrf())
       }.andExpect {
         status { isUnauthorized() }
@@ -285,7 +416,6 @@ class ConcertControllerTest {
   @Nested
   @DisplayName("DELETE /api/concerts/{id}")
   inner class DeleteConcert {
-
     @Test
     fun `관리자가 콘서트를 삭제한다`() {
       mockMvc.delete("/api/concerts/1") {
