@@ -11,7 +11,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * 콘서트 목록 조회
+     * @description 최신 생성순으로 콘서트 목록을 반환합니다.
+     */
+    get: operations["getConcerts"];
     put?: never;
     /**
      * 콘서트 생성
@@ -196,6 +200,20 @@ export interface components {
       posterUrl?: string | null;
       description?: string | null;
     };
+    ConcertListResponse: {
+      /** Format: int64 */
+      id: number;
+      title: string;
+      genre: components["schemas"]["ConcertGenre"];
+      placeName: string;
+      posterUrl: string | null;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    SuccessListConcertListResponse: {
+      success: boolean;
+      data: components["schemas"]["ConcertListResponse"][] | null;
+    };
     CurrentUserResponse: {
       /** Format: int64 */
       id: number;
@@ -229,6 +247,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  getConcerts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 콘서트 목록 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "*/*": components["schemas"]["SuccessListConcertListResponse"];
+        };
+      };
+    };
+  };
   create: {
     parameters: {
       query?: never;

@@ -13,6 +13,7 @@ import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.provisioning.InMemoryUserDetailsManager
 import org.springframework.security.web.SecurityFilterChain
@@ -22,6 +23,9 @@ import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.filter.CorsFilter
 import tools.jackson.databind.ObjectMapper
+
+private typealias AuthorizationRegistry =
+  AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry
 
 @Configuration
 @EnableWebSecurity
@@ -49,16 +53,12 @@ class SecurityConfig(
       .sessionManagement {
         it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
       }
-      .authorizeHttpRequests {
-        it
-          .requestMatchers(HttpMethod.GET, "/api/auth/oauth/**").permitAll()
-          .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
-          .requestMatchers(HttpMethod.POST, "/api/auth/refresh", "/api/auth/logout").permitAll()
-          .requestMatchers(HttpMethod.POST, "/api/concerts").hasRole(UserRole.ADMIN.name)
-          .requestMatchers(HttpMethod.PATCH, "/api/concerts/{id}").hasRole(UserRole.ADMIN.name)
-          .requestMatchers(HttpMethod.DELETE, "/api/concerts/{id}").hasRole(UserRole.ADMIN.name)
-          .requestMatchers("/api/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
-          .anyRequest().hasRole(UserRole.ADMIN.name)
+      .authorizeHttpRequests { auth ->
+        configureCommonAuthorization(auth)
+        configureAuthAuthorization(auth)
+        configureConcertAuthorization(auth)
+
+        auth.anyRequest().hasRole(UserRole.ADMIN.name)
       }
       .exceptionHandling {
         it.authenticationEntryPoint(authenticationEntryPoint)
@@ -71,6 +71,26 @@ class SecurityConfig(
       .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 
     return http.build()
+  }
+
+  private fun configureCommonAuthorization(auth: AuthorizationRegistry) {
+    auth
+      .requestMatchers("/api/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
+  }
+
+  private fun configureAuthAuthorization(auth: AuthorizationRegistry) {
+    auth
+      .requestMatchers(HttpMethod.GET, "/api/auth/oauth/**").permitAll()
+      .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+      .requestMatchers(HttpMethod.POST, "/api/auth/refresh", "/api/auth/logout").permitAll()
+  }
+
+  private fun configureConcertAuthorization(auth: AuthorizationRegistry) {
+    auth
+      .requestMatchers(HttpMethod.GET, "/api/concerts").permitAll()
+      .requestMatchers(HttpMethod.POST, "/api/concerts").hasRole(UserRole.ADMIN.name)
+      .requestMatchers(HttpMethod.PATCH, "/api/concerts/**").hasRole(UserRole.ADMIN.name)
+      .requestMatchers(HttpMethod.DELETE, "/api/concerts/**").hasRole(UserRole.ADMIN.name)
   }
 
   @Bean

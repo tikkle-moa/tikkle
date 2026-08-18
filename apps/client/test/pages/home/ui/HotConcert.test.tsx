@@ -9,7 +9,7 @@ const { mockUseHotConcerts, mockConcerts } = vi.hoisted(() => ({
     {
       id: 1,
       title: "테스트 콘서트 1",
-      genre: "ballad" as const,
+      genre: "BALLAD" as const,
       placeName: "올림픽공원",
       posterUrl: "https://example.com/1.jpg",
       createdAt: new Date("2026-01-01"),
@@ -28,7 +28,7 @@ const { mockUseHotConcerts, mockConcerts } = vi.hoisted(() => ({
     {
       id: 2,
       title: "테스트 콘서트 2",
-      genre: "rock-metal" as const,
+      genre: "ROCK_METAL" as const,
       placeName: "잠실실내체육관",
       posterUrl: "https://example.com/2.jpg",
       createdAt: new Date("2026-01-01"),

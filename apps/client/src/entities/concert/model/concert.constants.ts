@@ -5,14 +5,14 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 import type { BookingStatus, BookingStatusItem, ConcertGenre, ConcertGenreItem } from "./concert.types";
 
 export const CONCERT_GENRE_MAP: Record<ConcertGenre, ConcertGenreItem> = {
-  ballad: { icon: MicVocal, label: "발라드", className: "bg-pink-100 text-pink-600", to: ROUTE_PATHS.CONCERTS },
-  "rock-metal": { icon: Guitar, label: "락/메탈", className: "bg-red-100 text-red-600", to: ROUTE_PATHS.CONCERTS },
-  "rap-hiphop": { icon: Radio, label: "랩/힙합", className: "bg-violet-100 text-violet-600", to: ROUTE_PATHS.CONCERTS },
-  "jazz-soul": { icon: AudioLines, label: "재즈/소울", className: "bg-amber-100 text-amber-600", to: ROUTE_PATHS.CONCERTS },
-  trot: { icon: Music2, label: "포크/트로트", className: "bg-orange-100 text-orange-600", to: ROUTE_PATHS.CONCERTS },
-  "international-artist": { icon: Earth, label: "내한공연", className: "bg-blue-100 text-blue-600", to: ROUTE_PATHS.CONCERTS },
-  festival: { icon: PartyPopper, label: "페스티벌", className: "bg-emerald-100 text-emerald-600", to: ROUTE_PATHS.CONCERTS },
-  indie: { icon: Drum, label: "인디", className: "bg-cyan-100 text-cyan-600", to: ROUTE_PATHS.CONCERTS },
+  BALLAD: { icon: MicVocal, label: "발라드", className: "bg-pink-100 text-pink-600", to: ROUTE_PATHS.CONCERTS },
+  ROCK_METAL: { icon: Guitar, label: "락/메탈", className: "bg-red-100 text-red-600", to: ROUTE_PATHS.CONCERTS },
+  RAP_HIPHOP: { icon: Radio, label: "랩/힙합", className: "bg-violet-100 text-violet-600", to: ROUTE_PATHS.CONCERTS },
+  JAZZ_SOUL: { icon: AudioLines, label: "재즈/소울", className: "bg-amber-100 text-amber-600", to: ROUTE_PATHS.CONCERTS },
+  TROT: { icon: Music2, label: "포크/트로트", className: "bg-orange-100 text-orange-600", to: ROUTE_PATHS.CONCERTS },
+  INTERNATIONAL_ARTIST: { icon: Earth, label: "내한공연", className: "bg-blue-100 text-blue-600", to: ROUTE_PATHS.CONCERTS },
+  FESTIVAL: { icon: PartyPopper, label: "페스티벌", className: "bg-emerald-100 text-emerald-600", to: ROUTE_PATHS.CONCERTS },
+  INDIE: { icon: Drum, label: "인디", className: "bg-cyan-100 text-cyan-600", to: ROUTE_PATHS.CONCERTS },
 };
 
 export const BOOKING_STATUS_MAP: Record<BookingStatus, BookingStatusItem> = {
