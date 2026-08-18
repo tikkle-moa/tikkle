@@ -1,6 +1,7 @@
 package com.example.server.config
 
 import com.example.server.auth.types.OAuthErrorCode
+import com.example.server.global.openapi.ErrorResponse
 import com.example.server.global.response.ApiResponse
 import io.swagger.v3.core.converter.ModelConverters
 import io.swagger.v3.core.jackson.ModelResolver
@@ -9,12 +10,15 @@ import io.swagger.v3.oas.annotations.enums.SecuritySchemeType
 import io.swagger.v3.oas.annotations.security.SecurityScheme
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
+import io.swagger.v3.oas.models.media.Content
+import io.swagger.v3.oas.models.media.MediaType
 import io.swagger.v3.oas.models.media.Schema
 import io.swagger.v3.oas.models.media.StringSchema
 import org.springdoc.core.customizers.OpenApiCustomizer
 import org.springdoc.core.customizers.OperationCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import io.swagger.v3.oas.models.responses.ApiResponse as SwaggerApiResponse
 
 @SecurityScheme(
   name = "access_token",
@@ -74,6 +78,48 @@ class OpenApiConfig {
         content.addMediaType(
           "application/json",
           mediaType,
+        )
+      }
+
+      operation
+    }
+  }
+
+  @Bean
+  fun errorResponseOperationCustomizer(): OperationCustomizer {
+    return OperationCustomizer { operation, handlerMethod ->
+      val errorResponse = handlerMethod.method
+        .getAnnotation(ErrorResponse::class.java)
+        ?: return@OperationCustomizer operation
+
+      errorResponse.responses.forEach { response ->
+        val errorCode = response.errorCode
+        val description = response.description
+          .takeIf { it.isNotBlank() }
+          ?: errorCode.message
+
+        operation.responses.addApiResponse(
+          errorCode.status.value().toString(),
+          SwaggerApiResponse().apply {
+            this.description = description
+            content = Content().apply {
+              addMediaType(
+                "application/json",
+                MediaType().apply {
+                  schema = Schema<Any>().apply {
+                    `$ref` = "#/components/schemas/Failure"
+                  }
+                  example = mapOf(
+                    "success" to false,
+                    "error" to mapOf(
+                      "code" to errorCode.status.value(),
+                      "message" to errorCode.message,
+                    ),
+                  )
+                },
+              )
+            }
+          },
         )
       }
 
