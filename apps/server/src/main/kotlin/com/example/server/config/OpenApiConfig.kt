@@ -87,9 +87,7 @@ class OpenApiConfig {
           AnnotatedType(innerType)
             .jsonViewAnnotation(type.jsonViewAnnotation)
             .ctxAnnotations(type.ctxAnnotations),
-        )?.apply {
-          addExtension("x-json-nullable", true)
-        }
+        )
       }
 
       private fun next(type: AnnotatedType, context: ModelConverterContext, chain: MutableIterator<ModelConverter>): Schema<*>? =
@@ -118,13 +116,13 @@ class OpenApiConfig {
   @Bean
   fun defaultRequiredOpenApiCustomizer(): OpenApiCustomizer {
     return OpenApiCustomizer { openApi ->
-      openApi.components?.schemas?.values?.forEach { schema ->
+      openApi.components?.schemas?.forEach { (schemaName, schema) ->
         val properties = schema.properties ?: return@forEach
 
         schema.required = properties
-          .filterValues { property ->
-            property.extensions?.get("x-not-required") != true &&
-              property.extensions?.get("x-json-nullable") != true
+          .filter { (propertyName, propertySchema) ->
+            propertySchema.extensions?.get("x-not-required") != true &&
+              !isJsonNullableProperty(schemaName, propertyName)
           }
           .keys
           .toMutableList()
@@ -132,11 +130,18 @@ class OpenApiConfig {
 
         properties.values.forEach { property ->
           property.extensions?.remove("x-not-required")
-          property.extensions?.remove("x-json-nullable")
         }
       }
     }
   }
+
+  private fun findSchemaProperty(schemaName: String, propertyName: String) = schemaClasses[schemaName]
+    ?.memberProperties
+    ?.firstOrNull { it.name == propertyName }
+
+  private fun isJsonNullableProperty(schemaName: String, propertyName: String): Boolean = findSchemaProperty(schemaName, propertyName)
+    ?.returnType
+    ?.classifier == JsonNullable::class
 
   @Bean
   fun jsonNullableSchemaCustomizer(): OpenApiCustomizer {
@@ -145,24 +150,23 @@ class OpenApiConfig {
 
       schemas.forEach { (schemaName, schema) ->
         val properties = schema.properties ?: return@forEach
-        val schemaClass = schemaClasses[schemaName] ?: return@forEach
 
-        schemaClass.memberProperties.forEach { property ->
-          if (property.returnType.classifier != JsonNullable::class) {
+        properties.forEach { (propertyName, propertySchema) ->
+          val kotlinProperty = findSchemaProperty(schemaName, propertyName)
+            ?: return@forEach
+
+          if (kotlinProperty.returnType.classifier != JsonNullable::class) {
             return@forEach
           }
 
-          val propertySchema = properties[property.name]
-            ?: return@forEach
-
-          val valueType = property.returnType.arguments
+          val valueType = kotlinProperty.returnType.arguments
             .firstOrNull()
             ?.type
             ?: return@forEach
 
           if (valueType.isMarkedNullable) {
             markNullable(
-              propertyName = property.name,
+              propertyName = propertyName,
               propertySchema = propertySchema,
               properties = properties,
               specVersion = schema.specVersion ?: SpecVersion.V30,

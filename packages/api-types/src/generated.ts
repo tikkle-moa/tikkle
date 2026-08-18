@@ -191,7 +191,7 @@ export interface components {
     };
     UpdateConcertRequest: {
       title?: string;
-      genre: components["schemas"]["ConcertGenre"];
+      genre?: components["schemas"]["ConcertGenre"];
       placeName?: string;
       posterUrl?: string | null;
       description?: string | null;
