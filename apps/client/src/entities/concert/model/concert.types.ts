@@ -1,8 +1,9 @@
+import type { components } from "@tikkle/api-types";
 import type { LucideIcon } from "lucide-react";
 
 import type { RoutePaths } from "@shared/config/router.config";
 
-export type ConcertGenre = "BALLAD" | "ROCK_METAL" | "RAP_HIPHOP" | "JAZZ_SOUL" | "TROT" | "INTERNATIONAL_ARTIST" | "FESTIVAL" | "INDIE";
+export type ConcertGenre = components["schemas"]["ConcertGenre"];
 
 export interface ConcertGenreItem {
   icon: LucideIcon;
