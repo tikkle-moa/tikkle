@@ -7,6 +7,7 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.global.extension.ifPresent
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -30,17 +31,11 @@ class ConcertService(private val concertRepository: ConcertRepository) {
     val concert = concertRepository.findById(id)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND) }
 
-    updateConcertRequest.title?.let { concert.title = it }
-    updateConcertRequest.genre?.let { concert.genre = it }
-    updateConcertRequest.placeName?.let { concert.placeName = it }
-
-    if (updateConcertRequest.hasPosterUrl) {
-      concert.posterUrl = updateConcertRequest.posterUrl
-    }
-
-    if (updateConcertRequest.hasDescription) {
-      concert.description = updateConcertRequest.description
-    }
+    updateConcertRequest.title.ifPresent { concert.title = it }
+    updateConcertRequest.genre.ifPresent { concert.genre = it }
+    updateConcertRequest.placeName.ifPresent { concert.placeName = it }
+    updateConcertRequest.posterUrl.ifPresent { concert.posterUrl = it }
+    updateConcertRequest.description.ifPresent { concert.description = it }
 
     return ConcertResponse.from(concert)
   }
