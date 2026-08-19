@@ -1,6 +1,8 @@
 package com.example.server.concert
 
+import com.example.server.concert.dto.ConcertDetailResponse
 import com.example.server.concert.dto.ConcertListResponse
+import com.example.server.concert.dto.ConcertResponse
 import com.example.server.concert.dto.CreateConcertRequest
 import com.example.server.concert.dto.UpdateConcertRequest
 import com.example.server.concert.entity.Concert
@@ -264,6 +266,40 @@ class ConcertServiceTest {
 
       assertThat(result).isEmpty()
       then(concertRepository).should().findAllByOrderByCreatedAtDesc()
+    }
+  }
+
+  @Nested
+  @DisplayName("getConcertDetail")
+  inner class GetConcertDetail {
+    @Test
+    fun `콘서트 상세와 빈 공연 회차 목록을 반환한다`() {
+      val concert = concert()
+
+      given(concertRepository.findById(1L))
+        .willReturn(Optional.of(concert))
+
+      val result = concertService.getConcertDetail(1L)
+
+      assertThat(result).isEqualTo(
+        ConcertDetailResponse(
+          concert = ConcertResponse.from(concert),
+          performances = emptyList(),
+        ),
+      )
+      then(concertRepository).should().findById(1L)
+    }
+
+    @Test
+    fun `존재하지 않는 콘서트 조회 시 NOT_FOUND 예외를 던진다`() {
+      given(concertRepository.findById(99L))
+        .willReturn(Optional.empty())
+
+      val exception = assertThrows<CustomException> {
+        concertService.getConcertDetail(99L)
+      }
+
+      assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
     }
   }
 }
