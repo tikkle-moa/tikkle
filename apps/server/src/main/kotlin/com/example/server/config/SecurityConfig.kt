@@ -87,7 +87,7 @@ class SecurityConfig(
 
   private fun configureConcertAuthorization(auth: AuthorizationRegistry) {
     auth
-      .requestMatchers(HttpMethod.GET, "/api/concerts").permitAll()
+      .requestMatchers(HttpMethod.GET, "/api/concerts", "/api/concerts/*").permitAll()
       .requestMatchers(HttpMethod.POST, "/api/concerts").hasRole(UserRole.ADMIN.name)
       .requestMatchers(HttpMethod.PATCH, "/api/concerts/**").hasRole(UserRole.ADMIN.name)
       .requestMatchers(HttpMethod.DELETE, "/api/concerts/**").hasRole(UserRole.ADMIN.name)
