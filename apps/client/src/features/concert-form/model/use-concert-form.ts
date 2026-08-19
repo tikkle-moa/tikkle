@@ -1,8 +1,9 @@
 import type { SubmitEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { CreateConcertRequest } from "@entities/concert";
 
+import { EMPTY_CONCERT_FORM_VALUES } from "./concert-form.constants";
 import type { ConcertFormErrors } from "./concert-form.types";
 import { getInitialConcertFormValues, toConcertRequest, validateConcertForm } from "./concert-form.utils";
 
@@ -12,9 +13,21 @@ interface UseConcertFormProps {
 }
 
 export const useConcertForm = ({ initialValues, onSubmit }: UseConcertFormProps) => {
-  const [values, setValues] = useState<CreateConcertRequest>(() => getInitialConcertFormValues(initialValues));
+  const [values, setValues] = useState<CreateConcertRequest>(EMPTY_CONCERT_FORM_VALUES);
   const [errors, setErrors] = useState<ConcertFormErrors>({});
   const [posterLoadFailed, setPosterLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (!initialValues) return;
+
+    const initializeForm = () => {
+      setValues(getInitialConcertFormValues(initialValues));
+      setErrors({});
+      setPosterLoadFailed(false);
+    };
+
+    initializeForm();
+  }, [initialValues]);
 
   const updateField = (field: keyof CreateConcertRequest, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
