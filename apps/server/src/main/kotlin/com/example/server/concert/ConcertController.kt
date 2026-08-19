@@ -1,5 +1,6 @@
 package com.example.server.concert
 
+import com.example.server.concert.dto.ConcertDetailResponse
 import com.example.server.concert.dto.ConcertListResponse
 import com.example.server.concert.dto.ConcertResponse
 import com.example.server.concert.dto.CreateConcertRequest
@@ -98,5 +99,22 @@ class ConcertController(private val concertService: ConcertService) {
     val concertListResponse = concertService.getConcerts()
 
     return ResponseEntity.ok(ApiResponse.ok(concertListResponse))
+  }
+
+  @Operation(
+    summary = "콘서트 상세 조회",
+    description = "콘서트 상세 정보와 연결된 공연 회차 목록을 반환합니다.",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "콘서트 상세 조회 성공")],
+  )
+  @ErrorResponse(
+    responses = [
+      ErrorResponseItem(ErrorCode.NOT_FOUND, description = "콘서트를 찾을 수 없음"),
+    ],
+  )
+  @GetMapping("/{id}")
+  fun getConcertDetail(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<ConcertDetailResponse>> {
+    val response = concertService.getConcertDetail(id)
+
+    return ResponseEntity.ok(ApiResponse.ok(response))
   }
 }

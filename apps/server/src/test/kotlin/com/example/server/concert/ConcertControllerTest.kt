@@ -3,6 +3,7 @@ package com.example.server.concert
 import com.example.server.auth.JwtTokenProvider
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
+import com.example.server.concert.dto.ConcertDetailResponse
 import com.example.server.concert.dto.ConcertListResponse
 import com.example.server.concert.dto.ConcertResponse
 import com.example.server.concert.dto.CreateConcertRequest
@@ -498,6 +499,44 @@ class ConcertControllerTest {
         }
 
       then(concertService).should().getConcerts()
+    }
+  }
+
+  @Nested
+  @DisplayName("GET /api/concerts/{id}")
+  inner class GetConcertDetail {
+    @Test
+    fun `인증 없이 콘서트 상세를 조회한다`() {
+      val response = ConcertDetailResponse(
+        concert = concertResponse(),
+        performances = emptyList(),
+      )
+      given(concertService.getConcertDetail(1L))
+        .willReturn(response)
+
+      mockMvc.get("/api/concerts/1")
+        .andExpect {
+          status { isOk() }
+          jsonPath("$.success") { value(true) }
+          jsonPath("$.data.concert.id") { value(1) }
+          jsonPath("$.data.performances") { isArray() }
+          jsonPath("$.data.performances") { isEmpty() }
+        }
+
+      then(concertService).should().getConcertDetail(1L)
+    }
+
+    @Test
+    fun `없는 콘서트 조회 시 404를 반환한다`() {
+      given(concertService.getConcertDetail(99L))
+        .willThrow(CustomException(ErrorCode.NOT_FOUND))
+
+      mockMvc.get("/api/concerts/99")
+        .andExpect {
+          status { isNotFound() }
+          jsonPath("$.success") { value(false) }
+          jsonPath("$.error.code") { value(404) }
+        }
     }
   }
 }

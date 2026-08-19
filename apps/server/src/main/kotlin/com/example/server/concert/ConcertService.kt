@@ -1,5 +1,6 @@
 package com.example.server.concert
 
+import com.example.server.concert.dto.ConcertDetailResponse
 import com.example.server.concert.dto.ConcertListResponse
 import com.example.server.concert.dto.ConcertResponse
 import com.example.server.concert.dto.CreateConcertRequest
@@ -54,5 +55,16 @@ class ConcertService(private val concertRepository: ConcertRepository) {
     val concertList = concertRepository.findAllByOrderByCreatedAtDesc()
 
     return concertList.map(ConcertListResponse::from)
+  }
+
+  @Transactional(readOnly = true)
+  fun getConcertDetail(concertId: Long): ConcertDetailResponse {
+    val concert = concertRepository.findById(concertId)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND) }
+
+    return ConcertDetailResponse(
+      concert = ConcertResponse.from(concert),
+      performances = emptyList(),
+    )
   }
 }

@@ -75,7 +75,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * 콘서트 상세 조회
+     * @description 콘서트 상세 정보와 연결된 공연 회차 목록을 반환합니다.
+     */
+    get: operations["getConcertDetail"];
     put?: never;
     post?: never;
     /**
@@ -208,6 +212,27 @@ export interface components {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["ConcertListResponse"][];
+    };
+    ConcertDetailResponse: {
+      concert: components["schemas"]["ConcertResponse"];
+      performances: components["schemas"]["PerformanceResponse"][];
+    };
+    PerformanceResponse: {
+      /** Format: int64 */
+      id: number;
+      /** Format: int64 */
+      concertId: number;
+      /** Format: date-time */
+      startsAt: string;
+      /** Format: date-time */
+      bookingOpensAt: string | null;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    SuccessConcertDetailResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["ConcertDetailResponse"];
     };
     CurrentUserResponse: {
       /** Format: int64 */
@@ -444,6 +469,46 @@ export interface operations {
            *       "error": {
            *         "code": 403,
            *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  getConcertDetail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 콘서트 상세 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessConcertDetailResponse"];
+        };
+      };
+      /** @description 콘서트를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
            *       }
            *     }
            */
