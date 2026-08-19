@@ -1,8 +1,6 @@
 import { AlertCircle, Image, Info, LoaderCircle, Sparkles } from "lucide-react";
 
-import { CONCERT_GENRE_MAP, type CreateConcertRequest } from "@entities/concert";
-
-import { ConcertCard } from "@features/concert";
+import { CONCERT_GENRE_MAP, ConcertCard, type CreateConcertRequest } from "@entities/concert";
 
 import ConcertFormInput from "./ConcertFormInput";
 import ConcertFormSelect from "./ConcertFormSelect";

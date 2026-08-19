@@ -1,8 +1,6 @@
 import SectionTitle from "@shared/ui/SectionTitle";
 
-import { useUpcomingConcerts } from "@entities/concert";
-
-import { ConcertCard, ConcertCardSkeleton } from "@features/concert";
+import { ConcertCard, ConcertCardSkeleton, useUpcomingConcerts } from "@entities/concert";
 
 import { UPCOMING_SKELETON_COUNT } from "../model/home.constants";
 

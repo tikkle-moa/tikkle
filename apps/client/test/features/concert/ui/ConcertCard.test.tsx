@@ -1,9 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import type { ConcertResponse, PerformanceResponse } from "@entities/concert";
-
-import ConcertCard from "@features/concert/ui/ConcertCard";
+import { ConcertCard, type ConcertResponse, type PerformanceResponse } from "@entities/concert";
 
 const FUTURE = new Date("2099-01-01");
 const PAST = new Date("2000-01-01");

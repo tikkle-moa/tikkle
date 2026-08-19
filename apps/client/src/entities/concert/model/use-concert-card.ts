@@ -1,4 +1,6 @@
-import { BOOKING_STATUS_MAP, CONCERT_GENRE_MAP, type ConcertResponse, getBookingStatus, getPeriod } from "@entities/concert";
+import { BOOKING_STATUS_MAP, CONCERT_GENRE_MAP } from "./concert.constants";
+import type { ConcertResponse } from "./concert.types";
+import { getBookingStatus, getPeriod } from "./concert.utils";
 
 interface UseConcertCardProps {
   concert: ConcertResponse;

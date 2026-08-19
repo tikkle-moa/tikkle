@@ -1,8 +1,6 @@
 import SectionTitle from "@shared/ui/SectionTitle";
 
-import { useHotConcerts } from "@entities/concert";
-
-import { ConcertCard, ConcertCardSkeleton } from "@features/concert";
+import { ConcertCard, ConcertCardSkeleton, useHotConcerts } from "@entities/concert";
 
 import { HOT_SKELETON_COUNT } from "../model/home.constants";
 

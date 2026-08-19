@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 
-import { DEFAULT_MAX_TILT, DEFAULT_SHADOW_OFFSET } from "@features/concert/model/concert-card.constants";
-import { useConcertCardTilt } from "@features/concert/model/use-concert-card-tilt";
+import { DEFAULT_MAX_TILT, DEFAULT_SHADOW_OFFSET } from "@entities/concert/model/concert-card.constants";
+import { useConcertCardTilt } from "@entities/concert/model/use-concert-card-tilt";
 
 const useMakeHook = () => useConcertCardTilt({ maxTilt: DEFAULT_MAX_TILT, shadowOffset: DEFAULT_SHADOW_OFFSET });
 

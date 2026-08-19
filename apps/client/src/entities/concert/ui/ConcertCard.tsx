@@ -2,10 +2,9 @@ import { MapPin, Music } from "lucide-react";
 
 import ButtonWrapper from "@shared/ui/ButtonWrapper";
 
-import type { ConcertResponse } from "@entities/concert";
-
 import { ASPECT_RATIO_CLASS, DEFAULT_MAX_TILT, DEFAULT_SHADOW_OFFSET } from "../model/concert-card.constants";
 import type { AspectRatio, DisplayOptions, EffectOptions } from "../model/concert-card.types";
+import type { ConcertResponse } from "../model/concert.types";
 import { useConcertCard } from "../model/use-concert-card";
 import { useConcertCardTilt } from "../model/use-concert-card-tilt";
 
