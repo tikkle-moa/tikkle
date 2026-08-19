@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router";
 
-import { AUTH_GUARD_PATHS, ROUTE_PATHS } from "@shared/config/router.config";
+import { GUARDED_PATHS, ROUTE_PATHS } from "@shared/config/router.config";
 
 import { useSessionStore } from "@entities/session";
 
@@ -15,7 +15,7 @@ export const useLogoutNavigator = () => {
   useEffect(() => {
     if (!justLoggedOut) return;
 
-    if (AUTH_GUARD_PATHS.some((path) => matchPath(path, pathname))) {
+    if (GUARDED_PATHS.some((path) => matchPath(path, pathname))) {
       void navigate(ROUTE_PATHS.HOME, { replace: true });
       return;
     }
