@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { useConcertNew } from "@pages/concertNew/model/use-concert-new";
+import { useConcertNew } from "@pages/concert-new/model/use-concert-new";
 
 const { mockNavigate, mockPost } = vi.hoisted(() => ({ mockNavigate: vi.fn(), mockPost: vi.fn() }));
 

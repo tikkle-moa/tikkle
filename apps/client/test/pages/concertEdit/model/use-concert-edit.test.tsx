@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { useConcertEdit } from "@pages/concertEdit/model/use-concert-edit";
+import { useConcertEdit } from "@pages/concert-edit/model/use-concert-edit";
 
 const { mockGet, mockNavigate, mockPatch, mockUseParams } = vi.hoisted(() => ({
   mockGet: vi.fn(),

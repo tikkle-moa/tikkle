@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import ConcertNewPage from "@pages/concertNew/ui/ConcertNewPage";
+import ConcertNewPage from "@pages/concert-new/ui/ConcertNewPage";
 
 const { mockHandleCancel, mockHandleSubmit, mockUseConcertNew } = vi.hoisted(() => ({
   mockHandleCancel: vi.fn(),
@@ -8,7 +8,7 @@ const { mockHandleCancel, mockHandleSubmit, mockUseConcertNew } = vi.hoisted(() 
   mockUseConcertNew: vi.fn(),
 }));
 
-vi.mock("@pages/concertNew/model/use-concert-new", () => ({ useConcertNew: mockUseConcertNew }));
+vi.mock("@pages/concert-new/model/use-concert-new", () => ({ useConcertNew: mockUseConcertNew }));
 vi.mock("@features/concert-form", () => ({
   ConcertForm: (props: { mode: string; isSubmitting: boolean; submitError: string | null }) => (
     <div data-testid="concert-form" data-mode={props.mode} data-submitting={String(props.isSubmitting)}>

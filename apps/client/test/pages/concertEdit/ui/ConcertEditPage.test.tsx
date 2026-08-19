@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 
-import ConcertEditPage from "@pages/concertEdit/ui/ConcertEditPage";
+import ConcertEditPage from "@pages/concert-edit/ui/ConcertEditPage";
 
 const { mockUseConcertEdit } = vi.hoisted(() => ({ mockUseConcertEdit: vi.fn() }));
 
-vi.mock("@pages/concertEdit/model/use-concert-edit", () => ({ useConcertEdit: mockUseConcertEdit }));
+vi.mock("@pages/concert-edit/model/use-concert-edit", () => ({ useConcertEdit: mockUseConcertEdit }));
 vi.mock("@features/concert-form", () => ({
   ConcertForm: (props: { mode: string; initialValues?: { title: string }; isSubmitting: boolean; submitError: string | null }) => (
     <div data-testid="concert-form" data-mode={props.mode} data-submitting={String(props.isSubmitting)}>

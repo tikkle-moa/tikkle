@@ -2,9 +2,9 @@ import { createBrowserRouter } from "react-router";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { ConcertEditPage } from "@pages/concertEdit";
-import { ConcertListPage } from "@pages/concertList";
-import { ConcertNewPage } from "@pages/concertNew";
+import { ConcertEditPage } from "@pages/concert-edit";
+import { ConcertListPage } from "@pages/concert-list";
+import { ConcertNewPage } from "@pages/concert-new";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
