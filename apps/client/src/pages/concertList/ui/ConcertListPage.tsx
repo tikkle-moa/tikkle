@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { useConcerts } from "@entities/concert";
 
 import { ConcertCard, ConcertCardSkeleton } from "@features/concert";
@@ -9,9 +7,10 @@ import MobileConcertListFilterButton from "./MobileConcertListFilterButton";
 import MobileConcertListFilterPanel from "./MobileConcertListFilterPanel";
 
 import { CONCERT_LIST_SKELETON_COUNT } from "../model/concert-list.constants";
+import { useMobileConcertListFilterToggle } from "../model/use-mobile-concert-list-filter-toggle";
 
 const ConcertListPage = () => {
-  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const { isMobileFilterOpen, toggleMobileFilter } = useMobileConcertListFilterToggle();
   const { data: concerts = [], isPending, isError } = useConcerts();
 
   return (
@@ -19,7 +18,7 @@ const ConcertListPage = () => {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900 sm:text-xl">공연 목록</h1>
 
-        <MobileConcertListFilterButton isOpen={isMobileFilterOpen} onClick={() => setIsMobileFilterOpen((isOpen) => !isOpen)} />
+        <MobileConcertListFilterButton isOpen={isMobileFilterOpen} onClick={toggleMobileFilter} />
       </div>
 
       {isMobileFilterOpen && <MobileConcertListFilterPanel />}
