@@ -14,7 +14,7 @@ export const useLogin = () => {
 
   const handleLogin = (provider: OAuthProvider) => {
     const params = new URLSearchParams({
-      redirect_uri: ROUTE_PATHS.CONCERTS,
+      redirect_uri: ROUTE_PATHS.CONCERT_LIST,
     });
 
     window.location.assign(`/api/auth/oauth/${provider}?${params.toString()}`);

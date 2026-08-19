@@ -20,7 +20,7 @@ const SecondaryHeader = () => (
         className={({ isActive }) =>
           `${LINK_CLASS_NAME} ${isActive ? "border-brand-primary text-brand-primary border-b-2" : "hover:text-brand-primary text-gray-600"}`
         }
-        to={ROUTE_PATHS.CONCERTS}
+        to={ROUTE_PATHS.CONCERT_LIST}
       >
         콘서트
       </NavLink>
