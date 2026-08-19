@@ -18,6 +18,7 @@ interface ConcertCardProps {
   ratio?: AspectRatio;
   displayOptions?: DisplayOptions;
   effectOptions?: EffectOptions;
+  onPosterError?: () => void;
 }
 
 const ConcertCard = ({
@@ -29,6 +30,7 @@ const ConcertCard = ({
   ratio = "3/4",
   displayOptions: { showStatus = false, showGenre = false, showTitle = false, showPlaceName = false, showPeriod = false } = {},
   effectOptions: { disableTilt = false, disableScale = false, disableGlare = false, disableShadow = false } = {},
+  onPosterError,
 }: ConcertCardProps) => {
   const { posterUrl, title, placeName, period, statusLabel, statusClassName, GenreIcon, genreLabel, genreClassName } = useConcertCard({ concert });
 
@@ -58,7 +60,7 @@ const ConcertCard = ({
         >
           <div className={`relative ${ASPECT_RATIO_CLASS[ratio]} overflow-hidden bg-gray-100`}>
             {posterUrl ? (
-              <img src={posterUrl} alt={title} className="h-full w-full object-cover" />
+              <img src={posterUrl} alt={title} className="h-full w-full object-cover" onError={onPosterError} />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 bg-linear-to-br from-indigo-950 via-purple-950 to-fuchsia-950 px-4 text-center">
                 <Music size={36} className="text-violet-300/60" />
