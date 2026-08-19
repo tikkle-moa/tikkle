@@ -1,17 +1,28 @@
+import { useState } from "react";
+
 import { useConcerts } from "@entities/concert";
 
 import { ConcertCard, ConcertCardSkeleton } from "@features/concert";
 
 import ConcertListFilterPanel from "./ConcertListFilterPanel";
+import MobileConcertListFilterButton from "./MobileConcertListFilterButton";
+import MobileConcertListFilterPanel from "./MobileConcertListFilterPanel";
 
 import { CONCERT_LIST_SKELETON_COUNT } from "../model/concert-list.constants";
 
 const ConcertListPage = () => {
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const { data: concerts = [], isPending, isError } = useConcerts();
 
   return (
     <section className="mx-auto max-w-6xl">
-      <h1 className="mb-6 text-lg font-bold text-gray-900 sm:text-xl">공연 목록</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-lg font-bold text-gray-900 sm:text-xl">공연 목록</h1>
+
+        <MobileConcertListFilterButton isOpen={isMobileFilterOpen} onClick={() => setIsMobileFilterOpen((isOpen) => !isOpen)} />
+      </div>
+
+      {isMobileFilterOpen && <MobileConcertListFilterPanel />}
 
       <div className="flex items-start gap-8">
         <ConcertListFilterPanel />

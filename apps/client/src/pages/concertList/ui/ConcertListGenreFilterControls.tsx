@@ -8,7 +8,7 @@ const ConcertListGenreFilterControls = () => {
           key={genre}
           type="button"
           disabled
-          className="rounded-full border border-violet-100 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 disabled:cursor-not-allowed"
+          className="flex h-8 items-center justify-center rounded-full border border-violet-100 bg-white px-3 text-xs leading-none font-medium text-gray-600 disabled:cursor-not-allowed"
         >
           {label}
         </button>
