@@ -7,10 +7,12 @@ import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.config.properties.AppProperties
 import com.example.server.config.properties.JwtProperties
+import com.example.server.global.exception.ErrorCode
+import com.example.server.global.openapi.ErrorResponse
+import com.example.server.global.openapi.ErrorResponseItem
 import com.example.server.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.enums.ParameterIn
-import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import org.springframework.http.HttpHeaders
@@ -36,15 +38,11 @@ class AuthController(private val authService: AuthService, private val appProper
   @Operation(
     summary = "내 정보 조회",
     description = "로그인한 사용자의 정보를 반환합니다.",
-    responses = [
-      SwaggerApiResponse(responseCode = "200", description = "현재 로그인한 사용자 정보"),
-      SwaggerApiResponse(
-        responseCode = "401",
-        description = "로그인하지 않은 사용자",
-        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
-      ),
-    ],
+    responses = [SwaggerApiResponse(responseCode = "200", description = "현재 로그인한 사용자 정보")],
     security = [SecurityRequirement(name = "access_token")],
+  )
+  @ErrorResponse(
+    responses = [ErrorResponseItem(ErrorCode.UNAUTHORIZED)],
   )
   @GetMapping("/me")
   fun getCurrentUser(@AuthenticationPrincipal loginUser: LoginUserResult): ResponseEntity<ApiResponse.Success<CurrentUserResponse>> {
@@ -56,22 +54,16 @@ class AuthController(private val authService: AuthService, private val appProper
   @Operation(
     summary = "인증 토큰 재발급",
     description = "refresh_token 쿠키를 검증하여 새 access_token과 refresh_token 쿠키를 발급합니다. 기존 Refresh Token은 즉시 무효화됩니다.",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "새 인증 쿠키 발급")],
+  )
+  @ErrorResponse(
     responses = [
-      SwaggerApiResponse(responseCode = "200", description = "새 인증 쿠키 발급"),
-      SwaggerApiResponse(
-        responseCode = "401",
-        description = "Refresh Token이 없거나 유효하지 않음",
-        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
-      ),
-      SwaggerApiResponse(
-        responseCode = "403",
-        description = "CSRF 검증 실패",
-        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
-      ),
+      ErrorResponseItem(ErrorCode.UNAUTHORIZED),
+      ErrorResponseItem(ErrorCode.FORBIDDEN, description = "CSRF 검증 실패"),
     ],
   )
   @PostMapping("/refresh")
-  fun refresh(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
+  fun refresh(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.EmptySuccess> {
     val reissuedTokenPair = authService.refresh(refreshToken)
 
     val accessTokenCookie = accessTokenCookie(
@@ -93,17 +85,13 @@ class AuthController(private val authService: AuthService, private val appProper
   @Operation(
     summary = "로그아웃",
     description = "유효한 refresh_token이 있으면 서버에서 무효화하고, 항상 인증 쿠키를 만료합니다.",
-    responses = [
-      SwaggerApiResponse(responseCode = "200", description = "로그아웃 및 인증 쿠키 삭제 완료"),
-      SwaggerApiResponse(
-        responseCode = "403",
-        description = "CSRF 검증 실패",
-        content = [Content(schema = Schema(implementation = ApiResponse.Failure::class))],
-      ),
-    ],
+    responses = [SwaggerApiResponse(responseCode = "200", description = "로그아웃 및 인증 쿠키 삭제 완료")],
+  )
+  @ErrorResponse(
+    responses = [ErrorResponseItem(ErrorCode.FORBIDDEN, description = "CSRF 검증 실패")],
   )
   @PostMapping("/logout")
-  fun logout(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.Success<Unit>> {
+  fun logout(@CookieValue(name = "refresh_token", required = false) refreshToken: String?): ResponseEntity<ApiResponse.EmptySuccess> {
     authService.logout(refreshToken)
     val expiredAccessTokenCookie = accessTokenCookie("", Duration.ZERO)
     val expiredRefreshTokenCookie = refreshTokenCookie("", Duration.ZERO)
