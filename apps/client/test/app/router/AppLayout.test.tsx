@@ -18,7 +18,7 @@ const makeRouter = (initialEntry: RoutePaths = ROUTE_PATHS.HOME) =>
         element: <AppLayout showSecondaryHeader />,
         children: [
           { path: ROUTE_PATHS.HOME, element: <div>페이지 콘텐츠</div> },
-          { path: ROUTE_PATHS.CONCERTS, element: <div>페이지 콘텐츠</div> },
+          { path: ROUTE_PATHS.CONCERT_LIST, element: <div>페이지 콘텐츠</div> },
         ],
       },
       {
@@ -33,13 +33,13 @@ const makeRouter = (initialEntry: RoutePaths = ROUTE_PATHS.HOME) =>
   );
 
 describe("AppLayout", () => {
-  it.each([ROUTE_PATHS.HOME, ROUTE_PATHS.CONCERTS, ROUTE_PATHS.SEARCH, ROUTE_PATHS.MY])("%s에서 공통 헤더를 렌더링한다", (path) => {
+  it.each([ROUTE_PATHS.HOME, ROUTE_PATHS.CONCERT_LIST, ROUTE_PATHS.SEARCH, ROUTE_PATHS.MY])("%s에서 공통 헤더를 렌더링한다", (path) => {
     render(<RouterProvider router={makeRouter(path)} />);
 
     expect(screen.getByTestId("header")).toBeInTheDocument();
   });
 
-  it.each([ROUTE_PATHS.HOME, ROUTE_PATHS.CONCERTS])("%s에서 보조 헤더를 렌더링한다", (path) => {
+  it.each([ROUTE_PATHS.HOME, ROUTE_PATHS.CONCERT_LIST])("%s에서 보조 헤더를 렌더링한다", (path) => {
     render(<RouterProvider router={makeRouter(path)} />);
 
     expect(screen.getByText("보조 헤더")).toBeInTheDocument();

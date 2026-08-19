@@ -19,6 +19,8 @@ const makeConcert = (performances: PerformanceResponse[]): ConcertResponse => ({
   title: "테스트 콘서트",
   genre: "BALLAD",
   placeName: "올림픽공원",
+  posterUrl: null,
+  description: "테스트 콘서트 설명",
   createdAt: new Date("2026-01-01"),
   performances,
 });

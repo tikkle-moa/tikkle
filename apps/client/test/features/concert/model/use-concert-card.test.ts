@@ -23,6 +23,7 @@ const makeConcert = (overrides: Partial<ConcertResponse> = {}): ConcertResponse 
   genre: "BALLAD",
   placeName: "올림픽공원",
   posterUrl: "https://example.com/poster.jpg",
+  description: "테스트 콘서트 설명",
   createdAt: new Date("2026-01-01"),
   performances: [makePerf()],
   ...overrides,
