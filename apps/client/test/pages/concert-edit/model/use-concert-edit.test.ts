@@ -19,44 +19,64 @@ const initialValues = { title: "기존 공연", genre: "INDIE" as const, placeNa
 describe("useConcertEdit", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
     mockUseParams.mockReturnValue({ concertId: "3" });
     mockGet.mockResolvedValue({ data: { data: { concert: initialValues } }, error: undefined, response: { ok: true } });
   });
 
-  afterEach(() => vi.restoreAllMocks());
-
-  it("유효하지 않은 ID이면 조회하지 않는다", () => {
+  it("유효하지 않은 ID이면 오류 상태가 되고 조회하지 않는다", async () => {
     mockUseParams.mockReturnValue({ concertId: "invalid" });
     const { result } = renderHook(() => useConcertEdit());
 
-    expect(result.current.isParamValid).toBe(false);
+    await waitFor(() => expect(result.current.loadState).toEqual({ status: "error", error: "잘못된 콘서트 ID입니다." }));
     expect(mockGet).not.toHaveBeenCalled();
   });
 
-  it("콘서트 정보를 조회해 초기값으로 제공한다", async () => {
+  it("콘서트 정보를 조회해 성공 상태로 제공한다", async () => {
     const { result } = renderHook(() => useConcertEdit());
 
-    await waitFor(() => expect(result.current.initialValues).toEqual(initialValues));
+    await waitFor(() => expect(result.current.loadState).toEqual({ status: "success", data: initialValues }));
     expect(mockGet).toHaveBeenCalledWith("/api/concerts/{id}", { params: { path: { id: 3 } } });
   });
 
-  it("조회 실패 응답과 예외를 처리한다", async () => {
+  it("콘서트 조회가 완료되지 않았으면 수정을 요청하지 않는다", async () => {
+    mockUseParams.mockReturnValue({ concertId: "invalid" });
+    const { result } = renderHook(() => useConcertEdit());
+    await waitFor(() => expect(result.current.loadState.status).toBe("error"));
+
+    await act(() => result.current.handleSubmit(initialValues));
+
+    expect(result.current.submitState).toEqual({
+      status: "error",
+      error: "콘서트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    });
+    expect(mockPatch).not.toHaveBeenCalled();
+  });
+
+  it("조회 실패 응답과 요청 예외를 오류 상태로 제공한다", async () => {
     mockGet.mockResolvedValueOnce({ error: { message: "fail" }, response: { ok: false } });
     const { result, unmount } = renderHook(() => useConcertEdit());
-    await waitFor(() => expect(console.error).toHaveBeenCalled());
-    expect(result.current.initialValues).toBeNull();
+    await waitFor(() =>
+      expect(result.current.loadState).toEqual({
+        status: "error",
+        error: "콘서트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      }),
+    );
     unmount();
 
     mockGet.mockRejectedValueOnce(new Error("network"));
-    renderHook(() => useConcertEdit());
-    await waitFor(() => expect(console.error).toHaveBeenCalledWith(expect.any(Error)));
+    const { result: exceptionResult } = renderHook(() => useConcertEdit());
+    await waitFor(() =>
+      expect(exceptionResult.current.loadState).toEqual({
+        status: "error",
+        error: "콘서트 정보를 불러오는 중 오류가 발생했습니다.",
+      }),
+    );
   });
 
   it("변경된 값만 수정하고 목록으로 이동한다", async () => {
     mockPatch.mockResolvedValue({ error: undefined, response: { ok: true } });
     const { result } = renderHook(() => useConcertEdit());
-    await waitFor(() => expect(result.current.initialValues).toEqual(initialValues));
+    await waitFor(() => expect(result.current.loadState.status).toBe("success"));
 
     await act(() => result.current.handleSubmit({ ...initialValues, title: "수정 공연" }));
 
@@ -65,23 +85,24 @@ describe("useConcertEdit", () => {
       body: { title: "수정 공연" },
     });
     expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.CONCERT_LIST);
-    expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("수정 실패 응답과 요청 예외를 표시한다", async () => {
+  it("수정 실패 응답과 요청 예외를 제출 오류 상태로 제공한다", async () => {
     mockPatch.mockResolvedValueOnce({ error: { message: "fail" }, response: { ok: false } });
     const { result } = renderHook(() => useConcertEdit());
-    await waitFor(() => expect(result.current.initialValues).toEqual(initialValues));
+    await waitFor(() => expect(result.current.loadState.status).toBe("success"));
+
     await act(() => result.current.handleSubmit(initialValues));
-    expect(result.current.submitError).toBe("콘서트 수정에 실패했습니다.");
+    expect(result.current.submitState).toEqual({ status: "error", error: "콘서트 수정에 실패했습니다." });
 
     mockPatch.mockRejectedValueOnce(new Error("network"));
     await act(() => result.current.handleSubmit(initialValues));
-    expect(result.current.submitError).toBe("콘서트 등록 중 오류가 발생했습니다.");
+    expect(result.current.submitState).toEqual({ status: "error", error: "콘서트 수정 중 오류가 발생했습니다." });
   });
 
-  it("취소하면 콘서트 목록으로 이동한다", () => {
+  it("취소하면 콘서트 목록으로 이동한다", async () => {
     const { result } = renderHook(() => useConcertEdit());
+    await waitFor(() => expect(result.current.loadState.status).toBe("success"));
     act(() => result.current.handleCancel());
     expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.CONCERT_LIST);
   });
