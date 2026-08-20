@@ -1,16 +1,22 @@
-import { useConcerts } from "@entities/concert";
+import { Link } from "react-router";
 
-import { ConcertCard, ConcertCardSkeleton } from "@features/concert";
+import { Plus } from "lucide-react";
 
-import ConcertListFilterPanel from "./ConcertListFilterPanel";
-import MobileConcertListFilterButton from "./MobileConcertListFilterButton";
-import MobileConcertListFilterPanel from "./MobileConcertListFilterPanel";
+import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { CONCERT_LIST_SKELETON_COUNT } from "../model/concert-list.constants";
-import { useConcertListFilterSearchParams } from "../model/use-concert-list-filter-search-params";
-import { useMobileConcertListFilterToggle } from "../model/use-mobile-concert-list-filter-toggle";
+import { ConcertCard, ConcertCardSkeleton, useConcerts } from "@entities/concert";
+import { USER_ROLE, useSessionStore } from "@entities/session";
+
+import { CONCERT_LIST_SKELETON_COUNT } from "@pages/concertList/model/concert-list.constants";
+import { useConcertListFilterSearchParams } from "@pages/concertList/model/use-concert-list-filter-search-params";
+import { useMobileConcertListFilterToggle } from "@pages/concertList/model/use-mobile-concert-list-filter-toggle";
+import ConcertListFilterPanel from "@pages/concertList/ui/ConcertListFilterPanel";
+import MobileConcertListFilterButton from "@pages/concertList/ui/MobileConcertListFilterButton";
+import MobileConcertListFilterPanel from "@pages/concertList/ui/MobileConcertListFilterPanel";
 
 const ConcertListPage = () => {
+  const user = useSessionStore((state) => state.user);
+  const isAdmin = user?.role === USER_ROLE.ADMIN;
   const {
     selectedGenres,
     selectedBookingStatuses,
@@ -30,7 +36,18 @@ const ConcertListPage = () => {
     <section className="mx-auto max-w-6xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900 sm:text-xl">공연 목록</h1>
-        <MobileConcertListFilterButton isOpen={isMobileFilterOpen} activeFilterCount={activeFilterCount} onClick={toggleMobileFilter} />
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Link
+              to={ROUTE_PATHS.CONCERT_NEW}
+              className="bg-brand-primary inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
+            >
+              <Plus className="size-4" aria-hidden />
+              콘서트 등록
+            </Link>
+          )}
+          <MobileConcertListFilterButton isOpen={isMobileFilterOpen} activeFilterCount={activeFilterCount} onClick={toggleMobileFilter} />
+        </div>
       </div>
 
       {isMobileFilterOpen && (

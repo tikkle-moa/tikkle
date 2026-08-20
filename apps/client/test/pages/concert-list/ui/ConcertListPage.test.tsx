@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 
-import ConcertListPage from "@pages/concertList/ui/ConcertListPage";
+import ConcertListPage from "@pages/concert-list/ui/ConcertListPage";
 
 const { mockUseConcerts, mockUseConcertListFilterSearchParams, mockUseMobileConcertListFilterToggle, mockConcerts } = vi.hoisted(() => ({
   mockUseConcerts: vi.fn(),

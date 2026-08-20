@@ -24,7 +24,7 @@ vi.mock("@shared/config/router.config", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@shared/config/router.config")>();
   return {
     ...actual,
-    AUTH_GUARD_PATHS: [MOCK_PROTECTED_PATH],
+    GUARDED_PATHS: [MOCK_PROTECTED_PATH],
   };
 });
 

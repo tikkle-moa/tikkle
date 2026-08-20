@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 
-import ConcertCardSkeleton from "@features/concert/ui/ConcertCardSkeleton";
+import { ConcertCardSkeleton } from "@entities/concert";
 
 describe("ConcertCardSkeleton", () => {
   it("이미지 영역 animate-pulse를 렌더링한다", () => {

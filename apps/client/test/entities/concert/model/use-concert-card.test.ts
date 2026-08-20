@@ -1,8 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
 import type { ConcertResponse, PerformanceResponse } from "@entities/concert";
-
-import { useConcertCard } from "@features/concert/model/use-concert-card";
+import { useConcertCard } from "@entities/concert/model/use-concert-card";
 
 const FUTURE = new Date("2099-01-01");
 const PAST = new Date("2000-01-01");
@@ -23,6 +22,7 @@ const makeConcert = (overrides: Partial<ConcertResponse> = {}): ConcertResponse 
   genre: "BALLAD",
   placeName: "올림픽공원",
   posterUrl: "https://example.com/poster.jpg",
+  description: "테스트 콘서트 설명",
   createdAt: new Date("2026-01-01"),
   performances: [makePerf()],
   ...overrides,

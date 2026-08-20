@@ -23,7 +23,7 @@ describe("SecondaryHeader", () => {
   });
 
   it("콘서트 경로에서는 콘서트 탭을 활성 상태로 표시한다", () => {
-    renderSecondaryHeader(ROUTE_PATHS.CONCERTS);
+    renderSecondaryHeader(ROUTE_PATHS.CONCERT_LIST);
 
     expect(screen.getByRole("link", { name: "홈" })).toHaveClass("text-gray-600");
     expect(screen.getByRole("link", { name: "콘서트" })).toHaveClass("text-brand-primary");
