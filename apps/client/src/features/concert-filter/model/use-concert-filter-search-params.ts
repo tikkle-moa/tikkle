@@ -1,17 +1,16 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router";
 
-import { CONCERT_LIST_FILTER_QUERY_KEYS } from "./concert-filter.constants";
-
-type QueryKey = (typeof CONCERT_LIST_FILTER_QUERY_KEYS)[keyof typeof CONCERT_LIST_FILTER_QUERY_KEYS];
+import { CONCERT_FILTER_QUERY_KEYS } from "./concert-filter.constants";
+import type { ConcertFilterQueryKey } from "./concert-filter.types";
 
 export const useConcertListFilterSearchParams = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const selectedGenres = searchParams.getAll(CONCERT_LIST_FILTER_QUERY_KEYS.genre);
-  const selectedBookingStatuses = searchParams.getAll(CONCERT_LIST_FILTER_QUERY_KEYS.status);
-  const startDate = searchParams.get(CONCERT_LIST_FILTER_QUERY_KEYS.dateFrom) ?? "";
-  const endDate = searchParams.get(CONCERT_LIST_FILTER_QUERY_KEYS.dateTo) ?? "";
+  const selectedGenres = searchParams.getAll(CONCERT_FILTER_QUERY_KEYS.genre);
+  const selectedBookingStatuses = searchParams.getAll(CONCERT_FILTER_QUERY_KEYS.status);
+  const startDate = searchParams.get(CONCERT_FILTER_QUERY_KEYS.dateFrom) ?? "";
+  const endDate = searchParams.get(CONCERT_FILTER_QUERY_KEYS.dateTo) ?? "";
 
   const updateSearchParams = useCallback(
     (update: (params: URLSearchParams) => void) => {
@@ -30,7 +29,7 @@ export const useConcertListFilterSearchParams = () => {
   );
 
   const toggleSearchParam = useCallback(
-    (key: QueryKey, value: string) => {
+    (key: ConcertFilterQueryKey, value: string) => {
       updateSearchParams((params) => {
         const values = params.getAll(key);
         const isSelected = values.includes(value);
@@ -48,7 +47,7 @@ export const useConcertListFilterSearchParams = () => {
   );
 
   const setSingleSearchParam = useCallback(
-    (key: QueryKey, value: string) => {
+    (key: ConcertFilterQueryKey, value: string) => {
       updateSearchParams((params) => {
         params.delete(key);
 
@@ -61,24 +60,24 @@ export const useConcertListFilterSearchParams = () => {
   );
 
   const toggleGenre = (genre: string) => {
-    toggleSearchParam(CONCERT_LIST_FILTER_QUERY_KEYS.genre, genre);
+    toggleSearchParam(CONCERT_FILTER_QUERY_KEYS.genre, genre);
   };
 
   const toggleBookingStatus = (status: string) => {
-    toggleSearchParam(CONCERT_LIST_FILTER_QUERY_KEYS.status, status);
+    toggleSearchParam(CONCERT_FILTER_QUERY_KEYS.status, status);
   };
 
   const changeStartDate = (date: string) => {
-    setSingleSearchParam(CONCERT_LIST_FILTER_QUERY_KEYS.dateFrom, date);
+    setSingleSearchParam(CONCERT_FILTER_QUERY_KEYS.dateFrom, date);
   };
 
   const changeEndDate = (date: string) => {
-    setSingleSearchParam(CONCERT_LIST_FILTER_QUERY_KEYS.dateTo, date);
+    setSingleSearchParam(CONCERT_FILTER_QUERY_KEYS.dateTo, date);
   };
 
   const clearFilters = () => {
     updateSearchParams((params) => {
-      Object.values(CONCERT_LIST_FILTER_QUERY_KEYS).forEach((key) => params.delete(key));
+      Object.values(CONCERT_FILTER_QUERY_KEYS).forEach((key) => params.delete(key));
     });
   };
 
