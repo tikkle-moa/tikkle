@@ -17,7 +17,7 @@ const ConcertListFilterPanel = ({
   onClearFilters,
 }: ConcertListFilterPanelProps) => {
   return (
-    <aside className="hidden w-56 shrink-0 self-start rounded-xl border border-violet-100 bg-violet-50/70 p-5 shadow-sm lg:block">
+    <aside className="hidden w-56 shrink-0 self-start rounded-xl border border-violet-100 bg-violet-50/70 p-5 shadow-sm lg:sticky lg:top-4 lg:block">
       <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-bold text-violet-950">필터</h2>
