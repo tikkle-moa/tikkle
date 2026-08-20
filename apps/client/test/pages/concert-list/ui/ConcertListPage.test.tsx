@@ -1,0 +1,146 @@
+import { render, screen, within } from "@testing-library/react";
+
+import ConcertListPage from "@pages/concertList/ui/ConcertListPage";
+
+const { mockUseConcerts, mockUseConcertListFilterSearchParams, mockUseMobileConcertListFilterToggle, mockConcerts } = vi.hoisted(() => ({
+  mockUseConcerts: vi.fn(),
+  mockUseConcertListFilterSearchParams: vi.fn(),
+  mockUseMobileConcertListFilterToggle: vi.fn(),
+  mockConcerts: [
+    {
+      id: 1,
+      title: "테스트 콘서트 1",
+      genre: "BALLAD" as const,
+      placeName: "올림픽공원",
+      posterUrl: "https://example.com/1.jpg",
+      createdAt: new Date("2026-01-01"),
+      performances: [
+        {
+          id: 1,
+          concertId: 1,
+          startsAt: new Date("2099-01-01"),
+          bookingOpensAt: new Date("2000-01-01"),
+          createdAt: new Date("2026-01-01"),
+          totalSeats: 100,
+          bookedSeats: 50,
+        },
+      ],
+    },
+    {
+      id: 2,
+      title: "테스트 콘서트 2",
+      genre: "ROCK_METAL" as const,
+      placeName: "잠실실내체육관",
+      posterUrl: "https://example.com/2.jpg",
+      createdAt: new Date("2026-01-01"),
+      performances: [
+        {
+          id: 2,
+          concertId: 2,
+          startsAt: new Date("2099-02-01"),
+          bookingOpensAt: new Date("2099-01-01"),
+          createdAt: new Date("2026-01-01"),
+          totalSeats: 100,
+          bookedSeats: 0,
+        },
+      ],
+    },
+  ],
+}));
+
+vi.mock("@entities/concert", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@entities/concert")>();
+
+  return {
+    ...actual,
+    useConcerts: mockUseConcerts,
+  };
+});
+
+vi.mock("@pages/concertList/model/use-concert-list-filter-search-params", () => ({
+  useConcertListFilterSearchParams: mockUseConcertListFilterSearchParams,
+}));
+
+vi.mock("@pages/concertList/model/use-mobile-concert-list-filter-toggle", () => ({
+  useMobileConcertListFilterToggle: mockUseMobileConcertListFilterToggle,
+}));
+
+describe("ConcertListPage", () => {
+  beforeEach(() => {
+    mockUseConcertListFilterSearchParams.mockReturnValue({
+      selectedGenres: [],
+      selectedBookingStatuses: [],
+      startDate: "",
+      endDate: "",
+      activeFilterCount: 0,
+      toggleGenre: vi.fn(),
+      toggleBookingStatus: vi.fn(),
+      changeStartDate: vi.fn(),
+      changeEndDate: vi.fn(),
+      clearFilters: vi.fn(),
+    });
+
+    mockUseMobileConcertListFilterToggle.mockReturnValue({
+      isMobileFilterOpen: false,
+      toggleMobileFilter: vi.fn(),
+    });
+  });
+
+  it("정상 상태에서 모든 공연 카드를 그리드에 렌더링한다", () => {
+    mockUseConcerts.mockReturnValue({
+      data: mockConcerts,
+      isPending: false,
+      isError: false,
+    });
+
+    render(<ConcertListPage />);
+
+    const grid = screen.getByTestId("concert-list-grid");
+
+    expect(screen.getByRole("heading", { name: "공연 목록" })).toBeInTheDocument();
+    expect(within(grid).getAllByTestId("concert-card")).toHaveLength(mockConcerts.length);
+
+    for (const { title } of mockConcerts) {
+      expect(within(grid).getByText(title)).toBeInTheDocument();
+    }
+  });
+
+  it("로딩 중이면 카드 스켈레톤을 렌더링한다", () => {
+    mockUseConcerts.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+    });
+
+    const { container } = render(<ConcertListPage />);
+
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
+  });
+
+  it("오류 상태이면 오류 메시지를 렌더링한다", () => {
+    mockUseConcerts.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+    });
+
+    render(<ConcertListPage />);
+
+    expect(screen.getByText("공연 정보를 불러오지 못했습니다.")).toBeInTheDocument();
+    expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
+  });
+
+  it("공연 목록이 비어 있으면 빈 상태 메시지를 렌더링한다", () => {
+    mockUseConcerts.mockReturnValue({
+      data: [],
+      isPending: false,
+      isError: false,
+    });
+
+    render(<ConcertListPage />);
+
+    expect(screen.getByText("등록된 공연이 없습니다.")).toBeInTheDocument();
+    expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
+  });
+});
