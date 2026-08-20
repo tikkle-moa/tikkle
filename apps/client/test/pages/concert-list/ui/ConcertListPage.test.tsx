@@ -143,4 +143,29 @@ describe("ConcertListPage", () => {
     expect(screen.getByText("등록된 공연이 없습니다.")).toBeInTheDocument();
     expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
   });
+
+  it("모바일 필터가 열려 있으면 모바일 필터 패널을 렌더링한다", () => {
+    mockUseConcerts.mockReturnValue({
+      data: mockConcerts,
+      isPending: false,
+      isError: false,
+    });
+    mockUseMobileConcertListFilterToggle.mockReturnValue({
+      isMobileFilterOpen: true,
+      toggleMobileFilter: vi.fn(),
+    });
+
+    const { container } = render(<ConcertListPage />);
+    const mobileFilterPanel = container.querySelector("#mobile-concert-list-filter-panel");
+
+    expect(screen.getByRole("button", { name: "필터" })).toHaveAttribute("aria-expanded", "true");
+    expect(mobileFilterPanel).toBeInTheDocument();
+
+    const panel = within(mobileFilterPanel as HTMLElement);
+
+    expect(panel.getByText("필터")).toBeInTheDocument();
+    expect(panel.getByRole("heading", { name: "장르" })).toBeInTheDocument();
+    expect(panel.getByRole("heading", { name: "상태" })).toBeInTheDocument();
+    expect(panel.getByRole("heading", { name: "공연일" })).toBeInTheDocument();
+  });
 });
