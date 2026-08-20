@@ -1,23 +1,18 @@
+import { Plus } from "lucide-react";
+
 import { ConcertForm } from "@features/concert-form";
+import { ConcertManageIntro } from "@features/concert-manage";
 
 import { useConcertNew } from "../model/use-concert-new";
 
 const ConcertNewPage = () => {
-  const { isSubmitting, submitError, handleSubmit, handleCancel } = useConcertNew();
+  const { submitState, handleSubmit, handleCancel } = useConcertNew();
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="border-b border-slate-200 pb-6">
-        <div className="flex flex-col gap-1">
-          <span className="text-brand-primary text-sm font-semibold">콘서트 관리</span>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 sm:gap-8">
+      <ConcertManageIntro title="콘서트 등록" description="새로운 콘서트의 기본 정보와 포스터를 등록해 주세요." Icon={Plus} />
 
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">콘서트 등록</h1>
-
-          <p className="mt-1 text-sm leading-6 text-slate-500">새로운 콘서트의 기본 정보와 포스터를 등록해 주세요.</p>
-        </div>
-      </div>
-
-      <ConcertForm mode="create" isSubmitting={isSubmitting} submitError={submitError} onSubmit={handleSubmit} onCancel={handleCancel} />
+      <ConcertForm submitLabel="콘서트 등록" submitState={submitState} onSubmit={handleSubmit} onCancel={handleCancel} />
     </div>
   );
 };
