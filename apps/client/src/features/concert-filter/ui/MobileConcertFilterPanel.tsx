@@ -1,10 +1,21 @@
-import ConcertListBookingStatusControls from "./ConcertListBookingStatusControls";
-import ConcertListDateRangeControls from "./ConcertListDateRangeControls";
-import ConcertListGenreFilterControls from "./ConcertListGenreFilterControls";
+import ConcertBookingStatusFilterControls from "./ConcertBookingStatusFilterControls";
+import ConcertDateRangeFilterControls from "./ConcertDateRangeFilterControls";
+import ConcertGenreFilterControls from "./ConcertGenreFilterControls";
 
-import type { ConcertListFilterPanelProps } from "../model/concert-list-filter.types";
+interface MobileConcertFilterPanelProps {
+  selectedGenres: string[];
+  selectedBookingStatuses: string[];
+  startDate: string;
+  endDate: string;
+  activeFilterCount: number;
+  onToggleGenre: (genre: string) => void;
+  onToggleBookingStatus: (status: string) => void;
+  onStartDateChange: (date: string) => void;
+  onEndDateChange: (date: string) => void;
+  onClearFilters: () => void;
+}
 
-const MobileConcertListFilterPanel = ({
+const MobileConcertFilterPanel = ({
   selectedGenres,
   selectedBookingStatuses,
   startDate,
@@ -15,7 +26,7 @@ const MobileConcertListFilterPanel = ({
   onStartDateChange,
   onEndDateChange,
   onClearFilters,
-}: ConcertListFilterPanelProps) => {
+}: MobileConcertFilterPanelProps) => {
   return (
     <div
       id="mobile-concert-list-filter-panel"
@@ -35,21 +46,21 @@ const MobileConcertListFilterPanel = ({
           <h2 id="mobile-filter-genre" className="text-sm font-bold text-gray-900">
             장르
           </h2>
-          <ConcertListGenreFilterControls selectedGenres={selectedGenres} onToggleGenre={onToggleGenre} />
+          <ConcertGenreFilterControls selectedGenres={selectedGenres} onToggleGenre={onToggleGenre} />
         </section>
 
         <section className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-3 p-4" aria-labelledby="mobile-filter-status">
           <h2 id="mobile-filter-status" className="text-sm font-bold text-gray-900">
             상태
           </h2>
-          <ConcertListBookingStatusControls selectedBookingStatuses={selectedBookingStatuses} onToggleBookingStatus={onToggleBookingStatus} />
+          <ConcertBookingStatusFilterControls selectedBookingStatuses={selectedBookingStatuses} onToggleBookingStatus={onToggleBookingStatus} />
         </section>
 
         <section className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-3 p-4" aria-labelledby="mobile-filter-date">
           <h2 id="mobile-filter-date" className="text-sm font-bold text-gray-900">
             공연일
           </h2>
-          <ConcertListDateRangeControls
+          <ConcertDateRangeFilterControls
             startDate={startDate}
             endDate={endDate}
             onStartDateChange={onStartDateChange}
@@ -61,4 +72,4 @@ const MobileConcertListFilterPanel = ({
   );
 };
 
-export default MobileConcertListFilterPanel;
+export default MobileConcertFilterPanel;

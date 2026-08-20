@@ -1,8 +1,11 @@
-import type { ConcertListFilterControlsProps } from "../model/concert-list-filter.types";
+interface ConcertDateRangeFilterControlsProps {
+  startDate: string;
+  endDate: string;
+  onStartDateChange: (date: string) => void;
+  onEndDateChange: (date: string) => void;
+}
 
-type ConcertListDateRangeControlsProps = Pick<ConcertListFilterControlsProps, "startDate" | "endDate" | "onStartDateChange" | "onEndDateChange">;
-
-const ConcertListDateRangeControls = ({ startDate, endDate, onStartDateChange, onEndDateChange }: ConcertListDateRangeControlsProps) => {
+const ConcertDateRangeFilterControls = ({ startDate, endDate, onStartDateChange, onEndDateChange }: ConcertDateRangeFilterControlsProps) => {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-xs text-gray-500">
@@ -28,4 +31,4 @@ const ConcertListDateRangeControls = ({ startDate, endDate, onStartDateChange, o
   );
 };
 
-export default ConcertListDateRangeControls;
+export default ConcertDateRangeFilterControls;

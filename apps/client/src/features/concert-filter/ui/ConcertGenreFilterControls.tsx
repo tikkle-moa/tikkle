@@ -1,10 +1,11 @@
 import { CONCERT_GENRE_MAP } from "@entities/concert";
 
-import type { ConcertListFilterControlsProps } from "../model/concert-list-filter.types";
+interface ConcertGenreFilterControlsProps {
+  selectedGenres: string[];
+  onToggleGenre: (genre: string) => void;
+}
 
-type ConcertListGenreFilterControlsProps = Pick<ConcertListFilterControlsProps, "selectedGenres" | "onToggleGenre">;
-
-const ConcertListGenreFilterControls = ({ selectedGenres, onToggleGenre }: ConcertListGenreFilterControlsProps) => {
+const ConcertGenreFilterControls = ({ selectedGenres, onToggleGenre }: ConcertGenreFilterControlsProps) => {
   return (
     <div className="flex flex-wrap gap-2">
       {Object.entries(CONCERT_GENRE_MAP).map(([genre, { label }]) => {
@@ -28,4 +29,4 @@ const ConcertListGenreFilterControls = ({ selectedGenres, onToggleGenre }: Conce
   );
 };
 
-export default ConcertListGenreFilterControls;
+export default ConcertGenreFilterControls;

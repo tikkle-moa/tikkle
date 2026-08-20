@@ -1,6 +1,28 @@
+import { MemoryRouter } from "react-router";
+
 import { render, screen, within } from "@testing-library/react";
 
+import { USER_ROLE, useSessionStore } from "@entities/session";
+import type { User } from "@entities/session/model/session.types";
+
 import ConcertListPage from "@pages/concert-list/ui/ConcertListPage";
+
+const makeUser = (role: User["role"]): User => ({
+  id: 1,
+  email: "admin@example.com",
+  nickname: "관리자",
+  profileImageUrl: null,
+  role,
+  oauthAccounts: ["google"],
+});
+
+const renderConcertListPage = () => {
+  return render(
+    <MemoryRouter>
+      <ConcertListPage />
+    </MemoryRouter>,
+  );
+};
 
 const { mockUseConcerts, mockUseConcertListFilterSearchParams, mockUseMobileConcertListFilterToggle, mockConcerts } = vi.hoisted(() => ({
   mockUseConcerts: vi.fn(),
@@ -57,13 +79,15 @@ vi.mock("@entities/concert", async (importOriginal) => {
   };
 });
 
-vi.mock("@pages/concertList/model/use-concert-list-filter-search-params", () => ({
-  useConcertListFilterSearchParams: mockUseConcertListFilterSearchParams,
-}));
+vi.mock("@features/concert-filter", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@features/concert-filter")>();
 
-vi.mock("@pages/concertList/model/use-mobile-concert-list-filter-toggle", () => ({
-  useMobileConcertListFilterToggle: mockUseMobileConcertListFilterToggle,
-}));
+  return {
+    ...actual,
+    useConcertListFilterSearchParams: mockUseConcertListFilterSearchParams,
+    useMobileConcertListFilterToggle: mockUseMobileConcertListFilterToggle,
+  };
+});
 
 describe("ConcertListPage", () => {
   beforeEach(() => {
@@ -86,6 +110,13 @@ describe("ConcertListPage", () => {
     });
   });
 
+  afterEach(() => {
+    useSessionStore.setState({
+      user: null,
+      status: "loading",
+    });
+  });
+
   it("정상 상태에서 모든 공연 카드를 그리드에 렌더링한다", () => {
     mockUseConcerts.mockReturnValue({
       data: mockConcerts,
@@ -93,7 +124,7 @@ describe("ConcertListPage", () => {
       isError: false,
     });
 
-    render(<ConcertListPage />);
+    renderConcertListPage();
 
     const grid = screen.getByTestId("concert-list-grid");
 
@@ -112,7 +143,7 @@ describe("ConcertListPage", () => {
       isError: false,
     });
 
-    const { container } = render(<ConcertListPage />);
+    const { container } = renderConcertListPage();
 
     expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
@@ -125,7 +156,7 @@ describe("ConcertListPage", () => {
       isError: true,
     });
 
-    render(<ConcertListPage />);
+    renderConcertListPage();
 
     expect(screen.getByText("공연 정보를 불러오지 못했습니다.")).toBeInTheDocument();
     expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
@@ -138,7 +169,7 @@ describe("ConcertListPage", () => {
       isError: false,
     });
 
-    render(<ConcertListPage />);
+    renderConcertListPage();
 
     expect(screen.getByText("등록된 공연이 없습니다.")).toBeInTheDocument();
     expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
@@ -155,7 +186,7 @@ describe("ConcertListPage", () => {
       toggleMobileFilter: vi.fn(),
     });
 
-    const { container } = render(<ConcertListPage />);
+    const { container } = renderConcertListPage();
     const mobileFilterPanel = container.querySelector("#mobile-concert-list-filter-panel");
 
     expect(screen.getByRole("button", { name: "필터" })).toHaveAttribute("aria-expanded", "true");
@@ -167,5 +198,21 @@ describe("ConcertListPage", () => {
     expect(panel.getByRole("heading", { name: "장르" })).toBeInTheDocument();
     expect(panel.getByRole("heading", { name: "상태" })).toBeInTheDocument();
     expect(panel.getByRole("heading", { name: "공연일" })).toBeInTheDocument();
+  });
+
+  it("관리자에게 콘서트 등록 링크를 렌더링한다", () => {
+    useSessionStore.setState({
+      user: makeUser(USER_ROLE.ADMIN),
+      status: "authenticated",
+    });
+    mockUseConcerts.mockReturnValue({
+      data: [],
+      isPending: false,
+      isError: false,
+    });
+
+    renderConcertListPage();
+
+    expect(screen.getByRole("link", { name: "콘서트 등록" })).toBeInTheDocument();
   });
 });

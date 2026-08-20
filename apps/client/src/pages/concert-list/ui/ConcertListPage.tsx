@@ -7,12 +7,15 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 import { ConcertCard, ConcertCardSkeleton, useConcerts } from "@entities/concert";
 import { USER_ROLE, useSessionStore } from "@entities/session";
 
-import { CONCERT_LIST_SKELETON_COUNT } from "@pages/concertList/model/concert-list.constants";
-import { useConcertListFilterSearchParams } from "@pages/concertList/model/use-concert-list-filter-search-params";
-import { useMobileConcertListFilterToggle } from "@pages/concertList/model/use-mobile-concert-list-filter-toggle";
-import ConcertListFilterPanel from "@pages/concertList/ui/ConcertListFilterPanel";
-import MobileConcertListFilterButton from "@pages/concertList/ui/MobileConcertListFilterButton";
-import MobileConcertListFilterPanel from "@pages/concertList/ui/MobileConcertListFilterPanel";
+import {
+  ConcertFilterPanel,
+  MobileConcertFilterButton,
+  MobileConcertFilterPanel,
+  useConcertListFilterSearchParams,
+  useMobileConcertListFilterToggle,
+} from "@features/concert-filter";
+
+import { CONCERT_LIST_SKELETON_COUNT } from "../model/concert-list.constants";
 
 const ConcertListPage = () => {
   const user = useSessionStore((state) => state.user);
@@ -46,12 +49,12 @@ const ConcertListPage = () => {
               콘서트 등록
             </Link>
           )}
-          <MobileConcertListFilterButton isOpen={isMobileFilterOpen} activeFilterCount={activeFilterCount} onClick={toggleMobileFilter} />
+          <MobileConcertFilterButton isOpen={isMobileFilterOpen} activeFilterCount={activeFilterCount} onClick={toggleMobileFilter} />
         </div>
       </div>
 
       {isMobileFilterOpen && (
-        <MobileConcertListFilterPanel
+        <MobileConcertFilterPanel
           selectedGenres={selectedGenres}
           selectedBookingStatuses={selectedBookingStatuses}
           startDate={startDate}
@@ -66,7 +69,7 @@ const ConcertListPage = () => {
       )}
 
       <div className="flex items-start gap-8">
-        <ConcertListFilterPanel
+        <ConcertFilterPanel
           selectedGenres={selectedGenres}
           selectedBookingStatuses={selectedBookingStatuses}
           startDate={startDate}

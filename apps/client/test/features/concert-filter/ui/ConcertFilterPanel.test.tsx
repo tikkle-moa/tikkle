@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import ConcertListFilterPanel from "@pages/concertList/ui/ConcertListFilterPanel";
+import ConcertFilterPanel from "@features/concert-filter/ui/ConcertFilterPanel";
 
-const renderConcertListFilterPanel = (activeFilterCount = 0, onClearFilters = vi.fn()) => {
+const renderConcertFilterPanel = (activeFilterCount = 0, onClearFilters = vi.fn()) => {
   render(
-    <ConcertListFilterPanel
+    <ConcertFilterPanel
       selectedGenres={[]}
       selectedBookingStatuses={[]}
       startDate=""
@@ -20,9 +20,9 @@ const renderConcertListFilterPanel = (activeFilterCount = 0, onClearFilters = vi
   );
 };
 
-describe("ConcertListFilterPanel", () => {
+describe("ConcertFilterPanel", () => {
   it("장르, 예매 상태, 공연일 필터 섹션을 렌더링한다", () => {
-    renderConcertListFilterPanel();
+    renderConcertFilterPanel();
 
     expect(screen.getByRole("heading", { name: "필터" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "장르" })).toBeInTheDocument();
@@ -32,7 +32,7 @@ describe("ConcertListFilterPanel", () => {
   });
 
   it("선택된 필터 수가 있으면 숫자 배지를 렌더링한다", () => {
-    renderConcertListFilterPanel(2);
+    renderConcertFilterPanel(2);
 
     expect(screen.getByText("2")).toBeInTheDocument();
   });
@@ -41,7 +41,7 @@ describe("ConcertListFilterPanel", () => {
     const user = userEvent.setup();
     const onClearFilters = vi.fn();
 
-    renderConcertListFilterPanel(1, onClearFilters);
+    renderConcertFilterPanel(1, onClearFilters);
 
     await user.click(screen.getByRole("button", { name: "초기화" }));
 

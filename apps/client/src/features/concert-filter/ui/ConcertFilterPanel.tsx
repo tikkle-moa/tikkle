@@ -1,10 +1,21 @@
-import ConcertListBookingStatusControls from "./ConcertListBookingStatusControls";
-import ConcertListDateRangeControls from "./ConcertListDateRangeControls";
-import ConcertListGenreFilterControls from "./ConcertListGenreFilterControls";
+import ConcertBookingStatusFilterControls from "./ConcertBookingStatusFilterControls";
+import ConcertDateRangeFilterControls from "./ConcertDateRangeFilterControls";
+import ConcertGenreFilterControls from "./ConcertGenreFilterControls";
 
-import type { ConcertListFilterPanelProps } from "../model/concert-list-filter.types";
+interface ConcertFilterPanelProps {
+  selectedGenres: string[];
+  selectedBookingStatuses: string[];
+  startDate: string;
+  endDate: string;
+  activeFilterCount: number;
+  onToggleGenre: (genre: string) => void;
+  onToggleBookingStatus: (status: string) => void;
+  onStartDateChange: (date: string) => void;
+  onEndDateChange: (date: string) => void;
+  onClearFilters: () => void;
+}
 
-const ConcertListFilterPanel = ({
+const ConcertFilterPanel = ({
   selectedGenres,
   selectedBookingStatuses,
   startDate,
@@ -15,7 +26,7 @@ const ConcertListFilterPanel = ({
   onStartDateChange,
   onEndDateChange,
   onClearFilters,
-}: ConcertListFilterPanelProps) => {
+}: ConcertFilterPanelProps) => {
   return (
     <aside className="hidden w-56 shrink-0 self-start rounded-xl border border-violet-100 bg-violet-50/70 p-5 shadow-sm lg:sticky lg:top-4 lg:block">
       <div className="mb-5 flex items-center justify-between">
@@ -38,21 +49,21 @@ const ConcertListFilterPanel = ({
         <h3 id="desktop-filter-genre" className="mb-3 text-sm font-bold text-gray-900">
           장르
         </h3>
-        <ConcertListGenreFilterControls selectedGenres={selectedGenres} onToggleGenre={onToggleGenre} />
+        <ConcertGenreFilterControls selectedGenres={selectedGenres} onToggleGenre={onToggleGenre} />
       </section>
 
       <section className="mt-5 border-t border-violet-100 pt-5" aria-labelledby="desktop-filter-status">
         <h3 id="desktop-filter-status" className="mb-3 text-sm font-bold text-gray-900">
           예매 상태
         </h3>
-        <ConcertListBookingStatusControls selectedBookingStatuses={selectedBookingStatuses} onToggleBookingStatus={onToggleBookingStatus} />
+        <ConcertBookingStatusFilterControls selectedBookingStatuses={selectedBookingStatuses} onToggleBookingStatus={onToggleBookingStatus} />
       </section>
 
       <section className="mt-5 border-t border-violet-100 pt-5" aria-labelledby="desktop-filter-date">
         <h3 id="desktop-filter-date" className="mb-3 text-sm font-bold text-gray-900">
           공연일
         </h3>
-        <ConcertListDateRangeControls
+        <ConcertDateRangeFilterControls
           startDate={startDate}
           endDate={endDate}
           onStartDateChange={onStartDateChange}
@@ -63,4 +74,4 @@ const ConcertListFilterPanel = ({
   );
 };
 
-export default ConcertListFilterPanel;
+export default ConcertFilterPanel;

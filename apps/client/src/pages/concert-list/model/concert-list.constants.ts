@@ -1,0 +1,1 @@
+export const CONCERT_LIST_SKELETON_COUNT = 8;

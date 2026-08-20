@@ -1,12 +1,12 @@
 import { ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 
-interface MobileConcertListFilterButtonProps {
+interface MobileConcertFilterButtonProps {
   isOpen: boolean;
   activeFilterCount: number;
   onClick: () => void;
 }
 
-const MobileConcertListFilterButton = ({ isOpen, activeFilterCount, onClick }: MobileConcertListFilterButtonProps) => {
+const MobileConcertFilterButton = ({ isOpen, activeFilterCount, onClick }: MobileConcertFilterButtonProps) => {
   return (
     <button
       type="button"
@@ -29,4 +29,4 @@ const MobileConcertListFilterButton = ({ isOpen, activeFilterCount, onClick }: M
   );
 };
 
-export default MobileConcertListFilterButton;
+export default MobileConcertFilterButton;

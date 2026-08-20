@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import MobileConcertListFilterPanel from "@pages/concertList/ui/MobileConcertListFilterPanel";
+import MobileConcertFilterPanel from "@features/concert-filter/ui/MobileConcertFilterPanel";
 
 const renderMobileFilterPanel = (activeFilterCount = 0, onClearFilters = vi.fn()) => {
   render(
-    <MobileConcertListFilterPanel
+    <MobileConcertFilterPanel
       selectedGenres={[]}
       selectedBookingStatuses={[]}
       startDate=""
@@ -20,7 +20,7 @@ const renderMobileFilterPanel = (activeFilterCount = 0, onClearFilters = vi.fn()
   );
 };
 
-describe("MobileConcertListFilterPanel", () => {
+describe("MobileConcertFilterPanel", () => {
   it("장르, 상태, 공연일 필터 섹션을 렌더링한다", () => {
     renderMobileFilterPanel();
 

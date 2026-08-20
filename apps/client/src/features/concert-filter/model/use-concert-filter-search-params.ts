@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router";
 
-import { CONCERT_LIST_FILTER_QUERY_KEYS } from "./concert-list.constants";
+import { CONCERT_LIST_FILTER_QUERY_KEYS } from "./concert-filter.constants";
 
 type QueryKey = (typeof CONCERT_LIST_FILTER_QUERY_KEYS)[keyof typeof CONCERT_LIST_FILTER_QUERY_KEYS];
 

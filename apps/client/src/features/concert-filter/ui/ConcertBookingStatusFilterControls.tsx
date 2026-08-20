@@ -1,10 +1,11 @@
 import { BOOKING_STATUS_MAP } from "@entities/concert";
 
-import type { ConcertListFilterControlsProps } from "../model/concert-list-filter.types";
+interface ConcertBookingStatusFilterControlsProps {
+  selectedBookingStatuses: string[];
+  onToggleBookingStatus: (status: string) => void;
+}
 
-type ConcertListBookingStatusControlsProps = Pick<ConcertListFilterControlsProps, "selectedBookingStatuses" | "onToggleBookingStatus">;
-
-const ConcertListBookingStatusControls = ({ selectedBookingStatuses, onToggleBookingStatus }: ConcertListBookingStatusControlsProps) => {
+const ConcertBookingStatusFilterControls = ({ selectedBookingStatuses, onToggleBookingStatus }: ConcertBookingStatusFilterControlsProps) => {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 lg:flex-col lg:items-start lg:gap-2.5">
       {Object.entries(BOOKING_STATUS_MAP)
@@ -24,4 +25,4 @@ const ConcertListBookingStatusControls = ({ selectedBookingStatuses, onToggleBoo
   );
 };
 
-export default ConcertListBookingStatusControls;
+export default ConcertBookingStatusFilterControls;
