@@ -7,10 +7,12 @@ import type { ConcertResponse } from "./concert.types";
 export const DUMMY_CONCERTS: ConcertResponse[] = [
   {
     id: 1,
-    posterUrl: "https://picsum.photos/seed/concert1/400/600",
     title: "2026 Summer Festival",
     genre: "FESTIVAL",
     placeName: "올림픽공원 KSPO DOME",
+    posterUrl: "https://picsum.photos/seed/concert1/400/600",
+    description: "2026년 여름을 뜨겁게 달굴 최고의 페스티벌! 다양한 아티스트들의 공연과 함께 즐거운 시간을 보내세요.",
+    createdAt: new Date("2026-06-01T10:00:00"),
     performances: [
       {
         id: 1,
@@ -22,14 +24,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 500,
       },
     ],
-    createdAt: new Date("2026-06-01T10:00:00"),
   },
   {
     id: 2,
-    posterUrl: "https://picsum.photos/seed/concert2/400/600",
     title: "찰리 푸스 내한공연",
     genre: "INTERNATIONAL_ARTIST",
     placeName: "고양종합운동장",
+    posterUrl: "https://picsum.photos/seed/concert2/400/600",
+    description: "찰리 푸스의 감미로운 목소리와 함께하는 특별한 밤! 놓치지 마세요.",
+    createdAt: new Date("2026-07-01T10:00:00"),
     performances: [
       {
         id: 2,
@@ -41,14 +44,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 1500,
       },
     ],
-    createdAt: new Date("2026-07-01T10:00:00"),
   },
   {
     id: 3,
-    posterUrl: "https://picsum.photos/seed/concert3/400/600",
     title: "IU Concert Tour 2026",
     genre: "BALLAD",
     placeName: "서울 잠실종합운동장",
+    posterUrl: "https://picsum.photos/seed/concert3/400/600",
+    description: "아이유의 감성적인 무대와 함께하는 특별한 밤! 팬들과 함께하는 소중한 시간을 놓치지 마세요.",
+    createdAt: new Date("2026-08-01T10:00:00"),
     performances: [
       {
         id: 3,
@@ -60,14 +64,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 0,
       },
     ],
-    createdAt: new Date("2026-08-01T10:00:00"),
   },
   {
     id: 4,
-    posterUrl: "https://picsum.photos/seed/concert4/400/600",
     title: "NCT DREAM 10TH ANNIVERSARY",
     genre: "RAP_HIPHOP",
     placeName: "인스파이어 아레나",
+    posterUrl: "https://picsum.photos/seed/concert4/400/600",
+    description: "NCT DREAM의 10주년 기념 콘서트! 팬들과 함께하는 특별한 순간을 놓치지 마세요.",
+    createdAt: new Date("2026-05-20T10:00:00"),
     performances: [
       {
         id: 4,
@@ -79,22 +84,25 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 800,
       },
     ],
-    createdAt: new Date("2026-05-20T10:00:00"),
   },
   {
     id: 5,
-    posterUrl: "https://picsum.photos/seed/concert5/400/600",
     title: "DAY6 SPECIAL CONCERT",
     genre: "ROCK_METAL",
     placeName: "고척스카이돔",
-    performances: [],
+    posterUrl: "https://picsum.photos/seed/concert5/400/600",
+    description: "DAY6의 특별한 콘서트! 감성적인 음악과 함께하는 소중한 시간을 놓치지 마세요.",
     createdAt: new Date("2026-08-05T10:00:00"),
+    performances: [],
   },
   {
     id: 6,
     title: "Jason Mraz 아시아 투어 2026",
     genre: "INTERNATIONAL_ARTIST",
     placeName: "블루스퀘어 마스터카드홀",
+    posterUrl: null,
+    description: "Jason Mraz의 감미로운 목소리와 함께하는 아시아 투어! 특별한 밤을 놓치지 마세요.",
+    createdAt: new Date("2026-07-10T10:00:00"),
     performances: [
       {
         id: 5,
@@ -106,14 +114,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 400,
       },
     ],
-    createdAt: new Date("2026-07-10T10:00:00"),
   },
   {
     id: 7,
-    posterUrl: "https://picsum.photos/seed/concert7/400/600",
     title: "그랜드 민트 페스티벌 2026",
     genre: "FESTIVAL",
     placeName: "올림픽공원 88잔디마당",
+    posterUrl: "https://picsum.photos/seed/concert7/400/600",
+    description: "2026년 최고의 음악 페스티벌! 다양한 아티스트들의 공연과 함께 즐거운 시간을 보내세요.",
+    createdAt: new Date("2026-07-01T10:00:00"),
     performances: [
       {
         id: 6,
@@ -143,14 +152,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 2500,
       },
     ],
-    createdAt: new Date("2026-07-01T10:00:00"),
   },
   {
     id: 8,
-    posterUrl: "https://picsum.photos/seed/concert8/400/600",
     title: "IVE WORLD TOUR",
     genre: "RAP_HIPHOP",
     placeName: "인천문학경기장",
+    posterUrl: "https://picsum.photos/seed/concert8/400/600",
+    description: "IVE의 월드 투어! 팬들과 함께하는 특별한 순간을 놓치지 마세요.",
+    createdAt: new Date("2026-05-01T10:00:00"),
     performances: [
       {
         id: 9,
@@ -171,14 +181,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 600,
       },
     ],
-    createdAt: new Date("2026-05-01T10:00:00"),
   },
   {
     id: 9,
-    posterUrl: "https://picsum.photos/seed/concert9/400/600",
     title: "Coldplay Live in Seoul",
     genre: "INTERNATIONAL_ARTIST",
     placeName: "서울월드컵경기장",
+    posterUrl: "https://picsum.photos/seed/concert9/400/600",
+    description: "Coldplay의 라이브 공연! 감동적인 무대와 함께하는 특별한 밤을 놓치지 마세요.",
+    createdAt: new Date("2026-06-01T10:00:00"),
     performances: [
       {
         id: 11,
@@ -199,14 +210,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 4000,
       },
     ],
-    createdAt: new Date("2026-06-01T10:00:00"),
   },
   {
     id: 10,
-    posterUrl: "https://picsum.photos/seed/concert10/400/600",
     title: "AKMU SPECIAL CONCERT",
     genre: "INDIE",
     placeName: "세종문화회관 대극장",
+    posterUrl: "https://picsum.photos/seed/concert10/400/600",
+    description: "AKMU의 특별한 콘서트! 감성적인 음악과 함께하는 소중한 시간을 놓치지 마세요.",
+    createdAt: new Date("2026-08-01T10:00:00"),
     performances: [
       {
         id: 13,
@@ -227,14 +239,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 0,
       },
     ],
-    createdAt: new Date("2026-08-01T10:00:00"),
   },
   {
     id: 11,
-    posterUrl: "https://picsum.photos/seed/concert11/400/600",
     title: "2026 대한민국 인디 뮤직 페스티벌 스페셜 라이브 콘서트",
     genre: "INDIE",
     placeName: "서울특별시 송파구 올림픽공원 야외특설공연장",
+    posterUrl: "https://picsum.photos/seed/concert11/400/600",
+    description: "2026 대한민국 인디 뮤직 페스티벌 스페셜 라이브 콘서트! 다양한 인디 아티스트들의 공연과 함께 즐거운 시간을 보내세요.",
+    createdAt: new Date("2026-06-01T10:00:00"),
     performances: [
       {
         id: 15,
@@ -246,14 +259,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 100,
       },
     ],
-    createdAt: new Date("2026-06-01T10:00:00"),
   },
   {
     id: 12,
-    posterUrl: "https://picsum.photos/seed/concert12/400/600",
     title: "잔나비 전국투어",
     genre: "ROCK_METAL",
     placeName: "부산 벡스코 오디토리움",
+    posterUrl: "https://picsum.photos/seed/concert12/400/600",
+    description: "잔나비의 전국투어 콘서트! 감성적인 음악과 함께하는 소중한 시간을 놓치지 마세요.",
+    createdAt: new Date("2026-07-01T10:00:00"),
     performances: [
       {
         id: 16,
@@ -265,14 +279,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 0,
       },
     ],
-    createdAt: new Date("2026-07-01T10:00:00"),
   },
   {
     id: 13,
-    posterUrl: "https://picsum.photos/seed/concert13/400/600",
     title: "BTS WORLD TOUR",
     genre: "RAP_HIPHOP",
     placeName: "서울 잠실종합운동장",
+    posterUrl: "https://picsum.photos/seed/concert13/400/600",
+    description: "BTS의 월드 투어! 팬들과 함께하는 특별한 순간을 놓치지 마세요.",
+    createdAt: new Date("2026-08-01T10:00:00"),
     performances: [
       {
         id: 17,
@@ -293,14 +308,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 0,
       },
     ],
-    createdAt: new Date("2026-08-01T10:00:00"),
   },
   {
     id: 14,
-    posterUrl: "https://picsum.photos/seed/concert14/400/600",
     title: "2026 Summer Festival",
     genre: "FESTIVAL",
     placeName: "올림픽공원 KSPO DOME",
+    posterUrl: "https://picsum.photos/seed/concert14/400/600",
+    description: "2026년 여름을 뜨겁게 달굴 최고의 페스티벌! 다양한 아티스트들의 공연과 함께 즐거운 시간을 보내세요.",
+    createdAt: new Date("2026-06-01T10:00:00"),
     performances: [
       {
         id: 19,
@@ -311,14 +327,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 500,
       },
     ],
-    createdAt: new Date("2026-06-01T10:00:00"),
   },
   {
     id: 15,
-    posterUrl: "https://picsum.photos/seed/concert15/400/600",
     title: "서울 재즈 나이트 2026",
     genre: "JAZZ_SOUL",
     placeName: "세종문화회관 M씨어터",
+    posterUrl: "https://picsum.photos/seed/concert15/400/600",
+    description: "서울 재즈 나이트 2026! 감미로운 재즈 음악과 함께하는 특별한 밤을 놓치지 마세요.",
+    createdAt: new Date("2026-08-10T10:00:00"),
     performances: [
       {
         id: 20,
@@ -330,14 +347,15 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 280,
       },
     ],
-    createdAt: new Date("2026-08-10T10:00:00"),
   },
   {
     id: 16,
-    posterUrl: "https://picsum.photos/seed/concert16/400/600",
     title: "2026 전국 트로트 대축제",
     genre: "TROT",
     placeName: "잠실실내체육관",
+    posterUrl: "https://picsum.photos/seed/concert16/400/600",
+    description: "2026 전국 트로트 대축제! 다양한 트로트 가수들의 공연과 함께 즐거운 시간을 보내세요.",
+    createdAt: new Date("2026-08-10T10:00:00"),
     performances: [
       {
         id: 21,
@@ -349,7 +367,6 @@ export const DUMMY_CONCERTS: ConcertResponse[] = [
         bookedSeats: 900,
       },
     ],
-    createdAt: new Date("2026-08-10T10:00:00"),
   },
 ];
 

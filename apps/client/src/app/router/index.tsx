@@ -2,12 +2,15 @@ import { createBrowserRouter } from "react-router";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { ConcertListPage } from "@pages/concertList";
+import { ConcertEditPage } from "@pages/concert-edit";
+import { ConcertListPage } from "@pages/concert-list";
+import { ConcertNewPage } from "@pages/concert-new";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
 import { SearchPage } from "@pages/search";
 
+import AdminGuard from "./AdminGuard";
 import AppLayout from "./AppLayout";
 import AuthGuard from "./AuthGuard";
 import GuestGuard from "./GuestGuard";
@@ -30,7 +33,14 @@ export const router = createBrowserRouter([
         element: <AppLayout showSecondaryHeader />,
         children: [
           { path: ROUTE_PATHS.HOME, element: <HomePage /> },
-          { path: ROUTE_PATHS.CONCERTS, element: <ConcertListPage /> },
+          { path: ROUTE_PATHS.CONCERT_LIST, element: <ConcertListPage /> },
+          {
+            element: <AdminGuard />,
+            children: [
+              { path: ROUTE_PATHS.CONCERT_NEW, element: <ConcertNewPage /> },
+              { path: ROUTE_PATHS.CONCERT_EDIT, element: <ConcertEditPage /> },
+            ],
+          },
         ],
       },
       {

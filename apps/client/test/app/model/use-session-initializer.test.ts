@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 
-import { type User, useSessionStore } from "@entities/session";
+import { useSessionStore } from "@entities/session";
+import type { User } from "@entities/session/model/session.types";
 
 import { useSessionInitializer } from "@app/model/use-session-initializer";
 

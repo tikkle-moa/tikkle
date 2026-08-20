@@ -1,8 +1,6 @@
 import SectionTitle from "@shared/ui/SectionTitle";
 
-import { BOOKING_STATUS_MAP, getBookingStatus, getPeriod, useDailyRankings } from "@entities/concert";
-
-import { ConcertCard, ConcertCardSkeleton } from "@features/concert";
+import { BOOKING_STATUS_MAP, ConcertCard, ConcertCardSkeleton, getBookingStatus, getPeriod, useDailyRankings } from "@entities/concert";
 
 import { DAILY_RANKINGS_SKELETON_COUNT } from "../model/home.constants";
 

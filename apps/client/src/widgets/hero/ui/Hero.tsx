@@ -29,7 +29,7 @@ const Hero = ({ heroRef }: HeroProps) => (
 
     <div className="border-b border-gray-100">
       <div className="flex flex-wrap justify-center gap-6 px-4 py-3 md:gap-10 md:px-0">
-        <ConcertGenreLink config={{ icon: ListMusic, label: "전체", className: "bg-gray-100 text-gray-600", to: ROUTE_PATHS.CONCERTS }} />
+        <ConcertGenreLink config={{ icon: ListMusic, label: "전체", className: "bg-gray-100 text-gray-600", to: ROUTE_PATHS.CONCERT_LIST }} />
 
         {Object.values(CONCERT_GENRE_MAP).map((config, idx) => (
           <ConcertGenreLink key={idx} config={config} />

@@ -1,7 +1,7 @@
 import { act, fireEvent, renderHook } from "@testing-library/react";
 
 import { useSessionStore } from "@entities/session";
-import type { User } from "@entities/session";
+import type { User } from "@entities/session/model/session.types";
 
 import { useHeader } from "@widgets/header/model/use-header";
 

@@ -35,7 +35,7 @@ const HeroBanner = () => (
 
         <div className="pt-1">
           <Link
-            to={ROUTE_PATHS.CONCERTS}
+            to={ROUTE_PATHS.CONCERT_LIST}
             className="text-brand-primary inline-flex items-center gap-2 rounded-xl bg-white px-3 py-1 text-sm font-bold shadow-md transition hover:bg-white/90 md:px-6 md:py-2"
           >
             콘서트 보러가기

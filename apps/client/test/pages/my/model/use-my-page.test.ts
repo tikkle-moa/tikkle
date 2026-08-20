@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
 import { useSessionStore } from "@entities/session";
-import type { User } from "@entities/session";
+import type { User } from "@entities/session/model/session.types";
 
 import { useMyPage } from "@pages/my/model/use-my-page";
 

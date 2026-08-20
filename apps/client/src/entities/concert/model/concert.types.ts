@@ -38,8 +38,10 @@ export interface ConcertResponse {
   title: string;
   genre: ConcertGenre;
   placeName: string;
-  posterUrl?: string;
-  description?: string;
+  posterUrl: string | null;
+  description: string | null;
   createdAt: Date;
   performances: PerformanceResponse[];
 }
+
+export type CreateConcertRequest = components["schemas"]["CreateConcertRequest"];

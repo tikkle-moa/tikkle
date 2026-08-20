@@ -61,7 +61,7 @@ describe("useLogin", () => {
       const calledUrl = (window.location.assign as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
       const url = new URL(calledUrl, "http://localhost");
       expect(url.pathname).toBe("/api/auth/oauth/google");
-      expect(url.searchParams.get("redirect_uri")).toBe(ROUTE_PATHS.CONCERTS);
+      expect(url.searchParams.get("redirect_uri")).toBe(ROUTE_PATHS.CONCERT_LIST);
     });
   });
 });

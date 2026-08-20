@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { useSessionStore } from "@entities/session";
-import type { User } from "@entities/session";
+import type { User } from "@entities/session/model/session.types";
 
 import Header from "@widgets/header/ui/Header";
 
