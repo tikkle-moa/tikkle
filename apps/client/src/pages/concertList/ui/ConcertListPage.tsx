@@ -7,9 +7,22 @@ import MobileConcertListFilterButton from "./MobileConcertListFilterButton";
 import MobileConcertListFilterPanel from "./MobileConcertListFilterPanel";
 
 import { CONCERT_LIST_SKELETON_COUNT } from "../model/concert-list.constants";
+import { useConcertListFilterSearchParams } from "../model/use-concert-list-filter-search-params";
 import { useMobileConcertListFilterToggle } from "../model/use-mobile-concert-list-filter-toggle";
 
 const ConcertListPage = () => {
+  const {
+    selectedGenres,
+    selectedBookingStatuses,
+    startDate,
+    endDate,
+    activeFilterCount,
+    toggleGenre,
+    toggleBookingStatus,
+    changeStartDate,
+    changeEndDate,
+    clearFilters,
+  } = useConcertListFilterSearchParams();
   const { isMobileFilterOpen, toggleMobileFilter } = useMobileConcertListFilterToggle();
   const { data: concerts = [], isPending, isError } = useConcerts();
 
@@ -17,15 +30,37 @@ const ConcertListPage = () => {
     <section className="mx-auto max-w-6xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900 sm:text-xl">공연 목록</h1>
-
-        <MobileConcertListFilterButton isOpen={isMobileFilterOpen} onClick={toggleMobileFilter} />
+        <MobileConcertListFilterButton isOpen={isMobileFilterOpen} activeFilterCount={activeFilterCount} onClick={toggleMobileFilter} />
       </div>
 
-      {isMobileFilterOpen && <MobileConcertListFilterPanel />}
+      {isMobileFilterOpen && (
+        <MobileConcertListFilterPanel
+          selectedGenres={selectedGenres}
+          selectedBookingStatuses={selectedBookingStatuses}
+          startDate={startDate}
+          endDate={endDate}
+          activeFilterCount={activeFilterCount}
+          onToggleGenre={toggleGenre}
+          onToggleBookingStatus={toggleBookingStatus}
+          onStartDateChange={changeStartDate}
+          onEndDateChange={changeEndDate}
+          onClearFilters={clearFilters}
+        />
+      )}
 
       <div className="flex items-start gap-8">
-        <ConcertListFilterPanel />
-
+        <ConcertListFilterPanel
+          selectedGenres={selectedGenres}
+          selectedBookingStatuses={selectedBookingStatuses}
+          startDate={startDate}
+          endDate={endDate}
+          activeFilterCount={activeFilterCount}
+          onToggleGenre={toggleGenre}
+          onToggleBookingStatus={toggleBookingStatus}
+          onStartDateChange={changeStartDate}
+          onEndDateChange={changeEndDate}
+          onClearFilters={clearFilters}
+        />
         <div className="min-w-0 flex-1">
           {isPending && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
