@@ -6,20 +6,19 @@ import ConcertFormInput from "./ConcertFormInput";
 import ConcertFormSelect from "./ConcertFormSelect";
 import ConcertFormTextarea from "./ConcertFormTextarea";
 
-import type { ConcertFormMode } from "../model/concert-form.types";
+import type { SubmitState } from "../model/concert-form.types";
 import { useConcertForm } from "../model/use-concert-form";
 
 interface ConcertFormProps {
-  mode: ConcertFormMode;
-  isSubmitting?: boolean;
-  submitError?: string | null;
   initialValues?: Partial<CreateConcertRequest>;
+  submitLabel: string;
+  submitState: SubmitState;
   onSubmit: (values: CreateConcertRequest) => void | Promise<void>;
   onCancel?: () => void;
 }
 
-const ConcertForm = ({ mode, isSubmitting = false, submitError = null, initialValues, onSubmit, onCancel }: ConcertFormProps) => {
-  const { values, errors, updateField, handleSubmit, handlePosterError } = useConcertForm({ initialValues, onSubmit });
+const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCancel }: ConcertFormProps) => {
+  const { isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } = useConcertForm({ submitState, initialValues, onSubmit });
 
   return (
     <form className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:rounded-2xl" noValidate onSubmit={handleSubmit}>
@@ -58,14 +57,14 @@ const ConcertForm = ({ mode, isSubmitting = false, submitError = null, initialVa
             >
               {isSubmitting && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
 
-              {isSubmitting ? "저장 중..." : mode === "create" ? "콘서트 등록" : "변경사항 저장"}
+              {isSubmitting ? "저장 중..." : submitLabel}
             </button>
           </div>
         </div>
-        {submitError && (
+        {submitState.status === "error" && (
           <p className="flex items-start gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-            {submitError}
+            {submitState.error}
           </p>
         )}
       </div>
