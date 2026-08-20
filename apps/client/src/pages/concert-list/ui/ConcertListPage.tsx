@@ -4,36 +4,15 @@ import { Plus } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { ConcertCard, ConcertCardSkeleton, useConcerts } from "@entities/concert";
-import { USER_ROLE, useSessionStore } from "@entities/session";
+import { ConcertCard, ConcertCardSkeleton } from "@entities/concert";
 
-import {
-  ConcertFilterPanel,
-  MobileConcertFilterButton,
-  MobileConcertFilterPanel,
-  useConcertListFilterSearchParams,
-  useMobileConcertListFilterToggle,
-} from "@features/concert-filter";
+import { ConcertFilterPanel, MobileConcertFilterButton, MobileConcertFilterPanel } from "@features/concert-filter";
 
 import { CONCERT_LIST_SKELETON_COUNT } from "../model/concert-list.constants";
+import { useConcertList } from "../model/use-concert-list";
 
 const ConcertListPage = () => {
-  const user = useSessionStore((state) => state.user);
-  const isAdmin = user?.role === USER_ROLE.ADMIN;
-  const {
-    selectedGenres,
-    selectedBookingStatuses,
-    startDate,
-    endDate,
-    activeFilterCount,
-    toggleGenre,
-    toggleBookingStatus,
-    changeStartDate,
-    changeEndDate,
-    clearFilters,
-  } = useConcertListFilterSearchParams();
-  const { isMobileFilterOpen, toggleMobileFilter } = useMobileConcertListFilterToggle();
-  const { data: concerts = [], isPending, isError } = useConcerts();
+  const { isAdmin, concerts, isPending, isError, filter, mobileFilter } = useConcertList();
 
   return (
     <section className="mx-auto max-w-6xl">
@@ -49,37 +28,41 @@ const ConcertListPage = () => {
               콘서트 등록
             </Link>
           )}
-          <MobileConcertFilterButton isOpen={isMobileFilterOpen} activeFilterCount={activeFilterCount} onClick={toggleMobileFilter} />
+          <MobileConcertFilterButton
+            isOpen={mobileFilter.isMobileFilterOpen}
+            activeFilterCount={filter.activeFilterCount}
+            onClick={mobileFilter.toggleMobileFilter}
+          />
         </div>
       </div>
 
-      {isMobileFilterOpen && (
+      {mobileFilter.isMobileFilterOpen && (
         <MobileConcertFilterPanel
-          selectedGenres={selectedGenres}
-          selectedBookingStatuses={selectedBookingStatuses}
-          startDate={startDate}
-          endDate={endDate}
-          activeFilterCount={activeFilterCount}
-          onToggleGenre={toggleGenre}
-          onToggleBookingStatus={toggleBookingStatus}
-          onStartDateChange={changeStartDate}
-          onEndDateChange={changeEndDate}
-          onClearFilters={clearFilters}
+          selectedGenres={filter.selectedGenres}
+          selectedBookingStatuses={filter.selectedBookingStatuses}
+          startDate={filter.startDate}
+          endDate={filter.endDate}
+          activeFilterCount={filter.activeFilterCount}
+          onToggleGenre={filter.toggleGenre}
+          onToggleBookingStatus={filter.toggleBookingStatus}
+          onStartDateChange={filter.changeStartDate}
+          onEndDateChange={filter.changeEndDate}
+          onClearFilters={filter.clearFilters}
         />
       )}
 
       <div className="flex items-start gap-8">
         <ConcertFilterPanel
-          selectedGenres={selectedGenres}
-          selectedBookingStatuses={selectedBookingStatuses}
-          startDate={startDate}
-          endDate={endDate}
-          activeFilterCount={activeFilterCount}
-          onToggleGenre={toggleGenre}
-          onToggleBookingStatus={toggleBookingStatus}
-          onStartDateChange={changeStartDate}
-          onEndDateChange={changeEndDate}
-          onClearFilters={clearFilters}
+          selectedGenres={filter.selectedGenres}
+          selectedBookingStatuses={filter.selectedBookingStatuses}
+          startDate={filter.startDate}
+          endDate={filter.endDate}
+          activeFilterCount={filter.activeFilterCount}
+          onToggleGenre={filter.toggleGenre}
+          onToggleBookingStatus={filter.toggleBookingStatus}
+          onStartDateChange={filter.changeStartDate}
+          onEndDateChange={filter.changeEndDate}
+          onClearFilters={filter.clearFilters}
         />
         <div className="min-w-0 flex-1">
           {isPending && (

@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 
-import { useMobileConcertListFilterToggle } from "@features/concert-filter/model/use-mobile-concert-filter-toggle";
+import { useMobileConcertListFilterToggle } from "@pages/concert-list/model/use-mobile-concert-list-filter-toggle";
 
 describe("useMobileConcertListFilterToggle", () => {
   it("초기에는 모바일 필터 패널이 닫힌 상태다", () => {

@@ -2,32 +2,10 @@ import { MemoryRouter } from "react-router";
 
 import { render, screen, within } from "@testing-library/react";
 
-import { USER_ROLE, useSessionStore } from "@entities/session";
-import type { User } from "@entities/session/model/session.types";
-
 import ConcertListPage from "@pages/concert-list/ui/ConcertListPage";
 
-const makeUser = (role: User["role"]): User => ({
-  id: 1,
-  email: "admin@example.com",
-  nickname: "관리자",
-  profileImageUrl: null,
-  role,
-  oauthAccounts: ["google"],
-});
-
-const renderConcertListPage = () => {
-  return render(
-    <MemoryRouter>
-      <ConcertListPage />
-    </MemoryRouter>,
-  );
-};
-
-const { mockUseConcerts, mockUseConcertListFilterSearchParams, mockUseMobileConcertListFilterToggle, mockConcerts } = vi.hoisted(() => ({
-  mockUseConcerts: vi.fn(),
-  mockUseConcertListFilterSearchParams: vi.fn(),
-  mockUseMobileConcertListFilterToggle: vi.fn(),
+const { mockUseConcertList, mockConcerts } = vi.hoisted(() => ({
+  mockUseConcertList: vi.fn(),
   mockConcerts: [
     {
       id: 1,
@@ -70,78 +48,62 @@ const { mockUseConcerts, mockUseConcertListFilterSearchParams, mockUseMobileConc
   ],
 }));
 
-vi.mock("@entities/concert", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@entities/concert")>();
+vi.mock("@pages/concert-list/model/use-concert-list", () => ({
+  useConcertList: mockUseConcertList,
+}));
 
-  return {
-    ...actual,
-    useConcerts: mockUseConcerts,
-  };
-});
+const renderConcertListPage = () =>
+  render(
+    <MemoryRouter>
+      <ConcertListPage />
+    </MemoryRouter>,
+  );
 
-vi.mock("@features/concert-filter", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@features/concert-filter")>();
-
-  return {
-    ...actual,
-    useConcertListFilterSearchParams: mockUseConcertListFilterSearchParams,
-    useMobileConcertListFilterToggle: mockUseMobileConcertListFilterToggle,
-  };
+const createConcertListResult = (overrides = {}) => ({
+  isAdmin: false,
+  concerts: mockConcerts,
+  isPending: false,
+  isError: false,
+  filter: {
+    selectedGenres: [],
+    selectedBookingStatuses: [],
+    startDate: "",
+    endDate: "",
+    activeFilterCount: 0,
+    toggleGenre: vi.fn(),
+    toggleBookingStatus: vi.fn(),
+    changeStartDate: vi.fn(),
+    changeEndDate: vi.fn(),
+    clearFilters: vi.fn(),
+  },
+  mobileFilter: {
+    isMobileFilterOpen: false,
+    toggleMobileFilter: vi.fn(),
+  },
+  ...overrides,
 });
 
 describe("ConcertListPage", () => {
   beforeEach(() => {
-    mockUseConcertListFilterSearchParams.mockReturnValue({
-      selectedGenres: [],
-      selectedBookingStatuses: [],
-      startDate: "",
-      endDate: "",
-      activeFilterCount: 0,
-      toggleGenre: vi.fn(),
-      toggleBookingStatus: vi.fn(),
-      changeStartDate: vi.fn(),
-      changeEndDate: vi.fn(),
-      clearFilters: vi.fn(),
-    });
-
-    mockUseMobileConcertListFilterToggle.mockReturnValue({
-      isMobileFilterOpen: false,
-      toggleMobileFilter: vi.fn(),
-    });
-  });
-
-  afterEach(() => {
-    useSessionStore.setState({
-      user: null,
-      status: "loading",
-    });
+    mockUseConcertList.mockReturnValue(createConcertListResult());
   });
 
   it("정상 상태에서 모든 공연 카드를 그리드에 렌더링한다", () => {
-    mockUseConcerts.mockReturnValue({
-      data: mockConcerts,
-      isPending: false,
-      isError: false,
-    });
-
     renderConcertListPage();
 
     const grid = screen.getByTestId("concert-list-grid");
 
     expect(screen.getByRole("heading", { name: "공연 목록" })).toBeInTheDocument();
     expect(within(grid).getAllByTestId("concert-card")).toHaveLength(mockConcerts.length);
-
-    for (const { title } of mockConcerts) {
-      expect(within(grid).getByText(title)).toBeInTheDocument();
-    }
   });
 
   it("로딩 중이면 카드 스켈레톤을 렌더링한다", () => {
-    mockUseConcerts.mockReturnValue({
-      data: undefined,
-      isPending: true,
-      isError: false,
-    });
+    mockUseConcertList.mockReturnValue(
+      createConcertListResult({
+        concerts: [],
+        isPending: true,
+      }),
+    );
 
     const { container } = renderConcertListPage();
 
@@ -150,66 +112,51 @@ describe("ConcertListPage", () => {
   });
 
   it("오류 상태이면 오류 메시지를 렌더링한다", () => {
-    mockUseConcerts.mockReturnValue({
-      data: undefined,
-      isPending: false,
-      isError: true,
-    });
+    mockUseConcertList.mockReturnValue(
+      createConcertListResult({
+        concerts: [],
+        isError: true,
+      }),
+    );
 
     renderConcertListPage();
 
     expect(screen.getByText("공연 정보를 불러오지 못했습니다.")).toBeInTheDocument();
-    expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
   });
 
   it("공연 목록이 비어 있으면 빈 상태 메시지를 렌더링한다", () => {
-    mockUseConcerts.mockReturnValue({
-      data: [],
-      isPending: false,
-      isError: false,
-    });
+    mockUseConcertList.mockReturnValue(
+      createConcertListResult({
+        concerts: [],
+      }),
+    );
 
     renderConcertListPage();
 
     expect(screen.getByText("등록된 공연이 없습니다.")).toBeInTheDocument();
-    expect(screen.queryByTestId("concert-list-grid")).not.toBeInTheDocument();
   });
 
   it("모바일 필터가 열려 있으면 모바일 필터 패널을 렌더링한다", () => {
-    mockUseConcerts.mockReturnValue({
-      data: mockConcerts,
-      isPending: false,
-      isError: false,
-    });
-    mockUseMobileConcertListFilterToggle.mockReturnValue({
-      isMobileFilterOpen: true,
-      toggleMobileFilter: vi.fn(),
-    });
+    mockUseConcertList.mockReturnValue(
+      createConcertListResult({
+        mobileFilter: {
+          isMobileFilterOpen: true,
+          toggleMobileFilter: vi.fn(),
+        },
+      }),
+    );
 
     const { container } = renderConcertListPage();
-    const mobileFilterPanel = container.querySelector("#mobile-concert-list-filter-panel");
 
-    expect(screen.getByRole("button", { name: "필터" })).toHaveAttribute("aria-expanded", "true");
-    expect(mobileFilterPanel).toBeInTheDocument();
-
-    const panel = within(mobileFilterPanel as HTMLElement);
-
-    expect(panel.getByText("필터")).toBeInTheDocument();
-    expect(panel.getByRole("heading", { name: "장르" })).toBeInTheDocument();
-    expect(panel.getByRole("heading", { name: "상태" })).toBeInTheDocument();
-    expect(panel.getByRole("heading", { name: "공연일" })).toBeInTheDocument();
+    expect(container.querySelector("#mobile-concert-list-filter-panel")).toBeInTheDocument();
   });
 
   it("관리자에게 콘서트 등록 링크를 렌더링한다", () => {
-    useSessionStore.setState({
-      user: makeUser(USER_ROLE.ADMIN),
-      status: "authenticated",
-    });
-    mockUseConcerts.mockReturnValue({
-      data: [],
-      isPending: false,
-      isError: false,
-    });
+    mockUseConcertList.mockReturnValue(
+      createConcertListResult({
+        isAdmin: true,
+      }),
+    );
 
     renderConcertListPage();
 

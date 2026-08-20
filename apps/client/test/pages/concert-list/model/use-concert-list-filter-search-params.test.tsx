@@ -3,7 +3,7 @@ import { MemoryRouter, useLocation } from "react-router";
 
 import { act, renderHook, screen } from "@testing-library/react";
 
-import { useConcertListFilterSearchParams } from "@features/concert-filter/model/use-concert-filter-search-params";
+import { useConcertListFilterSearchParams } from "@pages/concert-list/model/use-concert-list-filter-search-params";
 
 const SearchParamsObserver = () => {
   const { search } = useLocation();
