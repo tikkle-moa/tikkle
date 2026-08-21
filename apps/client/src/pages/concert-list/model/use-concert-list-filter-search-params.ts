@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router";
 
-import { CONCERT_FILTER_QUERY_KEYS } from "@features/concert-filter";
-import type { ConcertFilterQueryKey } from "@features/concert-filter";
+import { CONCERT_FILTER_QUERY_KEYS, type ConcertFilterQueryKey } from "@features/concert-filter";
 
 export const useConcertListFilterSearchParams = () => {
   const [searchParams, setSearchParams] = useSearchParams();
