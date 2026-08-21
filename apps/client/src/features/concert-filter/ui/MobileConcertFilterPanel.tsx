@@ -28,10 +28,7 @@ const MobileConcertFilterPanel = ({
   onClearFilters,
 }: MobileConcertFilterPanelProps) => {
   return (
-    <div
-      id="mobile-concert-list-filter-panel"
-      className="mb-6 overflow-hidden rounded-xl border border-violet-100 bg-violet-50/70 shadow-sm lg:hidden"
-    >
+    <div id="mobile-concert-filter-panel" className="mb-6 overflow-hidden rounded-xl border border-violet-100 bg-violet-50/70 shadow-sm lg:hidden">
       <div className="flex items-center justify-between border-b border-violet-100 px-4 py-3">
         <p className="text-sm font-bold text-violet-950">필터</p>
 

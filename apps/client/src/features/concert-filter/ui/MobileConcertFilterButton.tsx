@@ -10,7 +10,7 @@ const MobileConcertFilterButton = ({ isOpen, activeFilterCount, onClick }: Mobil
   return (
     <button
       type="button"
-      aria-controls="mobile-concert-list-filter-panel"
+      aria-controls="mobile-concert-filter-panel"
       aria-expanded={isOpen}
       aria-label={activeFilterCount > 0 ? `필터 ${activeFilterCount}개 선택됨` : "필터"}
       className="flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold text-violet-700 lg:hidden"

@@ -9,7 +9,7 @@ describe("MobileConcertFilterButton", () => {
 
     const filterButton = screen.getByRole("button", { name: "필터" });
 
-    expect(filterButton).toHaveAttribute("aria-controls", "mobile-concert-list-filter-panel");
+    expect(filterButton).toHaveAttribute("aria-controls", "mobile-concert-filter-panel");
     expect(filterButton).toHaveAttribute("aria-expanded", "false");
   });
 

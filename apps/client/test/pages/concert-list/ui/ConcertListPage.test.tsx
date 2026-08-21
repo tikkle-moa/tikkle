@@ -148,7 +148,7 @@ describe("ConcertListPage", () => {
 
     const { container } = renderConcertListPage();
 
-    expect(container.querySelector("#mobile-concert-list-filter-panel")).toBeInTheDocument();
+    expect(container.querySelector("#mobile-concert-filter-panel")).toBeInTheDocument();
   });
 
   it("관리자에게 콘서트 등록 링크를 렌더링한다", () => {
