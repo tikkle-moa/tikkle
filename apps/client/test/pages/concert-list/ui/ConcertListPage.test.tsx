@@ -162,4 +162,11 @@ describe("ConcertListPage", () => {
 
     expect(screen.getByRole("link", { name: "콘서트 등록" })).toBeInTheDocument();
   });
+
+  it("각 콘서트 카드는 해당 상세 페이지로 이동하는 링크를 가진다", () => {
+    renderConcertListPage();
+
+    expect(screen.getByRole("link", { name: "테스트 콘서트 1 상세 보기" })).toHaveAttribute("href", "/concerts/1");
+    expect(screen.getByRole("link", { name: "테스트 콘서트 2 상세 보기" })).toHaveAttribute("href", "/concerts/2");
+  });
 });

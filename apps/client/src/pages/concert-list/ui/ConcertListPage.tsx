@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, generatePath } from "react-router";
 
 import { Plus } from "lucide-react";
 
@@ -87,17 +87,25 @@ const ConcertListPage = () => {
           {!isPending && !isError && concerts.length > 0 && (
             <div data-testid="concert-list-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {concerts.map((concert) => (
-                <ConcertCard
+                <Link
                   key={concert.id}
-                  concert={concert}
-                  displayOptions={{
-                    showStatus: true,
-                    showGenre: true,
-                    showTitle: true,
-                    showPlaceName: true,
-                    showPeriod: true,
-                  }}
-                />
+                  aria-label={`${concert.title} 상세 보기`}
+                  className="block"
+                  to={generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
+                    concertId: String(concert.id),
+                  })}
+                >
+                  <ConcertCard
+                    concert={concert}
+                    displayOptions={{
+                      showStatus: true,
+                      showGenre: true,
+                      showTitle: true,
+                      showPlaceName: true,
+                      showPeriod: true,
+                    }}
+                  />
+                </Link>
               ))}
             </div>
           )}
