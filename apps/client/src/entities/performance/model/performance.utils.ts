@@ -13,7 +13,7 @@ export const getPerformancePeriod = (performances: PerformanceResponse[]) => {
 
   const sortedPerformances = [...performances].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const firstPerformance = formatPerformanceDateTime(sortedPerformances[0].startsAt);
-  const lastPerformance = formatPerformanceDateTime(sortedPerformances.at(-1)?.startsAt ?? "");
+  const lastPerformance = formatPerformanceDateTime(sortedPerformances.at(-1)!.startsAt);
 
   return firstPerformance === lastPerformance ? firstPerformance : `${firstPerformance} ~ ${lastPerformance}`;
 };
