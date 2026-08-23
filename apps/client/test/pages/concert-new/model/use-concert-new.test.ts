@@ -6,7 +6,14 @@ import { useConcertNew } from "@pages/concert-new/model/use-concert-new";
 
 const { mockNavigate, mockPost } = vi.hoisted(() => ({ mockNavigate: vi.fn(), mockPost: vi.fn() }));
 
-vi.mock("react-router", () => ({ useNavigate: () => mockNavigate }));
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 vi.mock("@shared/api", () => ({ apiClient: { POST: mockPost } }));
 
 const values = { title: "공연", genre: "INDIE" as const, placeName: "공연장", posterUrl: null, description: null };
@@ -14,14 +21,19 @@ const values = { title: "공연", genre: "INDIE" as const, placeName: "공연장
 describe("useConcertNew", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("콘서트를 등록하고 목록으로 이동한다", async () => {
-    mockPost.mockResolvedValue({ response: { ok: true } });
+  it("콘서트를 등록하고 상세 페이지로 이동한다", async () => {
+    mockPost.mockResolvedValue({
+      data: { data: { id: 21 } },
+      error: undefined,
+      response: { ok: true },
+    });
+
     const { result } = renderHook(() => useConcertNew());
 
     await act(() => result.current.handleSubmit(values));
 
     expect(mockPost).toHaveBeenCalledWith("/api/concerts", { body: values });
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.CONCERT_LIST);
+    expect(mockNavigate).toHaveBeenCalledWith("/concerts/21", { replace: true });
     expect(result.current.isSubmitting).toBe(false);
     expect(result.current.submitError).toBeNull();
   });

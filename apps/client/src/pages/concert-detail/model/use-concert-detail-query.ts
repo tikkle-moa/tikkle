@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "@shared/api";
 
+import { CONCERT_QUERY_KEYS } from "@entities/concert";
+
 import type { ConcertDetailResponse } from "./concert-detail.types";
 
 export const useConcertDetailQuery = (concertId: number) =>
   useQuery<ConcertDetailResponse | null>({
-    queryKey: ["concerts", "detail", concertId],
+    queryKey: CONCERT_QUERY_KEYS.detail(concertId),
     enabled: Number.isInteger(concertId) && concertId > 0,
     queryFn: async () => {
       const { data, error, response } = await apiClient.GET("/api/concerts/{id}", {
