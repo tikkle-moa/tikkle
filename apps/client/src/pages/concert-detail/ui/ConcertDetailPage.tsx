@@ -1,9 +1,12 @@
-import { useParams } from "react-router";
+import { Link, generatePath, useParams } from "react-router";
 
-import { Info, MapPin, Music } from "lucide-react";
+import { Info, MapPin, Music, Pencil } from "lucide-react";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { CONCERT_GENRE_MAP } from "@entities/concert";
 import { getPerformancePeriod } from "@entities/performance";
+import { USER_ROLE, useSessionStore } from "@entities/session";
 
 import ConcertDetailMessage from "./ConcertDetailMessage";
 import ConcertDetailSkeleton from "./ConcertDetailSkeleton";
@@ -12,6 +15,7 @@ import PerformanceBookingPanel from "./PerformanceBookingPanel";
 import { useConcertDetailQuery } from "../model/use-concert-detail-query";
 
 const ConcertDetailPage = () => {
+  const isAdmin = useSessionStore((state) => state.user?.role === USER_ROLE.ADMIN);
   const { concertId } = useParams();
   const id = Number(concertId);
   const isParamValid = Number.isInteger(id) && id > 0;
@@ -51,7 +55,22 @@ const ConcertDetailPage = () => {
         </div>
 
         <div>
-          <span className={`inline-flex rounded-md px-2 py-1 text-xs font-bold ${genre.className}`}>{genre.label}</span>
+          <div className="flex items-center justify-between gap-3">
+            <span className={`inline-flex rounded-md px-2 py-1 text-xs font-bold ${genre.className}`}>{genre.label}</span>
+
+            {isAdmin && (
+              <Link
+                aria-label={`${concert.title} 수정`}
+                className="hover:text-brand-primary inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50"
+                to={generatePath(ROUTE_PATHS.CONCERT_EDIT, {
+                  concertId: String(concert.id),
+                })}
+              >
+                <Pencil className="size-3.5" aria-hidden />
+                수정
+              </Link>
+            )}
+          </div>
 
           <h1 className="mt-3 text-3xl leading-tight font-bold tracking-tight text-gray-900">{concert.title}</h1>
 

@@ -1,4 +1,9 @@
+import { MemoryRouter } from "react-router";
+
 import { render, screen } from "@testing-library/react";
+
+import { USER_ROLE, useSessionStore } from "@entities/session";
+import type { User } from "@entities/session/model/session.types";
 
 import type { ConcertDetailResponse } from "@pages/concert-detail/model/concert-detail.types";
 import ConcertDetailPage from "@pages/concert-detail/ui/ConcertDetailPage";
@@ -37,6 +42,22 @@ vi.mock("@pages/concert-detail/ui/PerformanceBookingPanel", () => ({
   default: ({ performances }: { performances: unknown[] }) => <output data-testid="performance-booking-panel">{performances.length}</output>,
 }));
 
+const makeUser = (role: User["role"]): User => ({
+  id: 1,
+  email: "admin@example.com",
+  nickname: "관리자",
+  profileImageUrl: null,
+  role,
+  oauthAccounts: ["google"],
+});
+
+const renderConcertDetailPage = () =>
+  render(
+    <MemoryRouter>
+      <ConcertDetailPage />
+    </MemoryRouter>,
+  );
+
 const makeConcertDetail = (overrides: Partial<ConcertDetailResponse> = {}): ConcertDetailResponse => ({
   concert: {
     id: 1,
@@ -54,6 +75,11 @@ const makeConcertDetail = (overrides: Partial<ConcertDetailResponse> = {}): Conc
 describe("ConcertDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useSessionStore.setState({
+      user: null,
+      status: "unauthenticated",
+      justLoggedOut: false,
+    });
     mockUseParams.mockReturnValue({ concertId: "1" });
     mockUseConcertDetailQuery.mockReturnValue({
       data: makeConcertDetail(),
@@ -62,10 +88,32 @@ describe("ConcertDetailPage", () => {
     });
   });
 
+  it("관리자에게 콘서트 수정 링크를 표시한다", () => {
+    useSessionStore.setState({
+      user: makeUser(USER_ROLE.ADMIN),
+      status: "authenticated",
+    });
+
+    renderConcertDetailPage();
+
+    expect(screen.getByRole("link", { name: "테스트 콘서트 수정" })).toHaveAttribute("href", "/concerts/1/edit");
+  });
+
+  it("관리자가 아닌 사용자에게는 콘서트 수정 링크를 표시하지 않는다", () => {
+    useSessionStore.setState({
+      user: makeUser(USER_ROLE.USER),
+      status: "authenticated",
+    });
+
+    renderConcertDetailPage();
+
+    expect(screen.queryByRole("link", { name: "테스트 콘서트 수정" })).not.toBeInTheDocument();
+  });
+
   it("잘못된 콘서트 ID이면 안내 메시지를 표시한다", () => {
     mockUseParams.mockReturnValue({ concertId: "invalid" });
 
-    render(<ConcertDetailPage />);
+    renderConcertDetailPage();
 
     expect(screen.getByTestId("concert-detail-message")).toHaveTextContent("잘못된 공연입니다. 올바르지 않은 콘서트 ID입니다.");
   });
@@ -77,7 +125,7 @@ describe("ConcertDetailPage", () => {
       isError: false,
     });
 
-    render(<ConcertDetailPage />);
+    renderConcertDetailPage();
 
     expect(screen.getByTestId("concert-detail-skeleton")).toBeInTheDocument();
   });
@@ -89,7 +137,7 @@ describe("ConcertDetailPage", () => {
       isError: false,
     });
 
-    render(<ConcertDetailPage />);
+    renderConcertDetailPage();
 
     expect(screen.getByTestId("concert-detail-message")).toHaveTextContent("존재하지 않는 공연입니다. 다른 공연을 둘러보세요.");
   });
@@ -101,7 +149,7 @@ describe("ConcertDetailPage", () => {
       isError: true,
     });
 
-    render(<ConcertDetailPage />);
+    renderConcertDetailPage();
 
     expect(screen.getByTestId("concert-detail-message")).toHaveTextContent("공연 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
   });
@@ -113,7 +161,7 @@ describe("ConcertDetailPage", () => {
       isError: false,
     });
 
-    render(<ConcertDetailPage />);
+    renderConcertDetailPage();
 
     expect(screen.getByTestId("concert-detail-message")).toHaveTextContent("공연 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
   });
@@ -141,7 +189,7 @@ describe("ConcertDetailPage", () => {
       isError: false,
     });
 
-    render(<ConcertDetailPage />);
+    renderConcertDetailPage();
 
     expect(screen.getByRole("img", { name: "테스트 콘서트" })).toHaveAttribute("src", "https://example.com/poster.jpg");
     expect(screen.getByRole("heading", { name: "테스트 콘서트" })).toBeInTheDocument();
@@ -163,7 +211,7 @@ describe("ConcertDetailPage", () => {
       isError: false,
     });
 
-    render(<ConcertDetailPage />);
+    renderConcertDetailPage();
 
     expect(screen.queryByRole("img", { name: "테스트 콘서트" })).not.toBeInTheDocument();
     expect(screen.getByText("공연 상세 정보를 준비 중입니다.")).toBeInTheDocument();
