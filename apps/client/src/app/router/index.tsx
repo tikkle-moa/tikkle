@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
+import { ConcertDetailPage } from "@pages/concert-detail";
 import { ConcertEditPage } from "@pages/concert-edit";
 import { ConcertListPage } from "@pages/concert-list";
 import { ConcertNewPage } from "@pages/concert-new";
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
         children: [
           { path: ROUTE_PATHS.HOME, element: <HomePage /> },
           { path: ROUTE_PATHS.CONCERT_LIST, element: <ConcertListPage /> },
+          { path: ROUTE_PATHS.CONCERT_DETAIL, element: <ConcertDetailPage /> },
           {
             element: <AdminGuard />,
             children: [
