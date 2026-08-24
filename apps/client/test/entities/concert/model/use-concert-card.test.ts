@@ -1,15 +1,14 @@
 import { renderHook } from "@testing-library/react";
 
-import type { ConcertResponse } from "@entities/concert";
+import type { ConcertListResponse } from "@entities/concert/model/concert.types";
 import { useConcertCard } from "@entities/concert/model/use-concert-card";
 
-const makeConcert = (overrides: Partial<ConcertResponse> = {}): ConcertResponse => ({
+const makeConcert = (overrides: Partial<ConcertListResponse> = {}): ConcertListResponse => ({
   id: 1,
   title: "테스트 콘서트",
   genre: "BALLAD",
   placeName: "올림픽공원",
   posterUrl: "https://example.com/poster.jpg",
-  description: "테스트 콘서트 설명",
   createdAt: new Date("2026-01-01").toISOString(),
   ...overrides,
 });
