@@ -136,6 +136,27 @@ class PerformanceControllerTest {
     }
 
     @Test
+    fun `예매 시작 시각 없이 회차를 생성하면 201을 반환한다`() {
+      val request = CreatePerformanceRequest(
+        concertId = 1L,
+        startsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
+      )
+      given(performanceService.create(request))
+        .willReturn(performanceResponse(bookingOpensAt = null))
+
+      mockMvc.post("/api/performances") {
+        contentType = MediaType.APPLICATION_JSON
+        content = objectMapper.writeValueAsString(request)
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isCreated() }
+        jsonPath("$.success") { value(true) }
+        jsonPath("$.data.bookingOpensAt") { doesNotExist() }
+      }
+    }
+
+    @Test
     fun `필수 필드가 없으면 400을 반환한다`() {
       mockMvc.post("/api/performances") {
         contentType = MediaType.APPLICATION_JSON
@@ -219,6 +240,29 @@ class PerformanceControllerTest {
         status { isOk() }
         jsonPath("$.success") { value(true) }
         jsonPath("$.data.startsAt") { value("2027-01-21T19:00:00") }
+      }
+    }
+
+    @Test
+    fun `예매 시작 시각을 null로 수정하면 200을 반환한다`() {
+      given(
+        performanceService.update(
+          eq(1L),
+          updateRequestThat {
+            it.bookingOpensAt.isPresent && it.bookingOpensAt.get() == null
+          },
+        ),
+      ).willReturn(performanceResponse(bookingOpensAt = null))
+
+      mockMvc.patch("/api/performances/1") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"bookingOpensAt":null}"""
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.success") { value(true) }
+        jsonPath("$.data.bookingOpensAt") { doesNotExist() }
       }
     }
 

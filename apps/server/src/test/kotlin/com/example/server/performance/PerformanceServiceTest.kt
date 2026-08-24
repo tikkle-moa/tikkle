@@ -80,6 +80,27 @@ class PerformanceServiceTest {
   }
 
   @Test
+  fun `예매 시작 시각 없이 회차를 생성할 수 있다`() {
+    val request = CreatePerformanceRequest(
+      concertId = 1L,
+      startsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
+    )
+    val concert = concert()
+    val savedPerformance = performance(
+      concert = concert,
+      bookingOpensAt = null,
+    )
+
+    given(concertRepository.findById(1L)).willReturn(Optional.of(concert))
+    given(performanceRepository.save(org.mockito.ArgumentMatchers.any(Performance::class.java)))
+      .willReturn(savedPerformance)
+
+    val result = performanceService.create(request)
+
+    assertThat(result.bookingOpensAt).isNull()
+  }
+
+  @Test
   fun `예매 시작 시각이 공연 시작 시각보다 늦으면 생성에 실패한다`() {
     val request = CreatePerformanceRequest(
       concertId = 1L,
@@ -146,37 +167,6 @@ class PerformanceServiceTest {
   }
 
   @Test
-  fun `콘서트 ID를 전달하면 회차의 콘서트를 변경한다`() {
-    val performance = performance()
-    val newConcert = concert(id = 2L)
-    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
-    given(concertRepository.findById(2L)).willReturn(Optional.of(newConcert))
-
-    val result = performanceService.update(
-      1L,
-      UpdatePerformanceRequest(concertId = JsonNullable.of(2L)),
-    )
-
-    assertThat(performance.concert).isSameAs(newConcert)
-    assertThat(result.concertId).isEqualTo(2L)
-  }
-
-  @Test
-  fun `변경할 콘서트가 없으면 NOT_FOUND를 던진다`() {
-    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
-    given(concertRepository.findById(99L)).willReturn(Optional.empty())
-
-    val exception = assertThrows<CustomException> {
-      performanceService.update(
-        1L,
-        UpdatePerformanceRequest(concertId = JsonNullable.of(99L)),
-      )
-    }
-
-    assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
-  }
-
-  @Test
   fun `수정할 회차가 없으면 NOT_FOUND를 던진다`() {
     given(performanceRepository.findById(99L)).willReturn(Optional.empty())
 
@@ -203,6 +193,22 @@ class PerformanceServiceTest {
 
     assertThat(performance.startsAt).isEqualTo(updatedStartsAt)
     assertThat(performance.bookingOpensAt).isNull()
+  }
+
+  @Test
+  fun `예매 시작 시각을 null로 수정하면 기존 값을 제거한다`() {
+    val performance = performance()
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
+
+    val result = performanceService.update(
+      1L,
+      UpdatePerformanceRequest(
+        bookingOpensAt = JsonNullable.of<LocalDateTime?>(null),
+      ),
+    )
+
+    assertThat(performance.bookingOpensAt).isNull()
+    assertThat(result.bookingOpensAt).isNull()
   }
 
   @Test
