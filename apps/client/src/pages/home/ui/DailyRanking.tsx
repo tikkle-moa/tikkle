@@ -1,3 +1,6 @@
+import { Link, generatePath } from "react-router";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
 import SectionTitle from "@shared/ui/SectionTitle";
 
 import { CONCERT_GENRE_MAP, ConcertCard, ConcertCardSkeleton, useDailyRankings } from "@entities/concert";
@@ -38,30 +41,41 @@ const DailyRanking = () => {
             const { icon: GenreIcon, label: genreLabel, className: genreClassName } = CONCERT_GENRE_MAP[concert.genre];
 
             return (
-              <article key={concert.id} className="flex cursor-pointer items-center gap-4 px-4 py-3.5 transition-colors hover:bg-gray-50">
-                <span className={`w-6 shrink-0 text-center text-base font-extrabold ${rank <= 3 ? "text-violet-600" : "text-gray-400"}`}>{rank}</span>
+              <Link
+                key={concert.id}
+                aria-label={`${concert.title} 상세 보기`}
+                className="block"
+                to={generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
+                  concertId: String(concert.id),
+                })}
+              >
+                <article key={concert.id} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-gray-50">
+                  <span className={`w-6 shrink-0 text-center text-base font-extrabold ${rank <= 3 ? "text-violet-600" : "text-gray-400"}`}>
+                    {rank}
+                  </span>
 
-                <ConcertCard
-                  concert={concert}
-                  className="w-12 shrink-0"
-                  effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true, disableShadow: true, ratio: "1/1" }}
-                />
+                  <ConcertCard
+                    concert={concert}
+                    className="w-12 shrink-0"
+                    effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true, disableShadow: true, ratio: "1/1" }}
+                  />
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="truncate text-sm font-semibold text-gray-900">{concert.title}</h3>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="truncate text-sm font-semibold text-gray-900">{concert.title}</h3>
 
-                    <span
-                      className={`flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold backdrop-blur-sm ${genreClassName}`}
-                    >
-                      <GenreIcon className="size-3" />
-                      {genreLabel}
-                    </span>
+                      <span
+                        className={`flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold backdrop-blur-sm ${genreClassName}`}
+                      >
+                        <GenreIcon className="size-3" />
+                        {genreLabel}
+                      </span>
+                    </div>
+
+                    <p className="mt-0.5 truncate text-xs text-gray-400">{concert.placeName}</p>
                   </div>
-
-                  <p className="mt-0.5 truncate text-xs text-gray-400">{concert.placeName}</p>
-                </div>
-              </article>
+                </article>
+              </Link>
             );
           })}
         </div>

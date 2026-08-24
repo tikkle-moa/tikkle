@@ -1,3 +1,6 @@
+import { Link, generatePath } from "react-router";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
 import SectionTitle from "@shared/ui/SectionTitle";
 
 import { ConcertCard, ConcertCardSkeleton, useHotConcerts } from "@entities/concert";
@@ -26,12 +29,21 @@ const HotConcert = () => {
       {!isPending && !isError && hotConcerts.length > 0 && (
         <div data-testid="hot-concert-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {hotConcerts.slice(0, HOT_MAXIMUM_COUNT).map((concert) => (
-            <ConcertCard
+            <Link
               key={concert.id}
-              concert={concert}
-              displayOptions={{ showGenre: true, showTitle: true }}
-              effectOptions={{ maxTilt: 3, ratio: "4/3" }}
-            />
+              aria-label={`${concert.title} 상세 보기`}
+              className="block"
+              to={generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
+                concertId: String(concert.id),
+              })}
+            >
+              <ConcertCard
+                key={concert.id}
+                concert={concert}
+                displayOptions={{ showGenre: true, showTitle: true }}
+                effectOptions={{ maxTilt: 3, ratio: "4/3" }}
+              />
+            </Link>
           ))}
         </div>
       )}

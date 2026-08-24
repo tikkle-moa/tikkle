@@ -1,3 +1,6 @@
+import { Link, generatePath } from "react-router";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
 import SectionTitle from "@shared/ui/SectionTitle";
 
 import { ConcertCard, ConcertCardSkeleton, useUpcomingConcerts } from "@entities/concert";
@@ -29,13 +32,22 @@ const UpcomingConcert = () => {
         {!isPending &&
           !isError &&
           upcomingConcerts.map((concert) => (
-            <ConcertCard
+            <Link
               key={concert.id}
-              concert={concert}
-              status="upcoming"
-              className="w-40 shrink-0 md:w-60"
-              displayOptions={{ showGenre: true, showTitle: true, showPlaceName: true }}
-            />
+              aria-label={`${concert.title} 상세 보기`}
+              className="block"
+              to={generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
+                concertId: String(concert.id),
+              })}
+            >
+              <ConcertCard
+                key={concert.id}
+                concert={concert}
+                status="upcoming"
+                className="w-40 shrink-0 md:w-60"
+                displayOptions={{ showGenre: true, showTitle: true, showPlaceName: true }}
+              />
+            </Link>
           ))}
       </div>
     </>
