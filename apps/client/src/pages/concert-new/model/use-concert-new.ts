@@ -2,14 +2,18 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { generatePath, useNavigate } from "react-router";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import { apiClient } from "@shared/api";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import type { CreateConcertRequest } from "@entities/concert";
+import { CONCERT_QUERY_KEYS, type CreateConcertRequest } from "@entities/concert";
 
 import type { SubmitState } from "@features/concert-form";
 
 export const useConcertNew = () => {
+  const queryClient = useQueryClient();
+
   const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
 
   const navigate = useNavigate();
@@ -24,6 +28,7 @@ export const useConcertNew = () => {
         return;
       }
 
+      queryClient.removeQueries({ queryKey: CONCERT_QUERY_KEYS.all });
       toast.success(`"${values.title}" 콘서트가 등록되었습니다.`);
       navigate(
         generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
