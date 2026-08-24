@@ -7,40 +7,42 @@ const { mockUseHotConcerts, mockConcerts } = vi.hoisted(() => ({
   mockUseHotConcerts: vi.fn(),
   mockConcerts: [
     {
-      id: 1,
-      title: "테스트 콘서트 1",
-      genre: "BALLAD" as const,
-      placeName: "올림픽공원",
-      posterUrl: "https://example.com/1.jpg",
-      createdAt: new Date("2026-01-01"),
+      concert: {
+        id: 1,
+        title: "테스트 콘서트 1",
+        genre: "BALLAD" as const,
+        placeName: "올림픽공원",
+        posterUrl: "https://example.com/1.jpg",
+        description: null,
+        createdAt: new Date("2026-01-01").toISOString(),
+      },
       performances: [
         {
           id: 1,
           concertId: 1,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2000-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 100,
-          bookedSeats: 50,
+          startsAt: new Date("2099-01-01").toISOString(),
+          bookingOpensAt: new Date("2000-01-01").toISOString(),
+          createdAt: new Date("2026-01-01").toISOString(),
         },
       ],
     },
     {
-      id: 2,
-      title: "테스트 콘서트 2",
-      genre: "ROCK_METAL" as const,
-      placeName: "잠실실내체육관",
-      posterUrl: "https://example.com/2.jpg",
-      createdAt: new Date("2026-01-01"),
+      concert: {
+        id: 2,
+        title: "테스트 콘서트 2",
+        genre: "ROCK_METAL" as const,
+        placeName: "잠실실내체육관",
+        posterUrl: "https://example.com/2.jpg",
+        description: null,
+        createdAt: new Date("2026-01-01").toISOString(),
+      },
       performances: [
         {
           id: 2,
           concertId: 2,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2099-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 200,
-          bookedSeats: 0,
+          startsAt: new Date("2099-01-01").toISOString(),
+          bookingOpensAt: new Date("2099-01-01").toISOString(),
+          createdAt: new Date("2026-01-01").toISOString(),
         },
       ],
     },
@@ -64,7 +66,9 @@ describe("HotConcert", () => {
     });
 
     it("모든 공연 제목을 렌더링한다", () => {
-      for (const { title } of mockConcerts) {
+      for (const {
+        concert: { title },
+      } of mockConcerts) {
         expect(screen.getByText(title)).toBeInTheDocument();
       }
     });
@@ -79,7 +83,7 @@ describe("HotConcert", () => {
     const { container } = render(<HotConcert />);
 
     expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
-    expect(screen.queryByText(mockConcerts[0].title)).not.toBeInTheDocument();
+    expect(screen.queryByText(mockConcerts[0].concert.title)).not.toBeInTheDocument();
   });
 
   it("에러 상태이면 에러 메시지를 렌더링한다", () => {

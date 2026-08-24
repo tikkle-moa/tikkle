@@ -7,78 +7,82 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
   mockUseDailyRankings: vi.fn(),
   mockConcerts: [
     {
-      id: 1,
-      title: "랭킹 콘서트 1",
-      genre: "BALLAD" as const,
-      placeName: "올림픽공원",
-      posterUrl: "https://example.com/1.jpg",
-      createdAt: new Date("2026-01-01"),
+      concert: {
+        id: 1,
+        title: "랭킹 콘서트 1",
+        genre: "BALLAD" as const,
+        placeName: "올림픽공원",
+        posterUrl: "https://example.com/1.jpg",
+        description: null,
+        createdAt: new Date("2026-01-01").toISOString(),
+      },
       performances: [
         {
           id: 1,
           concertId: 1,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2000-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 100,
-          bookedSeats: 50,
+          startsAt: new Date("2099-01-01").toISOString(),
+          bookingOpensAt: new Date("2000-01-01").toISOString(),
+          createdAt: new Date("2026-01-01").toISOString(),
         },
       ],
     },
     {
-      id: 2,
-      title: "랭킹 콘서트 2",
-      genre: "ROCK_METAL" as const,
-      placeName: "잠실실내체육관",
-      posterUrl: "https://example.com/2.jpg",
-      createdAt: new Date("2026-01-01"),
+      concert: {
+        id: 2,
+        title: "랭킹 콘서트 2",
+        genre: "ROCK_METAL" as const,
+        placeName: "잠실실내체육관",
+        posterUrl: "https://example.com/2.jpg",
+        description: null,
+        createdAt: new Date("2026-01-01").toISOString(),
+      },
       performances: [
         {
           id: 2,
           concertId: 2,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2099-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 200,
-          bookedSeats: 0,
+          startsAt: new Date("2099-01-01").toISOString(),
+          bookingOpensAt: new Date("2099-01-01").toISOString(),
+          createdAt: new Date("2026-01-01").toISOString(),
         },
       ],
     },
     {
-      id: 3,
-      title: "랭킹 콘서트 3",
-      genre: "FESTIVAL" as const,
-      placeName: "고척스카이돔",
-      posterUrl: "https://example.com/3.jpg",
-      createdAt: new Date("2026-01-01"),
+      concert: {
+        id: 3,
+        title: "랭킹 콘서트 3",
+        genre: "FESTIVAL" as const,
+        placeName: "고척스카이돔",
+        posterUrl: "https://example.com/3.jpg",
+        description: null,
+        createdAt: new Date("2026-01-01").toISOString(),
+      },
       performances: [
         {
           id: 3,
           concertId: 3,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2000-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 500,
-          bookedSeats: 500,
+          startsAt: new Date("2099-01-01").toISOString(),
+          bookingOpensAt: new Date("2000-01-01").toISOString(),
+          createdAt: new Date("2026-01-01").toISOString(),
         },
       ],
     },
     {
-      id: 4,
-      title: "랭킹 콘서트 4",
-      genre: "INDIE" as const,
-      placeName: "블루스퀘어",
-      posterUrl: "https://example.com/4.jpg",
-      createdAt: new Date("2026-01-01"),
+      concert: {
+        id: 4,
+        title: "랭킹 콘서트 4",
+        genre: "INDIE" as const,
+        placeName: "블루스퀘어",
+        posterUrl: "https://example.com/4.jpg",
+        description: null,
+        createdAt: new Date("2026-01-01").toISOString(),
+      },
       performances: [
         {
           id: 4,
           concertId: 4,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2000-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 300,
-          bookedSeats: 100,
+          startsAt: new Date("2099-01-01").toISOString(),
+          bookingOpensAt: new Date("2000-01-01").toISOString(),
+          createdAt: new Date("2026-01-01").toISOString(),
         },
       ],
     },
@@ -102,7 +106,9 @@ describe("DailyRanking", () => {
     });
 
     it("모든 공연 제목을 렌더링한다", () => {
-      for (const { title } of mockConcerts) {
+      for (const {
+        concert: { title },
+      } of mockConcerts) {
         expect(screen.getByText(title)).toBeInTheDocument();
       }
     });
@@ -121,10 +127,6 @@ describe("DailyRanking", () => {
       expect(screen.getByText("오픈 예정")).toBeInTheDocument();
     });
 
-    it("매진 상태 배지를 렌더링한다", () => {
-      expect(screen.getByText("매진")).toBeInTheDocument();
-    });
-
     it("전체보기 버튼을 클릭할 수 있다", async () => {
       await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
     });
@@ -135,7 +137,7 @@ describe("DailyRanking", () => {
     const { container } = render(<DailyRanking />);
 
     expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
-    expect(screen.queryByText(mockConcerts[0].title)).not.toBeInTheDocument();
+    expect(screen.queryByText(mockConcerts[0].concert.title)).not.toBeInTheDocument();
   });
 
   it("에러 상태이면 에러 메시지를 렌더링한다", () => {
