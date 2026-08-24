@@ -1,20 +1,15 @@
 import { MapPin, Music } from "lucide-react";
 
-import ButtonWrapper from "@shared/ui/ButtonWrapper";
-
 import { ASPECT_RATIO_CLASS, DEFAULT_MAX_TILT, DEFAULT_SHADOW_OFFSET } from "../model/concert-card.constants";
-import type { AspectRatio, DisplayOptions, EffectOptions } from "../model/concert-card.types";
-import type { ConcertResponse } from "../model/concert.types";
+import type { DisplayOptions, EffectOptions } from "../model/concert-card.types";
+import type { ConcertResponse, PerformanceResponse } from "../model/concert.types";
 import { useConcertCard } from "../model/use-concert-card";
 import { useConcertCardTilt } from "../model/use-concert-card-tilt";
 
 interface ConcertCardProps {
   concert: ConcertResponse;
-  onClick?: () => void;
+  performances: PerformanceResponse[];
   className?: string;
-  maxTilt?: number;
-  shadowOffset?: number;
-  ratio?: AspectRatio;
   displayOptions?: DisplayOptions;
   effectOptions?: EffectOptions;
   onPosterError?: () => void;
@@ -22,16 +17,24 @@ interface ConcertCardProps {
 
 const ConcertCard = ({
   concert,
-  onClick,
+  performances,
   className,
-  maxTilt = DEFAULT_MAX_TILT,
-  shadowOffset = DEFAULT_SHADOW_OFFSET,
-  ratio = "3/4",
   displayOptions: { showStatus = false, showGenre = false, showTitle = false, showPlaceName = false, showPeriod = false } = {},
-  effectOptions: { disableTilt = false, disableScale = false, disableGlare = false, disableShadow = false } = {},
+  effectOptions: {
+    disableTilt = false,
+    disableScale = false,
+    disableGlare = false,
+    disableShadow = false,
+    maxTilt = DEFAULT_MAX_TILT,
+    shadowOffset = DEFAULT_SHADOW_OFFSET,
+    ratio = "3/4",
+  } = {},
   onPosterError,
 }: ConcertCardProps) => {
-  const { posterUrl, title, placeName, period, statusLabel, statusClassName, GenreIcon, genreLabel, genreClassName } = useConcertCard({ concert });
+  const { posterUrl, title, placeName, period, statusLabel, statusClassName, GenreIcon, genreLabel, genreClassName } = useConcertCard({
+    concert,
+    performances,
+  });
 
   const { cardRef, tilt, glare, isHovered, outerShadow, handlePointerMove, handlePointerEnter, handlePointerLeave } = useConcertCardTilt({
     maxTilt,
@@ -39,7 +42,7 @@ const ConcertCard = ({
   });
 
   return (
-    <ButtonWrapper className={`flex flex-col ${className ?? ""}`} onClick={onClick}>
+    <div className={`flex flex-col ${className ?? ""}`}>
       <div
         ref={cardRef}
         data-testid="concert-card"
@@ -115,7 +118,7 @@ const ConcertCard = ({
           {showPeriod && <p className="truncate text-xs text-gray-400">{period}</p>}
         </div>
       )}
-    </ButtonWrapper>
+    </div>
   );
 };
 

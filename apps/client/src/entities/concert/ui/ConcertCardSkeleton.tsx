@@ -1,16 +1,16 @@
 import { ASPECT_RATIO_CLASS } from "../model/concert-card.constants";
-import type { AspectRatio, DisplayOptions } from "../model/concert-card.types";
+import type { DisplayOptions, EffectOptions } from "../model/concert-card.types";
 
 interface ConcertCardSkeletonProps {
   className?: string;
-  ratio?: AspectRatio;
   displayOptions?: DisplayOptions;
+  effectOptions?: EffectOptions;
 }
 
 const ConcertCardSkeleton = ({
   className,
-  ratio = "3/4",
   displayOptions: { showTitle = false, showPlaceName = false, showPeriod = false } = {},
+  effectOptions: { ratio = "3/4" } = {},
 }: ConcertCardSkeletonProps) => {
   return (
     <div className={`flex cursor-default flex-col ${className ?? ""}`}>
