@@ -210,7 +210,7 @@ export interface components {
       /** Format: date-time */
       startsAt: string;
       /** Format: date-time */
-      bookingOpensAt: string;
+      bookingOpensAt: string | null;
     };
     PerformanceResponse: {
       /** Format: int64 */
@@ -261,12 +261,10 @@ export interface components {
       data: null;
     };
     UpdatePerformanceRequest: {
-      /** Format: int64 */
-      concertId?: number;
       /** Format: date-time */
       startsAt?: string;
       /** Format: date-time */
-      bookingOpensAt?: string;
+      bookingOpensAt?: string | null;
     };
     UpdateConcertRequest: {
       title?: string;
