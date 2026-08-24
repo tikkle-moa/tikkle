@@ -4,8 +4,13 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { useConcertNew } from "@pages/concert-new/model/use-concert-new";
 
-const { mockNavigate, mockPost } = vi.hoisted(() => ({ mockNavigate: vi.fn(), mockPost: vi.fn() }));
+const { mockNavigate, mockPost, mockRemoveQueries } = vi.hoisted(() => ({ mockNavigate: vi.fn(), mockPost: vi.fn(), mockRemoveQueries: vi.fn() }));
 
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    removeQueries: mockRemoveQueries,
+  }),
+}));
 vi.mock("react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router")>();
 
@@ -33,6 +38,7 @@ describe("useConcertNew", () => {
     await act(() => result.current.handleSubmit(values));
 
     expect(mockPost).toHaveBeenCalledWith("/api/concerts", { body: values });
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ["concerts"] });
     expect(mockNavigate).toHaveBeenCalledWith("/concerts/21", { replace: true });
     expect(result.current.submitState).toEqual({ status: "submitting" });
   });

@@ -136,7 +136,7 @@ describe("useConcertEdit", () => {
     await act(() => result.current.handleSubmit({ ...initialValues, title: "수정 공연" }));
 
     expect(mockPatch).toHaveBeenCalledWith("/api/concerts/{id}", { params: { path: { id: 3 } }, body: { title: "수정 공연" } });
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ["concerts", "detail", 3] });
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ["concerts"] });
     expect(mockNavigate).toHaveBeenCalledWith("/concerts/3", { replace: true });
   });
 
