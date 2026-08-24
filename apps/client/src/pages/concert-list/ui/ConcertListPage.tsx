@@ -68,14 +68,7 @@ const ConcertListPage = () => {
           {isPending && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {Array.from({ length: CONCERT_LIST_SKELETON_COUNT }).map((_, index) => (
-                <ConcertCardSkeleton
-                  key={index}
-                  displayOptions={{
-                    showTitle: true,
-                    showPlaceName: true,
-                    showPeriod: true,
-                  }}
-                />
+                <ConcertCardSkeleton key={index} displayOptions={{ showTitle: true, showPlaceName: true }} />
               ))}
             </div>
           )}
@@ -86,7 +79,7 @@ const ConcertListPage = () => {
 
           {!isPending && !isError && concerts.length > 0 && (
             <div data-testid="concert-list-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {concerts.map(({ concert, performances }) => (
+              {concerts.map((concert) => (
                 <Link
                   key={concert.id}
                   aria-label={`${concert.title} 상세 보기`}
@@ -95,17 +88,7 @@ const ConcertListPage = () => {
                     concertId: String(concert.id),
                   })}
                 >
-                  <ConcertCard
-                    concert={concert}
-                    performances={performances}
-                    displayOptions={{
-                      showStatus: true,
-                      showGenre: true,
-                      showTitle: true,
-                      showPlaceName: true,
-                      showPeriod: true,
-                    }}
-                  />
+                  <ConcertCard concert={concert} displayOptions={{ showGenre: true, showTitle: true, showPlaceName: true }} />
                 </Link>
               ))}
             </div>

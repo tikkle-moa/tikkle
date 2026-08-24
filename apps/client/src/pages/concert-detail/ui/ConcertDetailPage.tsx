@@ -4,8 +4,6 @@ import { Info, MapPin, Music, Pencil } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { CONCERT_GENRE_MAP, getPeriod } from "@entities/concert";
-
 import ConcertDetailMessage from "./ConcertDetailMessage";
 import ConcertDetailSkeleton from "./ConcertDetailSkeleton";
 import PerformanceBookingPanel from "./PerformanceBookingPanel";
@@ -13,7 +11,7 @@ import PerformanceBookingPanel from "./PerformanceBookingPanel";
 import { useConcertDetail } from "../model/use-concert-detail";
 
 const ConcertDetailPage = () => {
-  const { concert, performances, isAdmin, isError, isParamValid, isPending } = useConcertDetail();
+  const { concert, performances, genreClassName, genreLabel, period, isAdmin, isError, isParamValid, isPending } = useConcertDetail();
 
   if (!isParamValid) {
     return <ConcertDetailMessage title="잘못된 공연입니다." description="올바르지 않은 콘서트 ID입니다." />;
@@ -26,9 +24,6 @@ const ConcertDetailPage = () => {
   if (isError || !concert) {
     return <ConcertDetailMessage title="공연 정보를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
-
-  const genre = CONCERT_GENRE_MAP[concert.genre];
-  const period = performances.length === 0 ? "회차 준비 중" : getPeriod(performances);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -46,7 +41,7 @@ const ConcertDetailPage = () => {
 
         <div>
           <div className="flex items-center justify-between gap-3">
-            <span className={`inline-flex rounded-md px-2 py-1 text-xs font-bold ${genre.className}`}>{genre.label}</span>
+            <span className={`inline-flex rounded-md px-2 py-1 text-xs font-bold ${genreClassName}`}>{genreLabel}</span>
 
             {isAdmin && (
               <Link

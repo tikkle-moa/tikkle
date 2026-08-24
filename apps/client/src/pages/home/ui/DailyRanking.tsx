@@ -1,6 +1,6 @@
 import SectionTitle from "@shared/ui/SectionTitle";
 
-import { BOOKING_STATUS_MAP, ConcertCard, ConcertCardSkeleton, getBookingStatus, getPeriod, useDailyRankings } from "@entities/concert";
+import { CONCERT_GENRE_MAP, ConcertCard, ConcertCardSkeleton, useDailyRankings } from "@entities/concert";
 
 import { DAILY_RANKINGS_SKELETON_COUNT } from "../model/home.constants";
 
@@ -33,10 +33,9 @@ const DailyRanking = () => {
 
       {!isPending && !isError && dailyRankings.length > 0 && (
         <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          {dailyRankings.map(({ concert, performances }, index) => {
+          {dailyRankings.map((concert, index) => {
             const rank = index + 1;
-            const { label: statusLabel, className: statusClassName } = BOOKING_STATUS_MAP[getBookingStatus(performances)];
-            const period = getPeriod(performances);
+            const { icon: GenreIcon, label: genreLabel, className: genreClassName } = CONCERT_GENRE_MAP[concert.genre];
 
             return (
               <article key={concert.id} className="flex cursor-pointer items-center gap-4 px-4 py-3.5 transition-colors hover:bg-gray-50">
@@ -44,7 +43,6 @@ const DailyRanking = () => {
 
                 <ConcertCard
                   concert={concert}
-                  performances={performances}
                   className="w-12 shrink-0"
                   effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true, disableShadow: true, ratio: "1/1" }}
                 />
@@ -53,13 +51,15 @@ const DailyRanking = () => {
                   <div className="flex items-center gap-1.5">
                     <h3 className="truncate text-sm font-semibold text-gray-900">{concert.title}</h3>
 
-                    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-bold ${statusClassName}`}>{statusLabel}</span>
+                    <span
+                      className={`flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold backdrop-blur-sm ${genreClassName}`}
+                    >
+                      <GenreIcon className="size-3" />
+                      {genreLabel}
+                    </span>
                   </div>
 
-                  <p className="mt-0.5 truncate text-xs text-gray-400">
-                    {concert.placeName}
-                    {period && ` · ${period}`}
-                  </p>
+                  <p className="mt-0.5 truncate text-xs text-gray-400">{concert.placeName}</p>
                 </div>
               </article>
             );
