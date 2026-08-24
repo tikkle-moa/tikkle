@@ -12,11 +12,9 @@ export const ASPECT_RATIO_CLASS: Record<AspectRatio, string> = {
 };
 
 export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
-  showStatus: true,
   showGenre: true,
   showTitle: true,
   showPlaceName: true,
-  showPeriod: true,
 };
 
 export const DISABLED_EFFECT_OPTIONS: EffectOptions = {

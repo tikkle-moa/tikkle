@@ -11,11 +11,9 @@ export interface Glare {
 export type AspectRatio = "9/16" | "3/4" | "1/1" | "4/3" | "16/9";
 
 export interface DisplayOptions {
-  showStatus?: boolean;
   showGenre?: boolean;
   showTitle?: boolean;
   showPlaceName?: boolean;
-  showPeriod?: boolean;
 }
 
 export interface EffectOptions {

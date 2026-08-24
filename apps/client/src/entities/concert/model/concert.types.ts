@@ -12,15 +12,15 @@ export interface ConcertGenreItem {
   to: RoutePaths;
 }
 
-export type BookingStatus = "available" | "upcoming" | "ended";
+export type BookingStatus = "available" | "upcoming" | "soldout" | "ended";
 
 export interface BookingStatusItem {
   label: string;
   className: string;
 }
 
-export type PerformanceResponse = components["schemas"]["PerformanceResponse"];
-
 export type ConcertResponse = components["schemas"]["ConcertResponse"];
+
+export type ConcertListResponse = components["schemas"]["ConcertListResponse"];
 
 export type CreateConcertRequest = components["schemas"]["CreateConcertRequest"];
