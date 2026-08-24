@@ -1,4 +1,10 @@
-import type { BookingStatus, ConcertResponse, PerformanceResponse } from "./concert.types";
+import type { BookingStatus, ConcertResponse } from "./concert.types";
+
+interface PerformancePeriodItem {
+  startsAt: Date | string;
+}
+
+const toDate = (startsAt: Date | string) => (startsAt instanceof Date ? startsAt : new Date(startsAt));
 
 export const getBookingStatus = (concert: ConcertResponse): BookingStatus => {
   const { performances } = concert;
@@ -15,11 +21,13 @@ export const getBookingStatus = (concert: ConcertResponse): BookingStatus => {
   return "available";
 };
 
-export const getPeriod = (performances: PerformanceResponse[]) => {
-  if (performances.length === 0) return "";
+export const getPeriod = (performances: PerformancePeriodItem[]) => {
+  if (performances.length === 0) {
+    return "";
+  }
 
-  const firstPerformance = performances.reduce((earliest, current) => (current.startsAt < earliest.startsAt ? current : earliest));
-  const lastPerformance = performances.reduce((latest, current) => (current.startsAt > latest.startsAt ? current : latest));
+  const firstPerformance = performances.reduce((earliest, current) => (toDate(current.startsAt) < toDate(earliest.startsAt) ? current : earliest));
+  const lastPerformance = performances.reduce((latest, current) => (toDate(current.startsAt) > toDate(latest.startsAt) ? current : latest));
 
-  return `${firstPerformance.startsAt.toLocaleDateString()} ~ ${lastPerformance.startsAt.toLocaleDateString()}`;
+  return `${toDate(firstPerformance.startsAt).toLocaleDateString()} ~ ${toDate(lastPerformance.startsAt).toLocaleDateString()}`;
 };

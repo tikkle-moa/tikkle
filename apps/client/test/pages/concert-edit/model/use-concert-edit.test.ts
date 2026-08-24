@@ -4,14 +4,28 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { useConcertEdit } from "@pages/concert-edit/model/use-concert-edit";
 
-const { mockGet, mockNavigate, mockPatch, mockUseParams } = vi.hoisted(() => ({
+const { mockGet, mockNavigate, mockPatch, mockUseParams, mockRemoveQueries } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockNavigate: vi.fn(),
   mockPatch: vi.fn(),
   mockUseParams: vi.fn(),
+  mockRemoveQueries: vi.fn(),
 }));
 
-vi.mock("react-router", () => ({ useNavigate: () => mockNavigate, useParams: mockUseParams }));
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    removeQueries: mockRemoveQueries,
+  }),
+}));
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+    useParams: mockUseParams,
+  };
+});
 vi.mock("@shared/api", () => ({ apiClient: { GET: mockGet, PATCH: mockPatch } }));
 
 const initialValues = { title: "기존 공연", genre: "INDIE" as const, placeName: "공연장", posterUrl: null, description: null };
@@ -114,18 +128,16 @@ describe("useConcertEdit", () => {
     expect(result.current.loadState).toEqual({ status: "success", data: { ...initialValues, title: "2번 콘서트" } });
   });
 
-  it("변경된 값만 수정하고 목록으로 이동한다", async () => {
-    mockPatch.mockResolvedValue({ error: undefined, response: { ok: true } });
+  it("변경된 값만 수정하고 상세 페이지로 이동한다", async () => {
+    mockPatch.mockResolvedValue({ data: { data: { id: 3 } }, error: undefined, response: { ok: true } });
     const { result } = renderHook(() => useConcertEdit());
     await waitFor(() => expect(result.current.loadState.status).toBe("success"));
 
     await act(() => result.current.handleSubmit({ ...initialValues, title: "수정 공연" }));
 
-    expect(mockPatch).toHaveBeenCalledWith("/api/concerts/{id}", {
-      params: { path: { id: 3 } },
-      body: { title: "수정 공연" },
-    });
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.CONCERT_LIST);
+    expect(mockPatch).toHaveBeenCalledWith("/api/concerts/{id}", { params: { path: { id: 3 } }, body: { title: "수정 공연" } });
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ["concerts", "detail", 3] });
+    expect(mockNavigate).toHaveBeenCalledWith("/concerts/3", { replace: true });
   });
 
   it("수정 실패 응답을 제출 오류 상태로 제공한다", async () => {

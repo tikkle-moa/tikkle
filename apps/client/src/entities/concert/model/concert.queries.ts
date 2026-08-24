@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { apiClient } from "@shared/api";
+
 import { CONCERT_QUERY_KEYS } from "./concert.constants";
 import { DAILY_RANKINGS, DUMMY_CONCERTS, HOT_CONCERTS, UPCOMING_CONCERTS } from "./dummy-concert.constants";
 
@@ -30,4 +32,21 @@ export const useDailyRankings = () =>
   useQuery({
     queryKey: CONCERT_QUERY_KEYS.dailyRankings(),
     queryFn: () => DAILY_RANKINGS,
+  });
+
+export const useConcertDetail = (concertId: number) =>
+  useQuery({
+    queryKey: CONCERT_QUERY_KEYS.detail(concertId),
+    enabled: Number.isInteger(concertId) && concertId > 0,
+    queryFn: async () => {
+      const { data, error, response } = await apiClient.GET("/api/concerts/{id}", {
+        params: { path: { id: concertId } },
+      });
+
+      if (!response.ok || error || !data) {
+        throw new Error("콘서트 상세 정보를 불러오지 못했습니다.");
+      }
+
+      return data.data;
+    },
   });

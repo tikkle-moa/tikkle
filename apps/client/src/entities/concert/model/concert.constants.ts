@@ -24,7 +24,8 @@ export const BOOKING_STATUS_MAP: Record<BookingStatus, BookingStatusItem> = {
 
 export const CONCERT_QUERY_KEYS = {
   all: ["concerts"] as const,
+  detail: (concertId: number) => [...CONCERT_QUERY_KEYS.all, "detail", concertId] as const,
   upcoming: () => [...CONCERT_QUERY_KEYS.all, "upcoming"] as const,
   hot: () => [...CONCERT_QUERY_KEYS.all, "hot"] as const,
-  dailyRankings: () => [...CONCERT_QUERY_KEYS.all, "daily-rankings"] as const,
+  dailyRankings: () => [...CONCERT_QUERY_KEYS.all, "dailyRankings"] as const,
 };

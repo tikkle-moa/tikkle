@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate, useParams } from "react-router";
+import { generatePath, useNavigate, useParams } from "react-router";
+
+import { useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@shared/api";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import type { CreateConcertRequest } from "@entities/concert";
+import { CONCERT_QUERY_KEYS, type CreateConcertRequest } from "@entities/concert";
 
 import type { SubmitState } from "@features/concert-form";
 
@@ -13,6 +15,8 @@ import type { LoadState } from "./concert-edit.types";
 
 export const useConcertEdit = () => {
   const { concertId } = useParams();
+  const queryClient = useQueryClient();
+
   const id = Number(concertId);
   const isParamValid = Number.isInteger(id) && id > 0;
 
@@ -66,15 +70,21 @@ export const useConcertEdit = () => {
 
     setSubmitState({ status: "submitting" });
     try {
-      const { error, response } = await apiClient.PATCH(`/api/concerts/{id}`, { params: { path: { id } }, body: changedValues });
+      const { data, error, response } = await apiClient.PATCH(`/api/concerts/{id}`, { params: { path: { id } }, body: changedValues });
 
-      if (!response.ok || error) {
+      if (!response.ok || error || !data) {
         setSubmitState({ status: "error", error: "콘서트 수정에 실패했습니다." });
         return;
       }
 
+      queryClient.removeQueries({ queryKey: CONCERT_QUERY_KEYS.detail(data.data.id) });
       toast.success(`"${values.title}" 콘서트 수정이 완료되었습니다.`);
-      navigate(ROUTE_PATHS.CONCERT_LIST);
+      navigate(
+        generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
+          concertId: String(data.data.id),
+        }),
+        { replace: true },
+      );
     } catch {
       setSubmitState({ status: "error", error: "콘서트 수정 중 오류가 발생했습니다." });
     }

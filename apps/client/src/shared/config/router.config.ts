@@ -2,6 +2,7 @@ export const ROUTE_PATHS = {
   HOME: "/",
   LOGIN: "/login",
   CONCERT_LIST: "/concerts",
+  CONCERT_DETAIL: "/concerts/:concertId",
   CONCERT_NEW: "/concerts/new",
   CONCERT_EDIT: "/concerts/:concertId/edit",
   SEARCH: "/search",
