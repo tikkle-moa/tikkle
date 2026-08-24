@@ -15,6 +15,7 @@ vi.mock("react-router", () => ({ useNavigate: () => mockNavigate, useParams: moc
 vi.mock("@shared/api", () => ({ apiClient: { GET: mockGet, PATCH: mockPatch } }));
 
 const initialValues = { title: "기존 공연", genre: "INDIE" as const, placeName: "공연장", posterUrl: null, description: null };
+const changedValues = { ...initialValues, title: "수정된 콘서트" };
 
 describe("useConcertEdit", () => {
   beforeEach(() => {
@@ -87,17 +88,31 @@ describe("useConcertEdit", () => {
     expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.CONCERT_LIST);
   });
 
-  it("수정 실패 응답과 요청 예외를 제출 오류 상태로 제공한다", async () => {
+  it("수정 실패 응답을 제출 오류 상태로 제공한다", async () => {
     mockPatch.mockResolvedValueOnce({ error: { message: "fail" }, response: { ok: false } });
     const { result } = renderHook(() => useConcertEdit());
     await waitFor(() => expect(result.current.loadState.status).toBe("success"));
 
-    await act(() => result.current.handleSubmit(initialValues));
+    await act(() => result.current.handleSubmit(changedValues));
     expect(result.current.submitState).toEqual({ status: "error", error: "콘서트 수정에 실패했습니다." });
+  });
 
+  it("수정 요청 중 예외가 발생하면 제출 오류 상태로 제공한다", async () => {
     mockPatch.mockRejectedValueOnce(new Error("network"));
-    await act(() => result.current.handleSubmit(initialValues));
+    const { result } = renderHook(() => useConcertEdit());
+    await waitFor(() => expect(result.current.loadState.status).toBe("success"));
+
+    await act(() => result.current.handleSubmit(changedValues));
     expect(result.current.submitState).toEqual({ status: "error", error: "콘서트 수정 중 오류가 발생했습니다." });
+  });
+
+  it("변경된 내용이 없으면 요청하지 않고 오류 상태를 제공한다", async () => {
+    const { result } = renderHook(() => useConcertEdit());
+    await waitFor(() => expect(result.current.loadState.status).toBe("success"));
+
+    await act(() => result.current.handleSubmit(initialValues));
+    expect(mockPatch).not.toHaveBeenCalled();
+    expect(result.current.submitState).toEqual({ status: "error", error: "변경된 내용이 없습니다." });
   });
 
   it("취소하면 콘서트 목록으로 이동한다", async () => {
