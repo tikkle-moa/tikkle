@@ -97,6 +97,7 @@ class SecurityConfig(
   private fun configurePerformanceAuthorization(auth: AuthorizationRegistry) {
     auth
       .requestMatchers(HttpMethod.POST, "/api/performances").hasRole(UserRole.ADMIN.name)
+      .requestMatchers(HttpMethod.PATCH, "/api/performances/**").hasRole(UserRole.ADMIN.name)
   }
 
   @Bean

@@ -5,6 +5,7 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceResponse
+import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
 import org.springframework.stereotype.Service
@@ -29,6 +30,39 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
     )
 
     return PerformanceResponse.from(performanceRepository.save(performance))
+  }
+
+  @Transactional
+  fun update(id: Long, updatePerformanceRequest: UpdatePerformanceRequest): PerformanceResponse {
+    val performance = performanceRepository.findById(id)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+
+    val startsAt = if (updatePerformanceRequest.startsAt.isPresent) {
+      updatePerformanceRequest.startsAt.get()
+    } else {
+      performance.startsAt
+    }
+    val bookingOpensAt = if (updatePerformanceRequest.bookingOpensAt.isPresent) {
+      updatePerformanceRequest.bookingOpensAt.get()
+    } else {
+      performance.bookingOpensAt
+    }
+
+    bookingOpensAt?.let {
+      requireBookingOpensBeforeStarts(
+        bookingOpensAt = it,
+        startsAt = startsAt,
+      )
+    }
+
+    updatePerformanceRequest.concertId.ifPresent { concertId ->
+      performance.concert = concertRepository.findById(concertId)
+        .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "콘서트를 찾을 수 없습니다.") }
+    }
+    performance.startsAt = startsAt
+    performance.bookingOpensAt = bookingOpensAt
+
+    return PerformanceResponse.from(performance)
   }
 
   private fun requireBookingOpensBeforeStarts(bookingOpensAt: java.time.LocalDateTime, startsAt: java.time.LocalDateTime) {
