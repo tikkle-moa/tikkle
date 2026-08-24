@@ -15,7 +15,11 @@ const HotConcert = () => {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {isPending &&
           Array.from({ length: HOT_SKELETON_COUNT }).map((_, i) => (
-            <ConcertCardSkeleton key={i} displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }} />
+            <ConcertCardSkeleton
+              key={i}
+              displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }}
+              effectOptions={{ ratio: "4/3" }}
+            />
           ))}
       </div>
 
