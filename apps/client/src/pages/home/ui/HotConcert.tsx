@@ -2,7 +2,7 @@ import SectionTitle from "@shared/ui/SectionTitle";
 
 import { ConcertCard, ConcertCardSkeleton, useHotConcerts } from "@entities/concert";
 
-import { HOT_SKELETON_COUNT } from "../model/home.constants";
+import { HOT_MAXIMUM_COUNT } from "../model/home.constants";
 
 const HotConcert = () => {
   const { data: hotConcerts = [], isPending, isError } = useHotConcerts();
@@ -14,7 +14,7 @@ const HotConcert = () => {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {isPending &&
-          Array.from({ length: HOT_SKELETON_COUNT }).map((_, i) => (
+          Array.from({ length: HOT_MAXIMUM_COUNT }).map((_, i) => (
             <ConcertCardSkeleton key={i} displayOptions={{ showGenre: true, showTitle: true }} effectOptions={{ ratio: "4/3" }} />
           ))}
       </div>
@@ -25,7 +25,7 @@ const HotConcert = () => {
 
       {!isPending && !isError && hotConcerts.length > 0 && (
         <div data-testid="hot-concert-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {hotConcerts.map((concert) => (
+          {hotConcerts.slice(0, HOT_MAXIMUM_COUNT).map((concert) => (
             <ConcertCard
               key={concert.id}
               concert={concert}

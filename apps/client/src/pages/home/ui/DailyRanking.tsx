@@ -2,7 +2,7 @@ import SectionTitle from "@shared/ui/SectionTitle";
 
 import { CONCERT_GENRE_MAP, ConcertCard, ConcertCardSkeleton, useDailyRankings } from "@entities/concert";
 
-import { DAILY_RANKINGS_SKELETON_COUNT } from "../model/home.constants";
+import { DAILY_RANKINGS_MAXIMUM_COUNT } from "../model/home.constants";
 
 const DailyRanking = () => {
   const { data: dailyRankings = [], isPending, isError } = useDailyRankings();
@@ -14,7 +14,7 @@ const DailyRanking = () => {
 
       {isPending && (
         <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          {Array.from({ length: DAILY_RANKINGS_SKELETON_COUNT }).map((_, i) => (
+          {Array.from({ length: DAILY_RANKINGS_MAXIMUM_COUNT }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-4 py-3.5">
               <div className="h-5 w-6 animate-pulse rounded bg-gray-200" />
               <ConcertCardSkeleton className="w-12 shrink-0" effectOptions={{ ratio: "1/1" }} />
@@ -33,7 +33,7 @@ const DailyRanking = () => {
 
       {!isPending && !isError && dailyRankings.length > 0 && (
         <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          {dailyRankings.map((concert, index) => {
+          {dailyRankings.slice(0, DAILY_RANKINGS_MAXIMUM_COUNT).map((concert, index) => {
             const rank = index + 1;
             const { icon: GenreIcon, label: genreLabel, className: genreClassName } = CONCERT_GENRE_MAP[concert.genre];
 
