@@ -17,7 +17,6 @@ export const CONCERT_GENRE_MAP: Record<ConcertGenre, ConcertGenreItem> = {
 
 export const BOOKING_STATUS_MAP: Record<BookingStatus, BookingStatusItem> = {
   available: { label: "예매 중", className: "bg-emerald-500 text-white" },
-  soldout: { label: "매진", className: "bg-red-500 text-white" },
   upcoming: { label: "오픈 예정", className: "bg-violet-600 text-white" },
   ended: { label: "공연 종료", className: "bg-gray-400 text-white" },
 };
