@@ -2,13 +2,14 @@ import { MapPin, Music } from "lucide-react";
 
 import { ASPECT_RATIO_CLASS, DEFAULT_MAX_TILT, DEFAULT_SHADOW_OFFSET } from "../model/concert-card.constants";
 import type { DisplayOptions, EffectOptions } from "../model/concert-card.types";
-import type { ConcertResponse, PerformanceResponse } from "../model/concert.types";
+import { BOOKING_STATUS_MAP } from "../model/concert.constants";
+import type { BookingStatus, ConcertListResponse } from "../model/concert.types";
 import { useConcertCard } from "../model/use-concert-card";
 import { useConcertCardTilt } from "../model/use-concert-card-tilt";
 
 interface ConcertCardProps {
-  concert: ConcertResponse;
-  performances: PerformanceResponse[];
+  concert: ConcertListResponse;
+  status?: BookingStatus;
   className?: string;
   displayOptions?: DisplayOptions;
   effectOptions?: EffectOptions;
@@ -17,9 +18,9 @@ interface ConcertCardProps {
 
 const ConcertCard = ({
   concert,
-  performances,
+  status,
   className,
-  displayOptions: { showStatus = false, showGenre = false, showTitle = false, showPlaceName = false, showPeriod = false } = {},
+  displayOptions: { showGenre = false, showTitle = false, showPlaceName = false } = {},
   effectOptions: {
     disableTilt = false,
     disableScale = false,
@@ -31,10 +32,7 @@ const ConcertCard = ({
   } = {},
   onPosterError,
 }: ConcertCardProps) => {
-  const { posterUrl, title, placeName, period, statusLabel, statusClassName, GenreIcon, genreLabel, genreClassName } = useConcertCard({
-    concert,
-    performances,
-  });
+  const { posterUrl, title, placeName, GenreIcon, genreLabel, genreClassName } = useConcertCard({ concert });
 
   const { cardRef, tilt, glare, isHovered, outerShadow, handlePointerMove, handlePointerEnter, handlePointerLeave } = useConcertCardTilt({
     maxTilt,
@@ -76,11 +74,13 @@ const ConcertCard = ({
               </div>
             )}
 
-            {(showStatus || showGenre) && (
+            {(status || showGenre) && (
               <div className="absolute top-2.5 left-2.5 flex translate-z-5 items-center gap-1.5">
-                {showStatus && (
-                  <span className={`flex h-6 items-center rounded-md px-2 text-xs font-bold shadow ${statusClassName}`}>{statusLabel}</span>
-                )}
+                {status &&
+                  (() => {
+                    const { label: statusLabel, className: statusClassName } = BOOKING_STATUS_MAP[status];
+                    return <span className={`flex h-6 items-center rounded-md px-2 text-xs font-bold shadow ${statusClassName}`}>{statusLabel}</span>;
+                  })()}
 
                 {showGenre && (
                   <span className={`flex h-6 items-center gap-1 rounded-md px-2 text-xs font-bold backdrop-blur-sm ${genreClassName}`}>
@@ -104,7 +104,7 @@ const ConcertCard = ({
         </div>
       </div>
 
-      {(showTitle || showPlaceName || showPeriod) && (
+      {(showTitle || showPlaceName) && (
         <div className="flex flex-col gap-1 px-1 py-2 text-left">
           {showTitle && <p className="truncate text-sm font-bold text-gray-900 transition-colors hover:text-violet-700">{title}</p>}
 
@@ -114,8 +114,6 @@ const ConcertCard = ({
               {placeName}
             </p>
           )}
-
-          {showPeriod && <p className="truncate text-xs text-gray-400">{period}</p>}
         </div>
       )}
     </div>
