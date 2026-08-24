@@ -3,8 +3,7 @@ import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 
-import type { ConcertDetailResponse } from "@pages/concert-detail/model/concert-detail.types";
-import { useConcertDetailQuery } from "@pages/concert-detail/model/use-concert-detail-query";
+import { useConcertDetail } from "@entities/concert";
 
 const { mockGet } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -16,11 +15,11 @@ vi.mock("@shared/api", () => ({
   },
 }));
 
-const concertDetail: ConcertDetailResponse = {
+const concertDetail = {
   concert: {
     id: 1,
     title: "테스트 콘서트",
-    genre: "INDIE",
+    genre: "INDIE" as const,
     placeName: "테스트 공연장",
     posterUrl: null,
     description: null,
@@ -41,7 +40,7 @@ const createWrapper = () => {
   return ({ children }: PropsWithChildren) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 };
 
-describe("useConcertDetailQuery", () => {
+describe("useConcertDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -53,7 +52,7 @@ describe("useConcertDetailQuery", () => {
       response: { ok: true, status: 200 },
     });
 
-    const { result } = renderHook(() => useConcertDetailQuery(1), {
+    const { result } = renderHook(() => useConcertDetail(1), {
       wrapper: createWrapper(),
     });
 
@@ -66,44 +65,24 @@ describe("useConcertDetailQuery", () => {
     });
   });
 
-  it("없는 콘서트는 null을 반환한다", async () => {
+  it.each([404, 500])("%s 응답은 오류 상태로 처리한다", async (status) => {
     mockGet.mockResolvedValue({
       data: undefined,
-      error: { message: "대상을 찾을 수 없습니다." },
-      response: { ok: false, status: 404 },
+      error: { message: "요청 실패" },
+      response: { ok: false, status },
     });
 
-    const { result } = renderHook(() => useConcertDetailQuery(404), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.data).toBeNull();
-    });
-
-    expect(result.current.isError).toBe(false);
-  });
-
-  it("404 이외의 실패는 오류 상태로 처리한다", async () => {
-    mockGet.mockResolvedValue({
-      data: undefined,
-      error: { message: "서버 오류" },
-      response: { ok: false, status: 500 },
-    });
-
-    const { result } = renderHook(() => useConcertDetailQuery(1), {
+    const { result } = renderHook(() => useConcertDetail(1), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
-
-    expect(result.current.error).toEqual(expect.any(Error));
   });
 
   it("유효하지 않은 콘서트 ID에는 요청하지 않는다", () => {
-    renderHook(() => useConcertDetailQuery(0), {
+    renderHook(() => useConcertDetail(0), {
       wrapper: createWrapper(),
     });
 

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import { type PerformanceResponse, formatPerformanceDateTime } from "@entities/performance";
+import type { PerformanceResponse } from "@entities/performance";
 
 import PerformanceBookingPanel from "@pages/concert-detail/ui/PerformanceBookingPanel";
 
@@ -29,8 +29,8 @@ describe("PerformanceBookingPanel", () => {
     render(<PerformanceBookingPanel performances={[firstPerformance, secondPerformance]} />);
 
     expect(screen.getByRole("heading", { name: "공연 회차" })).toBeInTheDocument();
-    expect(screen.getByText(formatPerformanceDateTime(firstPerformance.startsAt))).toBeInTheDocument();
-    expect(screen.getByText(formatPerformanceDateTime(secondPerformance.startsAt))).toBeInTheDocument();
+    expect(screen.getByText(new Date(firstPerformance.startsAt).toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(new Date(secondPerformance.startsAt).toLocaleDateString())).toBeInTheDocument();
     expect(screen.getByText("좌석 선택은 회차별 좌석 화면에서 진행합니다.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "좌석 선택하기" })).not.toBeInTheDocument();
   });

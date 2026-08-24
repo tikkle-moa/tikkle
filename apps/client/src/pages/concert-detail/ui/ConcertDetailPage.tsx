@@ -1,25 +1,19 @@
-import { Link, generatePath, useParams } from "react-router";
+import { Link, generatePath } from "react-router";
 
 import { Info, MapPin, Music, Pencil } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { CONCERT_GENRE_MAP } from "@entities/concert";
-import { getPerformancePeriod } from "@entities/performance";
-import { USER_ROLE, useSessionStore } from "@entities/session";
+import { CONCERT_GENRE_MAP, getPeriod } from "@entities/concert";
 
 import ConcertDetailMessage from "./ConcertDetailMessage";
 import ConcertDetailSkeleton from "./ConcertDetailSkeleton";
 import PerformanceBookingPanel from "./PerformanceBookingPanel";
 
-import { useConcertDetailQuery } from "../model/use-concert-detail-query";
+import { useConcertDetail } from "../model/use-concert-detail";
 
 const ConcertDetailPage = () => {
-  const isAdmin = useSessionStore((state) => state.user?.role === USER_ROLE.ADMIN);
-  const { concertId } = useParams();
-  const id = Number(concertId);
-  const isParamValid = Number.isInteger(id) && id > 0;
-  const { data, isPending, isError } = useConcertDetailQuery(id);
+  const { concert, performances, isAdmin, isError, isParamValid, isPending } = useConcertDetail();
 
   if (!isParamValid) {
     return <ConcertDetailMessage title="잘못된 공연입니다." description="올바르지 않은 콘서트 ID입니다." />;
@@ -29,16 +23,12 @@ const ConcertDetailPage = () => {
     return <ConcertDetailSkeleton />;
   }
 
-  if (data === null) {
-    return <ConcertDetailMessage title="존재하지 않는 공연입니다." description="다른 공연을 둘러보세요." />;
-  }
-
-  if (isError || !data) {
+  if (isError || !concert) {
     return <ConcertDetailMessage title="공연 정보를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
-  const { concert, performances } = data;
   const genre = CONCERT_GENRE_MAP[concert.genre];
+  const period = performances.length === 0 ? "회차 준비 중" : getPeriod(performances);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -85,7 +75,7 @@ const ConcertDetailPage = () => {
 
             <div className="grid grid-cols-[5rem_1fr] gap-3 py-3">
               <dt className="text-gray-400">공연 기간</dt>
-              <dd className="font-medium text-gray-700">{getPerformancePeriod(performances)}</dd>
+              <dd className="font-medium text-gray-700">{period}</dd>
             </div>
           </dl>
 

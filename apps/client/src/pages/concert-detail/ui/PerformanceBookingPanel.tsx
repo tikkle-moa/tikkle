@@ -1,6 +1,5 @@
 import { CalendarDays } from "lucide-react";
 
-import { formatPerformanceDateTime } from "@entities/performance";
 import type { PerformanceResponse } from "@entities/performance";
 
 interface PerformanceBookingPanelProps {
@@ -43,7 +42,7 @@ const PerformanceBookingPanel = ({ performances }: PerformanceBookingPanelProps)
       <ul className="mt-4 divide-y divide-gray-100">
         {performances.map((performance) => (
           <li key={performance.id} className="py-3 text-sm font-medium text-gray-700">
-            {formatPerformanceDateTime(performance.startsAt)}
+            {new Date(performance.startsAt).toLocaleDateString()}
           </li>
         ))}
       </ul>

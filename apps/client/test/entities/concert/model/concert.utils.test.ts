@@ -81,4 +81,13 @@ describe("getPeriod", () => {
     const last = new Date("2026-10-05").toLocaleDateString();
     expect(getPeriod(perfs)).toBe(`${first} ~ ${last}`);
   });
+
+  it("문자열 회차 일시도 기간으로 표시한다", () => {
+    const performances = [{ startsAt: "2026-10-03T19:00:00" }, { startsAt: "2026-10-01T19:00:00" }];
+
+    const first = new Date("2026-10-01T19:00:00").toLocaleDateString();
+    const last = new Date("2026-10-03T19:00:00").toLocaleDateString();
+
+    expect(getPeriod(performances)).toBe(`${first} ~ ${last}`);
+  });
 });
