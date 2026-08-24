@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+  "/api/performances": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 공연 회차 생성
+     * @description 새로운 공연 회차를 생성합니다.
+     */
+    post: operations["create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/concerts": {
     parameters: {
       query?: never;
@@ -21,7 +41,7 @@ export interface paths {
      * 콘서트 생성
      * @description 새로운 콘서트를 생성합니다.
      */
-    post: operations["create"];
+    post: operations["create_1"];
     delete?: never;
     options?: never;
     head?: never;
@@ -68,6 +88,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/performances/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * 공연 회차 삭제
+     * @description 기존 공연 회차를 삭제합니다.
+     */
+    delete: operations["delete"];
+    options?: never;
+    head?: never;
+    /**
+     * 공연 회차 수정
+     * @description 기존 공연 회차 정보를 수정합니다.
+     */
+    patch: operations["update"];
+    trace?: never;
+  };
   "/api/concerts/{id}": {
     parameters: {
       query?: never;
@@ -86,14 +130,14 @@ export interface paths {
      * 콘서트 삭제
      * @description 기존 콘서트를 삭제합니다.
      */
-    delete: operations["delete"];
+    delete: operations["delete_1"];
     options?: never;
     head?: never;
     /**
      * 콘서트 수정
      * @description 기존 콘서트 정보를 수정합니다.
      */
-    patch: operations["update"];
+    patch: operations["update_1"];
     trace?: never;
   };
   "/api/auth/oauth/{oauth_provider}": {
@@ -160,6 +204,31 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    CreatePerformanceRequest: {
+      /** Format: int64 */
+      concertId: number;
+      /** Format: date-time */
+      startsAt: string;
+      /** Format: date-time */
+      bookingOpensAt: string;
+    };
+    PerformanceResponse: {
+      /** Format: int64 */
+      id: number;
+      /** Format: int64 */
+      concertId: number;
+      /** Format: date-time */
+      startsAt: string;
+      /** Format: date-time */
+      bookingOpensAt: string | null;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    SuccessPerformanceResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["PerformanceResponse"];
+    };
     /** @enum {string} */
     ConcertGenre: "BALLAD" | "ROCK_METAL" | "RAP_HIPHOP" | "JAZZ_SOUL" | "TROT" | "INTERNATIONAL_ARTIST" | "FESTIVAL" | "INDIE";
     CreateConcertRequest: {
@@ -191,6 +260,14 @@ export interface components {
       /** @enum {string|null} */
       data: null;
     };
+    UpdatePerformanceRequest: {
+      /** Format: int64 */
+      concertId?: number;
+      /** Format: date-time */
+      startsAt?: string;
+      /** Format: date-time */
+      bookingOpensAt?: string;
+    };
     UpdateConcertRequest: {
       title?: string;
       genre?: components["schemas"]["ConcertGenre"];
@@ -216,18 +293,6 @@ export interface components {
     ConcertDetailResponse: {
       concert: components["schemas"]["ConcertResponse"];
       performances: components["schemas"]["PerformanceResponse"][];
-    };
-    PerformanceResponse: {
-      /** Format: int64 */
-      id: number;
-      /** Format: int64 */
-      concertId: number;
-      /** Format: date-time */
-      startsAt: string;
-      /** Format: date-time */
-      bookingOpensAt: string | null;
-      /** Format: date-time */
-      createdAt: string;
     };
     SuccessConcertDetailResponse: {
       /** @enum {boolean} */
@@ -281,6 +346,102 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreatePerformanceRequest"];
+      };
+    };
+    responses: {
+      /** @description 공연 회차 생성 성공 */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessPerformanceResponse"];
+        };
+      };
+      /** @description 잘못된 요청입니다. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 콘서트를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
   getConcerts: {
     parameters: {
       query?: never;
@@ -301,7 +462,7 @@ export interface operations {
       };
     };
   };
-  create: {
+  create_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -477,6 +638,180 @@ export interface operations {
       };
     };
   };
+  delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공연 회차 삭제 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EmptySuccess"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 공연 회차를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdatePerformanceRequest"];
+      };
+    };
+    responses: {
+      /** @description 공연 회차 수정 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessPerformanceResponse"];
+        };
+      };
+      /** @description 잘못된 요청입니다. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 공연 회차 또는 콘서트를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
   getConcertDetail: {
     parameters: {
       query?: never;
@@ -517,7 +852,7 @@ export interface operations {
       };
     };
   };
-  delete: {
+  delete_1: {
     parameters: {
       query?: never;
       header?: never;
@@ -593,7 +928,7 @@ export interface operations {
       };
     };
   };
-  update: {
+  update_1: {
     parameters: {
       query?: never;
       header?: never;
