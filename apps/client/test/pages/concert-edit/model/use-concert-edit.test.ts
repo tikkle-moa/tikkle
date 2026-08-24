@@ -74,28 +74,44 @@ describe("useConcertEdit", () => {
     );
   });
 
-  it("언마운트 후 조회가 완료되면 상태를 갱신하지 않는다", async () => {
-    let resolveGet!: (value: Awaited<ReturnType<typeof mockGet>>) => void;
-    mockGet.mockReturnValueOnce(new Promise((resolve) => (resolveGet = resolve)));
-    const { unmount } = renderHook(() => useConcertEdit());
+  it("이전 조회 응답이 늦게 완료되어도 현재 콘서트 상태를 덮어쓰지 않는다", async () => {
+    let resolveFirst!: (value: Awaited<ReturnType<typeof mockGet>>) => void;
+    mockGet
+      .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+      .mockResolvedValueOnce({ data: { data: { concert: { ...initialValues, title: "2번 콘서트" } } }, error: undefined, response: { ok: true } });
 
-    unmount();
+    mockUseParams.mockReturnValue({ concertId: "1" });
+    const { result, rerender } = renderHook(() => useConcertEdit());
+
+    mockUseParams.mockReturnValue({ concertId: "2" });
+    rerender();
+
+    await waitFor(() => expect(result.current.loadState).toEqual({ status: "success", data: { ...initialValues, title: "2번 콘서트" } }));
+
     await act(async () => {
-      resolveGet({ data: { data: { concert: initialValues } }, error: undefined, response: { ok: true } });
-      await Promise.resolve();
+      resolveFirst({ data: { data: { concert: { ...initialValues, title: "1번 콘서트" } } }, error: undefined, response: { ok: true } });
     });
+    expect(result.current.loadState).toEqual({ status: "success", data: { ...initialValues, title: "2번 콘서트" } });
   });
 
-  it("언마운트 후 조회 예외가 발생하면 상태를 갱신하지 않는다", async () => {
-    let rejectGet!: (reason: Error) => void;
-    mockGet.mockReturnValueOnce(new Promise((_, reject) => (rejectGet = reject)));
-    const { unmount } = renderHook(() => useConcertEdit());
+  it("이전 조회 응답이 늦게 예외가 발생하면 현재 콘서트 상태를 덮어쓰지 않는다", async () => {
+    let rejectFirst!: (reason: Error) => void;
+    mockGet
+      .mockReturnValueOnce(new Promise((_, reject) => (rejectFirst = reject)))
+      .mockResolvedValueOnce({ data: { data: { concert: { ...initialValues, title: "2번 콘서트" } } }, error: undefined, response: { ok: true } });
 
-    unmount();
+    mockUseParams.mockReturnValue({ concertId: "1" });
+    const { result, rerender } = renderHook(() => useConcertEdit());
+
+    mockUseParams.mockReturnValue({ concertId: "2" });
+    rerender();
+
+    await waitFor(() => expect(result.current.loadState).toEqual({ status: "success", data: { ...initialValues, title: "2번 콘서트" } }));
+
     await act(async () => {
-      rejectGet(new Error("network"));
-      await Promise.resolve();
+      rejectFirst(new Error("network"));
     });
+    expect(result.current.loadState).toEqual({ status: "success", data: { ...initialValues, title: "2번 콘서트" } });
   });
 
   it("변경된 값만 수정하고 목록으로 이동한다", async () => {
