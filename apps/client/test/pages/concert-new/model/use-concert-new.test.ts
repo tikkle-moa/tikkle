@@ -34,8 +34,7 @@ describe("useConcertNew", () => {
 
     expect(mockPost).toHaveBeenCalledWith("/api/concerts", { body: values });
     expect(mockNavigate).toHaveBeenCalledWith("/concerts/21", { replace: true });
-    expect(result.current.isSubmitting).toBe(false);
-    expect(result.current.submitError).toBeNull();
+    expect(result.current.submitState).toEqual({ status: "submitting" });
   });
 
   it("API 응답이 실패하면 등록 실패 오류를 표시한다", async () => {
@@ -44,7 +43,7 @@ describe("useConcertNew", () => {
 
     await act(() => result.current.handleSubmit(values));
 
-    expect(result.current.submitError).toBe("콘서트 등록에 실패했습니다.");
+    expect(result.current.submitState).toEqual({ status: "error", error: "콘서트 등록에 실패했습니다." });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -54,8 +53,7 @@ describe("useConcertNew", () => {
 
     await act(() => result.current.handleSubmit(values));
 
-    expect(result.current.submitError).toBe("콘서트 등록 중 오류가 발생했습니다.");
-    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.submitState).toEqual({ status: "error", error: "콘서트 등록 중 오류가 발생했습니다." });
   });
 
   it("취소하면 콘서트 목록으로 이동한다", () => {

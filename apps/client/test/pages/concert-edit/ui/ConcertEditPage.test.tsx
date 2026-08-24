@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import ConcertEditPage from "@pages/concert-edit/ui/ConcertEditPage";
 
@@ -6,42 +7,61 @@ const { mockUseConcertEdit } = vi.hoisted(() => ({ mockUseConcertEdit: vi.fn() }
 
 vi.mock("@pages/concert-edit/model/use-concert-edit", () => ({ useConcertEdit: mockUseConcertEdit }));
 vi.mock("@features/concert-form", () => ({
-  ConcertForm: (props: { mode: string; initialValues?: { title: string }; isSubmitting: boolean; submitError: string | null }) => (
-    <div data-testid="concert-form" data-mode={props.mode} data-submitting={String(props.isSubmitting)}>
-      {props.initialValues?.title} {props.submitError}
+  ConcertForm: (props: { initialValues?: { title: string }; submitLabel: string }) => (
+    <div data-testid="concert-form" data-submit-label={props.submitLabel}>
+      {props.initialValues?.title}
+    </div>
+  ),
+}));
+vi.mock("@features/concert-manage", () => ({
+  ConcertManageIntro: ({ title, description }: { title: string; description: string }) => (
+    <div>
+      <h1>{title}</h1>
+      <p>{description}</p>
     </div>
   ),
 }));
 
-const baseState = { isSubmitting: false, submitError: null, handleSubmit: vi.fn(), handleCancel: vi.fn() };
+const baseState = {
+  loadState: { status: "loading" as const },
+  submitState: { status: "idle" as const },
+  handleSubmit: vi.fn(),
+  handleCancel: vi.fn(),
+};
 
 describe("ConcertEditPage", () => {
-  it("유효하지 않은 ID 안내를 표시한다", () => {
-    mockUseConcertEdit.mockReturnValue({ ...baseState, isParamValid: false, initialValues: null });
+  beforeEach(() => vi.clearAllMocks());
+
+  it("조회 중에는 로딩 상태를 표시하고 폼을 숨긴다", () => {
+    mockUseConcertEdit.mockReturnValue(baseState);
     render(<ConcertEditPage />);
-    expect(screen.getByRole("heading", { name: "잘못된 콘서트" })).toBeInTheDocument();
-    expect(screen.getByText("올바르지 않은 콘서트 ID입니다.")).toBeInTheDocument();
+
+    expect(screen.getByText("콘서트 정보를 불러오고 있어요")).toBeInTheDocument();
+    expect(screen.getByText("수정할 정보를 준비하는 동안 잠시만 기다려 주세요.")).toBeInTheDocument();
     expect(screen.queryByTestId("concert-form")).not.toBeInTheDocument();
   });
 
-  it("조회된 초기값과 수정 상태를 폼에 전달한다", () => {
+  it("조회가 완료되면 초기값과 수정 상태를 폼에 전달한다", () => {
     mockUseConcertEdit.mockReturnValue({
       ...baseState,
-      isParamValid: true,
-      initialValues: { title: "기존 공연" },
-      isSubmitting: true,
-      submitError: "수정 오류",
+      loadState: {
+        status: "success",
+        data: { title: "기존 공연", genre: "INDIE", placeName: "공연장", posterUrl: null, description: null },
+      },
     });
     render(<ConcertEditPage />);
+
     expect(screen.getByRole("heading", { name: "콘서트 수정" })).toBeInTheDocument();
-    expect(screen.getByTestId("concert-form")).toHaveAttribute("data-mode", "edit");
-    expect(screen.getByTestId("concert-form")).toHaveAttribute("data-submitting", "true");
-    expect(screen.getByText(/기존 공연 수정 오류/)).toBeInTheDocument();
+    expect(screen.getByTestId("concert-form")).toHaveAttribute("data-submit-label", "변경사항 저장");
+    expect(screen.getByText("기존 공연")).toBeInTheDocument();
   });
 
-  it("조회 전에는 초기값 없이 수정 폼을 렌더링한다", () => {
-    mockUseConcertEdit.mockReturnValue({ ...baseState, isParamValid: true, initialValues: null });
+  it("조회 오류를 안내하고 목록으로 돌아갈 수 있다", async () => {
+    mockUseConcertEdit.mockReturnValue({ ...baseState, loadState: { status: "error", error: "조회 오류" } });
     render(<ConcertEditPage />);
-    expect(screen.getByTestId("concert-form")).toBeInTheDocument();
+
+    expect(screen.getByRole("alert")).toHaveTextContent("조회 오류");
+    await userEvent.click(screen.getByRole("button", { name: "콘서트 목록으로 돌아가기" }));
+    expect(baseState.handleCancel).toHaveBeenCalledOnce();
   });
 });

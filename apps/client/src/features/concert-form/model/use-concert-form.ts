@@ -4,18 +4,20 @@ import { useEffect, useState } from "react";
 import type { CreateConcertRequest } from "@entities/concert";
 
 import { EMPTY_CONCERT_FORM_VALUES } from "./concert-form.constants";
-import type { ConcertFormErrors } from "./concert-form.types";
+import type { ConcertFormErrors, SubmitState } from "./concert-form.types";
 import { getInitialConcertFormValues, toConcertRequest, validateConcertForm } from "./concert-form.utils";
 
 interface UseConcertFormProps {
+  submitState: SubmitState;
   initialValues?: Partial<CreateConcertRequest>;
   onSubmit: (values: CreateConcertRequest) => void | Promise<void>;
 }
 
-export const useConcertForm = ({ initialValues, onSubmit }: UseConcertFormProps) => {
+export const useConcertForm = ({ submitState, initialValues, onSubmit }: UseConcertFormProps) => {
   const [values, setValues] = useState<CreateConcertRequest>(EMPTY_CONCERT_FORM_VALUES);
   const [errors, setErrors] = useState<ConcertFormErrors>({});
   const [posterLoadFailed, setPosterLoadFailed] = useState(false);
+  const isSubmitting = submitState.status === "submitting";
 
   useEffect(() => {
     if (!initialValues) return;
@@ -55,6 +57,7 @@ export const useConcertForm = ({ initialValues, onSubmit }: UseConcertFormProps)
   };
 
   return {
+    isSubmitting,
     values,
     errors,
     updateField,
