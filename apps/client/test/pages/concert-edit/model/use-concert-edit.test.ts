@@ -74,6 +74,30 @@ describe("useConcertEdit", () => {
     );
   });
 
+  it("언마운트 후 조회가 완료되면 상태를 갱신하지 않는다", async () => {
+    let resolveGet!: (value: Awaited<ReturnType<typeof mockGet>>) => void;
+    mockGet.mockReturnValueOnce(new Promise((resolve) => (resolveGet = resolve)));
+    const { unmount } = renderHook(() => useConcertEdit());
+
+    unmount();
+    await act(async () => {
+      resolveGet({ data: { data: { concert: initialValues } }, error: undefined, response: { ok: true } });
+      await Promise.resolve();
+    });
+  });
+
+  it("언마운트 후 조회 예외가 발생하면 상태를 갱신하지 않는다", async () => {
+    let rejectGet!: (reason: Error) => void;
+    mockGet.mockReturnValueOnce(new Promise((_, reject) => (rejectGet = reject)));
+    const { unmount } = renderHook(() => useConcertEdit());
+
+    unmount();
+    await act(async () => {
+      rejectGet(new Error("network"));
+      await Promise.resolve();
+    });
+  });
+
   it("변경된 값만 수정하고 목록으로 이동한다", async () => {
     mockPatch.mockResolvedValue({ error: undefined, response: { ok: true } });
     const { result } = renderHook(() => useConcertEdit());
