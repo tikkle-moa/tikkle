@@ -1,4 +1,4 @@
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -34,6 +34,8 @@ vi.mock("@entities/concert", async (importOriginal) => {
   return { ...actual, useUpcomingConcerts: mockUseUpcomingConcerts };
 });
 
+const LocationDisplay = () => <span data-testid="location">{useLocation().pathname}</span>;
+
 describe("UpcomingConcert", () => {
   describe("정상 상태", () => {
     beforeEach(() => {
@@ -41,6 +43,7 @@ describe("UpcomingConcert", () => {
       render(
         <MemoryRouter>
           <UpcomingConcert />
+          <LocationDisplay />
         </MemoryRouter>,
       );
     });
@@ -63,6 +66,12 @@ describe("UpcomingConcert", () => {
 
     it("전체보기 버튼을 클릭할 수 있다", async () => {
       await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
+    });
+
+    it("공연 카드를 클릭하면 상세 페이지로 이동한다", async () => {
+      await userEvent.click(screen.getByRole("link", { name: `${mockConcerts[0].title} 상세 보기` }));
+
+      expect(screen.getByTestId("location")).toHaveTextContent(`/concerts/${mockConcerts[0].id}`);
     });
   });
 
