@@ -10,15 +10,18 @@ import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 @Service
 class PerformanceService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
   @Transactional
   fun create(createPerformanceRequest: CreatePerformanceRequest): PerformanceResponse {
-    requireBookingOpensBeforeStarts(
-      bookingOpensAt = createPerformanceRequest.bookingOpensAt,
-      startsAt = createPerformanceRequest.startsAt,
-    )
+    createPerformanceRequest.bookingOpensAt?.let {
+      requireBookingOpensBeforeStarts(
+        bookingOpensAt = it,
+        startsAt = createPerformanceRequest.startsAt,
+      )
+    }
 
     val concert = concertRepository.findById(createPerformanceRequest.concertId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "콘서트를 찾을 수 없습니다.") }
@@ -37,16 +40,8 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
     val performance = performanceRepository.findById(id)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
 
-    val startsAt = if (updatePerformanceRequest.startsAt.isPresent) {
-      updatePerformanceRequest.startsAt.get()
-    } else {
-      performance.startsAt
-    }
-    val bookingOpensAt = if (updatePerformanceRequest.bookingOpensAt.isPresent) {
-      updatePerformanceRequest.bookingOpensAt.get()
-    } else {
-      performance.bookingOpensAt
-    }
+    val startsAt = updatePerformanceRequest.startsAt.orElse(performance.startsAt)
+    val bookingOpensAt = updatePerformanceRequest.bookingOpensAt.orElse(performance.bookingOpensAt)
 
     bookingOpensAt?.let {
       requireBookingOpensBeforeStarts(
@@ -55,10 +50,6 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
       )
     }
 
-    updatePerformanceRequest.concertId.ifPresent { concertId ->
-      performance.concert = concertRepository.findById(concertId)
-        .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "콘서트를 찾을 수 없습니다.") }
-    }
     performance.startsAt = startsAt
     performance.bookingOpensAt = bookingOpensAt
 
@@ -73,7 +64,7 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
     performanceRepository.delete(performance)
   }
 
-  private fun requireBookingOpensBeforeStarts(bookingOpensAt: java.time.LocalDateTime, startsAt: java.time.LocalDateTime) {
+  private fun requireBookingOpensBeforeStarts(bookingOpensAt: LocalDateTime, startsAt: LocalDateTime) {
     if (!bookingOpensAt.isBefore(startsAt)) {
       throw CustomException(
         ErrorCode.BAD_REQUEST,

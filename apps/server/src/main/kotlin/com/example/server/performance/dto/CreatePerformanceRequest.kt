@@ -12,5 +12,5 @@ data class CreatePerformanceRequest(
   val startsAt: LocalDateTime,
 
   @field:Future(message = "예매 시작 시각은 현재 시각 이후여야 합니다.")
-  val bookingOpensAt: LocalDateTime,
+  val bookingOpensAt: LocalDateTime? = null,
 )
