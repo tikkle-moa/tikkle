@@ -1,3 +1,5 @@
+import { MemoryRouter } from "react-router";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -36,7 +38,11 @@ describe("UpcomingConcert", () => {
   describe("정상 상태", () => {
     beforeEach(() => {
       mockUseUpcomingConcerts.mockReturnValue({ data: mockConcerts, isPending: false, isError: false });
-      render(<UpcomingConcert />);
+      render(
+        <MemoryRouter>
+          <UpcomingConcert />
+        </MemoryRouter>,
+      );
     });
 
     it("섹션 제목을 렌더링한다", () => {

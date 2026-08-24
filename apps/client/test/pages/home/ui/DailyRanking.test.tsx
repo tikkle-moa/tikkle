@@ -1,3 +1,5 @@
+import { MemoryRouter } from "react-router";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -52,7 +54,11 @@ describe("DailyRanking", () => {
   describe("정상 상태", () => {
     beforeEach(() => {
       mockUseDailyRankings.mockReturnValue({ data: mockConcerts, isPending: false, isError: false });
-      render(<DailyRanking />);
+      render(
+        <MemoryRouter>
+          <DailyRanking />
+        </MemoryRouter>,
+      );
     });
 
     it("섹션 제목을 렌더링한다", () => {
