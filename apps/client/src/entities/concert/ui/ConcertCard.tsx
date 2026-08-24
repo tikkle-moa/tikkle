@@ -1,20 +1,16 @@
 import { MapPin, Music } from "lucide-react";
 
-import ButtonWrapper from "@shared/ui/ButtonWrapper";
-
 import { ASPECT_RATIO_CLASS, DEFAULT_MAX_TILT, DEFAULT_SHADOW_OFFSET } from "../model/concert-card.constants";
-import type { AspectRatio, DisplayOptions, EffectOptions } from "../model/concert-card.types";
-import type { ConcertResponse } from "../model/concert.types";
+import type { DisplayOptions, EffectOptions } from "../model/concert-card.types";
+import { BOOKING_STATUS_MAP } from "../model/concert.constants";
+import type { BookingStatus, ConcertListResponse } from "../model/concert.types";
 import { useConcertCard } from "../model/use-concert-card";
 import { useConcertCardTilt } from "../model/use-concert-card-tilt";
 
 interface ConcertCardProps {
-  concert: ConcertResponse;
-  onClick?: () => void;
+  concert: ConcertListResponse;
+  status?: BookingStatus;
   className?: string;
-  maxTilt?: number;
-  shadowOffset?: number;
-  ratio?: AspectRatio;
   displayOptions?: DisplayOptions;
   effectOptions?: EffectOptions;
   onPosterError?: () => void;
@@ -22,16 +18,21 @@ interface ConcertCardProps {
 
 const ConcertCard = ({
   concert,
-  onClick,
+  status,
   className,
-  maxTilt = DEFAULT_MAX_TILT,
-  shadowOffset = DEFAULT_SHADOW_OFFSET,
-  ratio = "3/4",
-  displayOptions: { showStatus = false, showGenre = false, showTitle = false, showPlaceName = false, showPeriod = false } = {},
-  effectOptions: { disableTilt = false, disableScale = false, disableGlare = false, disableShadow = false } = {},
+  displayOptions: { showGenre = false, showTitle = false, showPlaceName = false } = {},
+  effectOptions: {
+    disableTilt = false,
+    disableScale = false,
+    disableGlare = false,
+    disableShadow = false,
+    maxTilt = DEFAULT_MAX_TILT,
+    shadowOffset = DEFAULT_SHADOW_OFFSET,
+    ratio = "3/4",
+  } = {},
   onPosterError,
 }: ConcertCardProps) => {
-  const { posterUrl, title, placeName, period, statusLabel, statusClassName, GenreIcon, genreLabel, genreClassName } = useConcertCard({ concert });
+  const { posterUrl, title, placeName, GenreIcon, genreLabel, genreClassName } = useConcertCard({ concert });
 
   const { cardRef, tilt, glare, isHovered, outerShadow, handlePointerMove, handlePointerEnter, handlePointerLeave } = useConcertCardTilt({
     maxTilt,
@@ -39,7 +40,7 @@ const ConcertCard = ({
   });
 
   return (
-    <ButtonWrapper className={`flex flex-col ${className ?? ""}`} onClick={onClick}>
+    <div className={`flex flex-col ${className ?? ""}`}>
       <div
         ref={cardRef}
         data-testid="concert-card"
@@ -73,11 +74,13 @@ const ConcertCard = ({
               </div>
             )}
 
-            {(showStatus || showGenre) && (
+            {(status || showGenre) && (
               <div className="absolute top-2.5 left-2.5 flex translate-z-5 items-center gap-1.5">
-                {showStatus && (
-                  <span className={`flex h-6 items-center rounded-md px-2 text-xs font-bold shadow ${statusClassName}`}>{statusLabel}</span>
-                )}
+                {status &&
+                  (() => {
+                    const { label: statusLabel, className: statusClassName } = BOOKING_STATUS_MAP[status];
+                    return <span className={`flex h-6 items-center rounded-md px-2 text-xs font-bold shadow ${statusClassName}`}>{statusLabel}</span>;
+                  })()}
 
                 {showGenre && (
                   <span className={`flex h-6 items-center gap-1 rounded-md px-2 text-xs font-bold backdrop-blur-sm ${genreClassName}`}>
@@ -101,7 +104,7 @@ const ConcertCard = ({
         </div>
       </div>
 
-      {(showTitle || showPlaceName || showPeriod) && (
+      {(showTitle || showPlaceName) && (
         <div className="flex flex-col gap-1 px-1 py-2 text-left">
           {showTitle && <p className="truncate text-sm font-bold text-gray-900 transition-colors hover:text-violet-700">{title}</p>}
 
@@ -111,11 +114,9 @@ const ConcertCard = ({
               {placeName}
             </p>
           )}
-
-          {showPeriod && <p className="truncate text-xs text-gray-400">{period}</p>}
         </div>
       )}
-    </ButtonWrapper>
+    </div>
   );
 };
 

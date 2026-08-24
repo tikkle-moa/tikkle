@@ -23,7 +23,7 @@ describe("ConcertBookingStatusFilterControls", () => {
     render(<ConcertBookingStatusFilterControls selectedBookingStatuses={["available"]} onToggleBookingStatus={vi.fn()} />);
 
     expect(screen.getByLabelText("예매 중")).toBeChecked();
-    expect(screen.getByLabelText("매진")).not.toBeChecked();
+    expect(screen.getByLabelText("오픈 예정")).not.toBeChecked();
   });
 
   it("예매 상태 변경을 onToggleBookingStatus에 위임한다", async () => {
@@ -32,8 +32,8 @@ describe("ConcertBookingStatusFilterControls", () => {
 
     render(<ConcertBookingStatusFilterControls selectedBookingStatuses={[]} onToggleBookingStatus={onToggleBookingStatus} />);
 
-    await user.click(screen.getByLabelText("매진"));
+    await user.click(screen.getByLabelText("오픈 예정"));
 
-    expect(onToggleBookingStatus).toHaveBeenCalledWith("soldout");
+    expect(onToggleBookingStatus).toHaveBeenCalledWith("upcoming");
   });
 });

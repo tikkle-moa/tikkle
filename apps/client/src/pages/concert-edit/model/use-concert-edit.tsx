@@ -77,7 +77,7 @@ export const useConcertEdit = () => {
         return;
       }
 
-      queryClient.removeQueries({ queryKey: CONCERT_QUERY_KEYS.detail(data.data.id) });
+      queryClient.removeQueries({ queryKey: CONCERT_QUERY_KEYS.all });
       toast.success(`"${values.title}" 콘서트 수정이 완료되었습니다.`);
       navigate(
         generatePath(ROUTE_PATHS.CONCERT_DETAIL, {

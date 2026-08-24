@@ -1,18 +1,12 @@
-import { BOOKING_STATUS_MAP, CONCERT_GENRE_MAP } from "./concert.constants";
-import type { ConcertResponse } from "./concert.types";
-import { getBookingStatus, getPeriod } from "./concert.utils";
+import { CONCERT_GENRE_MAP } from "./concert.constants";
+import type { ConcertListResponse } from "./concert.types";
 
 interface UseConcertCardProps {
-  concert: ConcertResponse;
+  concert: ConcertListResponse;
 }
 
 export const useConcertCard = ({ concert }: UseConcertCardProps) => {
-  const { posterUrl, title, placeName, performances } = concert;
-
-  const period = getPeriod(performances);
-
-  const bookingStatus = getBookingStatus(concert);
-  const { label: statusLabel, className: statusClassName } = BOOKING_STATUS_MAP[bookingStatus];
+  const { posterUrl, title, placeName } = concert;
 
   const { icon: GenreIcon, label: genreLabel, className: genreClassName } = CONCERT_GENRE_MAP[concert.genre];
 
@@ -20,9 +14,6 @@ export const useConcertCard = ({ concert }: UseConcertCardProps) => {
     posterUrl,
     title,
     placeName,
-    period,
-    statusLabel,
-    statusClassName,
     GenreIcon,
     genreLabel,
     genreClassName,

@@ -1,3 +1,5 @@
+import { MemoryRouter, useLocation } from "react-router";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -12,19 +14,8 @@ const { mockUseUpcomingConcerts, mockConcerts } = vi.hoisted(() => ({
       genre: "FESTIVAL" as const,
       placeName: "올림픽공원",
       posterUrl: "https://example.com/1.jpg",
-      createdAt: new Date("2026-01-01"),
-      // bookingOpensAt이 미래 → upcoming 상태
-      performances: [
-        {
-          id: 1,
-          concertId: 1,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2099-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 100,
-          bookedSeats: 0,
-        },
-      ],
+      description: null,
+      createdAt: new Date("2026-01-01").toISOString(),
     },
     {
       id: 2,
@@ -32,18 +23,8 @@ const { mockUseUpcomingConcerts, mockConcerts } = vi.hoisted(() => ({
       genre: "INDIE" as const,
       placeName: "블루스퀘어",
       posterUrl: "https://example.com/2.jpg",
-      createdAt: new Date("2026-01-01"),
-      performances: [
-        {
-          id: 2,
-          concertId: 2,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2099-06-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 300,
-          bookedSeats: 0,
-        },
-      ],
+      description: null,
+      createdAt: new Date("2026-01-01").toISOString(),
     },
   ],
 }));
@@ -53,15 +34,22 @@ vi.mock("@entities/concert", async (importOriginal) => {
   return { ...actual, useUpcomingConcerts: mockUseUpcomingConcerts };
 });
 
+const LocationDisplay = () => <span data-testid="location">{useLocation().pathname}</span>;
+
 describe("UpcomingConcert", () => {
   describe("정상 상태", () => {
     beforeEach(() => {
       mockUseUpcomingConcerts.mockReturnValue({ data: mockConcerts, isPending: false, isError: false });
-      render(<UpcomingConcert />);
+      render(
+        <MemoryRouter>
+          <UpcomingConcert />
+          <LocationDisplay />
+        </MemoryRouter>,
+      );
     });
 
     it("섹션 제목을 렌더링한다", () => {
-      expect(screen.getByText("오픈 예정")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "오픈 예정" })).toBeInTheDocument();
     });
 
     it("모든 공연 제목을 렌더링한다", () => {
@@ -78,6 +66,12 @@ describe("UpcomingConcert", () => {
 
     it("전체보기 버튼을 클릭할 수 있다", async () => {
       await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
+    });
+
+    it("공연 카드를 클릭하면 상세 페이지로 이동한다", async () => {
+      await userEvent.click(screen.getByRole("link", { name: `${mockConcerts[0].title} 상세 보기` }));
+
+      expect(screen.getByTestId("location")).toHaveTextContent(`/concerts/${mockConcerts[0].id}`);
     });
   });
 

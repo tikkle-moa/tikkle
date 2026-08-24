@@ -16,11 +16,11 @@ describe("ConcertCardSkeleton", () => {
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(2);
   });
 
-  it("showTitle, showPlaceName, showPeriod이면 텍스트 바 3개를 렌더링한다", () => {
-    const { container } = render(<ConcertCardSkeleton displayOptions={{ showTitle: true, showPlaceName: true, showPeriod: true }} />);
+  it("showTitle, showPlaceName이면 텍스트 바 2개를 렌더링한다", () => {
+    const { container } = render(<ConcertCardSkeleton displayOptions={{ showTitle: true, showPlaceName: true }} />);
 
-    // 이미지(1) + 제목(1) + 장소(1) + 기간(1)
-    expect(container.querySelectorAll(".animate-pulse")).toHaveLength(4);
+    // 이미지(1) + 제목(1) + 장소(1)
+    expect(container.querySelectorAll(".animate-pulse")).toHaveLength(3);
   });
 
   it("show prop이 없으면 이미지 스켈레톤만 렌더링한다", () => {

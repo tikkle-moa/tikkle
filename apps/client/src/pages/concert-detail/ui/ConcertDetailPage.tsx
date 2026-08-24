@@ -4,7 +4,8 @@ import { Info, MapPin, Music, Pencil } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { CONCERT_GENRE_MAP, getPeriod } from "@entities/concert";
+import { CONCERT_GENRE_MAP } from "@entities/concert";
+import { getPeriod } from "@entities/performance";
 
 import ConcertDetailMessage from "./ConcertDetailMessage";
 import ConcertDetailSkeleton from "./ConcertDetailSkeleton";

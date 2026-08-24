@@ -1,5 +1,9 @@
+import { MemoryRouter, useLocation } from "react-router";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { CONCERT_GENRE_MAP } from "@entities/concert";
 
 import DailyRanking from "@pages/home/ui/DailyRanking";
 
@@ -12,18 +16,7 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
       genre: "BALLAD" as const,
       placeName: "올림픽공원",
       posterUrl: "https://example.com/1.jpg",
-      createdAt: new Date("2026-01-01"),
-      performances: [
-        {
-          id: 1,
-          concertId: 1,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2000-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 100,
-          bookedSeats: 50,
-        },
-      ],
+      createdAt: new Date("2026-01-01").toISOString(),
     },
     {
       id: 2,
@@ -31,18 +24,7 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
       genre: "ROCK_METAL" as const,
       placeName: "잠실실내체육관",
       posterUrl: "https://example.com/2.jpg",
-      createdAt: new Date("2026-01-01"),
-      performances: [
-        {
-          id: 2,
-          concertId: 2,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2099-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 200,
-          bookedSeats: 0,
-        },
-      ],
+      createdAt: new Date("2026-01-01").toISOString(),
     },
     {
       id: 3,
@@ -50,18 +32,7 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
       genre: "FESTIVAL" as const,
       placeName: "고척스카이돔",
       posterUrl: "https://example.com/3.jpg",
-      createdAt: new Date("2026-01-01"),
-      performances: [
-        {
-          id: 3,
-          concertId: 3,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2000-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 500,
-          bookedSeats: 500,
-        },
-      ],
+      createdAt: new Date("2026-01-01").toISOString(),
     },
     {
       id: 4,
@@ -69,18 +40,7 @@ const { mockUseDailyRankings, mockConcerts } = vi.hoisted(() => ({
       genre: "INDIE" as const,
       placeName: "블루스퀘어",
       posterUrl: "https://example.com/4.jpg",
-      createdAt: new Date("2026-01-01"),
-      performances: [
-        {
-          id: 4,
-          concertId: 4,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2000-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 300,
-          bookedSeats: 100,
-        },
-      ],
+      createdAt: new Date("2026-01-01").toISOString(),
     },
   ],
 }));
@@ -90,15 +50,22 @@ vi.mock("@entities/concert", async (importOriginal) => {
   return { ...actual, useDailyRankings: mockUseDailyRankings };
 });
 
+const LocationDisplay = () => <span data-testid="location">{useLocation().pathname}</span>;
+
 describe("DailyRanking", () => {
   describe("정상 상태", () => {
     beforeEach(() => {
       mockUseDailyRankings.mockReturnValue({ data: mockConcerts, isPending: false, isError: false });
-      render(<DailyRanking />);
+      render(
+        <MemoryRouter>
+          <DailyRanking />
+          <LocationDisplay />
+        </MemoryRouter>,
+      );
     });
 
     it("섹션 제목을 렌더링한다", () => {
-      expect(screen.getByText("일간 랭킹")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "일간 랭킹" })).toBeInTheDocument();
     });
 
     it("모든 공연 제목을 렌더링한다", () => {
@@ -113,20 +80,18 @@ describe("DailyRanking", () => {
       });
     });
 
-    it("예매 중 상태 배지를 렌더링한다", () => {
-      expect(screen.getAllByText("예매 중").length).toBeGreaterThan(0);
-    });
-
-    it("오픈 예정 상태 배지를 렌더링한다", () => {
-      expect(screen.getByText("오픈 예정")).toBeInTheDocument();
-    });
-
-    it("매진 상태 배지를 렌더링한다", () => {
-      expect(screen.getByText("매진")).toBeInTheDocument();
+    it("genre 배지를 렌더링한다", () => {
+      expect(screen.getAllByText(CONCERT_GENRE_MAP[mockConcerts[0].genre].label).length).toBeGreaterThan(0);
     });
 
     it("전체보기 버튼을 클릭할 수 있다", async () => {
       await userEvent.click(screen.getByRole("button", { name: "전체보기" }));
+    });
+
+    it("공연 카드를 클릭하면 상세 페이지로 이동한다", async () => {
+      await userEvent.click(screen.getByRole("link", { name: `${mockConcerts[0].title} 상세 보기` }));
+
+      expect(screen.getByTestId("location")).toHaveTextContent(`/concerts/${mockConcerts[0].id}`);
     });
   });
 

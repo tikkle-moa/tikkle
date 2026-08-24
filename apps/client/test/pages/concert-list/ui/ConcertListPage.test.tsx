@@ -13,18 +13,8 @@ const { mockUseConcertList, mockConcerts } = vi.hoisted(() => ({
       genre: "BALLAD" as const,
       placeName: "올림픽공원",
       posterUrl: "https://example.com/1.jpg",
-      createdAt: new Date("2026-01-01"),
-      performances: [
-        {
-          id: 1,
-          concertId: 1,
-          startsAt: new Date("2099-01-01"),
-          bookingOpensAt: new Date("2000-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 100,
-          bookedSeats: 50,
-        },
-      ],
+      description: null,
+      createdAt: new Date("2026-01-01").toISOString(),
     },
     {
       id: 2,
@@ -32,18 +22,8 @@ const { mockUseConcertList, mockConcerts } = vi.hoisted(() => ({
       genre: "ROCK_METAL" as const,
       placeName: "잠실실내체육관",
       posterUrl: "https://example.com/2.jpg",
-      createdAt: new Date("2026-01-01"),
-      performances: [
-        {
-          id: 2,
-          concertId: 2,
-          startsAt: new Date("2099-02-01"),
-          bookingOpensAt: new Date("2099-01-01"),
-          createdAt: new Date("2026-01-01"),
-          totalSeats: 100,
-          bookedSeats: 0,
-        },
-      ],
+      description: null,
+      createdAt: new Date("2026-01-01").toISOString(),
     },
   ],
 }));

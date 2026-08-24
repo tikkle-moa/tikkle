@@ -1,8 +1,11 @@
+import { Link, generatePath } from "react-router";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
 import SectionTitle from "@shared/ui/SectionTitle";
 
 import { ConcertCard, ConcertCardSkeleton, useHotConcerts } from "@entities/concert";
 
-import { HOT_SKELETON_COUNT } from "../model/home.constants";
+import { HOT_MAXIMUM_COUNT } from "../model/home.constants";
 
 const HotConcert = () => {
   const { data: hotConcerts = [], isPending, isError } = useHotConcerts();
@@ -14,8 +17,8 @@ const HotConcert = () => {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {isPending &&
-          Array.from({ length: HOT_SKELETON_COUNT }).map((_, i) => (
-            <ConcertCardSkeleton key={i} ratio="4/3" displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }} />
+          Array.from({ length: HOT_MAXIMUM_COUNT }).map((_, i) => (
+            <ConcertCardSkeleton key={i} displayOptions={{ showGenre: true, showTitle: true }} effectOptions={{ ratio: "4/3" }} />
           ))}
       </div>
 
@@ -25,14 +28,22 @@ const HotConcert = () => {
 
       {!isPending && !isError && hotConcerts.length > 0 && (
         <div data-testid="hot-concert-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {hotConcerts.map((concert) => (
-            <ConcertCard
+          {hotConcerts.slice(0, HOT_MAXIMUM_COUNT).map((concert) => (
+            <Link
               key={concert.id}
-              concert={concert}
-              ratio="4/3"
-              maxTilt={3}
-              displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }}
-            />
+              aria-label={`${concert.title} 상세 보기`}
+              className="block"
+              to={generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
+                concertId: String(concert.id),
+              })}
+            >
+              <ConcertCard
+                key={concert.id}
+                concert={concert}
+                displayOptions={{ showGenre: true, showTitle: true }}
+                effectOptions={{ maxTilt: 3, ratio: "4/3" }}
+              />
+            </Link>
           ))}
         </div>
       )}
