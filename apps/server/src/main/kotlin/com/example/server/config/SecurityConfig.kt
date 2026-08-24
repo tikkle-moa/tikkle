@@ -98,6 +98,7 @@ class SecurityConfig(
     auth
       .requestMatchers(HttpMethod.POST, "/api/performances").hasRole(UserRole.ADMIN.name)
       .requestMatchers(HttpMethod.PATCH, "/api/performances/**").hasRole(UserRole.ADMIN.name)
+      .requestMatchers(HttpMethod.DELETE, "/api/performances/**").hasRole(UserRole.ADMIN.name)
   }
 
   @Bean

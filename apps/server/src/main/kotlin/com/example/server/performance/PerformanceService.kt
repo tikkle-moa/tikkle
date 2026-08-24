@@ -65,6 +65,14 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
     return PerformanceResponse.from(performance)
   }
 
+  @Transactional
+  fun delete(id: Long) {
+    val performance = performanceRepository.findById(id)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+
+    performanceRepository.delete(performance)
+  }
+
   private fun requireBookingOpensBeforeStarts(bookingOpensAt: java.time.LocalDateTime, startsAt: java.time.LocalDateTime) {
     if (!bookingOpensAt.isBefore(startsAt)) {
       throw CustomException(

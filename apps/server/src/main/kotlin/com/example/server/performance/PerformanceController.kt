@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -67,5 +68,25 @@ class PerformanceController(private val performanceService: PerformanceService) 
     val performanceResponse = performanceService.update(id, updatePerformanceRequest)
 
     return ResponseEntity.ok(ApiResponse.ok(performanceResponse))
+  }
+
+  @Operation(
+    summary = "공연 회차 삭제",
+    description = "기존 공연 회차를 삭제합니다.",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "공연 회차 삭제 성공")],
+    security = [SecurityRequirement(name = "access_token")],
+  )
+  @ErrorResponse(
+    responses = [
+      ErrorResponseItem(ErrorCode.UNAUTHORIZED),
+      ErrorResponseItem(ErrorCode.FORBIDDEN),
+      ErrorResponseItem(ErrorCode.NOT_FOUND, description = "공연 회차를 찾을 수 없음"),
+    ],
+  )
+  @DeleteMapping("/{id}")
+  fun delete(@PathVariable id: Long): ResponseEntity<ApiResponse.EmptySuccess> {
+    performanceService.delete(id)
+
+    return ResponseEntity.ok(ApiResponse.ok())
   }
 }
