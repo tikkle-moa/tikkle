@@ -17,7 +17,7 @@ const DailyRanking = () => {
           {Array.from({ length: DAILY_RANKINGS_SKELETON_COUNT }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-4 py-3.5">
               <div className="h-5 w-6 animate-pulse rounded bg-gray-200" />
-              <ConcertCardSkeleton ratio="1/1" className="w-12 shrink-0" />
+              <ConcertCardSkeleton className="w-12 shrink-0" effectOptions={{ ratio: "1/1" }} />
               <div className="flex flex-1 flex-col gap-2">
                 <div className="h-3.5 w-3/5 animate-pulse rounded bg-gray-200" />
                 <div className="h-3 w-2/5 animate-pulse rounded bg-gray-200" />
@@ -33,10 +33,10 @@ const DailyRanking = () => {
 
       {!isPending && !isError && dailyRankings.length > 0 && (
         <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          {dailyRankings.map((concert, index) => {
+          {dailyRankings.map(({ concert, performances }, index) => {
             const rank = index + 1;
-            const { label: statusLabel, className: statusClassName } = BOOKING_STATUS_MAP[getBookingStatus(concert)];
-            const period = getPeriod(concert.performances);
+            const { label: statusLabel, className: statusClassName } = BOOKING_STATUS_MAP[getBookingStatus(performances)];
+            const period = getPeriod(performances);
 
             return (
               <article key={concert.id} className="flex cursor-pointer items-center gap-4 px-4 py-3.5 transition-colors hover:bg-gray-50">
@@ -44,9 +44,9 @@ const DailyRanking = () => {
 
                 <ConcertCard
                   concert={concert}
-                  ratio="1/1"
+                  performances={performances}
                   className="w-12 shrink-0"
-                  effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true, disableShadow: true }}
+                  effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true, disableShadow: true, ratio: "1/1" }}
                 />
 
                 <div className="min-w-0 flex-1">

@@ -143,7 +143,8 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
 
             <div className="mx-auto max-w-70 lg:max-w-none">
               <ConcertCard
-                concert={{ id: -1, ...values, genre: values.genre || "BALLAD", performances: [], createdAt: new Date() }}
+                concert={{ id: -1, ...values, genre: values.genre || "BALLAD", createdAt: new Date().toISOString() }}
+                performances={[]}
                 displayOptions={{ showGenre: true, showTitle: true, showPlaceName: true, showPeriod: false }}
                 effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true }}
                 onPosterError={handlePosterError}

@@ -86,7 +86,7 @@ const ConcertListPage = () => {
 
           {!isPending && !isError && concerts.length > 0 && (
             <div data-testid="concert-list-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {concerts.map((concert) => (
+              {concerts.map(({ concert, performances }) => (
                 <Link
                   key={concert.id}
                   aria-label={`${concert.title} 상세 보기`}
@@ -97,6 +97,7 @@ const ConcertListPage = () => {
                 >
                   <ConcertCard
                     concert={concert}
+                    performances={performances}
                     displayOptions={{
                       showStatus: true,
                       showGenre: true,

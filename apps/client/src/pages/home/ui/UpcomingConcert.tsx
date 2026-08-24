@@ -28,10 +28,11 @@ const UpcomingConcert = () => {
 
         {!isPending &&
           !isError &&
-          upcomingConcerts.map((concert) => (
+          upcomingConcerts.map(({ concert, performances }) => (
             <ConcertCard
               key={concert.id}
               concert={concert}
+              performances={performances}
               className="w-40 shrink-0 md:w-60"
               displayOptions={{ showGenre: true, showTitle: true, showPlaceName: true, showPeriod: true }}
             />

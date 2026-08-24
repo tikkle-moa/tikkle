@@ -15,7 +15,7 @@ const HotConcert = () => {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {isPending &&
           Array.from({ length: HOT_SKELETON_COUNT }).map((_, i) => (
-            <ConcertCardSkeleton key={i} ratio="4/3" displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }} />
+            <ConcertCardSkeleton key={i} displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }} />
           ))}
       </div>
 
@@ -25,13 +25,13 @@ const HotConcert = () => {
 
       {!isPending && !isError && hotConcerts.length > 0 && (
         <div data-testid="hot-concert-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {hotConcerts.map((concert) => (
+          {hotConcerts.map(({ concert, performances }) => (
             <ConcertCard
               key={concert.id}
               concert={concert}
-              ratio="4/3"
-              maxTilt={3}
+              performances={performances}
               displayOptions={{ showStatus: true, showGenre: true, showTitle: true, showPeriod: true }}
+              effectOptions={{ maxTilt: 3, ratio: "4/3" }}
             />
           ))}
         </div>
