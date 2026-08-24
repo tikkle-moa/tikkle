@@ -8,44 +8,22 @@ const { mockUseConcertList, mockConcerts } = vi.hoisted(() => ({
   mockUseConcertList: vi.fn(),
   mockConcerts: [
     {
-      concert: {
-        id: 1,
-        title: "테스트 콘서트 1",
-        genre: "BALLAD" as const,
-        placeName: "올림픽공원",
-        posterUrl: "https://example.com/1.jpg",
-        description: null,
-        createdAt: new Date("2026-01-01").toISOString(),
-      },
-      performances: [
-        {
-          id: 1,
-          concertId: 1,
-          startsAt: new Date("2099-01-01").toISOString(),
-          bookingOpensAt: new Date("2000-01-01").toISOString(),
-          createdAt: new Date("2026-01-01").toISOString(),
-        },
-      ],
+      id: 1,
+      title: "테스트 콘서트 1",
+      genre: "BALLAD" as const,
+      placeName: "올림픽공원",
+      posterUrl: "https://example.com/1.jpg",
+      description: null,
+      createdAt: new Date("2026-01-01").toISOString(),
     },
     {
-      concert: {
-        id: 2,
-        title: "테스트 콘서트 2",
-        genre: "ROCK_METAL" as const,
-        placeName: "잠실실내체육관",
-        posterUrl: "https://example.com/2.jpg",
-        description: null,
-        createdAt: new Date("2026-01-01").toISOString(),
-      },
-      performances: [
-        {
-          id: 2,
-          concertId: 2,
-          startsAt: new Date("2099-02-01").toISOString(),
-          bookingOpensAt: new Date("2099-01-01").toISOString(),
-          createdAt: new Date("2026-01-01").toISOString(),
-        },
-      ],
+      id: 2,
+      title: "테스트 콘서트 2",
+      genre: "ROCK_METAL" as const,
+      placeName: "잠실실내체육관",
+      posterUrl: "https://example.com/2.jpg",
+      description: null,
+      createdAt: new Date("2026-01-01").toISOString(),
     },
   ],
 }));
