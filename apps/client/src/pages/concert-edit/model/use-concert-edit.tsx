@@ -50,12 +50,16 @@ export const useConcertEdit = () => {
       setSubmitState({ status: "error", error: "콘서트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." });
       return;
     }
+    const changedValues = Object.fromEntries(
+      Object.entries(values).filter(([key, value]) => value !== loadState.data[key as keyof CreateConcertRequest]),
+    ) as Partial<CreateConcertRequest>;
+    if (Object.keys(changedValues).length === 0) {
+      setSubmitState({ status: "error", error: "변경된 내용이 없습니다." });
+      return;
+    }
 
     setSubmitState({ status: "submitting" });
     try {
-      const changedValues = Object.fromEntries(
-        Object.entries(values).filter(([key, value]) => value !== loadState.data[key as keyof CreateConcertRequest]),
-      ) as Partial<CreateConcertRequest>;
       const { error, response } = await apiClient.PATCH(`/api/concerts/{id}`, { params: { path: { id } }, body: changedValues });
 
       if (!response.ok || error) {
