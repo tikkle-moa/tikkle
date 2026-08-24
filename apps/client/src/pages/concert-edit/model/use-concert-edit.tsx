@@ -22,6 +22,7 @@ export const useConcertEdit = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let cancelled = false;
     const fetchConcert = async () => {
       if (!isParamValid) {
         setLoadState({ status: "error", error: "잘못된 콘서트 ID입니다." });
@@ -31,6 +32,7 @@ export const useConcertEdit = () => {
       setLoadState({ status: "loading" });
       try {
         const { data, error, response } = await apiClient.GET(`/api/concerts/{id}`, { params: { path: { id } } });
+        if (cancelled) return;
         if (!response.ok || error) {
           setLoadState({ status: "error", error: "콘서트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." });
           return;
@@ -38,11 +40,15 @@ export const useConcertEdit = () => {
 
         setLoadState({ status: "success", data: data.data.concert });
       } catch {
+        if (cancelled) return;
         setLoadState({ status: "error", error: "콘서트 정보를 불러오는 중 오류가 발생했습니다." });
       }
     };
 
     fetchConcert();
+    return () => {
+      cancelled = true;
+    };
   }, [id, isParamValid]);
 
   const handleSubmit = async (values: CreateConcertRequest) => {
