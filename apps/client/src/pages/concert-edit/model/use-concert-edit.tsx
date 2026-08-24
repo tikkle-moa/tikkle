@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { generatePath, useNavigate, useParams } from "react-router";
+
+import { useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@shared/api";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import type { CreateConcertRequest } from "@entities/concert";
+import { CONCERT_QUERY_KEYS, type CreateConcertRequest } from "@entities/concert";
 
 export const useConcertEdit = () => {
   const { concertId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [initialValues, setInitialValues] = useState<CreateConcertRequest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,14 +51,20 @@ export const useConcertEdit = () => {
       const changedValues = Object.fromEntries(
         Object.entries(values).filter(([key, value]) => value !== initialValues?.[key as keyof CreateConcertRequest]),
       ) as Partial<CreateConcertRequest>;
-      const { error, response } = await apiClient.PATCH(`/api/concerts/{id}`, { params: { path: { id } }, body: changedValues });
+      const { data, error, response } = await apiClient.PATCH(`/api/concerts/{id}`, { params: { path: { id } }, body: changedValues });
 
-      if (!response.ok || error) {
+      if (!response.ok || error || !data) {
         setSubmitError("콘서트 수정에 실패했습니다.");
         return;
       }
 
-      navigate(ROUTE_PATHS.CONCERT_LIST);
+      queryClient.removeQueries({ queryKey: CONCERT_QUERY_KEYS.detail(data.data.id) });
+      navigate(
+        generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
+          concertId: String(data.data.id),
+        }),
+        { replace: true },
+      );
     } catch {
       setSubmitError("콘서트 등록 중 오류가 발생했습니다.");
     } finally {
