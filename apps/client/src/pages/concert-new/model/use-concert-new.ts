@@ -1,4 +1,5 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router";
 
 import { apiClient } from "@shared/api";
@@ -23,6 +24,7 @@ export const useConcertNew = () => {
         return;
       }
 
+      toast.success(`"${values.title}" 콘서트가 등록되었습니다.`);
       navigate(ROUTE_PATHS.CONCERT_LIST);
     } catch {
       setSubmitState({ status: "error", error: "콘서트 등록 중 오류가 발생했습니다." });

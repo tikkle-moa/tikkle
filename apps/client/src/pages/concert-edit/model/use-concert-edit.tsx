@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router";
 
 import { apiClient } from "@shared/api";
@@ -62,6 +63,7 @@ export const useConcertEdit = () => {
         return;
       }
 
+      toast.success(`"${values.title}" 콘서트 수정이 완료되었습니다.`);
       navigate(ROUTE_PATHS.CONCERT_LIST);
     } catch {
       setSubmitState({ status: "error", error: "콘서트 수정 중 오류가 발생했습니다." });
