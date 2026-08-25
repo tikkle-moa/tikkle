@@ -17,6 +17,16 @@ const getSlideIndex = async (slideIndicator: Locator) => {
   return { currentIndex, totalSlides };
 };
 
+const pauseAutoplay = async (slider: Locator) => {
+  const autoplayButton = slider.getByTestId("autoplay-button");
+  const autoplayLabel = await autoplayButton.getAttribute("aria-label");
+
+  if (autoplayLabel?.includes("정지")) {
+    await autoplayButton.click();
+    await expect(autoplayButton).toHaveAttribute("aria-label", /시작/);
+  }
+};
+
 test.describe("Hero 슬라이더", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
@@ -32,6 +42,7 @@ test.describe("Hero 슬라이더", () => {
 
   test("다음 버튼을 누르면 슬라이드가 변경된다", async ({ page }) => {
     const slider = getHeroSlider(page);
+    await pauseAutoplay(slider);
     const activeSlide = slider.locator(".swiper-slide-active");
     const slideIndicator = slider.getByTestId("slide-indicator");
 
@@ -49,6 +60,7 @@ test.describe("Hero 슬라이더", () => {
 
   test("이전 버튼을 누르면 슬라이드가 변경된다", async ({ page }) => {
     const slider = getHeroSlider(page);
+    await pauseAutoplay(slider);
     const activeSlide = slider.locator(".swiper-slide-active");
     const slideIndicator = slider.getByTestId("slide-indicator");
 
