@@ -29,7 +29,7 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: ["client"],
+    allowedHosts: ["client", "client-e2e"],
     proxy: {
       "/api": {
         target: process.env.API_PROXY_TARGET ?? "http://localhost:8080",
