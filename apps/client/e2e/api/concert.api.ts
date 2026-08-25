@@ -1,7 +1,7 @@
 import { type Page, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 
-import { setApiRole } from "./auth.api";
+import { createApiAuthHeaders } from "./auth.api";
 
 import { TEST_CSRF_TOKEN } from "../config/api.config";
 
@@ -26,9 +26,8 @@ export const createConcert = async (page: Page, titlePrefix = "E2E 수정 대상
 };
 
 export const deleteConcert = async (page: Page, concertId: number) => {
-  await setApiRole(page, "ADMIN");
   const response = await page.request.delete(`/api/concerts/${concertId}`, {
-    headers: { "X-XSRF-TOKEN": TEST_CSRF_TOKEN },
+    headers: createApiAuthHeaders("ADMIN"),
   });
   if (response.status() === 404) return;
 

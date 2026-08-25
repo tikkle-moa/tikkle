@@ -27,6 +27,11 @@ const createAccessToken = (role: UserRole) => {
   return `${unsignedToken}.${signature}`;
 };
 
+export const createApiAuthHeaders = (role: UserRole) => ({
+  Cookie: `access_token=${createAccessToken(role)}; XSRF-TOKEN=${TEST_CSRF_TOKEN}`,
+  "X-XSRF-TOKEN": TEST_CSRF_TOKEN,
+});
+
 export const mockOAuthSession = async (page: Page, role: UserRole) => {
   await page.route("**/api/auth/me", (route) =>
     route.fulfill({
