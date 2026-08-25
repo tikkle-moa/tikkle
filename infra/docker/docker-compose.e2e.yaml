@@ -62,8 +62,6 @@ services:
       MYSQL_ROOT_PASSWORD: tikkle_e2e_root_password
     tmpfs:
       - /var/lib/mysql
-    volumes:
-      - ./e2e-seed.sql:/docker-entrypoint-initdb.d/01-e2e-seed.sql:ro
     healthcheck:
       test:
         [
@@ -74,6 +72,22 @@ services:
       timeout: 5s
       retries: 20
 
+  e2e-seed:
+      image: mysql:8.4
+      environment:
+        MYSQL_PWD: tikkle_e2e_password
+      command:
+        [
+          "sh",
+          "-c",
+          "mysql --default-character-set=utf8mb4 -h mysql-e2e -u tikkle_e2e tikkle_e2e < /seed.sql",
+        ]
+      volumes:
+        - ./e2e-seed.sql:/seed.sql:ro
+      depends_on:
+        server-e2e:
+          condition: service_healthy
+          
   redis-e2e:
     image: redis:7.4-alpine
     command: redis-server --requirepass tikkle_e2e_redis_password
