@@ -22,7 +22,7 @@
     "docker:down": "docker compose -f infra/docker/docker-compose.dev.yaml down",
     "docker:ps": "docker compose -f infra/docker/docker-compose.dev.yaml ps",
     "docker:logs": "docker compose -f infra/docker/docker-compose.dev.yaml logs -f",
-    "docker:test:e2e": "docker compose -f infra/docker/docker-compose.e2e.yaml up --build --abort-on-container-exit --exit-code-from playwright playwright; docker compose -f infra/docker/docker-compose.e2e.yaml down",
+    "docker:test:e2e": "docker compose -f infra/docker/docker-compose.e2e.yaml up --build --abort-on-container-exit --exit-code-from playwright playwright; code=$?; docker compose -f infra/docker/docker-compose.e2e.yaml down; exit $code",
     "test:e2e": "pnpm -F client test:e2e",
     "test:e2e:report": "pnpm -F client test:e2e:report",
     "api:types": "pnpm -F @tikkle/api-types generate"
