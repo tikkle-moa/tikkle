@@ -47,7 +47,11 @@ services:
       redis:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health > /dev/null"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health > /dev/null",
+        ]
       interval: 5s
       timeout: 3s
       retries: 24
@@ -68,7 +72,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "mysqladmin ping -h localhost -u root -p\"$${MYSQL_ROOT_PASSWORD}\" --silent",
+          'mysqladmin ping -h localhost -u root -p"$${MYSQL_ROOT_PASSWORD}" --silent',
         ]
       interval: 5s
       timeout: 5s
@@ -81,24 +85,6 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-
-  playwright:
-    build:
-      context: ../..
-      dockerfile: infra/docker/playwright.Dockerfile
-    profiles: ["e2e"]
-    environment:
-      PLAYWRIGHT_BASE_URL: http://client:5173
-    depends_on:
-      client:
-        condition: service_healthy
-      server:
-        condition: service_healthy
-    init: true
-    shm_size: 1gb
-    volumes:
-      - ../../apps/client/playwright-report:/workspace/apps/client/playwright-report
-      - ../../apps/client/test-results:/workspace/apps/client/test-results
 
 volumes:
   client_workspace_node_modules:

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { BREAKPOINT_VIEWPORT_CONFIG, BreakpointBoundary } from "../config/viewport.config";
+import { BREAKPOINT_VIEWPORT_CONFIG, type BreakpointBoundary } from "../config/viewport.config";
 
 const WIDTH_TOLERANCE = 4;
 const ASPECT_RATIO_TOLERANCE = 0.1;

@@ -1,0 +1,104 @@
+name: tikkle
+
+services:
+  client-e2e:
+    build:
+      context: ../..
+      dockerfile: infra/docker/client.Dockerfile
+    environment:
+      API_PROXY_TARGET: http://server-e2e:8080
+    depends_on:
+      server-e2e:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5173').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  server-e2e:
+    build:
+      context: ../..
+      dockerfile: infra/docker/server.Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: test
+      LOAD_DOTENV: "false"
+      APP_FRONTEND_URL: http://client-e2e:5173
+      DB_URL: jdbc:mysql://mysql-e2e:3306/tikkle_e2e
+      DB_USERNAME: tikkle_e2e
+      DB_PASSWORD: tikkle_e2e_password
+      REDIS_HOST: redis-e2e
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: tikkle_e2e_redis_password
+      JWT_SECRET: e2e-jwt-secret-key-must-be-at-least-32-bytes
+    depends_on:
+      mysql-e2e:
+        condition: service_healthy
+      redis-e2e:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health > /dev/null",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 30s
+
+  mysql-e2e:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: tikkle_e2e
+      MYSQL_USER: tikkle_e2e
+      MYSQL_PASSWORD: tikkle_e2e_password
+      MYSQL_ROOT_PASSWORD: tikkle_e2e_root_password
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u root -ptikkle_e2e_root_password --silent",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  redis-e2e:
+    image: redis:7.4-alpine
+    command: redis-server --requirepass tikkle_e2e_redis_password
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "tikkle_e2e_redis_password", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  playwright:
+    build:
+      context: ../..
+      dockerfile: infra/docker/playwright.Dockerfile
+    environment:
+      PLAYWRIGHT_WORKERS: 3
+      PLAYWRIGHT_BASE_URL: http://client-e2e:5173
+      E2E_JWT_SECRET: e2e-jwt-secret-key-must-be-at-least-32-bytes
+    depends_on:
+      client-e2e:
+        condition: service_healthy
+      server-e2e:
+        condition: service_healthy
+    init: true
+    tty: true
+    shm_size: 2gb
+    volumes:
+      - ../../apps/client/playwright-report:/workspace/apps/client/playwright-report
+      - ../../apps/client/test-results:/workspace/apps/client/test-results
