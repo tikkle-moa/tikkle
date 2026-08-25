@@ -62,6 +62,8 @@ services:
       MYSQL_ROOT_PASSWORD: tikkle_e2e_root_password
     tmpfs:
       - /var/lib/mysql
+    volumes:
+      - ./e2e-seed.sql:/docker-entrypoint-initdb.d/01-e2e-seed.sql:ro
     healthcheck:
       test:
         [
