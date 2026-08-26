@@ -3,7 +3,7 @@ import { Link, generatePath } from "react-router";
 import { ArrowLeft, CalendarDays, Clock3, MapPinned, Ticket } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
-import { formatDate } from "@shared/lib/date.utils";
+import { formatDateTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
 import { PERFORMANCE_STATUS_MAP, getPerformanceStatus } from "@entities/performance";
@@ -71,7 +71,7 @@ const PerformanceDetailPage = () => {
                 <CalendarDays className="size-3.5" aria-hidden />
                 공연 일시
               </dt>
-              <dd className="mt-1.5 text-sm font-bold">{formatDate(performance.startsAt)}</dd>
+              <dd className="mt-1.5 text-sm font-bold">{formatDateTime(performance.startsAt)}</dd>
             </div>
             {status === "upcoming" && performance.bookingOpensAt != null && (
               <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm">
@@ -79,7 +79,7 @@ const PerformanceDetailPage = () => {
                   <Clock3 className="size-3.5" aria-hidden />
                   예매 오픈
                 </dt>
-                <dd className="mt-1.5 text-sm font-bold">{formatDate(performance.bookingOpensAt)}</dd>
+                <dd className="mt-1.5 text-sm font-bold">{formatDateTime(performance.bookingOpensAt)}</dd>
               </div>
             )}
           </dl>

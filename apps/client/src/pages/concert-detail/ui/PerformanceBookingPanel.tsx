@@ -1,4 +1,9 @@
-import { CalendarDays } from "lucide-react";
+import { Link, generatePath } from "react-router";
+
+import { CalendarDays, ChevronRight } from "lucide-react";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
+import { formatDateTime } from "@shared/lib/date.utils";
 
 import type { PerformanceResponse } from "@entities/performance";
 
@@ -41,8 +46,14 @@ const PerformanceBookingPanel = ({ performances }: PerformanceBookingPanelProps)
 
       <ul className="mt-4 divide-y divide-gray-100">
         {performances.map((performance) => (
-          <li key={performance.id} className="py-3 text-sm font-medium text-gray-700">
-            {new Date(performance.startsAt).toLocaleDateString()}
+          <li key={performance.id}>
+            <Link
+              className="hover:text-brand-primary flex items-center justify-between gap-3 py-3 text-sm font-medium text-gray-700 transition-colors"
+              to={generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(performance.id) })}
+            >
+              {formatDateTime(performance.startsAt)}
+              <ChevronRight className="size-4 shrink-0 text-gray-400" aria-hidden />
+            </Link>
           </li>
         ))}
       </ul>
