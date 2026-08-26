@@ -1,15 +1,12 @@
 import { AlertTriangle, CalendarPlus, LoaderCircle } from "lucide-react";
 
-import { useConcertDetail } from "@entities/concert";
-
 import { ConcertManageIntro } from "@features/concert-manage";
 import { PerformanceForm } from "@features/performance-form";
 
 import { usePerformanceNew } from "../model/use-performance-new";
 
 const PerformanceNewPage = () => {
-  const { concertId, isParamValid, handleComplete } = usePerformanceNew();
-  const { data, isError, isPending, refetch } = useConcertDetail(concertId);
+  const { concertId, concert, performances, isParamValid, isPending, isError, refetch, handleComplete } = usePerformanceNew();
 
   if (!isParamValid) {
     return (
@@ -38,7 +35,7 @@ const PerformanceNewPage = () => {
     );
   }
 
-  if (isError || !data) {
+  if (isError || !concert) {
     return (
       <section
         className="mx-auto flex min-h-72 w-full max-w-4xl flex-col items-center justify-center rounded-2xl border border-red-100 bg-white px-6 py-16 text-center shadow-sm"
@@ -59,7 +56,7 @@ const PerformanceNewPage = () => {
         Icon={CalendarPlus}
       />
 
-      <PerformanceForm concertId={concertId} defaultCreateOpen onChanged={refetch} onComplete={handleComplete} performances={data.performances} />
+      <PerformanceForm concertId={concertId} defaultCreateOpen onChanged={refetch} onComplete={handleComplete} performances={performances} />
     </div>
   );
 };
