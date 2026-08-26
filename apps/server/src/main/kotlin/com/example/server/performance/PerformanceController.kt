@@ -27,6 +27,18 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 @RequestMapping("/performances")
 class PerformanceController(private val performanceService: PerformanceService) {
   @Operation(
+    summary = "공연 회차 목록 조회",
+    description = "공연 시작 시각이 늦은 순서로 공연 회차 목록을 반환합니다.",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "공연 회차 목록 조회 성공")],
+  )
+  @GetMapping
+  fun getPerformances(): ResponseEntity<ApiResponse.Success<List<PerformanceResponse>>> {
+    val performanceResponses = performanceService.getPerformances()
+
+    return ResponseEntity.ok(ApiResponse.ok(performanceResponses))
+  }
+
+  @Operation(
     summary = "공연 회차 상세 조회",
     description = "공연 회차의 상세 정보를 반환합니다.",
     responses = [SwaggerApiResponse(responseCode = "200", description = "공연 회차 상세 조회 성공")],

@@ -16,6 +16,13 @@ import java.time.LocalDateTime
 @Service
 class PerformanceService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
   @Transactional(readOnly = true)
+  fun getPerformances(): List<PerformanceResponse> {
+    val concertList = performanceRepository.findAllByOrderByStartsAtDesc()
+
+    return concertList.map(PerformanceResponse::from)
+  }
+
+  @Transactional(readOnly = true)
   fun getPerformance(id: Long): PerformanceDetailResponse {
     val performance = performanceRepository.findById(id)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
