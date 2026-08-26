@@ -2,14 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import PerformanceNewPage from "@pages/performance-new/ui/PerformanceNewPage";
 
-const { mockHandleComplete, mockUseConcertDetail, mockUsePerformanceNew } = vi.hoisted(() => ({
-  mockHandleComplete: vi.fn(),
-  mockUseConcertDetail: vi.fn(),
+const { mockUsePerformanceNew } = vi.hoisted(() => ({
   mockUsePerformanceNew: vi.fn(),
-}));
-
-vi.mock("@entities/concert", () => ({
-  useConcertDetail: mockUseConcertDetail,
 }));
 
 vi.mock("@pages/performance-new/model/use-performance-new", () => ({
@@ -51,43 +45,42 @@ vi.mock("@features/performance-form", () => ({
   ),
 }));
 
-const defaultPerformanceNewState = {
-  concertId: 7,
-  isParamValid: true,
-  handleComplete: mockHandleComplete,
-};
+const mockHandleComplete = vi.fn();
+const mockRefetch = vi.fn().mockResolvedValue(undefined);
 
-const successDetailState = {
-  data: {
-    concert: {
-      id: 7,
-    },
-    performances: [
-      {
-        id: 1,
-        concertId: 7,
-        startsAt: "2099-09-01T19:00:00",
-        bookingOpensAt: null,
-        createdAt: "2099-08-01T12:00:00",
-      },
-    ],
+const defaultState = {
+  concertId: 7,
+  concert: {
+    id: 7,
+    title: "테스트 콘서트",
   },
-  isError: false,
+  performances: [
+    {
+      id: 1,
+      concertId: 7,
+      startsAt: "2099-09-01T19:00:00",
+      bookingOpensAt: null,
+      createdAt: "2099-08-01T12:00:00",
+    },
+  ],
+  isParamValid: true,
   isPending: false,
-  refetch: vi.fn().mockResolvedValue(undefined),
+  isError: false,
+  refetch: mockRefetch,
+  handleComplete: mockHandleComplete,
 };
 
 describe("PerformanceNewPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUsePerformanceNew.mockReturnValue(defaultPerformanceNewState);
-    mockUseConcertDetail.mockReturnValue(successDetailState);
+    mockUsePerformanceNew.mockReturnValue(defaultState);
   });
 
   it("잘못된 콘서트 ID면 오류 상태를 표시한다", () => {
     mockUsePerformanceNew.mockReturnValue({
-      ...defaultPerformanceNewState,
+      ...defaultState,
       concertId: Number.NaN,
+      concert: undefined,
       isParamValid: false,
     });
 
@@ -97,11 +90,10 @@ describe("PerformanceNewPage", () => {
   });
 
   it("콘서트 상세 조회 중에는 로딩 상태를 표시한다", () => {
-    mockUseConcertDetail.mockReturnValue({
-      data: undefined,
-      isError: false,
+    mockUsePerformanceNew.mockReturnValue({
+      ...defaultState,
+      concert: undefined,
       isPending: true,
-      refetch: vi.fn(),
     });
 
     render(<PerformanceNewPage />);
@@ -111,11 +103,10 @@ describe("PerformanceNewPage", () => {
   });
 
   it("콘서트 상세 조회에 실패하면 오류 상태를 표시한다", () => {
-    mockUseConcertDetail.mockReturnValue({
-      data: undefined,
+    mockUsePerformanceNew.mockReturnValue({
+      ...defaultState,
+      concert: undefined,
       isError: true,
-      isPending: false,
-      refetch: vi.fn(),
     });
 
     render(<PerformanceNewPage />);
@@ -133,12 +124,12 @@ describe("PerformanceNewPage", () => {
     expect(screen.getByTestId("performance-form")).toHaveAttribute("data-create-open", "true");
   });
 
-  it("회차 목록 변경 콜백으로 상세 쿼리를 다시 조회한다", () => {
+  it("회차 변경 뒤 상세 쿼리를 다시 조회한다", () => {
     render(<PerformanceNewPage />);
 
     fireEvent.click(screen.getByRole("button", { name: "목록 갱신" }));
 
-    expect(successDetailState.refetch).toHaveBeenCalledOnce();
+    expect(mockRefetch).toHaveBeenCalledOnce();
   });
 
   it("완료하면 상세 페이지 이동 콜백을 호출한다", () => {
