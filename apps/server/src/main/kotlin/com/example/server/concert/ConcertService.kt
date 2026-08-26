@@ -62,7 +62,7 @@ class ConcertService(private val concertRepository: ConcertRepository, private v
   fun getConcertDetail(concertId: Long): ConcertDetailResponse {
     val concert = concertRepository.findById(concertId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND) }
-    val performances = performanceRepository.findAllByConcertOrderByStartsAt(concert)
+    val performances = performanceRepository.findAllByConcertOrderByStartsAtDesc(concert)
 
     return ConcertDetailResponse(
       concert = ConcertResponse.from(concert),
