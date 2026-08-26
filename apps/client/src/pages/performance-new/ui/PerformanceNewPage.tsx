@@ -1,7 +1,10 @@
-import { AlertTriangle, CalendarPlus, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarPlus, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { ConcertManageIntro } from "@features/concert-manage";
 import { PerformanceForm, toPerformanceFormValues } from "@features/performance-form";
+
+import PerformanceNewMessage from "./PerformanceNewMessage";
+import PerformanceNewSkeleton from "./PerformanceNewSkeleton";
 
 import { usePerformanceNew } from "../model/use-performance-new";
 
@@ -26,43 +29,15 @@ const PerformanceNewPage = () => {
   } = usePerformanceNew();
 
   if (!isParamValid) {
-    return (
-      <section
-        className="mx-auto flex min-h-72 w-full max-w-4xl flex-col items-center justify-center rounded-2xl border border-red-100 bg-white px-6 py-16 text-center shadow-sm"
-        role="alert"
-      >
-        <AlertTriangle aria-hidden className="size-7 text-red-500" />
-        <h1 className="mt-4 text-lg font-bold text-slate-900">잘못된 콘서트입니다.</h1>
-        <p className="mt-2 text-sm text-slate-500">올바른 콘서트에서 공연 회차를 등록해 주세요.</p>
-      </section>
-    );
+    return <PerformanceNewMessage description="올바른 콘서트에서 공연 회차를 등록해 주세요." title="잘못된 콘서트입니다." />;
   }
 
   if (isPending) {
-    return (
-      <section
-        aria-busy="true"
-        aria-live="polite"
-        className="mx-auto flex min-h-72 w-full max-w-4xl items-center justify-center rounded-2xl border border-slate-200 bg-white"
-        role="status"
-      >
-        <LoaderCircle aria-hidden className="text-brand-primary size-7 animate-spin" />
-        <span className="sr-only">콘서트 정보를 불러오는 중입니다.</span>
-      </section>
-    );
+    return <PerformanceNewSkeleton />;
   }
 
   if (isError || !concert) {
-    return (
-      <section
-        className="mx-auto flex min-h-72 w-full max-w-4xl flex-col items-center justify-center rounded-2xl border border-red-100 bg-white px-6 py-16 text-center shadow-sm"
-        role="alert"
-      >
-        <AlertTriangle aria-hidden className="size-7 text-red-500" />
-        <h1 className="mt-4 text-lg font-bold text-slate-900">콘서트 정보를 불러오지 못했습니다.</h1>
-        <p className="mt-2 text-sm text-slate-500">잠시 후 다시 시도해 주세요.</p>
-      </section>
-    );
+    return <PerformanceNewMessage description="잠시 후 다시 시도해 주세요." title="콘서트 정보를 불러오지 못했습니다." />;
   }
 
   return (

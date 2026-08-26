@@ -2,8 +2,24 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import PerformanceNewPage from "@pages/performance-new/ui/PerformanceNewPage";
 
-const { mockUsePerformanceNew } = vi.hoisted(() => ({
+const {
+  mockUsePerformanceNew,
+  mockRefetch,
+  mockHandleEditOpen,
+  mockHandleEditCancel,
+  mockHandleCreateOpen,
+  mockHandleCreateClose,
+  mockHandleDelete,
+  mockHandleComplete,
+} = vi.hoisted(() => ({
   mockUsePerformanceNew: vi.fn(),
+  mockRefetch: vi.fn().mockResolvedValue(undefined),
+  mockHandleEditOpen: vi.fn(),
+  mockHandleEditCancel: vi.fn(),
+  mockHandleCreateOpen: vi.fn(),
+  mockHandleCreateClose: vi.fn(),
+  mockHandleDelete: vi.fn(),
+  mockHandleComplete: vi.fn(),
 }));
 
 vi.mock("@pages/performance-new/model/use-performance-new", () => ({
@@ -44,13 +60,17 @@ vi.mock("@features/performance-form", () => ({
   toPerformanceFormValues: vi.fn(),
 }));
 
-const mockRefetch = vi.fn().mockResolvedValue(undefined);
-const mockHandleEditOpen = vi.fn();
-const mockHandleEditCancel = vi.fn();
-const mockHandleCreateOpen = vi.fn();
-const mockHandleCreateClose = vi.fn();
-const mockHandleDelete = vi.fn();
-const mockHandleComplete = vi.fn();
+vi.mock("@pages/performance-new/ui/PerformanceNewMessage", () => ({
+  default: ({ title, description }: { title: string; description: string }) => (
+    <output data-testid="performance-new-message">
+      {title} {description}
+    </output>
+  ),
+}));
+
+vi.mock("@pages/performance-new/ui/PerformanceNewSkeleton", () => ({
+  default: () => <output data-testid="performance-new-skeleton" />,
+}));
 
 const defaultState = {
   concertId: 7,
@@ -106,7 +126,7 @@ describe("PerformanceNewPage", () => {
     expect(screen.getByText(`예매 시작 · ${new Date(bookingOpensAt).toLocaleString()}`)).toBeInTheDocument();
   });
 
-  it("잘못된 콘서트 ID면 오류 상태를 표시한다", () => {
+  it("잘못된 콘서트 ID면 안내 메시지를 표시한다", () => {
     mockUsePerformanceNew.mockReturnValue({
       ...defaultState,
       concert: undefined,
@@ -115,10 +135,10 @@ describe("PerformanceNewPage", () => {
 
     render(<PerformanceNewPage />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent("잘못된 콘서트입니다.");
+    expect(screen.getByTestId("performance-new-message")).toHaveTextContent("잘못된 콘서트입니다. 올바른 콘서트에서 공연 회차를 등록해 주세요.");
   });
 
-  it("콘서트 상세 조회 중에는 로딩 상태를 표시한다", () => {
+  it("콘서트 상세 조회 중에는 스켈레톤을 표시한다", () => {
     mockUsePerformanceNew.mockReturnValue({
       ...defaultState,
       concert: undefined,
@@ -127,10 +147,10 @@ describe("PerformanceNewPage", () => {
 
     render(<PerformanceNewPage />);
 
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByTestId("performance-new-skeleton")).toBeInTheDocument();
   });
 
-  it("콘서트 상세 조회에 실패하면 오류 상태를 표시한다", () => {
+  it("콘서트 상세 조회에 실패하면 안내 메시지를 표시한다", () => {
     mockUsePerformanceNew.mockReturnValue({
       ...defaultState,
       concert: undefined,
@@ -139,7 +159,7 @@ describe("PerformanceNewPage", () => {
 
     render(<PerformanceNewPage />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent("콘서트 정보를 불러오지 못했습니다.");
+    expect(screen.getByTestId("performance-new-message")).toHaveTextContent("콘서트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
   });
 
   it("기본으로는 생성 폼 없이 회차 목록과 추가 버튼을 표시한다", () => {
