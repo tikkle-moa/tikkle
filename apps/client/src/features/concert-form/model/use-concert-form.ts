@@ -1,5 +1,4 @@
-import type { SubmitEvent } from "react";
-import { useEffect, useState } from "react";
+import { type SubmitEvent, useEffect, useState } from "react";
 
 import type { CreateConcertRequest } from "@entities/concert";
 
