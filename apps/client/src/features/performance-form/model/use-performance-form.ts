@@ -1,38 +1,148 @@
-import { type SubmitEvent, useState } from "react";
+import { useState } from "react";
+import toast from "react-hot-toast";
 
-import type { PerformanceFormErrors, PerformanceFormValues, PerformanceSubmitState } from "./performance-form.types";
-import { getInitialPerformanceFormValues, validatePerformanceForm } from "./performance-form.utils";
+import { apiClient } from "@shared/api";
+
+import type { CreatePerformanceRequest, PerformanceResponse, UpdatePerformanceRequest } from "@entities/performance";
+
+import type { PerformanceFormValues, PerformanceSubmitState } from "./performance-form.types";
 
 interface UsePerformanceFormProps {
-  submitState: PerformanceSubmitState;
-  initialValues?: Partial<PerformanceFormValues>;
-  onSubmit: (values: PerformanceFormValues) => void | Promise<void>;
+  concertId: number;
+  defaultCreateOpen: boolean;
+  onChanged: () => Promise<unknown>;
 }
 
-export const usePerformanceForm = ({ submitState, initialValues, onSubmit }: UsePerformanceFormProps) => {
-  const [values, setValues] = useState<PerformanceFormValues>(() => getInitialPerformanceFormValues(initialValues));
-  const [errors, setErrors] = useState<PerformanceFormErrors>({});
+export type PerformanceEditingState = { mode: "create"; key: number } | { mode: "edit"; performance: PerformanceResponse } | null;
 
-  const updateField = (field: keyof PerformanceFormValues, value: string) => {
-    setValues((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
+export const usePerformanceForm = ({ concertId, defaultCreateOpen, onChanged }: UsePerformanceFormProps) => {
+  const [editing, setEditing] = useState<PerformanceEditingState>(() => (defaultCreateOpen ? { mode: "create", key: 0 } : null));
+  const [submitState, setSubmitState] = useState<PerformanceSubmitState>({
+    status: "idle",
+  });
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const refreshPerformances = async () => {
+    try {
+      await onChanged();
+    } catch {
+      toast.error("최신 공연 회차 목록을 불러오지 못했습니다.");
+    }
   };
 
-  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleCreate = () => {
+    setEditing({ mode: "create", key: 0 });
+    setSubmitState({ status: "idle" });
+  };
 
-    const nextErrors = validatePerformanceForm(values);
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+  const handleEdit = (performance: PerformanceResponse) => {
+    setEditing({ mode: "edit", performance });
+    setSubmitState({ status: "idle" });
+  };
 
-    await onSubmit(values);
+  const handleCancel = () => {
+    setEditing(null);
+    setSubmitState({ status: "idle" });
+  };
+
+  const handleSubmit = async (values: PerformanceFormValues) => {
+    if (!editing) {
+      return;
+    }
+
+    setSubmitState({ status: "submitting" });
+
+    try {
+      if (editing.mode === "create") {
+        const request: CreatePerformanceRequest = {
+          concertId,
+          startsAt: values.startsAt,
+          bookingOpensAt: values.bookingOpensAt || null,
+        };
+
+        const { data, error, response } = await apiClient.POST("/api/performances", { body: request });
+
+        if (!response.ok || error || !data) {
+          setSubmitState({
+            status: "error",
+            error: "공연 회차 등록에 실패했습니다.",
+          });
+          return;
+        }
+
+        await refreshPerformances();
+        toast.success("공연 회차를 등록했습니다.");
+
+        setEditing({ mode: "create", key: editing.key + 1 });
+        setSubmitState({ status: "idle" });
+        return;
+      }
+
+      const request: UpdatePerformanceRequest = {
+        startsAt: values.startsAt,
+        bookingOpensAt: values.bookingOpensAt || null,
+      };
+
+      const { data, error, response } = await apiClient.PATCH("/api/performances/{id}", {
+        params: { path: { id: editing.performance.id } },
+        body: request,
+      });
+
+      if (!response.ok || error || !data) {
+        setSubmitState({
+          status: "error",
+          error: "공연 회차 수정에 실패했습니다.",
+        });
+        return;
+      }
+
+      await refreshPerformances();
+      toast.success("공연 회차를 수정했습니다.");
+
+      setEditing(null);
+      setSubmitState({ status: "idle" });
+    } catch {
+      setSubmitState({
+        status: "error",
+        error: "공연 회차 저장 중 오류가 발생했습니다.",
+      });
+    }
+  };
+
+  const handleDelete = async (performance: PerformanceResponse) => {
+    if (!window.confirm("이 공연 회차를 삭제할까요?")) {
+      return;
+    }
+
+    setDeletingId(performance.id);
+
+    try {
+      const { error, response } = await apiClient.DELETE("/api/performances/{id}", {
+        params: { path: { id: performance.id } },
+      });
+
+      if (!response.ok || error) {
+        toast.error("공연 회차 삭제에 실패했습니다.");
+        return;
+      }
+
+      await refreshPerformances();
+      toast.success("공연 회차를 삭제했습니다.");
+    } catch {
+      toast.error("공연 회차 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return {
-    values,
-    errors,
-    isSubmitting: submitState.status === "submitting",
-    updateField,
+    editing,
+    submitState,
+    deletingId,
+    handleCreate,
+    handleEdit,
+    handleCancel,
     handleSubmit,
+    handleDelete,
   };
 };

@@ -1,9 +1,16 @@
+import type { PerformanceResponse } from "@entities/performance";
+
 import { EMPTY_PERFORMANCE_FORM_VALUES } from "./performance-form.constants";
 import type { PerformanceFormErrors, PerformanceFormValues } from "./performance-form.types";
 
 export const getInitialPerformanceFormValues = (values?: Partial<PerformanceFormValues>): PerformanceFormValues => ({
   ...EMPTY_PERFORMANCE_FORM_VALUES,
   ...values,
+});
+
+export const toPerformanceFormValues = (performance: PerformanceResponse): PerformanceFormValues => ({
+  startsAt: performance.startsAt.slice(0, 16),
+  bookingOpensAt: performance.bookingOpensAt?.slice(0, 16) ?? "",
 });
 
 export const validatePerformanceForm = (values: PerformanceFormValues): PerformanceFormErrors => {
@@ -14,11 +21,21 @@ export const validatePerformanceForm = (values: PerformanceFormValues): Performa
     return errors;
   }
 
+  const startsAt = new Date(values.startsAt);
+
+  if (startsAt <= new Date()) {
+    errors.startsAt = "공연 시작 시각은 현재 이후여야 합니다.";
+  }
+
   if (!values.bookingOpensAt) {
     return errors;
   }
 
-  if (new Date(values.bookingOpensAt) >= new Date(values.startsAt)) {
+  const bookingOpensAt = new Date(values.bookingOpensAt);
+
+  if (bookingOpensAt <= new Date()) {
+    errors.bookingOpensAt = "예매 시작 시각은 현재 이후여야 합니다.";
+  } else if (bookingOpensAt >= startsAt) {
     errors.bookingOpensAt = "예매 시작 시각은 공연 시작 시각보다 이전이어야 합니다.";
   }
 
