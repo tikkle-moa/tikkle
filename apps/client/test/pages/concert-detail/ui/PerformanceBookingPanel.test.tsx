@@ -1,3 +1,5 @@
+import { MemoryRouter } from "react-router";
+
 import { render, screen } from "@testing-library/react";
 
 import type { PerformanceResponse } from "@entities/performance";
@@ -26,11 +28,16 @@ describe("PerformanceBookingPanel", () => {
     const firstPerformance = makePerformance({ id: 1, startsAt: "2026-09-01T19:00:00" });
     const secondPerformance = makePerformance({ id: 2, startsAt: "2026-09-02T19:00:00" });
 
-    render(<PerformanceBookingPanel performances={[firstPerformance, secondPerformance]} />);
+    render(
+      <MemoryRouter>
+        <PerformanceBookingPanel performances={[firstPerformance, secondPerformance]} />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole("heading", { name: "공연 회차" })).toBeInTheDocument();
-    expect(screen.getByText(new Date(firstPerformance.startsAt).toLocaleDateString())).toBeInTheDocument();
-    expect(screen.getByText(new Date(secondPerformance.startsAt).toLocaleDateString())).toBeInTheDocument();
+    const performanceLinks = screen.getAllByRole("link");
+    expect(performanceLinks[0]).toHaveAttribute("href", "/performances/1");
+    expect(performanceLinks[1]).toHaveAttribute("href", "/performances/2");
     expect(screen.getByText("좌석 선택은 회차별 좌석 화면에서 진행합니다.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "좌석 선택하기" })).not.toBeInTheDocument();
   });
