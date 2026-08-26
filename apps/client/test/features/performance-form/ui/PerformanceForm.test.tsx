@@ -1,112 +1,70 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { PerformanceForm } from "@features/performance-form";
 
-const initialValues = {
-  startsAt: "2099-09-01T19:00",
-  bookingOpensAt: "2099-08-30T19:00",
-};
-
-const renderPerformanceForm = (overrides = {}) => {
-  const props = {
-    initialValues,
-    submitLabel: "회차 등록",
-    submitState: { status: "idle" } as const,
-    onSubmit: vi.fn(),
-    ...overrides,
-  };
-
-  render(<PerformanceForm {...props} />);
-
-  return props;
+const performance = {
+  id: 1,
+  concertId: 7,
+  startsAt: "2099-09-01T19:00:00",
+  bookingOpensAt: null,
+  createdAt: "2099-08-01T12:00:00",
 };
 
 describe("PerformanceForm", () => {
-  it("입력 초기값을 표시하고 제출한다", async () => {
-    const { onSubmit } = renderPerformanceForm();
+  it("저장된 회차와 관리 액션을 표시한다", () => {
+    render(<PerformanceForm concertId={7} onChanged={vi.fn().mockResolvedValue(undefined)} performances={[performance]} />);
 
-    expect(screen.getByLabelText(/공연 시작 시각/)).toHaveValue(initialValues.startsAt);
-    expect(screen.getByLabelText(/예매 시작 시각/)).toHaveValue(initialValues.bookingOpensAt);
-
-    fireEvent.click(screen.getByRole("button", { name: "회차 등록" }));
-
-    await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith(initialValues);
-    });
+    expect(screen.getByText("총 1개의 공연 일정")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "공연 회차 수정" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "공연 회차 삭제" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "공연 회차 추가" })).toBeInTheDocument();
   });
 
-  it("시간 범위가 유효하지 않으면 오류를 표시한다", () => {
-    const { onSubmit } = renderPerformanceForm({
-      initialValues: {
-        startsAt: initialValues.startsAt,
-        bookingOpensAt: "2099-09-02T19:00",
-      },
-    });
+  it("저장된 회차의 수정과 삭제 액션을 제공한다", () => {
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => false),
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: "회차 등록" }));
+    render(<PerformanceForm concertId={7} onChanged={vi.fn().mockResolvedValue(undefined)} performances={[performance]} />);
 
-    expect(screen.getByText("예매 시작 시각은 공연 시작 시각보다 이전이어야 합니다.")).toBeInTheDocument();
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
+    expect(screen.getByText("예매 시작 · 미설정")).toBeInTheDocument();
 
-  it("제출 중에는 입력과 버튼을 비활성화한다", () => {
-    renderPerformanceForm({
-      submitState: { status: "submitting" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "공연 회차 삭제" }));
 
-    expect(screen.getByLabelText(/공연 시작 시각/)).toBeDisabled();
-    expect(screen.getByLabelText(/예매 시작 시각/)).toBeDisabled();
-    expect(screen.getByRole("button", { name: "저장 중..." })).toBeDisabled();
-  });
-
-  it("제출 오류를 표시한다", () => {
-    renderPerformanceForm({
-      submitState: { status: "error", error: "회차 등록에 실패했습니다." },
-    });
-
-    expect(screen.getByRole("alert")).toHaveTextContent("회차 등록에 실패했습니다.");
-  });
-
-  it("입력값을 변경한다", () => {
-    renderPerformanceForm({
-      initialValues: {
-        startsAt: "",
-        bookingOpensAt: "",
-      },
-    });
-
-    fireEvent.change(screen.getByLabelText(/공연 시작 시각/), {
-      target: { value: "2099-09-01T19:00" },
-    });
-    fireEvent.change(screen.getByLabelText(/예매 시작 시각/), {
-      target: { value: "2099-08-30T19:00" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "공연 회차 수정" }));
 
     expect(screen.getByLabelText(/공연 시작 시각/)).toHaveValue("2099-09-01T19:00");
-    expect(screen.getByLabelText(/예매 시작 시각/)).toHaveValue("2099-08-30T19:00");
+    expect(screen.getByRole("button", { name: "저장" })).toBeInTheDocument();
   });
 
-  it("공연 시작 시각이 없으면 오류를 표시한다", () => {
-    const { onSubmit } = renderPerformanceForm({
-      initialValues: {
-        startsAt: "",
-        bookingOpensAt: "",
-      },
-    });
+  it("예매 시작 시각이 있으면 해당 시각을 표시한다", () => {
+    const performanceWithBooking = {
+      ...performance,
+      bookingOpensAt: "2099-08-30T19:00:00",
+    };
 
-    fireEvent.click(screen.getByRole("button", { name: "회차 등록" }));
+    render(<PerformanceForm concertId={7} onChanged={vi.fn().mockResolvedValue(undefined)} performances={[performanceWithBooking]} />);
 
-    expect(screen.getByText("공연 시작 시각을 입력해 주세요.")).toBeInTheDocument();
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(`예매 시작 · ${new Date(performanceWithBooking.bookingOpensAt).toLocaleString()}`)).toBeInTheDocument();
   });
 
-  it("취소 버튼을 누르면 onCancel을 호출한다", () => {
-    const onCancel = vi.fn();
+  it("회차 추가 버튼을 누르면 인라인 입력 행을 표시한다", () => {
+    render(<PerformanceForm concertId={7} onChanged={vi.fn().mockResolvedValue(undefined)} performances={[]} />);
 
-    renderPerformanceForm({ onCancel });
+    fireEvent.click(screen.getByRole("button", { name: "공연 회차 추가" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(screen.getByLabelText(/공연 시작 시각/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "등록" })).toBeInTheDocument();
+  });
 
-    expect(onCancel).toHaveBeenCalledOnce();
+  it("완료 버튼은 전달된 콜백을 호출한다", () => {
+    const onComplete = vi.fn();
+
+    render(<PerformanceForm concertId={7} onChanged={vi.fn().mockResolvedValue(undefined)} onComplete={onComplete} performances={[]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "완료" }));
+
+    expect(onComplete).toHaveBeenCalledOnce();
   });
 });
