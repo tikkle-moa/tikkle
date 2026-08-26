@@ -10,6 +10,9 @@ import com.example.server.concert.repository.ConcertRepository
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.dto.PerformanceResponse
+import com.example.server.performance.entity.Performance
+import com.example.server.performance.repository.PerformanceRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -23,6 +26,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.openapitools.jackson.nullable.JsonNullable
+import java.time.LocalDateTime
 import java.util.Optional
 import kotlin.test.assertEquals
 
@@ -30,6 +34,9 @@ import kotlin.test.assertEquals
 class ConcertServiceTest {
   @Mock
   lateinit var concertRepository: ConcertRepository
+
+  @Mock
+  lateinit var performanceRepository: PerformanceRepository
 
   @InjectMocks
   lateinit var concertService: ConcertService
@@ -273,21 +280,48 @@ class ConcertServiceTest {
   @DisplayName("getConcertDetail")
   inner class GetConcertDetail {
     @Test
-    fun `콘서트 상세와 빈 공연 회차 목록을 반환한다`() {
+    fun `콘서트 상세와 공연 시작 시간순 회차 목록을 반환한다`() {
       val concert = concert()
+      val firstPerformance = performance(
+        concert = concert,
+        id = 2L,
+        startsAt = LocalDateTime.of(2026, 9, 1, 18, 0),
+      )
+      val secondPerformance = performance(
+        concert = concert,
+        id = 1L,
+        startsAt = LocalDateTime.of(2026, 9, 2, 18, 0),
+      )
 
       given(concertRepository.findById(1L))
         .willReturn(Optional.of(concert))
+      given(performanceRepository.findAllByConcertOrderByStartsAtDesc(concert))
+        .willReturn(listOf(firstPerformance, secondPerformance))
 
       val result = concertService.getConcertDetail(1L)
 
       assertThat(result).isEqualTo(
         ConcertDetailResponse(
           concert = ConcertResponse.from(concert),
-          performances = emptyList(),
+          performances = listOf(
+            PerformanceResponse.from(firstPerformance),
+            PerformanceResponse.from(secondPerformance),
+          ),
         ),
       )
       then(concertRepository).should().findById(1L)
+      then(performanceRepository).should().findAllByConcertOrderByStartsAtDesc(concert)
+    }
+
+    @Test
+    fun `공연 회차가 없으면 빈 목록을 반환한다`() {
+      val concert = concert()
+      given(concertRepository.findById(1L)).willReturn(Optional.of(concert))
+      given(performanceRepository.findAllByConcertOrderByStartsAtDesc(concert)).willReturn(emptyList())
+
+      val result = concertService.getConcertDetail(1L)
+
+      assertThat(result.performances).isEmpty()
     }
 
     @Test
@@ -300,6 +334,15 @@ class ConcertServiceTest {
       }
 
       assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
+      then(performanceRepository).shouldHaveNoInteractions()
     }
   }
+
+  private fun performance(concert: Concert, id: Long, startsAt: LocalDateTime): Performance = Performance(
+    id = id,
+    concert = concert,
+    startsAt = startsAt,
+    bookingOpensAt = LocalDateTime.of(2026, 8, 1, 10, 0),
+    createdAt = LocalDateTime.of(2026, 7, 1, 10, 0),
+  )
 }
