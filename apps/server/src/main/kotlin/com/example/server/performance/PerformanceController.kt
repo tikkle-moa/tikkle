@@ -5,6 +5,7 @@ import com.example.server.global.openapi.ErrorResponse
 import com.example.server.global.openapi.ErrorResponseItem
 import com.example.server.global.response.ApiResponse
 import com.example.server.performance.dto.CreatePerformanceRequest
+import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import io.swagger.v3.oas.annotations.Operation
@@ -13,6 +14,7 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -24,6 +26,35 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 @RestController
 @RequestMapping("/performances")
 class PerformanceController(private val performanceService: PerformanceService) {
+  @Operation(
+    summary = "공연 회차 목록 조회",
+    description = "예정 회차와 지난 회차를 구분하고, 각 그룹을 공연 시작 시각이 빠른 순서로 반환합니다.",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "공연 회차 목록 조회 성공")],
+  )
+  @GetMapping
+  fun getPerformances(): ResponseEntity<ApiResponse.Success<List<PerformanceResponse>>> {
+    val performanceResponses = performanceService.getPerformances()
+
+    return ResponseEntity.ok(ApiResponse.ok(performanceResponses))
+  }
+
+  @Operation(
+    summary = "공연 회차 상세 조회",
+    description = "공연 회차의 상세 정보를 반환합니다.",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "공연 회차 상세 조회 성공")],
+  )
+  @ErrorResponse(
+    responses = [
+      ErrorResponseItem(ErrorCode.NOT_FOUND, description = "공연 회차를 찾을 수 없음"),
+    ],
+  )
+  @GetMapping("/{id}")
+  fun getPerformance(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<PerformanceDetailResponse>> {
+    val performanceResponse = performanceService.getPerformance(id)
+
+    return ResponseEntity.ok(ApiResponse.ok(performanceResponse))
+  }
+
   @Operation(
     summary = "공연 회차 생성",
     description = "새로운 공연 회차를 생성합니다.",

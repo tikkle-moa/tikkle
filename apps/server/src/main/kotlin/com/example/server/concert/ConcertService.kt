@@ -9,12 +9,13 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.global.extension.ifPresent
+import com.example.server.performance.dto.PerformanceResponse
+import com.example.server.performance.repository.PerformanceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class ConcertService(private val concertRepository: ConcertRepository) {
+class ConcertService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
   @Transactional
   fun create(createConcertRequest: CreateConcertRequest): ConcertResponse {
     val concert = Concert(
@@ -61,10 +62,11 @@ class ConcertService(private val concertRepository: ConcertRepository) {
   fun getConcertDetail(concertId: Long): ConcertDetailResponse {
     val concert = concertRepository.findById(concertId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND) }
+    val performances = performanceRepository.findAllByConcertUpcomingFirstOrderByStartsAtAsc(concert)
 
     return ConcertDetailResponse(
       concert = ConcertResponse.from(concert),
-      performances = emptyList(),
+      performances = performances.map(PerformanceResponse::from),
     )
   }
 }

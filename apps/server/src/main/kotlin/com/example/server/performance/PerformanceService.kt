@@ -4,6 +4,7 @@ import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.CreatePerformanceRequest
+import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
@@ -14,6 +15,24 @@ import java.time.LocalDateTime
 
 @Service
 class PerformanceService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
+  @Transactional(readOnly = true)
+  fun getPerformances(): List<PerformanceResponse> {
+    val performances = performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc()
+
+    return performances.map(PerformanceResponse::from)
+  }
+
+  @Transactional(readOnly = true)
+  fun getPerformance(id: Long): PerformanceDetailResponse {
+    val performance = performanceRepository.findById(id)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+
+    return PerformanceDetailResponse(
+      performance = PerformanceResponse.from(performance),
+      seats = emptyList(),
+    )
+  }
+
   @Transactional
   fun create(createPerformanceRequest: CreatePerformanceRequest): PerformanceResponse {
     createPerformanceRequest.bookingOpensAt?.let {

@@ -11,7 +11,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * 공연 회차 목록 조회
+     * @description 예정 회차와 지난 회차를 구분하고, 각 그룹을 공연 시작 시각이 빠른 순서로 반환합니다.
+     */
+    get: operations["getPerformances"];
     put?: never;
     /**
      * 공연 회차 생성
@@ -95,7 +99,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * 공연 회차 상세 조회
+     * @description 공연 회차의 상세 정보를 반환합니다.
+     */
+    get: operations["getPerformance"];
     put?: never;
     post?: never;
     /**
@@ -121,7 +129,7 @@ export interface paths {
     };
     /**
      * 콘서트 상세 조회
-     * @description 콘서트 상세 정보와 연결된 공연 회차 목록을 반환합니다.
+     * @description 콘서트 상세 정보와 예정 회차를 우선으로 정렬한 공연 회차 목록을 반환합니다.
      */
     get: operations["getConcertDetail"];
     put?: never;
@@ -273,6 +281,36 @@ export interface components {
       posterUrl?: string | null;
       description?: string | null;
     };
+    SuccessListPerformanceResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["PerformanceResponse"][];
+    };
+    PerformanceDetailResponse: {
+      performance: components["schemas"]["PerformanceResponse"];
+      seats: components["schemas"]["SeatResponse"][];
+    };
+    SeatResponse: {
+      /** Format: int64 */
+      id: number;
+      /** Format: int64 */
+      performanceId: number;
+      sectionName: string;
+      /** Format: int32 */
+      seatNumber: number;
+      seatLabel: string;
+      /** Format: int32 */
+      price: number;
+      positionX: number;
+      positionY: number;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    SuccessPerformanceDetailResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["PerformanceDetailResponse"];
+    };
     ConcertListResponse: {
       /** Format: int64 */
       id: number;
@@ -344,6 +382,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  getPerformances: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공연 회차 목록 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessListPerformanceResponse"];
+        };
+      };
+    };
+  };
   create: {
     parameters: {
       query?: never;
@@ -628,6 +686,46 @@ export interface operations {
            *       "error": {
            *         "code": 403,
            *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  getPerformance: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공연 회차 상세 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessPerformanceDetailResponse"];
+        };
+      };
+      /** @description 공연 회차를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
            *       }
            *     }
            */

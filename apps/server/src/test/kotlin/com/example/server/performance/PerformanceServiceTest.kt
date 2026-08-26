@@ -55,6 +55,71 @@ class PerformanceServiceTest {
   )
 
   @Test
+  fun `공연 회차 상세를 반환한다`() {
+    val performance = performance()
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
+
+    val result = performanceService.getPerformance(1L)
+
+    assertThat(result.performance.id).isEqualTo(performance.id)
+    assertThat(result.performance.concertId).isEqualTo(performance.concert.id)
+    assertThat(result.seats).isEmpty()
+  }
+
+  @Test
+  fun `조회할 공연 회차가 없으면 NOT_FOUND를 던진다`() {
+    given(performanceRepository.findById(99L)).willReturn(Optional.empty())
+
+    val exception = assertThrows<CustomException> {
+      performanceService.getPerformance(99L)
+    }
+
+    assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
+  }
+
+  @Test
+  fun `저장소에서 조회한 회차 순서를 유지해 응답으로 변환한다`() {
+    val nearestUpcomingPerformance = performance(
+      id = 1L,
+      startsAt = LocalDateTime.of(2027, 7, 24, 19, 0),
+    )
+    val laterUpcomingPerformance = performance(
+      id = 2L,
+      startsAt = LocalDateTime.of(2027, 7, 25, 19, 0),
+    )
+    val oldPastPerformance = performance(
+      id = 3L,
+      startsAt = LocalDateTime.of(2026, 7, 24, 19, 0),
+    )
+    val recentPastPerformance = performance(
+      id = 4L,
+      startsAt = LocalDateTime.of(2026, 7, 25, 19, 0),
+    )
+    given(performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc())
+      .willReturn(
+        listOf(
+          nearestUpcomingPerformance,
+          laterUpcomingPerformance,
+          oldPastPerformance,
+          recentPastPerformance,
+        ),
+      )
+
+    val result = performanceService.getPerformances()
+
+    assertThat(result.map { it.id }).containsExactly(1L, 2L, 3L, 4L)
+  }
+
+  @Test
+  fun `공연 회차가 없으면 빈 목록을 반환한다`() {
+    given(performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc()).willReturn(emptyList())
+
+    val result = performanceService.getPerformances()
+
+    assertThat(result).isEmpty()
+  }
+
+  @Test
   fun `유효한 회차를 생성하면 저장된 회차를 반환한다`() {
     val request = CreatePerformanceRequest(
       concertId = 1L,

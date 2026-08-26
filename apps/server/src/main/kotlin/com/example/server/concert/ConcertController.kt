@@ -103,7 +103,7 @@ class ConcertController(private val concertService: ConcertService) {
 
   @Operation(
     summary = "콘서트 상세 조회",
-    description = "콘서트 상세 정보와 연결된 공연 회차 목록을 반환합니다.",
+    description = "콘서트 상세 정보와 예정 회차를 우선으로 정렬한 공연 회차 목록을 반환합니다.",
     responses = [SwaggerApiResponse(responseCode = "200", description = "콘서트 상세 조회 성공")],
   )
   @ErrorResponse(
