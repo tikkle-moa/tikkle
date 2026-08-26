@@ -3,11 +3,11 @@ import { Link, generatePath } from "react-router";
 import { Info, MapPin, Music, Pencil } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
+import DetailMessage from "@shared/ui/DetailMessage";
 
 import { CONCERT_GENRE_MAP } from "@entities/concert";
 import { getPeriod } from "@entities/performance";
 
-import ConcertDetailMessage from "./ConcertDetailMessage";
 import ConcertDetailSkeleton from "./ConcertDetailSkeleton";
 import PerformanceBookingPanel from "./PerformanceBookingPanel";
 
@@ -17,7 +17,7 @@ const ConcertDetailPage = () => {
   const { concert, performances, isAdmin, isError, isParamValid, isPending } = useConcertDetail();
 
   if (!isParamValid) {
-    return <ConcertDetailMessage title="잘못된 공연입니다." description="올바르지 않은 콘서트 ID입니다." />;
+    return <DetailMessage title="잘못된 공연입니다." description="올바르지 않은 콘서트 ID입니다." />;
   }
 
   if (isPending) {
@@ -25,7 +25,7 @@ const ConcertDetailPage = () => {
   }
 
   if (isError || !concert) {
-    return <ConcertDetailMessage title="공연 정보를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
+    return <DetailMessage title="공연 정보를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
   const genre = CONCERT_GENRE_MAP[concert.genre];
