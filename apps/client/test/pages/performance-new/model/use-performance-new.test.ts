@@ -4,10 +4,13 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { usePerformanceNew } from "@pages/performance-new/model/use-performance-new";
 
-const { mockNavigate, mockUseConcertDetail, mockUseParams } = vi.hoisted(() => ({
+const { mockNavigate, mockUseConcertDetail, mockUseParams, mockDeletePerformance, mockToastError, mockToastSuccess } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockUseConcertDetail: vi.fn(),
   mockUseParams: vi.fn(),
+  mockDeletePerformance: vi.fn(),
+  mockToastError: vi.fn(),
+  mockToastSuccess: vi.fn(),
 }));
 
 vi.mock("@entities/concert", () => ({
@@ -23,6 +26,17 @@ vi.mock("react-router", async (importOriginal) => {
     useParams: mockUseParams,
   };
 });
+
+vi.mock("react-hot-toast", () => ({
+  default: {
+    error: mockToastError,
+    success: mockToastSuccess,
+  },
+}));
+
+vi.mock("@features/performance-form", () => ({
+  deletePerformance: mockDeletePerformance,
+}));
 
 const concert = {
   id: 7,
@@ -116,5 +130,105 @@ describe("usePerformanceNew", () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(ROUTE_PATHS.CONCERT_LIST);
+  });
+
+  it("생성 폼을 열고 닫는다", () => {
+    const { result } = renderHook(() => usePerformanceNew());
+
+    act(() => {
+      result.current.handleCreateOpen();
+    });
+
+    expect(result.current.isCreateOpen).toBe(true);
+
+    act(() => {
+      result.current.handleCreateClose();
+    });
+
+    expect(result.current.isCreateOpen).toBe(false);
+  });
+
+  it("서로 다른 회차 편집을 독립적으로 연다", () => {
+    const { result } = renderHook(() => usePerformanceNew());
+
+    act(() => {
+      result.current.handleEditOpen(1);
+      result.current.handleEditOpen(2);
+    });
+
+    expect(result.current.editingPerformanceIds).toEqual(new Set([1, 2]));
+
+    act(() => {
+      result.current.handleEditCancel(1);
+    });
+
+    expect(result.current.editingPerformanceIds).toEqual(new Set([2]));
+  });
+
+  it("삭제를 취소하면 API를 호출하지 않는다", async () => {
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => false),
+    );
+
+    const { result } = renderHook(() => usePerformanceNew());
+
+    await act(async () => {
+      await result.current.handleDelete(1);
+    });
+
+    expect(mockDeletePerformance).not.toHaveBeenCalled();
+  });
+
+  it("회차를 삭제하고 목록을 갱신한다", async () => {
+    const refetch = vi.fn().mockResolvedValue(undefined);
+
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true),
+    );
+    mockDeletePerformance.mockResolvedValue(undefined);
+    mockUseConcertDetail.mockReturnValue({
+      data: { concert, performances },
+      isError: false,
+      isPending: false,
+      refetch,
+    });
+
+    const { result } = renderHook(() => usePerformanceNew());
+
+    act(() => {
+      result.current.handleEditOpen(1);
+    });
+
+    await act(async () => {
+      await result.current.handleDelete(1);
+    });
+
+    expect(mockDeletePerformance).toHaveBeenCalledWith(1);
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(mockToastSuccess).toHaveBeenCalledWith("공연 회차를 삭제했습니다.");
+    expect(result.current.editingPerformanceIds.has(1)).toBe(false);
+    expect(result.current.deletingPerformanceIds.has(1)).toBe(false);
+  });
+
+  it("삭제 실패 시 오류 토스트를 표시한다", async () => {
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true),
+    );
+    mockDeletePerformance.mockRejectedValue(new Error("삭제 실패"));
+
+    const { result } = renderHook(() => usePerformanceNew());
+
+    await act(async () => {
+      await result.current.handleDelete(1);
+    });
+
+    expect(mockToastError).toHaveBeenCalledWith("공연 회차 삭제 중 오류가 발생했습니다.");
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 });
