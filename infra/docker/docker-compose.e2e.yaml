@@ -87,7 +87,7 @@ services:
       depends_on:
         server-e2e:
           condition: service_healthy
-          
+
   redis-e2e:
     image: redis:7.4-alpine
     command: redis-server --requirepass tikkle_e2e_redis_password

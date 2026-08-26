@@ -1,13 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const ADMIN_USER = {
-  id: 1,
-  email: "admin@example.com",
-  nickname: "관리자",
-  profileImageUrl: null,
-  role: "ADMIN",
-  oauthAccounts: ["google"],
-};
+import { mockOAuthSession } from "../api/auth.api";
 
 const NORMAL_CONCERT = {
   id: 900000,
@@ -15,18 +8,22 @@ const NORMAL_CONCERT = {
 };
 
 test.describe("콘서트 목록", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.route("**/api/auth/me", (route) =>
-      route.fulfill({
-        json: {
-          success: true,
-          data: ADMIN_USER,
-        },
-      }),
-    );
+  test("일반 사용자에게 콘서트 등록 버튼을 표시하지 않는다", async ({ page }) => {
+    await mockOAuthSession(page, "USER");
+
+    await page.goto("/concerts");
+
+    await expect(page.getByRole("link", { name: "콘서트 등록" })).toHaveCount(0);
+  });
+
+  test("비로그인 사용자에게 콘서트 등록 버튼을 표시하지 않는다", async ({ page }) => {
+    await page.goto("/concerts");
+
+    await expect(page.getByRole("link", { name: "콘서트 등록" })).toHaveCount(0);
   });
 
   test("콘서트 목록과 관리자 등록 버튼을 표시한다", async ({ page }) => {
+    await mockOAuthSession(page, "ADMIN");
     await page.goto("/concerts");
 
     const concertDetailLink = page.getByRole("link", {
@@ -40,6 +37,7 @@ test.describe("콘서트 목록", () => {
   });
 
   test("빈 목록이면 안내와 관리자 등록 버튼을 표시한다", async ({ page }) => {
+    await mockOAuthSession(page, "ADMIN");
     await page.route(/\/api\/concerts$/, (route) =>
       route.fulfill({
         json: {
