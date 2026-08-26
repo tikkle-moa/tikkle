@@ -17,9 +17,9 @@ import java.time.LocalDateTime
 class PerformanceService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
   @Transactional(readOnly = true)
   fun getPerformances(): List<PerformanceResponse> {
-    val concertList = performanceRepository.findAllByOrderByStartsAtDesc()
+    val performances = performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc()
 
-    return concertList.map(PerformanceResponse::from)
+    return performances.map(PerformanceResponse::from)
   }
 
   @Transactional(readOnly = true)

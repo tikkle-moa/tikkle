@@ -28,7 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 class PerformanceController(private val performanceService: PerformanceService) {
   @Operation(
     summary = "공연 회차 목록 조회",
-    description = "공연 시작 시각이 늦은 순서로 공연 회차 목록을 반환합니다.",
+    description = "예정 회차와 지난 회차를 구분하고, 각 그룹을 공연 시작 시각이 빠른 순서로 반환합니다.",
     responses = [SwaggerApiResponse(responseCode = "200", description = "공연 회차 목록 조회 성공")],
   )
   @GetMapping
