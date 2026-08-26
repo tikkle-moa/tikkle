@@ -78,27 +78,41 @@ class PerformanceServiceTest {
   }
 
   @Test
-  fun `공연 시작 시각이 늦은 순서의 회차 목록을 반환한다`() {
-    val latestPerformance = performance(
+  fun `저장소에서 조회한 회차 순서를 유지해 응답으로 변환한다`() {
+    val nearestUpcomingPerformance = performance(
       id = 1L,
-      startsAt = LocalDateTime.of(2026, 7, 25, 19, 0),
+      startsAt = LocalDateTime.of(2027, 7, 24, 19, 0),
     )
-    val previousPerformance = performance(
+    val laterUpcomingPerformance = performance(
       id = 2L,
+      startsAt = LocalDateTime.of(2027, 7, 25, 19, 0),
+    )
+    val oldPastPerformance = performance(
+      id = 3L,
       startsAt = LocalDateTime.of(2026, 7, 24, 19, 0),
     )
-    given(performanceRepository.findAllByOrderByStartsAtDesc())
-      .willReturn(listOf(latestPerformance, previousPerformance))
+    val recentPastPerformance = performance(
+      id = 4L,
+      startsAt = LocalDateTime.of(2026, 7, 25, 19, 0),
+    )
+    given(performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc())
+      .willReturn(
+        listOf(
+          nearestUpcomingPerformance,
+          laterUpcomingPerformance,
+          oldPastPerformance,
+          recentPastPerformance,
+        ),
+      )
 
     val result = performanceService.getPerformances()
 
-    assertThat(result.map { it.id }).containsExactly(1L, 2L)
-    then(performanceRepository).should().findAllByOrderByStartsAtDesc()
+    assertThat(result.map { it.id }).containsExactly(1L, 2L, 3L, 4L)
   }
 
   @Test
   fun `공연 회차가 없으면 빈 목록을 반환한다`() {
-    given(performanceRepository.findAllByOrderByStartsAtDesc()).willReturn(emptyList())
+    given(performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc()).willReturn(emptyList())
 
     val result = performanceService.getPerformances()
 

@@ -133,12 +133,12 @@ class PerformanceControllerTest {
       val performances = listOf(
         performanceResponse(
           id = 1L,
-          startsAt = LocalDateTime.of(2026, 7, 25, 19, 0),
+          startsAt = LocalDateTime.of(2026, 7, 24, 19, 0),
           bookingOpensAt = LocalDateTime.of(2026, 7, 20, 19, 0),
         ),
         performanceResponse(
           id = 2L,
-          startsAt = LocalDateTime.of(2026, 7, 24, 19, 0),
+          startsAt = LocalDateTime.of(2026, 7, 25, 19, 0),
           bookingOpensAt = LocalDateTime.of(2026, 7, 19, 19, 0),
         ),
       )
@@ -150,10 +150,10 @@ class PerformanceControllerTest {
           jsonPath("$.success") { value(true) }
           jsonPath("$.data[0].id") { value(1) }
           jsonPath("$.data[0].concertId") { value(1) }
-          jsonPath("$.data[0].startsAt") { value("2026-07-25T19:00:00") }
+          jsonPath("$.data[0].startsAt") { value("2026-07-24T19:00:00") }
           jsonPath("$.data[0].bookingOpensAt") { value("2026-07-20T19:00:00") }
           jsonPath("$.data[1].id") { value(2) }
-          jsonPath("$.data[1].startsAt") { value("2026-07-24T19:00:00") }
+          jsonPath("$.data[1].startsAt") { value("2026-07-25T19:00:00") }
         }
 
       then(performanceService).should().getPerformances()

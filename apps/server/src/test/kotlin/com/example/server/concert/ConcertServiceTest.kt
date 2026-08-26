@@ -280,7 +280,7 @@ class ConcertServiceTest {
   @DisplayName("getConcertDetail")
   inner class GetConcertDetail {
     @Test
-    fun `콘서트 상세와 공연 시작 시간순 회차 목록을 반환한다`() {
+    fun `콘서트 상세와 예정 회차 우선 시작 시각 오름차순 목록을 반환한다`() {
       val concert = concert()
       val firstPerformance = performance(
         concert = concert,
@@ -295,7 +295,7 @@ class ConcertServiceTest {
 
       given(concertRepository.findById(1L))
         .willReturn(Optional.of(concert))
-      given(performanceRepository.findAllByConcertOrderByStartsAtDesc(concert))
+      given(performanceRepository.findAllByConcertUpcomingFirstOrderByStartsAtAsc(concert))
         .willReturn(listOf(firstPerformance, secondPerformance))
 
       val result = concertService.getConcertDetail(1L)
@@ -310,14 +310,14 @@ class ConcertServiceTest {
         ),
       )
       then(concertRepository).should().findById(1L)
-      then(performanceRepository).should().findAllByConcertOrderByStartsAtDesc(concert)
+      then(performanceRepository).should().findAllByConcertUpcomingFirstOrderByStartsAtAsc(concert)
     }
 
     @Test
     fun `공연 회차가 없으면 빈 목록을 반환한다`() {
       val concert = concert()
       given(concertRepository.findById(1L)).willReturn(Optional.of(concert))
-      given(performanceRepository.findAllByConcertOrderByStartsAtDesc(concert)).willReturn(emptyList())
+      given(performanceRepository.findAllByConcertUpcomingFirstOrderByStartsAtAsc(concert)).willReturn(emptyList())
 
       val result = concertService.getConcertDetail(1L)
 
