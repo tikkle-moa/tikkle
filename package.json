@@ -22,8 +22,7 @@
     "docker:down": "docker compose -f infra/docker/docker-compose.dev.yaml down",
     "docker:ps": "docker compose -f infra/docker/docker-compose.dev.yaml ps",
     "docker:logs": "docker compose -f infra/docker/docker-compose.dev.yaml logs -f",
-    "docker:test:e2e": "pnpm docker:test:e2e:spec",
-    "docker:test:e2e:spec": "sh -c 'docker compose -f infra/docker/docker-compose.e2e.yaml up -d --build --wait client-e2e server-e2e && docker compose -f infra/docker/docker-compose.e2e.yaml run --rm e2e-seed && docker compose -f infra/docker/docker-compose.e2e.yaml run --rm --build --no-deps playwright pnpm -F client exec playwright test \"$@\"; code=$?; docker compose -f infra/docker/docker-compose.e2e.yaml down; exit $code' --",
+    "docker:test:e2e": "node infra/docker/docker-test-e2e.mjs",
     "test:e2e": "pnpm -F client test:e2e",
     "test:e2e:report": "pnpm -F client test:e2e:report",
     "api:types": "pnpm -F @tikkle/api-types generate"
