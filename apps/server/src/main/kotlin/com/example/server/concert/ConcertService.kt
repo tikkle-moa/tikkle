@@ -9,7 +9,6 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.global.extension.ifPresent
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
