@@ -27,10 +27,13 @@ const PerformanceNewPage = () => {
   if (isPending) {
     return (
       <section
-        className="mx-auto flex min-h-72 w-full max-w-4xl items-center justify-center rounded-2xl border border-slate-200 bg-white"
         aria-busy="true"
+        aria-live="polite"
+        className="mx-auto flex min-h-72 w-full max-w-4xl items-center justify-center rounded-2xl border border-slate-200 bg-white"
+        role="status"
       >
         <LoaderCircle className="text-brand-primary size-7 animate-spin" aria-hidden />
+        <span className="sr-only">콘서트 정보를 불러오는 중입니다.</span>
       </section>
     );
   }
