@@ -8,15 +8,15 @@ export const usePerformanceDetail = () => {
   const id = Number(performanceId);
   const isParamValid = Number.isInteger(id) && id > 0;
 
-  const { data: performanceData, isError: performanceIsError, isPending: performanceIsPending } = usePerformanceDetailQuery(id);
-  const { data: concertData, isError: concertIsError, isPending: concertIsPending } = useConcertDetail(performanceData?.performance.concertId ?? 0);
+  const { data: performanceData, isError: isPerformanceError, isPending: isPerformancePending } = usePerformanceDetailQuery(id);
+  const { data: concertData, isError: isConcertError, isPending: isConcertPending } = useConcertDetail(performanceData?.performance.concertId ?? 0);
 
   return {
     isParamValid,
     concert: concertData?.concert,
     performance: performanceData?.performance,
     seats: performanceData?.seats,
-    isError: performanceIsError || concertIsError,
-    isPending: performanceIsPending || concertIsPending,
+    isError: isPerformanceError || (performanceData?.performance != null && isConcertError),
+    isPending: isPerformancePending || (performanceData?.performance != null && isConcertPending),
   };
 };
