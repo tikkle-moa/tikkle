@@ -10,6 +10,7 @@ import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
 import { PerformanceDetailPage } from "@pages/performance-detail";
+import { PerformanceNewPage } from "@pages/performance-new";
 import { SearchPage } from "@pages/search";
 
 import AdminGuard from "./AdminGuard";
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
             children: [
               { path: ROUTE_PATHS.CONCERT_NEW, element: <ConcertNewPage /> },
               { path: ROUTE_PATHS.CONCERT_EDIT, element: <ConcertEditPage /> },
+              { path: ROUTE_PATHS.PERFORMANCE_NEW, element: <PerformanceNewPage /> },
             ],
           },
         ],

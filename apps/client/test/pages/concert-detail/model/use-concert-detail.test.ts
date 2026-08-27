@@ -5,7 +5,8 @@ import type { User } from "@entities/session/model/session.types";
 
 import { useConcertDetail } from "@pages/concert-detail/model/use-concert-detail";
 
-const { mockUseConcertDetail, mockUseParams } = vi.hoisted(() => ({
+const { mockRefetch, mockUseConcertDetail, mockUseParams } = vi.hoisted(() => ({
+  mockRefetch: vi.fn(),
   mockUseConcertDetail: vi.fn(),
   mockUseParams: vi.fn(),
 }));
@@ -43,6 +44,7 @@ describe("useConcertDetail", () => {
       },
       isPending: false,
       isError: false,
+      refetch: mockRefetch,
     });
     useSessionStore.setState({
       user: null,
@@ -62,6 +64,7 @@ describe("useConcertDetail", () => {
       isError: false,
       isParamValid: true,
       isPending: false,
+      refetch: mockRefetch,
     });
   });
 

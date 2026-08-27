@@ -7,7 +7,7 @@ interface OAuthErrorModalProps {
 }
 
 export const OAuthErrorModal = ({ content, onClose }: OAuthErrorModalProps) => {
-  const { dialogRef, handleCancel } = useOAuthErrorModal(onClose);
+  const { dialogRef, handleCancel } = useOAuthErrorModal({ onClose });
 
   return (
     <dialog

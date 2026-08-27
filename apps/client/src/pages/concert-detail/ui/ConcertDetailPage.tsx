@@ -14,7 +14,7 @@ import PerformanceBookingPanel from "./PerformanceBookingPanel";
 import { useConcertDetail } from "../model/use-concert-detail";
 
 const ConcertDetailPage = () => {
-  const { concert, performances, isAdmin, isError, isParamValid, isPending } = useConcertDetail();
+  const { concert, performances, isAdmin, isError, isParamValid, isPending, refetch } = useConcertDetail();
 
   if (!isParamValid) {
     return <DetailMessage title="잘못된 공연입니다." description="올바르지 않은 콘서트 ID입니다." />;
@@ -86,7 +86,7 @@ const ConcertDetailPage = () => {
           </div>
         </div>
 
-        <PerformanceBookingPanel performances={performances} />
+        <PerformanceBookingPanel concertId={concert.id} isAdmin={isAdmin} onChanged={refetch} performances={performances} />
       </section>
 
       <section className="mt-12 border-t-8 border-gray-100 pt-10 lg:pr-90">
