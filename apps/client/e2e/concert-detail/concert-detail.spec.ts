@@ -1,10 +1,21 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
-import { mockOAuthSession } from "../api/auth.api";
+import { authenticatePage, createApiAuthHeaders, mockOAuthSession } from "../api/auth.api";
+import { createConcert, deleteConcert } from "../api/concert.api";
 
 const CONCERT_WITHOUT_PERFORMANCE = {
   id: 900001,
   title: "E2E 회차 없는 콘서트",
+};
+
+const deletePerformance = async (page: Page, performanceId: number) => {
+  const response = await page.request.delete(`/api/performances/${performanceId}`, {
+    headers: createApiAuthHeaders("ADMIN"),
+  });
+
+  if (response.status() === 404) return;
+
+  expect(response.ok(), await response.text()).toBe(true);
 };
 
 test.describe("콘서트 상세", () => {
@@ -69,4 +80,75 @@ test.describe("콘서트 상세", () => {
       expect(detailRequestCount).toBe(0);
     });
   }
+});
+
+test.describe("콘서트 상세 예매 패널 회차 관리", () => {
+  test("관리자가 예매 패널에서 회차를 생성·수정·삭제한다", async ({ page }) => {
+    await authenticatePage(page, "ADMIN");
+    const concert = await createConcert(page, "E2E 예매 패널 회차 관리");
+    let performanceId: number | undefined;
+
+    try {
+      await page.goto(`/concerts/${concert.id}`);
+
+      await expect(page.getByText("등록된 공연 회차가 없습니다", { exact: true })).toBeVisible();
+
+      await page.getByRole("button", { name: "공연 회차 추가" }).click();
+      await page.getByLabel("공연 회차명").fill("패널 첫 회차");
+      await page.getByLabel("공연 시작 시각").fill("2099-01-20T19:00");
+      await page.getByLabel("예매 시작 시각").fill("2099-01-10T10:00");
+
+      const createResponsePromise = page.waitForResponse(
+        (response) => response.url().endsWith("/api/performances") && response.request().method() === "POST",
+      );
+      await page.getByRole("button", { name: "등록", exact: true }).click();
+      const createResponse = await createResponsePromise;
+      const createBody = await createResponse.json();
+
+      expect(createResponse.status()).toBe(201);
+      expect(createBody).toMatchObject({
+        success: true,
+        data: {
+          concertId: concert.id,
+          name: "패널 첫 회차",
+        },
+      });
+      performanceId = createBody.data.id;
+
+      await expect(page.getByRole("list", { name: "공연 회차 목록" })).toContainText("패널 첫 회차");
+      await expect(page.getByRole("link", { name: "패널 첫 회차 상세 보기" })).toHaveAttribute("href", `/performances/${performanceId}`);
+
+      await page.getByRole("button", { name: "공연 회차 수정" }).click();
+      await page.getByLabel("공연 회차명").fill("패널 수정 회차");
+
+      const updateResponsePromise = page.waitForResponse(
+        (response) => response.url().endsWith(`/api/performances/${performanceId}`) && response.request().method() === "PATCH",
+      );
+      await page.getByRole("button", { name: "저장", exact: true }).click();
+      const updateResponse = await updateResponsePromise;
+
+      expect(updateResponse.status()).toBe(200);
+      await expect(page.getByRole("list", { name: "공연 회차 목록" })).toContainText("패널 수정 회차");
+      await expect(page.getByRole("link", { name: "패널 수정 회차 상세 보기" })).toHaveAttribute("href", `/performances/${performanceId}`);
+
+      page.once("dialog", (dialog) => dialog.accept());
+
+      const deleteResponsePromise = page.waitForResponse(
+        (response) => response.url().endsWith(`/api/performances/${performanceId}`) && response.request().method() === "DELETE",
+      );
+      await page.getByRole("button", { name: "공연 회차 삭제" }).click();
+      const deleteResponse = await deleteResponsePromise;
+
+      expect(deleteResponse.status()).toBe(200);
+      performanceId = undefined;
+
+      await expect(page.getByText("등록된 공연 회차가 없습니다", { exact: true })).toBeVisible();
+      await expect(page.getByRole("list", { name: "공연 회차 목록" })).toHaveCount(0);
+    } finally {
+      if (performanceId) {
+        await deletePerformance(page, performanceId);
+      }
+      await deleteConcert(page, concert.id);
+    }
+  });
 });
