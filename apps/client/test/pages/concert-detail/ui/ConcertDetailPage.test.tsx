@@ -4,7 +4,8 @@ import { render, screen } from "@testing-library/react";
 
 import ConcertDetailPage from "@pages/concert-detail/ui/ConcertDetailPage";
 
-const { mockUseConcertDetail } = vi.hoisted(() => ({
+const { mockPerformanceBookingPanel, mockUseConcertDetail } = vi.hoisted(() => ({
+  mockPerformanceBookingPanel: vi.fn(),
   mockUseConcertDetail: vi.fn(),
 }));
 
@@ -17,7 +18,7 @@ vi.mock("@pages/concert-detail/ui/ConcertDetailSkeleton", () => ({
 }));
 
 vi.mock("@pages/concert-detail/ui/PerformanceBookingPanel", () => ({
-  default: ({ performances }: { performances: unknown[] }) => <output data-testid="performance-booking-panel">{performances.length}</output>,
+  default: mockPerformanceBookingPanel,
 }));
 
 const renderConcertDetailPage = () =>
@@ -41,11 +42,17 @@ const pageState = {
   isError: false,
   isParamValid: true,
   isPending: false,
+  refetch: vi.fn().mockResolvedValue(undefined),
 };
 
 describe("ConcertDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockPerformanceBookingPanel.mockImplementation(({ performances }: { performances: unknown[] }) => (
+      <output data-testid="performance-booking-panel">{performances.length}</output>
+    ));
+
     mockUseConcertDetail.mockReturnValue(pageState);
   });
 
@@ -134,6 +141,15 @@ describe("ConcertDetailPage", () => {
     expect(screen.getByText("테스트 공연장")).toBeInTheDocument();
     expect(screen.getByText("테스트 설명")).toBeInTheDocument();
     expect(screen.getByTestId("performance-booking-panel")).toHaveTextContent("1");
+
+    const panelProps = mockPerformanceBookingPanel.mock.calls[0][0];
+
+    expect(panelProps).toMatchObject({
+      concertId: 1,
+      isAdmin: false,
+      performances: [{ id: 1, startsAt: "2026-09-01T19:00:00" }],
+    });
+    expect(panelProps.onChanged).toBe(pageState.refetch);
   });
 
   it("포스터와 설명이 없으면 대체 UI를 표시한다", () => {
