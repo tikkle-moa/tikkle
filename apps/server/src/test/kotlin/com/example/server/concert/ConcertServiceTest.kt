@@ -341,6 +341,7 @@ class ConcertServiceTest {
   private fun performance(concert: Concert, id: Long, startsAt: LocalDateTime): Performance = Performance(
     id = id,
     concert = concert,
+    name = "1회차",
     startsAt = startsAt,
     bookingOpensAt = LocalDateTime.of(2026, 8, 1, 10, 0),
     createdAt = LocalDateTime.of(2026, 7, 1, 10, 0),

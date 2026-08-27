@@ -13,4 +13,5 @@ data class SeatResponse(
   val positionX: BigDecimal,
   val positionY: BigDecimal,
   val createdAt: LocalDateTime,
+  val booked: Boolean,
 )

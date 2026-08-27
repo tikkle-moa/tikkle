@@ -215,6 +215,7 @@ export interface components {
     CreatePerformanceRequest: {
       /** Format: int64 */
       concertId: number;
+      name: string;
       /** Format: date-time */
       startsAt: string;
       /** Format: date-time */
@@ -225,13 +226,17 @@ export interface components {
       id: number;
       /** Format: int64 */
       concertId: number;
+      name: string;
       /** Format: date-time */
       startsAt: string;
       /** Format: date-time */
       bookingOpensAt: string | null;
       /** Format: date-time */
       createdAt: string;
+      status: components["schemas"]["PerformanceStatus"];
     };
+    /** @enum {string} */
+    PerformanceStatus: "UPCOMING" | "AVAILABLE" | "SOLD_OUT" | "ENDED";
     SuccessPerformanceResponse: {
       /** @enum {boolean} */
       success: true;
@@ -269,6 +274,7 @@ export interface components {
       data: null;
     };
     UpdatePerformanceRequest: {
+      name?: string;
       /** Format: date-time */
       startsAt?: string;
       /** Format: date-time */
@@ -305,6 +311,7 @@ export interface components {
       positionY: number;
       /** Format: date-time */
       createdAt: string;
+      booked: boolean;
     };
     SuccessPerformanceDetailResponse: {
       /** @enum {boolean} */

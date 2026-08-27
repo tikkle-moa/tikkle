@@ -83,6 +83,7 @@ class PerformanceRepositoryTest {
 
   private fun performance(concert: Concert, startsAt: LocalDateTime): Performance = Performance(
     concert = concert,
+    name = "1회차",
     startsAt = startsAt,
   )
 }

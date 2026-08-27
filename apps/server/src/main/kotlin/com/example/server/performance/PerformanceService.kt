@@ -47,6 +47,7 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
 
     val performance = Performance(
       concert = concert,
+      name = createPerformanceRequest.name,
       startsAt = createPerformanceRequest.startsAt,
       bookingOpensAt = createPerformanceRequest.bookingOpensAt,
     )
@@ -59,6 +60,7 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
     val performance = performanceRepository.findById(id)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
 
+    val name = updatePerformanceRequest.name.orElse(performance.name)
     val startsAt = updatePerformanceRequest.startsAt.orElse(performance.startsAt)
     val bookingOpensAt = updatePerformanceRequest.bookingOpensAt.orElse(performance.bookingOpensAt)
 
@@ -69,6 +71,7 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
       )
     }
 
+    performance.name = name
     performance.startsAt = startsAt
     performance.bookingOpensAt = bookingOpensAt
 
