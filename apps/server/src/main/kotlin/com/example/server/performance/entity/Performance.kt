@@ -24,6 +24,9 @@ class Performance(
   @JoinColumn(name = "concert_id", nullable = false)
   var concert: Concert,
 
+  @Column(nullable = false, length = 255)
+  var name: String,
+
   @Column(name = "starts_at", nullable = false)
   var startsAt: LocalDateTime,
 
