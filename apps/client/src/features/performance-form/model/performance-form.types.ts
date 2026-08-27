@@ -1,4 +1,5 @@
 export interface PerformanceFormValues {
+  name: string;
   startsAt: string;
   bookingOpensAt: string;
 }

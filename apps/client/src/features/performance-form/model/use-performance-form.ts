@@ -46,6 +46,7 @@ export const usePerformanceForm = ({ concertId, performanceId, initialValues, on
       if (performanceId === undefined) {
         const request: CreatePerformanceRequest = {
           concertId,
+          name: values.name.trim(),
           startsAt: values.startsAt,
           bookingOpensAt: values.bookingOpensAt || null,
         };
@@ -56,6 +57,7 @@ export const usePerformanceForm = ({ concertId, performanceId, initialValues, on
         onSuccess();
       } else {
         const request: UpdatePerformanceRequest = {
+          name: values.name.trim(),
           startsAt: values.startsAt,
           bookingOpensAt: values.bookingOpensAt || null,
         };

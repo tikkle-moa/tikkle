@@ -23,7 +23,21 @@ const PerformanceForm = ({ concertId, performanceId, initialValues, submitLabel,
   });
 
   return (
-    <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end" noValidate onSubmit={handleSubmit}>
+    <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end" noValidate onSubmit={handleSubmit}>
+      <label className="block text-xs font-semibold text-slate-700">
+        공연 회차명 <span className="text-red-500">*</span>
+        <input
+          aria-invalid={Boolean(errors.name)}
+          className="mt-1.5 block w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          disabled={isSubmitting}
+          onChange={(event) => updateField("name", event.target.value)}
+          placeholder="예: 8월 29일 저녁 공연"
+          type="text"
+          value={values.name}
+        />
+        {errors.name && <span className="mt-1 block text-xs font-medium text-red-600">{errors.name}</span>}
+      </label>
+
       <label className="block text-xs font-semibold text-slate-700">
         공연 시작 시각 <span className="text-red-500">*</span>
         <input
@@ -72,7 +86,7 @@ const PerformanceForm = ({ concertId, performanceId, initialValues, submitLabel,
 
       {submitState.status === "error" && (
         <p
-          className="flex items-start gap-2 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 sm:col-span-3"
+          className="flex items-start gap-2 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 sm:col-span-4"
           role="alert"
         >
           <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
