@@ -1,7 +1,6 @@
 import type { components } from "@tikkle/api-types";
 
-export type PerformanceStatus = "available" | "upcoming" | "ended";
-
+export type PerformanceStatus = components["schemas"]["PerformanceStatus"];
 export interface PerformanceStatusItem {
   label: string;
   className: string;
