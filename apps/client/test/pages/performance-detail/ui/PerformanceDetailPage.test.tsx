@@ -47,7 +47,7 @@ describe("PerformanceDetailPage", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Tikkle Live" })).toBeInTheDocument();
-    expect(screen.getByText("공연 #1의 일정과 좌석 배치를 확인해 보세요.")).toBeInTheDocument();
+    expect(screen.getByText("공연 일정과 좌석 배치 정보를 확인해 보세요.")).toBeInTheDocument();
     expect(screen.getByText("공연 일시").closest("dl")).toHaveClass("sm:grid-cols-2", "md:min-w-124");
     expect(screen.getByText(formatDateTime(pageState.performance.startsAt))).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "콘서트 상세로 돌아가기" })).toHaveAttribute("href", "/concerts/10");

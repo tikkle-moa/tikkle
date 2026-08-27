@@ -61,7 +61,7 @@ const PerformanceDetailPage = () => {
             <h1 id="performance-detail-title" className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">
               {performance.name}
             </h1>
-            <p className="mt-2 text-sm text-violet-100">공연 #{performance.id}의 일정과 좌석 배치를 확인해 보세요.</p>
+            <p className="mt-2 text-sm text-violet-100">공연 일정과 좌석 배치 정보를 확인해 보세요.</p>
           </div>
 
           <dl
