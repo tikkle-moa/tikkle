@@ -24,8 +24,10 @@ import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.anyList
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
+import org.mockito.InOrder
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.inOrder
 import org.mockito.junit.jupiter.MockitoExtension
 import org.openapitools.jackson.nullable.JsonNullable
 import java.math.BigDecimal
@@ -438,7 +440,10 @@ class PerformanceServiceTest {
       )
 
       assertThat(result).isEmpty()
-      then(seatRepository).should().deleteAll(listOf(seat))
+      val order: InOrder = inOrder(seatRepository)
+      order.verify(seatRepository).deleteAll(listOf(seat))
+      order.verify(seatRepository).flush()
+      order.verify(seatRepository).saveAll(emptyList())
     }
 
     @Test

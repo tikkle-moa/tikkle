@@ -96,7 +96,10 @@ class PerformanceService(
     }
 
     val seatsToDelete = request.deletedSeatIds.map(currentSeatsById::getValue)
-    seatRepository.deleteAll(seatsToDelete)
+    if (seatsToDelete.isNotEmpty()) {
+      seatRepository.deleteAll(seatsToDelete)
+      seatRepository.flush()
+    }
     seatRepository.saveAll(seats)
 
     val updatedSeats = seatRepository.findAllByPerformanceId(performanceId)
