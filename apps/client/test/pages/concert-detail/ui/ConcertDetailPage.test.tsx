@@ -12,14 +12,6 @@ vi.mock("@pages/concert-detail/model/use-concert-detail", () => ({
   useConcertDetail: mockUseConcertDetail,
 }));
 
-vi.mock("@pages/concert-detail/ui/ConcertDetailMessage", () => ({
-  default: ({ title, description }: { title: string; description: string }) => (
-    <output data-testid="concert-detail-message">
-      {title} {description}
-    </output>
-  ),
-}));
-
 vi.mock("@pages/concert-detail/ui/ConcertDetailSkeleton", () => ({
   default: () => <output data-testid="concert-detail-skeleton" />,
 }));
@@ -84,7 +76,8 @@ describe("ConcertDetailPage", () => {
 
     renderConcertDetailPage();
 
-    expect(screen.getByTestId("concert-detail-message")).toHaveTextContent("잘못된 공연입니다. 올바르지 않은 콘서트 ID입니다.");
+    expect(screen.getByRole("heading", { name: "잘못된 공연입니다." })).toBeInTheDocument();
+    expect(screen.getByText("올바르지 않은 콘서트 ID입니다.")).toBeInTheDocument();
   });
 
   it("로딩 중이면 스켈레톤을 표시한다", () => {
@@ -108,7 +101,8 @@ describe("ConcertDetailPage", () => {
 
     renderConcertDetailPage();
 
-    expect(screen.getByTestId("concert-detail-message")).toHaveTextContent("공연 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    expect(screen.getByRole("heading", { name: "공연 정보를 불러오지 못했습니다." })).toBeInTheDocument();
+    expect(screen.getByText("잠시 후 다시 시도해 주세요.")).toBeInTheDocument();
   });
 
   it("응답 데이터가 없으면 오류 안내를 표시한다", () => {
@@ -119,7 +113,8 @@ describe("ConcertDetailPage", () => {
 
     renderConcertDetailPage();
 
-    expect(screen.getByTestId("concert-detail-message")).toHaveTextContent("공연 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    expect(screen.getByRole("heading", { name: "공연 정보를 불러오지 못했습니다." })).toBeInTheDocument();
+    expect(screen.getByText("잠시 후 다시 시도해 주세요.")).toBeInTheDocument();
   });
 
   it("상세 정보와 회차 패널에 필요한 데이터를 전달한다", () => {
@@ -154,7 +149,7 @@ describe("ConcertDetailPage", () => {
     renderConcertDetailPage();
 
     expect(screen.queryByRole("img", { name: "테스트 콘서트" })).not.toBeInTheDocument();
-    expect(screen.getByText("공연 상세 정보를 준비 중입니다.")).toBeInTheDocument();
+    expect(screen.getByText("콘서트 상세 정보를 준비 중입니다.")).toBeInTheDocument();
     expect(screen.getByTestId("performance-booking-panel")).toHaveTextContent("0");
   });
 });

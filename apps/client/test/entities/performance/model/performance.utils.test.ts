@@ -6,9 +6,11 @@ import type { PerformanceResponse } from "@entities/performance";
 const makePerformance = (overrides: Partial<PerformanceResponse> = {}): PerformanceResponse => ({
   id: 1,
   concertId: 1,
+  name: "Tikkle Live",
   startsAt: new Date("2099-01-01").toISOString(),
   bookingOpensAt: null,
   createdAt: new Date("2026-01-01").toISOString(),
+  status: "AVAILABLE",
   ...overrides,
 });
 

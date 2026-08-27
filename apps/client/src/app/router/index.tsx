@@ -9,6 +9,7 @@ import { ConcertNewPage } from "@pages/concert-new";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
+import { PerformanceDetailPage } from "@pages/performance-detail";
 import { SearchPage } from "@pages/search";
 
 import AdminGuard from "./AdminGuard";
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
           { path: ROUTE_PATHS.HOME, element: <HomePage /> },
           { path: ROUTE_PATHS.CONCERT_LIST, element: <ConcertListPage /> },
           { path: ROUTE_PATHS.CONCERT_DETAIL, element: <ConcertDetailPage /> },
+          { path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> },
           {
             element: <AdminGuard />,
             children: [

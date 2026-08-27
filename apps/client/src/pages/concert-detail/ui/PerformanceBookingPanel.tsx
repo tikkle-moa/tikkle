@@ -1,5 +1,11 @@
-import { CalendarDays } from "lucide-react";
+import { Link, generatePath } from "react-router";
 
+import { CalendarDays, ChevronRight } from "lucide-react";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
+import { formatDateTime } from "@shared/lib/date.utils";
+
+import { PERFORMANCE_STATUS_MAP } from "@entities/performance";
 import type { PerformanceResponse } from "@entities/performance";
 
 interface PerformanceBookingPanelProps {
@@ -9,45 +15,98 @@ interface PerformanceBookingPanelProps {
 const PerformanceBookingPanel = ({ performances }: PerformanceBookingPanelProps) => {
   if (performances.length === 0) {
     return (
-      <aside className="h-fit rounded-xl border border-gray-200 bg-white shadow-sm">
+      <aside className="h-fit overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="text-base font-bold text-gray-900">예매하기</h2>
-          <span className="text-xs text-gray-400">01 회차 선택</span>
+          <h2 className="text-base font-bold text-gray-900">공연 회차</h2>
+          <span className="text-xs font-medium text-gray-400">총 0회</span>
         </div>
 
-        <div className="px-5 py-7 text-center">
-          <div className="text-brand-primary mx-auto grid size-12 place-items-center rounded-full bg-violet-50">
-            <CalendarDays className="size-5" aria-hidden />
+        <div className="px-5 py-6">
+          <div className="rounded-xl border border-dashed border-violet-200 bg-linear-to-b from-violet-50/80 to-white px-4 py-7 text-center">
+            <div className="text-brand-primary mx-auto grid size-12 place-items-center rounded-full bg-white shadow-sm ring-1 ring-violet-100">
+              <CalendarDays className="size-5" aria-hidden />
+            </div>
+
+            <p className="mt-4 text-sm font-bold text-gray-900">등록된 공연 회차가 없습니다</p>
+            <p className="mt-2 text-xs leading-5 text-gray-500">
+              새로운 회차가 등록되면
+              <br />
+              공연 일시와 예매 정보를 확인할 수 있어요.
+            </p>
           </div>
 
-          <p className="mt-3 text-sm font-bold text-gray-900">예매 회차를 준비 중입니다</p>
-          <p className="mt-2 text-xs leading-5 text-gray-500">
-            공연 정보는 둘러볼 수 있어요.
-            <br />
-            회차가 등록되면 예매가 시작됩니다.
-          </p>
-
-          <button className="mt-5 w-full rounded-lg bg-gray-200 py-3 text-sm font-bold text-gray-400" disabled type="button">
-            좌석 선택하기
-          </button>
+          <p className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-center text-xs leading-5 text-gray-500">콘서트 정보는 계속 둘러볼 수 있습니다.</p>
         </div>
       </aside>
     );
   }
 
   return (
-    <aside className="h-fit rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-base font-bold text-gray-900">공연 회차</h2>
+    <aside className="h-fit overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <h2 className="text-base font-bold text-gray-900">공연 회차</h2>
+        <span className="text-xs font-medium text-gray-400">총 {performances.length}회</span>
+      </div>
 
-      <ul className="mt-4 divide-y divide-gray-100">
-        {performances.map((performance) => (
-          <li key={performance.id} className="py-3 text-sm font-medium text-gray-700">
-            {new Date(performance.startsAt).toLocaleDateString()}
-          </li>
-        ))}
+      <ul
+        aria-label="공연 회차 목록"
+        className="scrollbar-thumb-brand-primary/60 max-h-70 scrollbar-thin divide-y divide-gray-100 overflow-y-auto overscroll-contain px-5"
+      >
+        {performances.map((performance) => {
+          const { label: statusLabel, className: statusClassName } = PERFORMANCE_STATUS_MAP[performance.status];
+          const isDisabled = performance.status === "ENDED";
+          const content = (
+            <>
+              <div className="min-w-0 grow">
+                <div className="flex items-center gap-2">
+                  <p
+                    className={`truncate text-sm font-bold transition-colors ${isDisabled ? "text-gray-400" : "text-gray-900 group-hover:text-violet-700"}`}
+                  >
+                    {performance.name}
+                  </p>
+                  <span className={`${statusClassName} shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold`}>{statusLabel}</span>
+                </div>
+
+                <time className={`mt-1 block text-xs font-medium ${isDisabled ? "text-gray-400" : "text-gray-600"}`} dateTime={performance.startsAt}>
+                  {formatDateTime(performance.startsAt)}
+                </time>
+
+                {performance.status === "UPCOMING" && performance.bookingOpensAt && (
+                  <p className="mt-1 text-[11px] text-violet-600">{formatDateTime(performance.bookingOpensAt)} 오픈</p>
+                )}
+              </div>
+
+              {!isDisabled && (
+                <ChevronRight
+                  className="size-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500"
+                  aria-hidden
+                />
+              )}
+            </>
+          );
+
+          return (
+            <li key={performance.id} className={isDisabled ? "-mx-5 bg-gray-50 px-5" : undefined}>
+              {isDisabled ? (
+                <div aria-disabled="true" className="flex cursor-not-allowed items-center gap-3 py-4 opacity-80">
+                  {content}
+                </div>
+              ) : (
+                <Link
+                  className="group flex items-center gap-3 py-4"
+                  to={generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(performance.id) })}
+                >
+                  {content}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
-      <p className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-500">좌석 선택은 회차별 좌석 화면에서 진행합니다.</p>
+      <p className="mx-5 mb-5 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-500">
+        회차를 선택하면 상세 정보와 좌석 배치를 확인할 수 있습니다.
+      </p>
     </aside>
   );
 };

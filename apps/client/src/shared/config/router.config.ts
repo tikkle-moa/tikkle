@@ -5,6 +5,7 @@ export const ROUTE_PATHS = {
   CONCERT_DETAIL: "/concerts/:concertId",
   CONCERT_NEW: "/concerts/new",
   CONCERT_EDIT: "/concerts/:concertId/edit",
+  PERFORMANCE_DETAIL: "/performances/:performanceId",
   SEARCH: "/search",
   MY: "/my",
   MY_FAVORITES: "/my/favorites",
