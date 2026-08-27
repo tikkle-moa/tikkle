@@ -50,6 +50,7 @@ class PerformanceServiceTest {
   ): Performance = Performance(
     id = id,
     concert = concert,
+    name = "1회차",
     startsAt = startsAt,
     bookingOpensAt = bookingOpensAt,
   )
@@ -123,6 +124,7 @@ class PerformanceServiceTest {
   fun `유효한 회차를 생성하면 저장된 회차를 반환한다`() {
     val request = CreatePerformanceRequest(
       concertId = 1L,
+      name = "1회차",
       startsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
       bookingOpensAt = LocalDateTime.of(2027, 1, 10, 10, 0),
     )
@@ -148,6 +150,7 @@ class PerformanceServiceTest {
   fun `예매 시작 시각 없이 회차를 생성할 수 있다`() {
     val request = CreatePerformanceRequest(
       concertId = 1L,
+      name = "1회차",
       startsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
     )
     val concert = concert()
@@ -169,6 +172,7 @@ class PerformanceServiceTest {
   fun `예매 시작 시각이 공연 시작 시각보다 늦으면 생성에 실패한다`() {
     val request = CreatePerformanceRequest(
       concertId = 1L,
+      name = "1회차",
       startsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
       bookingOpensAt = LocalDateTime.of(2027, 1, 21, 10, 0),
     )
@@ -186,6 +190,7 @@ class PerformanceServiceTest {
   fun `존재하지 않는 콘서트로 회차를 생성하면 NOT_FOUND를 던진다`() {
     val request = CreatePerformanceRequest(
       concertId = 99L,
+      name = "1회차",
       startsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
       bookingOpensAt = LocalDateTime.of(2027, 1, 10, 10, 0),
     )

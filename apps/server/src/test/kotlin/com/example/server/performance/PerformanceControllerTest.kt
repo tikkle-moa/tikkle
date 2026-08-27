@@ -15,6 +15,7 @@ import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
 import com.example.server.performance.dto.SeatResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
+import com.example.server.performance.types.PerformanceStatus
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -98,14 +99,17 @@ class PerformanceControllerTest {
   private fun performanceResponse(
     id: Long = 1L,
     concertId: Long = 1L,
+    name: String = "1회차",
     startsAt: LocalDateTime = LocalDateTime.of(2027, 1, 20, 19, 0),
     bookingOpensAt: LocalDateTime? = LocalDateTime.of(2027, 1, 10, 10, 0),
   ): PerformanceResponse = PerformanceResponse(
     id = id,
     concertId = concertId,
+    name = name,
     startsAt = startsAt,
     bookingOpensAt = bookingOpensAt,
     createdAt = LocalDateTime.of(2026, 8, 24, 12, 0),
+    status = PerformanceStatus.UPCOMING,
   )
 
   private fun performanceDetailResponse(): PerformanceDetailResponse = PerformanceDetailResponse(
@@ -121,6 +125,7 @@ class PerformanceControllerTest {
         positionX = BigDecimal("5.23"),
         positionY = BigDecimal("3.27"),
         createdAt = LocalDateTime.of(2026, 7, 31, 13, 0),
+        booked = false,
       ),
     ),
   )
@@ -224,6 +229,7 @@ class PerformanceControllerTest {
     fun `관리자가 유효한 요청으로 회차를 생성하면 201을 반환한다`() {
       val request = CreatePerformanceRequest(
         concertId = 1L,
+        name = "1회차",
         startsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
         bookingOpensAt = LocalDateTime.of(2027, 1, 10, 10, 0),
       )
@@ -252,6 +258,7 @@ class PerformanceControllerTest {
     fun `예매 시작 시각 없이 회차를 생성하면 201을 반환한다`() {
       val request = CreatePerformanceRequest(
         concertId = 1L,
+        name = "1회차",
         startsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
       )
       given(performanceService.create(request))
