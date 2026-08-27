@@ -23,7 +23,7 @@ const PerformanceForm = ({ concertId, performanceId, initialValues, submitLabel,
   });
 
   return (
-    <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end" noValidate onSubmit={handleSubmit}>
+    <form className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] items-end gap-3" noValidate onSubmit={handleSubmit}>
       <label className="block text-xs font-semibold text-slate-700">
         공연 회차명 <span className="text-red-500">*</span>
         <input
@@ -64,7 +64,7 @@ const PerformanceForm = ({ concertId, performanceId, initialValues, submitLabel,
         {errors.bookingOpensAt && <span className="mt-1 block text-xs font-medium text-red-600">{errors.bookingOpensAt}</span>}
       </label>
 
-      <div className="flex gap-2 sm:pb-px">
+      <div className="flex gap-2 pb-px">
         <button
           className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
           disabled={isSubmitting}
@@ -86,7 +86,7 @@ const PerformanceForm = ({ concertId, performanceId, initialValues, submitLabel,
 
       {submitState.status === "error" && (
         <p
-          className="flex items-start gap-2 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 sm:col-span-4"
+          className="col-span-full flex items-start gap-2 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
           role="alert"
         >
           <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />

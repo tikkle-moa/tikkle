@@ -52,7 +52,10 @@ describe("PerformanceForm", () => {
     expect(screen.getByText("공연 회차명을 입력해 주세요.")).toBeInTheDocument();
     expect(screen.getByText("공연 시작 시각을 입력해 주세요.")).toBeInTheDocument();
     expect(screen.getByText("예매 시작 시각은 공연 시작 시각보다 이전이어야 합니다.")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("공연 회차 저장 중 오류가 발생했습니다.");
+    const alert = screen.getByRole("alert");
+
+    expect(alert).toHaveTextContent("공연 회차 저장 중 오류가 발생했습니다.");
+    expect(alert).toHaveClass("col-span-full");
   });
 
   it("저장 중에는 입력과 버튼을 비활성화한다", () => {
@@ -75,6 +78,7 @@ describe("PerformanceForm", () => {
 
     expect(screen.getByLabelText(/공연 회차명/)).toHaveValue("1회차");
     expect(screen.getByRole("button", { name: "등록" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "등록" }).closest("form")).toHaveClass("grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))]");
   });
 
   it("취소를 누르면 취소 콜백을 호출한다", () => {
