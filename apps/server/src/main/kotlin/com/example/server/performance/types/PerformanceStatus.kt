@@ -8,7 +8,6 @@ enum class PerformanceStatus {
   AVAILABLE,
   SOLD_OUT,
   ENDED,
-
   ;
 
   companion object {
