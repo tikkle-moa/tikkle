@@ -17,6 +17,7 @@ const onCancel = vi.fn();
 describe("PerformanceForm", () => {
   const defaultFormState = {
     values: {
+      name: "1회차",
       startsAt: "2099-09-01T19:00",
       bookingOpensAt: "2099-08-30T19:00",
     },
@@ -32,10 +33,12 @@ describe("PerformanceForm", () => {
     mockUsePerformanceForm.mockReturnValue(defaultFormState);
   });
 
-  it("예매 시작 시각 오류와 저장 오류를 표시한다", () => {
+  it("입력 오류와 저장 오류를 표시한다", () => {
     mockUsePerformanceForm.mockReturnValue({
       ...defaultFormState,
       errors: {
+        name: "공연 회차명을 입력해 주세요.",
+        startsAt: "공연 시작 시각을 입력해 주세요.",
         bookingOpensAt: "예매 시작 시각은 공연 시작 시각보다 이전이어야 합니다.",
       },
       submitState: {
@@ -46,6 +49,8 @@ describe("PerformanceForm", () => {
 
     render(<PerformanceForm concertId={7} onCancel={onCancel} onSaved={onSaved} onSuccess={onSuccess} submitLabel="등록" />);
 
+    expect(screen.getByText("공연 회차명을 입력해 주세요.")).toBeInTheDocument();
+    expect(screen.getByText("공연 시작 시각을 입력해 주세요.")).toBeInTheDocument();
     expect(screen.getByText("예매 시작 시각은 공연 시작 시각보다 이전이어야 합니다.")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("공연 회차 저장 중 오류가 발생했습니다.");
   });
@@ -59,27 +64,16 @@ describe("PerformanceForm", () => {
 
     render(<PerformanceForm concertId={7} onCancel={onCancel} onSaved={onSaved} onSuccess={onSuccess} submitLabel="등록" />);
 
+    expect(screen.getByLabelText(/공연 회차명/)).toBeDisabled();
     expect(screen.getByLabelText(/공연 시작 시각/)).toBeDisabled();
     expect(screen.getByLabelText(/예매 시작 시각/)).toBeDisabled();
     expect(screen.getByRole("button", { name: "저장 중..." })).toBeDisabled();
   });
 
-  it("입력값과 생성 버튼을 표시한다", () => {
-    render(
-      <PerformanceForm
-        concertId={7}
-        initialValues={{
-          startsAt: "2099-09-01T19:00",
-          bookingOpensAt: "2099-08-30T19:00",
-        }}
-        onCancel={onCancel}
-        onSaved={onSaved}
-        onSuccess={onSuccess}
-        submitLabel="등록"
-      />,
-    );
+  it("회차명과 생성 버튼을 표시한다", () => {
+    render(<PerformanceForm concertId={7} onCancel={onCancel} onSaved={onSaved} onSuccess={onSuccess} submitLabel="등록" />);
 
-    expect(screen.getByLabelText(/공연 시작 시각/)).toHaveValue("2099-09-01T19:00");
+    expect(screen.getByLabelText(/공연 회차명/)).toHaveValue("1회차");
     expect(screen.getByRole("button", { name: "등록" })).toBeInTheDocument();
   });
 
@@ -91,20 +85,7 @@ describe("PerformanceForm", () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
-  it("공연 시작 시각 오류를 표시한다", () => {
-    mockUsePerformanceForm.mockReturnValue({
-      ...defaultFormState,
-      errors: {
-        startsAt: "공연 시작 시각을 입력해 주세요.",
-      },
-    });
-
-    render(<PerformanceForm concertId={7} onCancel={onCancel} onSaved={onSaved} onSuccess={onSuccess} submitLabel="등록" />);
-
-    expect(screen.getByText("공연 시작 시각을 입력해 주세요.")).toBeInTheDocument();
-  });
-
-  it("두 날짜 입력 변경을 폼 훅에 전달한다", () => {
+  it("세 입력 변경을 폼 훅에 전달한다", () => {
     const updateField = vi.fn();
 
     mockUsePerformanceForm.mockReturnValue({
@@ -114,6 +95,9 @@ describe("PerformanceForm", () => {
 
     render(<PerformanceForm concertId={7} onCancel={onCancel} onSaved={onSaved} onSuccess={onSuccess} submitLabel="등록" />);
 
+    fireEvent.change(screen.getByLabelText(/공연 회차명/), {
+      target: { value: "2회차" },
+    });
     fireEvent.change(screen.getByLabelText(/공연 시작 시각/), {
       target: { value: "2099-09-02T19:00" },
     });
@@ -121,7 +105,8 @@ describe("PerformanceForm", () => {
       target: { value: "2099-08-31T19:00" },
     });
 
-    expect(updateField).toHaveBeenNthCalledWith(1, "startsAt", "2099-09-02T19:00");
-    expect(updateField).toHaveBeenNthCalledWith(2, "bookingOpensAt", "2099-08-31T19:00");
+    expect(updateField).toHaveBeenNthCalledWith(1, "name", "2회차");
+    expect(updateField).toHaveBeenNthCalledWith(2, "startsAt", "2099-09-02T19:00");
+    expect(updateField).toHaveBeenNthCalledWith(3, "bookingOpensAt", "2099-08-31T19:00");
   });
 });

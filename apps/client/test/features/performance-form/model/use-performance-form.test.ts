@@ -22,6 +22,7 @@ vi.mock("react-hot-toast", () => ({
 }));
 
 const initialValues = {
+  name: "1회차",
   startsAt: "2099-09-01T19:00",
   bookingOpensAt: "2099-08-30T19:00",
 };
@@ -62,10 +63,15 @@ describe("usePerformanceForm", () => {
     expect(result.current.values).toEqual(initialValues);
 
     act(() => {
+      result.current.updateField("name", "2회차");
       result.current.updateField("startsAt", "2099-09-02T19:00");
     });
 
-    expect(result.current.values.startsAt).toBe("2099-09-02T19:00");
+    expect(result.current.values).toEqual({
+      name: "2회차",
+      startsAt: "2099-09-02T19:00",
+      bookingOpensAt: initialValues.bookingOpensAt,
+    });
   });
 
   it("예매 시작 시각 없이도 생성 저장을 완료한다", async () => {
@@ -73,7 +79,7 @@ describe("usePerformanceForm", () => {
 
     const { result, props } = renderPerformanceForm({
       initialValues: {
-        startsAt: initialValues.startsAt,
+        ...initialValues,
         bookingOpensAt: "",
       },
     });
@@ -102,7 +108,7 @@ describe("usePerformanceForm", () => {
 
     const { result, props } = renderPerformanceForm({
       initialValues: {
-        startsAt: initialValues.startsAt,
+        ...initialValues,
         bookingOpensAt: "",
       },
       performanceId: 1,
@@ -114,9 +120,25 @@ describe("usePerformanceForm", () => {
     expect(props.onSuccess).toHaveBeenCalledOnce();
   });
 
-  it("유효하지 않은 입력은 저장 완료 콜백을 호출하지 않는다", async () => {
+  it("회차명이 없으면 저장 완료 콜백을 호출하지 않는다", async () => {
     const { result, props } = renderPerformanceForm({
       initialValues: {
+        ...initialValues,
+        name: "   ",
+      },
+    });
+
+    await submit(result);
+
+    expect(result.current.errors.name).toBe("공연 회차명을 입력해 주세요.");
+    expect(props.onSaved).not.toHaveBeenCalled();
+    expect(props.onSuccess).not.toHaveBeenCalled();
+  });
+
+  it("공연 시작 시각이 없으면 저장 완료 콜백을 호출하지 않는다", async () => {
+    const { result, props } = renderPerformanceForm({
+      initialValues: {
+        ...initialValues,
         startsAt: "",
         bookingOpensAt: "",
       },

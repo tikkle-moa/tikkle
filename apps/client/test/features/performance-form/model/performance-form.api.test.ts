@@ -16,11 +16,13 @@ vi.mock("@shared/api", () => ({
 
 const createRequest = {
   concertId: 7,
+  name: "1회차",
   startsAt: "2099-09-01T19:00",
   bookingOpensAt: "2099-08-30T19:00",
 };
 
 const updateRequest = {
+  name: "1회차",
   startsAt: "2099-09-01T19:00",
   bookingOpensAt: "2099-08-30T19:00",
 };
