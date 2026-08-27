@@ -90,9 +90,9 @@ const ConcertDetailPage = () => {
       </section>
 
       <section className="mt-12 border-t-8 border-gray-100 pt-10 lg:pr-90">
-        <h2 className="text-xl font-bold text-gray-900">공연 소개</h2>
+        <h2 className="text-xl font-bold text-gray-900">콘서트 소개</h2>
 
-        <p className="mt-4 text-sm leading-7 whitespace-pre-line text-gray-600">{concert.description ?? "공연 상세 정보를 준비 중입니다."}</p>
+        <p className="mt-4 text-sm leading-7 whitespace-pre-line text-gray-600">{concert.description ?? "콘서트 상세 정보를 준비 중입니다."}</p>
       </section>
     </div>
   );
