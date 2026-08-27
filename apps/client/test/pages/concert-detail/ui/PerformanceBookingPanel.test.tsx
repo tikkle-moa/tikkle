@@ -204,4 +204,21 @@ describe("PerformanceBookingPanel", () => {
     expect(mockHandleEditClose).toHaveBeenNthCalledWith(2, performance.id);
     expect(onChanged).toHaveBeenCalledOnce();
   });
+
+  it("관리자는 종료 회차를 수정할 수 없다", () => {
+    const endedPerformance = makePerformance({
+      id: 3,
+      name: "종료된 공연",
+      startsAt: "2026-08-01T19:00:00",
+      status: "ENDED",
+    });
+
+    renderPerformanceBookingPanel({
+      isAdmin: true,
+      performances: [endedPerformance],
+    });
+
+    expect(screen.queryByRole("button", { name: "공연 회차 수정" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "공연 회차 삭제" })).toBeInTheDocument();
+  });
 });

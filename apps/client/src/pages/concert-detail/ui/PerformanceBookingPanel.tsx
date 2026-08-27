@@ -132,15 +132,17 @@ const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }
 
                   {isAdmin && (
                     <div className="flex shrink-0 gap-1 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-                      <button
-                        aria-label="공연 회차 수정"
-                        className="inline-flex size-8 items-center justify-center rounded-md text-gray-500 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-50"
-                        disabled={isDeleting}
-                        onClick={() => handleEditOpen(performance.id)}
-                        type="button"
-                      >
-                        <Pencil aria-hidden className="size-4" />
-                      </button>
+                      {!isDisabled && (
+                        <button
+                          aria-label="공연 회차 수정"
+                          className="inline-flex size-8 items-center justify-center rounded-md text-gray-500 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-50"
+                          disabled={isDeleting}
+                          onClick={() => handleEditOpen(performance.id)}
+                          type="button"
+                        >
+                          <Pencil aria-hidden className="size-4" />
+                        </button>
+                      )}
 
                       <button
                         aria-label="공연 회차 삭제"
