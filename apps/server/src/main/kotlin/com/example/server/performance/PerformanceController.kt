@@ -8,6 +8,7 @@ import com.example.server.performance.dto.ApplySeatChangesRequest
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
+import com.example.server.performance.dto.SeatListResponse
 import com.example.server.performance.dto.SeatResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import io.swagger.v3.oas.annotations.Operation
@@ -55,6 +56,23 @@ class PerformanceController(private val performanceService: PerformanceService) 
     val performanceResponse = performanceService.getPerformance(id)
 
     return ResponseEntity.ok(ApiResponse.ok(performanceResponse))
+  }
+
+  @Operation(
+    summary = "공연 좌석 목록 조회",
+    description = "공연 회차의 좌석을 구역명과 좌석 번호 순으로 반환합니다.",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "공연 좌석 목록 조회 성공")],
+  )
+  @ErrorResponse(
+    responses = [
+      ErrorResponseItem(ErrorCode.NOT_FOUND, description = "공연 회차를 찾을 수 없음"),
+    ],
+  )
+  @GetMapping("/{id}/seats")
+  fun getSeats(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<SeatListResponse>> {
+    val seatListResponse = performanceService.getSeats(id)
+
+    return ResponseEntity.ok(ApiResponse.ok(seatListResponse))
   }
 
   @Operation(

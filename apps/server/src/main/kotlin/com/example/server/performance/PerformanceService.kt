@@ -7,6 +7,7 @@ import com.example.server.performance.dto.ApplySeatChangesRequest
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
+import com.example.server.performance.dto.SeatListResponse
 import com.example.server.performance.dto.SeatResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
@@ -37,9 +38,24 @@ class PerformanceService(
 
     return PerformanceDetailResponse(
       performance = PerformanceResponse.from(performance),
-      seats = emptyList(),
+      seats = findSeatResponses(id),
     )
   }
+
+  @Transactional(readOnly = true)
+  fun getSeats(performanceId: Long): SeatListResponse {
+    performanceRepository.findById(performanceId)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+
+    return SeatListResponse(
+      serverTime = LocalDateTime.now(),
+      seats = findSeatResponses(performanceId),
+    )
+  }
+
+  private fun findSeatResponses(performanceId: Long): List<SeatResponse> =
+    seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId)
+      .map(SeatResponse::from)
 
   @Transactional
   fun applySeatChanges(performanceId: Long, request: ApplySeatChangesRequest): List<SeatResponse> {

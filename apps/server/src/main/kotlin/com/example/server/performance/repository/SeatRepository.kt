@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface SeatRepository : JpaRepository<Seat, Long> {
   fun findAllByPerformanceId(performanceId: Long): List<Seat>
+  fun findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId: Long): List<Seat>
 }
