@@ -9,6 +9,7 @@ import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.performance.types.PerformanceStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -109,6 +110,36 @@ class PerformanceServiceTest {
     val result = performanceService.getPerformances()
 
     assertThat(result.map { it.id }).containsExactly(1L, 2L, 3L, 4L)
+  }
+
+  @Test
+  fun `공연 회차 목록에 예매 상태를 포함한다`() {
+    val now = LocalDateTime.now()
+    val upcomingPerformance = performance(
+      id = 1L,
+      startsAt = now.plusDays(2),
+      bookingOpensAt = now.plusDays(1),
+    )
+    val availablePerformance = performance(
+      id = 2L,
+      startsAt = now.plusDays(1),
+      bookingOpensAt = now.minusDays(1),
+    )
+    val endedPerformance = performance(
+      id = 3L,
+      startsAt = now.minusDays(1),
+      bookingOpensAt = now.minusDays(2),
+    )
+    given(performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc())
+      .willReturn(listOf(upcomingPerformance, availablePerformance, endedPerformance))
+
+    val result = performanceService.getPerformances()
+
+    assertThat(result.map { it.status }).containsExactly(
+      PerformanceStatus.UPCOMING,
+      PerformanceStatus.AVAILABLE,
+      PerformanceStatus.ENDED,
+    )
   }
 
   @Test
