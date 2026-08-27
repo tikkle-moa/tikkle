@@ -60,14 +60,6 @@ vi.mock("@features/performance-form", () => ({
   toPerformanceFormValues: vi.fn(),
 }));
 
-vi.mock("@pages/performance-new/ui/PerformanceNewMessage", () => ({
-  default: ({ title, description }: { title: string; description: string }) => (
-    <output data-testid="performance-new-message">
-      {title} {description}
-    </output>
-  ),
-}));
-
 vi.mock("@pages/performance-new/ui/PerformanceNewSkeleton", () => ({
   default: () => <output data-testid="performance-new-skeleton" />,
 }));
@@ -135,7 +127,8 @@ describe("PerformanceNewPage", () => {
 
     render(<PerformanceNewPage />);
 
-    expect(screen.getByTestId("performance-new-message")).toHaveTextContent("잘못된 콘서트입니다. 올바른 콘서트에서 공연 회차를 등록해 주세요.");
+    expect(screen.getByRole("heading", { name: "잘못된 콘서트입니다." })).toBeInTheDocument();
+    expect(screen.getByText("올바른 콘서트에서 공연 회차를 등록해 주세요.")).toBeInTheDocument();
   });
 
   it("콘서트 상세 조회 중에는 스켈레톤을 표시한다", () => {
@@ -159,7 +152,8 @@ describe("PerformanceNewPage", () => {
 
     render(<PerformanceNewPage />);
 
-    expect(screen.getByTestId("performance-new-message")).toHaveTextContent("콘서트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    expect(screen.getByRole("heading", { name: "콘서트 정보를 불러오지 못했습니다." })).toBeInTheDocument();
+    expect(screen.getByText("잠시 후 다시 시도해 주세요.")).toBeInTheDocument();
   });
 
   it("기본으로는 생성 폼 없이 회차 목록과 추가 버튼을 표시한다", () => {

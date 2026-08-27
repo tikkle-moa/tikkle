@@ -1,9 +1,10 @@
 import { CalendarPlus, Pencil, Plus, Trash2 } from "lucide-react";
 
+import DetailMessage from "@shared/ui/DetailMessage";
+
 import { ConcertManageIntro } from "@features/concert-manage";
 import { PerformanceForm, toPerformanceFormValues } from "@features/performance-form";
 
-import PerformanceNewMessage from "./PerformanceNewMessage";
 import PerformanceNewSkeleton from "./PerformanceNewSkeleton";
 
 import { usePerformanceNew } from "../model/use-performance-new";
@@ -29,7 +30,7 @@ const PerformanceNewPage = () => {
   } = usePerformanceNew();
 
   if (!isParamValid) {
-    return <PerformanceNewMessage description="올바른 콘서트에서 공연 회차를 등록해 주세요." title="잘못된 콘서트입니다." />;
+    return <DetailMessage description="올바른 콘서트에서 공연 회차를 등록해 주세요." title="잘못된 콘서트입니다." />;
   }
 
   if (isPending) {
@@ -37,7 +38,7 @@ const PerformanceNewPage = () => {
   }
 
   if (isError || !concert) {
-    return <PerformanceNewMessage description="잠시 후 다시 시도해 주세요." title="콘서트 정보를 불러오지 못했습니다." />;
+    return <DetailMessage description="잠시 후 다시 시도해 주세요." title="콘서트 정보를 불러오지 못했습니다." />;
   }
 
   return (
