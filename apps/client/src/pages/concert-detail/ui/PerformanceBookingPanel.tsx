@@ -54,33 +54,51 @@ const PerformanceBookingPanel = ({ performances }: PerformanceBookingPanelProps)
       >
         {performances.map((performance) => {
           const { label: statusLabel, className: statusClassName } = PERFORMANCE_STATUS_MAP[performance.status];
-
-          return (
-            <li key={performance.id}>
-              <Link
-                className="group flex items-center gap-3 py-4"
-                to={generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(performance.id) })}
-              >
-                <div className="min-w-0 grow">
-                  <div className="flex items-center gap-2">
-                    <p className="group-hover:text-brand-primary truncate text-sm font-bold text-gray-900 transition-colors">{performance.name}</p>
-                    <span className={`${statusClassName} shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold`}>{statusLabel}</span>
-                  </div>
-
-                  <time className="mt-1 block text-xs font-medium text-gray-600" dateTime={performance.startsAt}>
-                    {formatDateTime(performance.startsAt)}
-                  </time>
-
-                  {performance.status === "UPCOMING" && performance.bookingOpensAt && (
-                    <p className="mt-1 text-[11px] text-violet-600">{formatDateTime(performance.bookingOpensAt)} 오픈</p>
-                  )}
+          const isDisabled = performance.status === "ENDED";
+          const content = (
+            <>
+              <div className="min-w-0 grow">
+                <div className="flex items-center gap-2">
+                  <p
+                    className={`truncate text-sm font-bold transition-colors ${isDisabled ? "text-gray-400" : "text-gray-900 group-hover:text-violet-700"}`}
+                  >
+                    {performance.name}
+                  </p>
+                  <span className={`${statusClassName} shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold`}>{statusLabel}</span>
                 </div>
 
+                <time className={`mt-1 block text-xs font-medium ${isDisabled ? "text-gray-400" : "text-gray-600"}`} dateTime={performance.startsAt}>
+                  {formatDateTime(performance.startsAt)}
+                </time>
+
+                {performance.status === "UPCOMING" && performance.bookingOpensAt && (
+                  <p className="mt-1 text-[11px] text-violet-600">{formatDateTime(performance.bookingOpensAt)} 오픈</p>
+                )}
+              </div>
+
+              {!isDisabled && (
                 <ChevronRight
                   className="size-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500"
                   aria-hidden
                 />
-              </Link>
+              )}
+            </>
+          );
+
+          return (
+            <li key={performance.id} className={isDisabled ? "-mx-5 bg-gray-50 px-5" : undefined}>
+              {isDisabled ? (
+                <div aria-disabled="true" className="flex cursor-not-allowed items-center gap-3 py-4 opacity-80">
+                  {content}
+                </div>
+              ) : (
+                <Link
+                  className="group flex items-center gap-3 py-4"
+                  to={generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(performance.id) })}
+                >
+                  {content}
+                </Link>
+              )}
             </li>
           );
         })}

@@ -39,10 +39,11 @@ describe("PerformanceBookingPanel", () => {
       status: "UPCOMING",
     });
     const secondPerformance = makePerformance({ id: 2, name: "예매 중인 공연", startsAt: "2026-09-02T19:00:00" });
+    const endedPerformance = makePerformance({ id: 3, name: "종료된 공연", startsAt: "2026-08-01T19:00:00", status: "ENDED" });
 
     render(
       <MemoryRouter>
-        <PerformanceBookingPanel performances={[firstPerformance, secondPerformance]} />
+        <PerformanceBookingPanel performances={[firstPerformance, secondPerformance, endedPerformance]} />
       </MemoryRouter>,
     );
 
@@ -50,13 +51,16 @@ describe("PerformanceBookingPanel", () => {
     const performanceLinks = screen.getAllByRole("link");
     expect(performanceLinks[0]).toHaveAttribute("href", "/performances/1");
     expect(performanceLinks[1]).toHaveAttribute("href", "/performances/2");
+    expect(performanceLinks).toHaveLength(2);
     expect(screen.getByText("오픈 예정 공연")).toBeInTheDocument();
     expect(screen.getByText("예매 중인 공연")).toBeInTheDocument();
     expect(screen.getByText("오픈 예정")).toBeInTheDocument();
     expect(screen.getByText("예매 중")).toBeInTheDocument();
     expect(screen.getByText(`${formatDateTime(firstPerformance.bookingOpensAt!)} 오픈`)).toBeInTheDocument();
     expect(screen.queryByText("예매 오픈 일정 없음")).not.toBeInTheDocument();
-    expect(screen.getByText("총 2회")).toBeInTheDocument();
+    expect(screen.getByText("종료된 공연").closest("div[aria-disabled='true']")).toHaveClass("cursor-not-allowed", "opacity-80");
+    expect(screen.getByText("공연 종료")).toBeInTheDocument();
+    expect(screen.getByText("총 3회")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "공연 회차 목록" })).toHaveClass("max-h-70", "overflow-y-auto");
     expect(screen.getByText("회차를 선택하면 상세 정보와 좌석 배치를 확인할 수 있습니다.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "좌석 선택하기" })).not.toBeInTheDocument();

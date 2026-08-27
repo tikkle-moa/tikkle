@@ -78,6 +78,19 @@ describe("PerformanceDetailPage", () => {
     expect(screen.queryByText("예매 오픈")).not.toBeInTheDocument();
   });
 
+  it("종료된 회차에 직접 접근하면 종료 안내를 표시한다", () => {
+    mockUsePerformanceDetail.mockReturnValue({
+      ...pageState,
+      performance: { ...pageState.performance, status: "ENDED" },
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "종료된 공연 회차입니다." })).toBeInTheDocument();
+    expect(screen.getByText("다른 회차를 선택해 주세요.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "좌석 배치 정보" })).not.toBeInTheDocument();
+  });
+
   it("잘못된 ID이면 안내 메시지를 표시한다", () => {
     mockUsePerformanceDetail.mockReturnValue({ ...pageState, isParamValid: false });
 
