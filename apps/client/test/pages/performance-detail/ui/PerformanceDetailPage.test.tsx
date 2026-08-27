@@ -15,16 +15,14 @@ vi.mock("@pages/performance-detail/model/use-performance-detail", () => ({
 }));
 
 const pageState = {
-  concert: {
-    id: 10,
-    title: "Tikkle Live",
-  },
   performance: {
     id: 1,
     concertId: 10,
+    name: "Tikkle Live",
     startsAt: "2026-09-01T19:00:00",
     bookingOpensAt: "2026-08-28T14:00:00",
     createdAt: "2026-08-25T12:00:00",
+    status: "UPCOMING",
   },
   seats: [],
   isError: false,
@@ -72,7 +70,7 @@ describe("PerformanceDetailPage", () => {
   it("오픈 예정 상태가 아니면 예매 오픈 정보를 표시하지 않는다", () => {
     mockUsePerformanceDetail.mockReturnValue({
       ...pageState,
-      performance: { ...pageState.performance, bookingOpensAt: "2026-08-20T14:00:00" },
+      performance: { ...pageState.performance, bookingOpensAt: "2026-08-20T14:00:00", status: "AVAILABLE" },
     });
 
     renderPage();

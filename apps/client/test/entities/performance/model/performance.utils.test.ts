@@ -1,14 +1,16 @@
 import { formatDate } from "@shared/lib/date.utils";
 
-import { getPerformanceStatus, getPeriod } from "@entities/performance";
+import { getPeriod } from "@entities/performance";
 import type { PerformanceResponse } from "@entities/performance";
 
 const makePerformance = (overrides: Partial<PerformanceResponse> = {}): PerformanceResponse => ({
   id: 1,
   concertId: 1,
+  name: "Tikkle Live",
   startsAt: new Date("2099-01-01").toISOString(),
   bookingOpensAt: null,
   createdAt: new Date("2026-01-01").toISOString(),
+  status: "AVAILABLE",
   ...overrides,
 });
 
@@ -32,49 +34,5 @@ describe("getPeriod", () => {
     const first = formatDate(new Date("2026-10-01").toISOString());
     const last = formatDate(new Date("2026-10-05").toISOString());
     expect(getPeriod(performances)).toBe(`${first} ~ ${last}`);
-  });
-});
-
-describe("getPerformanceStatus", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-26T12:00:00Z"));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("공연 시작 시간이 지났으면 ended를 반환한다", () => {
-    const performance = makePerformance({ startsAt: "2026-08-26T11:59:59Z" });
-
-    expect(getPerformanceStatus(performance)).toBe("ended");
-  });
-
-  it("예매 오픈 전이면 upcoming을 반환한다", () => {
-    const performance = makePerformance({
-      startsAt: "2026-09-01T19:00:00Z",
-      bookingOpensAt: "2026-08-27T12:00:00Z",
-    });
-
-    expect(getPerformanceStatus(performance)).toBe("upcoming");
-  });
-
-  it("예매가 이미 열렸으면 available을 반환한다", () => {
-    const performance = makePerformance({
-      startsAt: "2026-09-01T19:00:00Z",
-      bookingOpensAt: "2026-08-25T12:00:00Z",
-    });
-
-    expect(getPerformanceStatus(performance)).toBe("available");
-  });
-
-  it("예매 오픈 일시가 없으면 available을 반환한다", () => {
-    const performance = makePerformance({
-      startsAt: "2026-09-01T19:00:00Z",
-      bookingOpensAt: null,
-    });
-
-    expect(getPerformanceStatus(performance)).toBe("available");
   });
 });

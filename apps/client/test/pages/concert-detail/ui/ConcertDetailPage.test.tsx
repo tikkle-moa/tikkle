@@ -149,7 +149,7 @@ describe("ConcertDetailPage", () => {
     renderConcertDetailPage();
 
     expect(screen.queryByRole("img", { name: "테스트 콘서트" })).not.toBeInTheDocument();
-    expect(screen.getByText("공연 상세 정보를 준비 중입니다.")).toBeInTheDocument();
+    expect(screen.getByText("콘서트 상세 정보를 준비 중입니다.")).toBeInTheDocument();
     expect(screen.getByTestId("performance-booking-panel")).toHaveTextContent("0");
   });
 });
