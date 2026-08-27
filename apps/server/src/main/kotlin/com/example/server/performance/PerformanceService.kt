@@ -58,15 +58,20 @@ class PerformanceService(
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 좌석을 수정하고 삭제할 수 없습니다.")
     }
 
-    val seatKeys = request.seats.map { it.sectionName to it.seatNumber }
-    if (seatKeys.size != seatKeys.distinct().size) {
-      throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
-    }
-
     val currentSeats = seatRepository.findAllByPerformanceId(performanceId)
     val currentSeatsById = currentSeats.associateBy { it.id }
     if (!currentSeatsById.keys.containsAll(requestedIds + request.deletedSeatIds)) {
       throw CustomException(ErrorCode.NOT_FOUND, "변경할 좌석을 찾을 수 없습니다.")
+    }
+
+    val seatKeys = request.seats.map { it.sectionName to it.seatNumber }
+    val changedSeatIds = (requestedIds + request.deletedSeatIds).toSet()
+    val unchangedSeatKeys = currentSeats
+      .filterNot { it.id in changedSeatIds }
+      .map { it.sectionName to it.seatNumber }
+    val resultingSeatKeys = unchangedSeatKeys + seatKeys
+    if (resultingSeatKeys.size != resultingSeatKeys.distinct().size) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
     }
 
     val seats = request.seats.map { seatRequest ->

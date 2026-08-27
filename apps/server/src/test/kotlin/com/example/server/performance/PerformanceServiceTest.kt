@@ -530,7 +530,36 @@ class PerformanceServiceTest {
       }
 
       assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
-      then(seatRepository).shouldHaveNoInteractions()
+      then(seatRepository).should().findAllByPerformanceId(1L)
+      then(seatRepository).shouldHaveNoMoreInteractions()
+    }
+
+    @Test
+    fun `기존 좌석과 같은 구역의 좌석 번호를 생성하면 BAD_REQUEST를 던진다`() {
+      val performance = performance()
+      val existingSeat = Seat(
+        id = 10L,
+        performance = performance,
+        sectionName = "A구역",
+        seatNumber = 1,
+        seatLabel = "A-1",
+        price = 100_000,
+        positionX = BigDecimal.ZERO,
+        positionY = BigDecimal.ZERO,
+      )
+      given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
+      given(seatRepository.findAllByPerformanceId(1L)).willReturn(listOf(existingSeat))
+
+      val exception = assertThrows<CustomException> {
+        performanceService.applySeatChanges(
+          1L,
+          ApplySeatChangesRequest(seats = listOf(seatRequest())),
+        )
+      }
+
+      assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
+      then(seatRepository).should().findAllByPerformanceId(1L)
+      then(seatRepository).shouldHaveNoMoreInteractions()
     }
   }
 }
