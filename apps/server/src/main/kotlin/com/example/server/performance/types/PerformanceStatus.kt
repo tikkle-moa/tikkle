@@ -17,7 +17,7 @@ enum class PerformanceStatus {
       return when {
         !now.isBefore(performance.startsAt) -> ENDED
         isSoldOut -> SOLD_OUT
-        performance.bookingOpensAt == null || now.isBefore(performance.bookingOpensAt) -> UPCOMING
+        performance.bookingOpensAt != null && now.isBefore(performance.bookingOpensAt) -> UPCOMING
         else -> AVAILABLE
       }
     }
