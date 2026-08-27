@@ -1,15 +1,13 @@
 import { Info } from "lucide-react";
 
-import type { ConcertResponse } from "@entities/concert";
 import type { PerformanceResponse, SeatResponse } from "@entities/performance";
 
 interface PerformanceSeatMapProps {
-  concert: ConcertResponse;
   performance: PerformanceResponse;
   seats: SeatResponse[];
 }
 
-const PerformanceSeatMap = ({ concert, performance, seats }: PerformanceSeatMapProps) => {
+const PerformanceSeatMap = ({ performance, seats }: PerformanceSeatMapProps) => {
   return (
     <section className="mt-6 w-full">
       <div className="w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -19,7 +17,7 @@ const PerformanceSeatMap = ({ concert, performance, seats }: PerformanceSeatMapP
               <h2 className="text-lg font-bold text-gray-900">좌석 배치 정보</h2>
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              {concert.title} 공연 #{performance.id} · 전체 {seats.length}석
+              {performance.name} · 전체 {seats.length}석
             </p>
           </div>
         </div>

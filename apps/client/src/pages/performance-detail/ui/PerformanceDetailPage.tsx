@@ -6,7 +6,7 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 import { formatDateTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PERFORMANCE_STATUS_MAP, getPerformanceStatus } from "@entities/performance";
+import { PERFORMANCE_STATUS_MAP } from "@entities/performance";
 
 import PerformanceDetailSkeleton from "./PerformanceDetailSkeleton";
 import PerformanceSeatMap from "./PerformanceSeatMap";
@@ -14,7 +14,7 @@ import PerformanceSeatMap from "./PerformanceSeatMap";
 import { usePerformanceDetail } from "../model/use-performance-detail";
 
 const PerformanceDetailPage = () => {
-  const { isParamValid, concert, performance, seats, isError, isPending } = usePerformanceDetail();
+  const { performance, seats, isError, isParamValid, isPending } = usePerformanceDetail();
 
   if (!isParamValid) {
     return <DetailMessage title="잘못된 공연 회차입니다." description="올바르지 않은 공연 회차 ID입니다." />;
@@ -24,12 +24,11 @@ const PerformanceDetailPage = () => {
     return <PerformanceDetailSkeleton />;
   }
 
-  if (isError || !concert || !performance || !seats) {
+  if (isError || !performance || !seats) {
     return <DetailMessage title="공연 회차를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
-  const status = getPerformanceStatus(performance);
-  const { label: statusLabel, className: statusClassName } = PERFORMANCE_STATUS_MAP[status];
+  const { label: statusLabel, className: statusClassName } = PERFORMANCE_STATUS_MAP[performance.status];
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -47,8 +46,8 @@ const PerformanceDetailPage = () => {
         aria-labelledby="performance-detail-title"
         className="relative mt-5 overflow-hidden rounded-2xl bg-linear-to-br from-indigo-950 via-violet-950 to-fuchsia-950 px-5 py-6 text-white shadow-xl shadow-violet-950/10 sm:px-8 sm:py-8"
       >
-        <div className="absolute -top-24 -right-16 size-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
-        <div className="absolute -bottom-28 -left-16 size-64 rounded-full bg-indigo-400/20 blur-3xl" />
+        <div aria-hidden className="absolute -top-24 -right-16 size-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
+        <div aria-hidden className="absolute -bottom-28 -left-16 size-64 rounded-full bg-indigo-400/20 blur-3xl" />
 
         <div className="relative grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
           <div>
@@ -60,26 +59,32 @@ const PerformanceDetailPage = () => {
               </span>
             </div>
             <h1 id="performance-detail-title" className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">
-              {concert.title}
+              {performance.name}
             </h1>
             <p className="mt-2 text-sm text-violet-100">공연 #{performance.id}의 일정과 좌석 배치를 확인해 보세요.</p>
           </div>
 
-          <dl className={`grid gap-3 ${status === "upcoming" && performance.bookingOpensAt != null ? "sm:grid-cols-2 md:min-w-124" : "md:w-60"}`}>
+          <dl
+            className={`grid gap-3 ${performance.status === "UPCOMING" && performance.bookingOpensAt != null ? "sm:grid-cols-2 md:min-w-124" : "md:w-60"}`}
+          >
             <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm">
               <dt className="flex items-center gap-1.5 text-xs font-medium text-violet-200">
                 <CalendarDays className="size-3.5" aria-hidden />
                 공연 일시
               </dt>
-              <dd className="mt-1.5 text-sm font-bold">{formatDateTime(performance.startsAt)}</dd>
+              <dd className="mt-1.5 text-sm font-bold">
+                <time dateTime={performance.startsAt}>{formatDateTime(performance.startsAt)}</time>
+              </dd>
             </div>
-            {status === "upcoming" && performance.bookingOpensAt != null && (
+            {performance.status === "UPCOMING" && performance.bookingOpensAt != null && (
               <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm">
                 <dt className="flex items-center gap-1.5 text-xs font-medium text-violet-200">
                   <Clock3 className="size-3.5" aria-hidden />
                   예매 오픈
                 </dt>
-                <dd className="mt-1.5 text-sm font-bold">{formatDateTime(performance.bookingOpensAt)}</dd>
+                <dd className="mt-1.5 text-sm font-bold">
+                  <time dateTime={performance.bookingOpensAt}>{formatDateTime(performance.bookingOpensAt)}</time>
+                </dd>
               </div>
             )}
           </dl>
@@ -88,7 +93,7 @@ const PerformanceDetailPage = () => {
         <Ticket className="absolute top-5 right-5 size-8 text-white/10 sm:size-12" aria-hidden />
       </section>
 
-      <PerformanceSeatMap concert={concert} performance={performance} seats={seats} />
+      <PerformanceSeatMap performance={performance} seats={seats} />
     </div>
   );
 };
