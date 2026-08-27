@@ -26,7 +26,7 @@ const values = { title: "공연", genre: "INDIE" as const, placeName: "공연장
 describe("useConcertNew", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("콘서트를 등록하고 상세 페이지로 이동한다", async () => {
+  it("콘서트를 등록하고 회차 등록 페이지로 이동한다", async () => {
     mockPost.mockResolvedValue({
       data: { data: { id: 21 } },
       error: undefined,
@@ -39,7 +39,9 @@ describe("useConcertNew", () => {
 
     expect(mockPost).toHaveBeenCalledWith("/api/concerts", { body: values });
     expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ["concerts"] });
-    expect(mockNavigate).toHaveBeenCalledWith("/concerts/21", { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith("/concerts/21/performances/new", {
+      replace: true,
+    });
     expect(result.current.submitState).toEqual({ status: "submitting" });
   });
 
