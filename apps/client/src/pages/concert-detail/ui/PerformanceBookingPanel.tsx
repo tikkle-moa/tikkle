@@ -29,7 +29,7 @@ const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }
     handleCreateOpen,
     handleCreateClose,
     handleDelete,
-  } = usePerformanceBookingPanel(onChanged);
+  } = usePerformanceBookingPanel({ onChanged });
 
   const hasPerformances = performances.length > 0;
 

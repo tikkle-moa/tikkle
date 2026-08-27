@@ -1,6 +1,10 @@
 import { type SyntheticEvent, useEffect, useRef } from "react";
 
-export const useOAuthErrorModal = (onClose: () => void) => {
+interface UseOAuthErrorModalProps {
+  onClose: () => void;
+}
+
+export const useOAuthErrorModal = ({ onClose }: UseOAuthErrorModalProps) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {

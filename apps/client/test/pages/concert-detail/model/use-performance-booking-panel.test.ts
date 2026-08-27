@@ -29,7 +29,11 @@ describe("usePerformanceBookingPanel", () => {
   });
 
   it("여러 회차의 수정 상태를 독립적으로 관리한다", () => {
-    const { result } = renderHook(() => usePerformanceBookingPanel(vi.fn().mockResolvedValue(undefined)));
+    const { result } = renderHook(() =>
+      usePerformanceBookingPanel({
+        onChanged: vi.fn().mockResolvedValue(undefined),
+      }),
+    );
 
     act(() => {
       result.current.handleEditOpen(1);
@@ -46,7 +50,11 @@ describe("usePerformanceBookingPanel", () => {
   });
 
   it("생성 폼을 열고 닫는다", () => {
-    const { result } = renderHook(() => usePerformanceBookingPanel(vi.fn().mockResolvedValue(undefined)));
+    const { result } = renderHook(() =>
+      usePerformanceBookingPanel({
+        onChanged: vi.fn().mockResolvedValue(undefined),
+      }),
+    );
 
     act(() => {
       result.current.handleCreateOpen();
@@ -64,7 +72,7 @@ describe("usePerformanceBookingPanel", () => {
   it("삭제를 취소하면 삭제 요청을 보내지 않는다", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);
     const onChanged = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => usePerformanceBookingPanel(onChanged));
+    const { result } = renderHook(() => usePerformanceBookingPanel({ onChanged }));
 
     await act(async () => {
       await result.current.handleDelete(1);
@@ -79,7 +87,7 @@ describe("usePerformanceBookingPanel", () => {
     mockDeletePerformance.mockResolvedValue(undefined);
 
     const onChanged = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => usePerformanceBookingPanel(onChanged));
+    const { result } = renderHook(() => usePerformanceBookingPanel({ onChanged }));
 
     act(() => {
       result.current.handleEditOpen(1);
@@ -100,7 +108,11 @@ describe("usePerformanceBookingPanel", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     mockDeletePerformance.mockRejectedValue(new Error("삭제 실패"));
 
-    const { result } = renderHook(() => usePerformanceBookingPanel(vi.fn().mockResolvedValue(undefined)));
+    const { result } = renderHook(() =>
+      usePerformanceBookingPanel({
+        onChanged: vi.fn().mockResolvedValue(undefined),
+      }),
+    );
 
     await act(async () => {
       await result.current.handleDelete(1);

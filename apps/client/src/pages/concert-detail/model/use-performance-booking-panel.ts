@@ -3,7 +3,11 @@ import toast from "react-hot-toast";
 
 import { deletePerformance } from "@features/performance-form";
 
-export const usePerformanceBookingPanel = (onChanged: () => Promise<unknown>) => {
+interface UsePerformanceBookingPanelProps {
+  onChanged: () => Promise<unknown>;
+}
+
+export const usePerformanceBookingPanel = ({ onChanged }: UsePerformanceBookingPanelProps) => {
   const [editingPerformanceIds, setEditingPerformanceIds] = useState<Set<number>>(new Set());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deletingPerformanceIds, setDeletingPerformanceIds] = useState<Set<number>>(new Set());
