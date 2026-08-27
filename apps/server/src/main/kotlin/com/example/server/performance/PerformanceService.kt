@@ -3,18 +3,26 @@ package com.example.server.performance
 import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.dto.ApplySeatChangesRequest
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
+import com.example.server.performance.dto.SeatResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
+import com.example.server.performance.entity.Seat
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.performance.repository.SeatRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 @Service
-class PerformanceService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
+class PerformanceService(
+  private val concertRepository: ConcertRepository,
+  private val performanceRepository: PerformanceRepository,
+  private val seatRepository: SeatRepository,
+) {
   @Transactional(readOnly = true)
   fun getPerformances(): List<PerformanceResponse> {
     val performances = performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc()
@@ -31,6 +39,63 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
       performance = PerformanceResponse.from(performance),
       seats = emptyList(),
     )
+  }
+
+  @Transactional
+  fun applySeatChanges(performanceId: Long, request: ApplySeatChangesRequest): List<SeatResponse> {
+    val performance = performanceRepository.findById(performanceId)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+
+    val requestedIds = request.seats.mapNotNull { it.id }
+    if (requestedIds.size != requestedIds.distinct().size) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "중복된 좌석 ID가 포함되어 있습니다.")
+    }
+    if (request.deletedSeatIds.size != request.deletedSeatIds.distinct().size) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "중복된 삭제 좌석 ID가 포함되어 있습니다.")
+    }
+
+    if (requestedIds.any(request.deletedSeatIds::contains)) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "같은 좌석을 수정하고 삭제할 수 없습니다.")
+    }
+
+    val seatKeys = request.seats.map { it.sectionName to it.seatNumber }
+    if (seatKeys.size != seatKeys.distinct().size) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
+    }
+
+    val currentSeats = seatRepository.findAllByPerformanceId(performanceId)
+    val currentSeatsById = currentSeats.associateBy { it.id }
+    if (!currentSeatsById.keys.containsAll(requestedIds + request.deletedSeatIds)) {
+      throw CustomException(ErrorCode.NOT_FOUND, "변경할 좌석을 찾을 수 없습니다.")
+    }
+
+    val seats = request.seats.map { seatRequest ->
+      seatRequest.id?.let { id ->
+        currentSeatsById.getValue(id).apply {
+          sectionName = seatRequest.sectionName
+          seatNumber = seatRequest.seatNumber
+          seatLabel = seatRequest.seatLabel
+          price = seatRequest.price
+          positionX = seatRequest.positionX
+          positionY = seatRequest.positionY
+        }
+      } ?: Seat(
+        performance = performance,
+        sectionName = seatRequest.sectionName,
+        seatNumber = seatRequest.seatNumber,
+        seatLabel = seatRequest.seatLabel,
+        price = seatRequest.price,
+        positionX = seatRequest.positionX,
+        positionY = seatRequest.positionY,
+      )
+    }
+
+    val seatsToDelete = request.deletedSeatIds.map(currentSeatsById::getValue)
+    seatRepository.deleteAll(seatsToDelete)
+    seatRepository.saveAll(seats)
+
+    val updatedSeats = seatRepository.findAllByPerformanceId(performanceId)
+    return updatedSeats.map(SeatResponse::from)
   }
 
   @Transactional
