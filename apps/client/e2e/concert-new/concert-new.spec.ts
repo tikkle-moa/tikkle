@@ -27,6 +27,7 @@ test.describe("콘서트 등록 페이지 정상 처리", () => {
       const responsePromise = page.waitForResponse((response) => response.url().endsWith("/api/concerts") && response.request().method() === "POST");
       await page.getByRole("button", { name: "콘서트 등록", exact: true }).click();
       const response = await responsePromise;
+      const body = await response.json();
 
       expect(response.status()).toBe(201);
       expect(response.request().postDataJSON()).toEqual({
@@ -36,9 +37,21 @@ test.describe("콘서트 등록 페이지 정상 처리", () => {
         posterUrl: null,
         description: "정상 등록 시나리오",
       });
-      await expect(page).toHaveURL(/\/concerts\/\d+$/);
-      concertId = Number(new URL(page.url()).pathname.split("/").at(-1));
+      expect(body).toMatchObject({
+        success: true,
+        data: {
+          title,
+          genre: "BALLAD",
+          placeName: "E2E 공연장",
+          posterUrl: null,
+          description: "정상 등록 시나리오",
+        },
+      });
+
+      concertId = body.data.id;
       expect(concertId).toBeGreaterThan(0);
+
+      await expect(page).toHaveURL(`/concerts/${concertId}/performances/new`);
 
       const getResponse = await page.request.get(`/api/concerts/${concertId}`);
       expect(getResponse.status()).toBe(200);
