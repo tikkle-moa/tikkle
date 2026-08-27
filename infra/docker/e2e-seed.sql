@@ -20,7 +20,7 @@ VALUES (
         'E2E 테스트 공연장',
         NULL,
         '정상 상세 흐름 검증용 데이터입니다.',
-        '2026-01-01 10:00:00'
+        NOW()
     ),
     (
         900001,
@@ -29,7 +29,7 @@ VALUES (
         'E2E 테스트 공연장',
         NULL,
         '회차 없음 상태 검증용 데이터입니다.',
-        '2026-01-01 10:00:00'
+        NOW()
     )
 ON DUPLICATE KEY UPDATE
     title = VALUES(title),
@@ -51,17 +51,17 @@ VALUES (
         900000,
         900000,
         'E2E 정상 콘서트 1회차',
-        '2027-01-10 19:00:00',
-        '2026-12-01 10:00:00',
-        '2026-01-01 10:00:00'
+        DATE_ADD(NOW(), INTERVAL 30 DAY),
+        DATE_ADD(NOW(), INTERVAL 7 DAY),
+        NOW()
     ),
     (
         900001,
         900000,
         'E2E 종료 회차',
-        '2020-01-10 19:00:00',
-        '2019-12-01 10:00:00',
-        '2020-01-01 10:00:00'
+        DATE_SUB(NOW(), INTERVAL 30 DAY),
+        DATE_SUB(NOW(), INTERVAL 60 DAY),
+        NOW()
     )
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
