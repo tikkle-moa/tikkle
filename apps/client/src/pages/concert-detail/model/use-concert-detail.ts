@@ -8,7 +8,7 @@ export const useConcertDetail = () => {
   const id = Number(concertId);
   const isParamValid = Number.isInteger(id) && id > 0;
   const isAdmin = useSessionStore((state) => state.user?.role === USER_ROLE.ADMIN);
-  const { data, isPending, isError } = useConcertDetailQuery(id);
+  const { data, isPending, isError, refetch } = useConcertDetailQuery(id);
 
   return {
     concert: data?.concert,
@@ -17,5 +17,6 @@ export const useConcertDetail = () => {
     isError,
     isParamValid,
     isPending,
+    refetch,
   };
 };
