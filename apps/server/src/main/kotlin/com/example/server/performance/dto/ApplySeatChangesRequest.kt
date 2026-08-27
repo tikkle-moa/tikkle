@@ -13,6 +13,7 @@ data class ApplySeatChangesRequest(
   @field:Valid
   val seats: List<SeatChangeRequest> = emptyList(),
 
+  @field:Valid
   val deletedSeatIds: List<
     @Positive(message = "좌석 ID는 양수여야 합니다.")
     Long,
