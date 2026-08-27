@@ -28,13 +28,28 @@ test.describe("콘서트 상세", () => {
 
     await expect(page.getByRole("heading", { name: CONCERT_WITHOUT_PERFORMANCE.title })).toBeVisible();
     await expect(page.getByText("회차 준비 중", { exact: true })).toBeVisible();
-    await expect(page.getByText("예매 회차를 준비 중입니다", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "좌석 선택하기" })).toBeDisabled();
+    await expect(page.getByText("총 0회", { exact: true })).toBeVisible();
+    await expect(page.getByText("등록된 공연 회차가 없습니다", { exact: true })).toBeVisible();
+    await expect(page.getByRole("list", { name: "공연 회차 목록" })).toHaveCount(0);
 
     await expect(page.getByRole("link", { name: `${CONCERT_WITHOUT_PERFORMANCE.title} 수정` })).toHaveAttribute(
       "href",
       `/concerts/${CONCERT_WITHOUT_PERFORMANCE.id}/edit`,
     );
+  });
+
+  test("존재하지 않는 콘서트에 접근하면 404 응답과 오류 안내를 표시한다", async ({ page }) => {
+    const missingId = 2_147_483_647;
+    const responsePromise = page.waitForResponse(
+      (response) => response.url().endsWith(`/api/concerts/${missingId}`) && response.request().method() === "GET",
+    );
+
+    await page.goto(`/concerts/${missingId}`);
+    const response = await responsePromise;
+
+    expect(response.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: "공연 정보를 불러오지 못했습니다." })).toBeVisible();
+    await expect(page.getByText("잠시 후 다시 시도해 주세요.")).toBeVisible();
   });
 
   for (const concertId of ["not-a-number", "0", "-1"]) {
