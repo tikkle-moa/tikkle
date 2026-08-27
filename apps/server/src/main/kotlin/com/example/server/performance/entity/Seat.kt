@@ -1,6 +1,5 @@
 package com.example.server.performance.entity
 
-import com.example.server.concert.entity.Concert
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
@@ -12,32 +11,42 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.CreationTimestamp
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @Entity
 @Table(
-  name = "performances",
+  name = "seats",
   uniqueConstraints = [
-    UniqueConstraint(name = "uq_perf", columnNames = ["concert_id", "starts_at"]),
+    UniqueConstraint(name = "uq_seat", columnNames = ["performance_id", "section_name", "seat_number"]),
   ],
 )
-class Performance(
+class Seat(
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   var id: Long = 0,
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "concert_id", nullable = false)
-  var concert: Concert,
+  @JoinColumn(name = "performance_id", nullable = false)
+  var performance: Performance,
 
-  @Column(nullable = false, length = 255)
-  var name: String,
+  @Column(name = "section_name", nullable = false, length = 50)
+  var sectionName: String,
 
-  @Column(name = "starts_at", nullable = false)
-  var startsAt: LocalDateTime,
+  @Column(name = "seat_number", nullable = false)
+  var seatNumber: Int,
 
-  @Column(name = "booking_opens_at")
-  var bookingOpensAt: LocalDateTime? = null,
+  @Column(name = "seat_label", nullable = false, length = 50)
+  var seatLabel: String,
+
+  @Column(nullable = false)
+  var price: Int,
+
+  @Column(name = "position_x", nullable = false, precision = 8, scale = 2)
+  var positionX: BigDecimal,
+
+  @Column(name = "position_y", nullable = false, precision = 8, scale = 2)
+  var positionY: BigDecimal,
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
