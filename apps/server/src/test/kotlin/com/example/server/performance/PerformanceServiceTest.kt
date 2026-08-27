@@ -5,22 +5,28 @@ import com.example.server.concert.repository.ConcertRepository
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.dto.ApplySeatChangesRequest
 import com.example.server.performance.dto.CreatePerformanceRequest
+import com.example.server.performance.dto.SeatChangeRequest
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
+import com.example.server.performance.entity.Seat
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.performance.repository.SeatRepository
 import com.example.server.performance.types.PerformanceStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.anyList
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.openapitools.jackson.nullable.JsonNullable
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.Optional
 import kotlin.test.assertEquals
@@ -32,6 +38,9 @@ class PerformanceServiceTest {
 
   @Mock
   lateinit var performanceRepository: PerformanceRepository
+
+  @Mock
+  lateinit var seatRepository: SeatRepository
 
   @InjectMocks
   lateinit var performanceService: PerformanceService
@@ -54,6 +63,16 @@ class PerformanceServiceTest {
     name = "1회차",
     startsAt = startsAt,
     bookingOpensAt = bookingOpensAt,
+  )
+
+  private fun seatRequest(id: Long? = null, seatNumber: Int = 1) = SeatChangeRequest(
+    id = id,
+    sectionName = "A구역",
+    seatNumber = seatNumber,
+    seatLabel = "A-$seatNumber",
+    price = 100_000,
+    positionX = BigDecimal("10.00"),
+    positionY = BigDecimal("20.00"),
   )
 
   @Test
@@ -331,5 +350,161 @@ class PerformanceServiceTest {
     }
 
     assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
+  }
+
+  @Test
+  fun `좌석을 일괄 생성하고 수정한다`() {
+    val performance = performance()
+    val existingSeat = Seat(
+      id = 10L,
+      performance = performance,
+      sectionName = "B구역",
+      seatNumber = 5,
+      seatLabel = "B-5",
+      price = 50_000,
+      positionX = BigDecimal.ZERO,
+      positionY = BigDecimal.ZERO,
+    )
+    val createdSeat = Seat(
+      id = 11L,
+      performance = performance,
+      sectionName = "A구역",
+      seatNumber = 1,
+      seatLabel = "A-1",
+      price = 100_000,
+      positionX = BigDecimal("10.00"),
+      positionY = BigDecimal("20.00"),
+    )
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
+    given(seatRepository.findAllByPerformanceId(1L))
+      .willReturn(listOf(existingSeat), listOf(createdSeat, existingSeat))
+    given(seatRepository.saveAll<Seat>(anyList())).willAnswer { it.getArgument(0) }
+
+    val result = performanceService.applySeatChanges(
+      1L,
+      ApplySeatChangesRequest(seats = listOf(seatRequest(), seatRequest(id = 10L, seatNumber = 2))),
+    )
+
+    assertThat(result).hasSize(2)
+    assertThat(existingSeat.sectionName).isEqualTo("A구역")
+    assertThat(existingSeat.seatNumber).isEqualTo(2)
+    then(seatRepository).should().saveAll<Seat>(anyList())
+  }
+
+  @Test
+  fun `삭제 목록에 포함된 좌석을 삭제한다`() {
+    val performance = performance()
+    val seat = Seat(
+      id = 10L,
+      performance = performance,
+      sectionName = "A구역",
+      seatNumber = 1,
+      seatLabel = "A-1",
+      price = 100_000,
+      positionX = BigDecimal.ZERO,
+      positionY = BigDecimal.ZERO,
+    )
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
+    given(seatRepository.findAllByPerformanceId(1L)).willReturn(listOf(seat), emptyList())
+
+    val result = performanceService.applySeatChanges(
+      1L,
+      ApplySeatChangesRequest(deletedSeatIds = listOf(10L)),
+    )
+
+    assertThat(result).isEmpty()
+    then(seatRepository).should().deleteAll(listOf(seat))
+  }
+
+  @Test
+  fun `다른 회차의 좌석을 변경하면 NOT_FOUND를 던진다`() {
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
+    given(seatRepository.findAllByPerformanceId(1L)).willReturn(emptyList())
+
+    val exception = assertThrows<CustomException> {
+      performanceService.applySeatChanges(
+        1L,
+        ApplySeatChangesRequest(seats = listOf(seatRequest(id = 10L))),
+      )
+    }
+
+    assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
+  }
+
+  @Test
+  fun `존재하지 않는 회차의 좌석을 변경하면 NOT_FOUND를 던진다`() {
+    given(performanceRepository.findById(99L)).willReturn(Optional.empty())
+
+    val exception = assertThrows<CustomException> {
+      performanceService.applySeatChanges(99L, ApplySeatChangesRequest())
+    }
+
+    assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
+    then(seatRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `수정할 좌석 ID가 중복되면 BAD_REQUEST를 던진다`() {
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
+
+    val exception = assertThrows<CustomException> {
+      performanceService.applySeatChanges(
+        1L,
+        ApplySeatChangesRequest(
+          seats = listOf(seatRequest(id = 10L), seatRequest(id = 10L, seatNumber = 2)),
+        ),
+      )
+    }
+
+    assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
+    then(seatRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `삭제할 좌석 ID가 중복되면 BAD_REQUEST를 던진다`() {
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
+
+    val exception = assertThrows<CustomException> {
+      performanceService.applySeatChanges(
+        1L,
+        ApplySeatChangesRequest(deletedSeatIds = listOf(10L, 10L)),
+      )
+    }
+
+    assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
+    then(seatRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `같은 좌석을 수정하고 삭제하면 BAD_REQUEST를 던진다`() {
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
+
+    val exception = assertThrows<CustomException> {
+      performanceService.applySeatChanges(
+        1L,
+        ApplySeatChangesRequest(
+          seats = listOf(seatRequest(id = 10L)),
+          deletedSeatIds = listOf(10L),
+        ),
+      )
+    }
+
+    assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
+    then(seatRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `같은 구역의 좌석 번호가 중복되면 BAD_REQUEST를 던진다`() {
+    given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
+
+    val exception = assertThrows<CustomException> {
+      performanceService.applySeatChanges(
+        1L,
+        ApplySeatChangesRequest(seats = listOf(seatRequest(), seatRequest())),
+      )
+    }
+
+    assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
+    then(seatRepository).shouldHaveNoInteractions()
   }
 }

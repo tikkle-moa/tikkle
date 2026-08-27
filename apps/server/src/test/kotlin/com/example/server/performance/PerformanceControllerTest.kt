@@ -10,9 +10,11 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
+import com.example.server.performance.dto.ApplySeatChangesRequest
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
+import com.example.server.performance.dto.SeatChangeRequest
 import com.example.server.performance.dto.SeatResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.types.PerformanceStatus
@@ -428,6 +430,72 @@ class PerformanceControllerTest {
       mockMvc.patch("/api/performances/1") {
         contentType = MediaType.APPLICATION_JSON
         content = """{"startsAt":"2027-01-21T19:00:00"}"""
+        with(authentication(userAuth))
+        with(csrf())
+      }.andExpect {
+        status { isForbidden() }
+      }
+
+      then(performanceService).shouldHaveNoInteractions()
+    }
+  }
+
+  @Nested
+  @DisplayName("PATCH /api/performances/{id}/seats")
+  inner class ApplySeatChanges {
+    private val request = ApplySeatChangesRequest(
+      seats = listOf(
+        SeatChangeRequest(
+          sectionName = "A구역",
+          seatNumber = 1,
+          seatLabel = "A-1",
+          price = 100_000,
+          positionX = BigDecimal("10.00"),
+          positionY = BigDecimal("20.00"),
+        ),
+      ),
+      deletedSeatIds = listOf(2L),
+    )
+
+    @Test
+    fun `관리자가 좌석을 일괄 변경하면 200을 반환한다`() {
+      val response = performanceDetailResponse().seats
+      given(performanceService.applySeatChanges(1L, request)).willReturn(response)
+
+      mockMvc.patch("/api/performances/1/seats") {
+        contentType = MediaType.APPLICATION_JSON
+        content = objectMapper.writeValueAsString(request)
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isOk() }
+        jsonPath("$.success") { value(true) }
+        jsonPath("$.data[0].id") { value(1) }
+      }
+
+      then(performanceService).should().applySeatChanges(1L, request)
+    }
+
+    @Test
+    fun `좌석 ID가 양수가 아니면 400을 반환한다`() {
+      mockMvc.patch("/api/performances/1/seats") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"deletedSeatIds":[0]}"""
+        with(authentication(adminAuth))
+        with(csrf())
+      }.andExpect {
+        status { isBadRequest() }
+        jsonPath("$.success") { value(false) }
+      }
+
+      then(performanceService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `일반 사용자가 좌석을 변경하면 403을 반환한다`() {
+      mockMvc.patch("/api/performances/1/seats") {
+        contentType = MediaType.APPLICATION_JSON
+        content = objectMapper.writeValueAsString(request)
         with(authentication(userAuth))
         with(csrf())
       }.andExpect {
