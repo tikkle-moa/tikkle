@@ -189,20 +189,33 @@ describe("PerformanceBookingPanel", () => {
     expect(screen.getAllByTestId("performance-form")).toHaveLength(2);
     expect(screen.getAllByTestId("performance-form")[0]).toHaveTextContent("1:저장");
     expect(screen.getAllByTestId("performance-form")[1]).toHaveTextContent("create:등록");
+
+    const [editForm, createForm] = screen.getAllByTestId("performance-form");
+
+    expect(editForm.closest("ul")).toBeInTheDocument();
+    expect(createForm.closest("ul")).not.toBeInTheDocument();
+
     expect(mockToPerformanceFormValues).toHaveBeenCalledWith(performance);
 
     const editFormProps = mockPerformanceForm.mock.calls.find(([props]) => props.performanceId === performance.id)?.[0];
+    const createFormProps = mockPerformanceForm.mock.calls.find(([props]) => props.performanceId === undefined)?.[0];
 
     expect(editFormProps).toBeDefined();
+    expect(createFormProps).toBeDefined();
 
     editFormProps.onCancel();
     await editFormProps.onSaved();
     editFormProps.onSuccess();
 
+    createFormProps.onCancel();
+    await createFormProps.onSaved();
+    createFormProps.onSuccess();
+
     expect(mockHandleEditClose).toHaveBeenCalledTimes(2);
     expect(mockHandleEditClose).toHaveBeenNthCalledWith(1, performance.id);
     expect(mockHandleEditClose).toHaveBeenNthCalledWith(2, performance.id);
-    expect(onChanged).toHaveBeenCalledOnce();
+    expect(mockHandleCreateClose).toHaveBeenCalledTimes(2);
+    expect(onChanged).toHaveBeenCalledTimes(2);
   });
 
   it("관리자는 종료 회차를 수정할 수 없다", () => {

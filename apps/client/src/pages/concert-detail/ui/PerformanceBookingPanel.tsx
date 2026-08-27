@@ -59,7 +59,7 @@ const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }
         </div>
       )}
 
-      {(hasPerformances || isCreateOpen) && (
+      {hasPerformances && (
         <ul
           aria-label="공연 회차 목록"
           className="scrollbar-thumb-brand-primary/60 max-h-70 scrollbar-thin divide-y divide-gray-100 overflow-y-auto overscroll-contain px-5"
@@ -169,18 +169,6 @@ const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }
               </li>
             );
           })}
-
-          {isCreateOpen && (
-            <li className="-mx-5 bg-violet-50/40 px-5 py-3">
-              <PerformanceForm
-                concertId={concertId}
-                onCancel={handleCreateClose}
-                onSaved={onChanged}
-                onSuccess={handleCreateClose}
-                submitLabel="등록"
-              />
-            </li>
-          )}
         </ul>
       )}
 
@@ -190,18 +178,29 @@ const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }
         </p>
       )}
 
-      {isAdmin && !isCreateOpen && (
-        <div className={hasPerformances ? "border-t border-gray-100 p-3" : "px-5 pb-5"}>
-          <button
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-violet-300 bg-violet-50 px-3 py-2.5 text-sm font-semibold text-violet-700"
-            onClick={handleCreateOpen}
-            type="button"
-          >
-            <Plus aria-hidden className="size-4" />
-            공연 회차 추가
-          </button>
-        </div>
-      )}
+      {isAdmin &&
+        (isCreateOpen ? (
+          <div className="border-t border-gray-100 bg-violet-50/40 px-5 py-3">
+            <PerformanceForm
+              concertId={concertId}
+              onCancel={handleCreateClose}
+              onSaved={onChanged}
+              onSuccess={handleCreateClose}
+              submitLabel="등록"
+            />
+          </div>
+        ) : (
+          <div className={hasPerformances ? "border-t border-gray-100 p-3" : "px-5 pb-5"}>
+            <button
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-violet-300 bg-violet-50 px-3 py-2.5 text-sm font-semibold text-violet-700"
+              onClick={handleCreateOpen}
+              type="button"
+            >
+              <Plus aria-hidden className="size-4" />
+              공연 회차 추가
+            </button>
+          </div>
+        ))}
     </aside>
   );
 };
