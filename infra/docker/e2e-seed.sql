@@ -42,6 +42,7 @@ INSERT INTO
     performances (
         id,
         concert_id,
+        name,
         starts_at,
         booking_opens_at,
         created_at
@@ -49,10 +50,20 @@ INSERT INTO
 VALUES (
         900000,
         900000,
+        'E2E 정상 콘서트 1회차',
         '2027-01-10 19:00:00',
         '2026-12-01 10:00:00',
         '2026-01-01 10:00:00'
+    ),
+    (
+        900001,
+        900000,
+        'E2E 종료 회차',
+        '2020-01-10 19:00:00',
+        '2019-12-01 10:00:00',
+        '2020-01-01 10:00:00'
     )
 ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
     starts_at = VALUES(starts_at),
     booking_opens_at = VALUES(booking_opens_at);
