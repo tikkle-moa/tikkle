@@ -68,7 +68,6 @@ VALUES (
         @e2e_venue_id,
         'E2E 정상 콘서트',
         'INDIE',
-        @e2e_venue_name,
         NULL,
         '정상 상세 흐름 검증용 데이터입니다.',
         NOW()
@@ -78,7 +77,6 @@ VALUES (
         @e2e_venue_id,
         'E2E 회차 없는 콘서트',
         'INDIE',
-        @e2e_venue_name,
         NULL,
         '회차 없음 상태 검증용 데이터입니다.',
         NOW()
