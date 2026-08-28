@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
-import type { PerformanceResponse, SeatResponse } from "@entities/performance";
+import type { PerformanceResponse } from "@entities/performance";
+import type { VenueSeatResponse } from "@entities/venue";
 
 import PerformanceSeatMap from "@pages/performance-detail/ui/PerformanceSeatMap";
 
@@ -17,7 +18,7 @@ const performance = {
 const seats = [
   {
     id: 1,
-    performanceId: 1,
+    venueId: 1,
     sectionName: "A구역",
     seatNumber: 1,
     seatLabel: "A구역 1번",
@@ -25,11 +26,10 @@ const seats = [
     positionX: 5,
     positionY: 3,
     createdAt: "2026-08-25T12:00:00",
-    booked: false,
   },
   {
     id: 2,
-    performanceId: 1,
+    venueId: 1,
     sectionName: "A구역",
     seatNumber: 2,
     seatLabel: "A구역 2번",
@@ -37,9 +37,8 @@ const seats = [
     positionX: 10,
     positionY: 8,
     createdAt: "2026-08-25T12:00:00",
-    booked: false,
   },
-] as SeatResponse[];
+] as VenueSeatResponse[];
 
 describe("PerformanceSeatMap", () => {
   it("좌석 배치도 구현을 위한 기본 화면을 표시한다", () => {

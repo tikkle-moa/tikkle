@@ -28,7 +28,7 @@ vi.mock("react-router", async (importOriginal) => {
 });
 vi.mock("@shared/api", () => ({ apiClient: { GET: mockGet, PATCH: mockPatch } }));
 
-const initialValues = { title: "기존 공연", genre: "INDIE" as const, placeName: "공연장", posterUrl: null, description: null };
+const initialValues = { venueId: 1, title: "기존 공연", genre: "INDIE" as const, posterUrl: null, description: null };
 const changedValues = { ...initialValues, title: "수정된 콘서트" };
 
 describe("useConcertEdit", () => {

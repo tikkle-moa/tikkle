@@ -3,13 +3,50 @@ import userEvent from "@testing-library/user-event";
 
 import { ConcertForm } from "@features/concert-form";
 
+const { mockUseVenues } = vi.hoisted(() => ({
+  mockUseVenues: vi.fn(),
+}));
+
+vi.mock("@entities/venue", () => ({
+  useVenues: mockUseVenues,
+}));
+
 describe("ConcertForm", () => {
+  beforeEach(() => {
+    mockUseVenues.mockReturnValue({
+      data: [{ id: 1, name: "블루스퀘어" }],
+      isLoading: false,
+      isError: false,
+    });
+  });
+
+  it("공연장 목록을 조회하는 동안 로딩 화면을 표시한다", () => {
+    mockUseVenues.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+
+    const { container } = render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
+
+    expect(container.querySelector(".animate-spin")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "콘서트 등록" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { data: undefined, isError: true },
+    { data: [], isError: false },
+  ])("공연장 목록을 사용할 수 없으면 오류 화면을 표시한다", ({ data, isError }) => {
+    mockUseVenues.mockReturnValue({ data, isLoading: false, isError });
+
+    render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
+
+    expect(screen.getByText("공연장 정보를 불러오지 못했습니다.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "콘서트 등록" })).not.toBeInTheDocument();
+  });
+
   it("생성 모드의 모든 입력 필드를 렌더링한다", () => {
     render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
 
     expect(screen.getByRole("textbox", { name: /콘서트 제목/ })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /장르/ })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /공연 장소/ })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /공연장/ })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /포스터 URL/ })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /콘서트 설명/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "콘서트 등록" })).toBeInTheDocument();
@@ -23,7 +60,7 @@ describe("ConcertForm", () => {
 
     expect(await screen.findByText("콘서트 제목을 입력해 주세요.")).toBeInTheDocument();
     expect(screen.getByText("장르를 선택해 주세요.")).toBeInTheDocument();
-    expect(screen.getByText("공연 장소를 입력해 주세요.")).toBeInTheDocument();
+    expect(screen.getByText("공연장을 선택해 주세요.")).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -33,14 +70,14 @@ describe("ConcertForm", () => {
 
     await userEvent.type(screen.getByRole("textbox", { name: /콘서트 제목/ }), "  Tikkle Live  ");
     await userEvent.selectOptions(screen.getByRole("combobox", { name: /장르/ }), "INDIE");
-    await userEvent.type(screen.getByRole("textbox", { name: /공연 장소/ }), "블루스퀘어");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: /공연장/ }), "1");
     await userEvent.type(screen.getByRole("textbox", { name: /포스터 URL/ }), "https://example.com/poster.jpg");
     await userEvent.click(screen.getByRole("button", { name: "콘서트 등록" }));
 
     expect(onSubmit).toHaveBeenCalledWith({
+      venueId: 1,
       title: "Tikkle Live",
       genre: "INDIE",
-      placeName: "블루스퀘어",
       posterUrl: "https://example.com/poster.jpg",
       description: null,
     });
@@ -49,7 +86,7 @@ describe("ConcertForm", () => {
   it("수정 모드에서 초깃값과 서버 오류를 표시한다", () => {
     render(
       <ConcertForm
-        initialValues={{ title: "기존 콘서트", genre: "BALLAD", placeName: "KSPO DOME" }}
+        initialValues={{ venueId: 1, title: "기존 콘서트", genre: "BALLAD" }}
         submitLabel="변경사항 저장"
         submitState={{ status: "error", error: "콘서트를 수정하지 못했습니다." }}
         onSubmit={vi.fn()}
@@ -89,7 +126,7 @@ describe("ConcertForm", () => {
     const onSubmit = vi.fn();
     render(
       <ConcertForm
-        initialValues={{ title: "공연", genre: "INDIE", placeName: "공연장" }}
+        initialValues={{ venueId: 1, title: "공연", genre: "INDIE" }}
         submitLabel="변경사항 저장"
         submitState={{ status: "idle" }}
         onSubmit={onSubmit}
@@ -107,7 +144,7 @@ describe("ConcertForm", () => {
   it("포스터 이미지 로드 실패를 제출 시 오류로 표시하고 URL 수정 시 오류를 해제한다", async () => {
     render(
       <ConcertForm
-        initialValues={{ title: "공연", genre: "INDIE", placeName: "공연장", posterUrl: "https://example.com/missing.jpg" }}
+        initialValues={{ venueId: 1, title: "공연", genre: "INDIE", posterUrl: "https://example.com/missing.jpg" }}
         submitLabel="콘서트 등록"
         submitState={{ status: "idle" }}
         onSubmit={vi.fn()}

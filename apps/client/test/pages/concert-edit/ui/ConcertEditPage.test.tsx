@@ -46,7 +46,7 @@ describe("ConcertEditPage", () => {
       ...baseState,
       loadState: {
         status: "success",
-        data: { title: "기존 공연", genre: "INDIE", placeName: "공연장", posterUrl: null, description: null },
+        data: { title: "기존 공연", genre: "INDIE", venueId: 1, venueName: "공연장", posterUrl: null, description: null },
       },
     });
     render(<ConcertEditPage />);

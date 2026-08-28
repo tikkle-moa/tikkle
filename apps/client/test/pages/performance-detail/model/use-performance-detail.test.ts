@@ -29,14 +29,12 @@ const performance = {
   createdAt: "2026-08-25T12:00:00",
   status: "UPCOMING",
 };
-const seats = [{ id: 1, performanceId: 3, seatLabel: "A구역 1번" }];
-
 describe("usePerformanceDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseParams.mockReturnValue({ performanceId: "3" });
     mockUsePerformanceDetailQuery.mockReturnValue({
-      data: { performance, seats },
+      data: performance,
       isError: false,
       isPending: false,
     });
@@ -49,7 +47,7 @@ describe("usePerformanceDetail", () => {
     expect(result.current).toEqual({
       isParamValid: true,
       performance,
-      seats,
+      seats: [],
       isError: false,
       isPending: false,
     });
