@@ -459,7 +459,7 @@ class PerformanceServiceTest {
         positionY = BigDecimal("20.00"),
       )
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
-      given(seatRepository.findAllByPerformanceId(1L))
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L))
         .willReturn(listOf(existingSeat), listOf(createdSeat, existingSeat))
       given(seatRepository.saveAll<Seat>(anyList())).willAnswer { it.getArgument(0) }
 
@@ -488,7 +488,7 @@ class PerformanceServiceTest {
         positionY = BigDecimal.ZERO,
       )
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
-      given(seatRepository.findAllByPerformanceId(1L)).willReturn(listOf(seat), emptyList())
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(listOf(seat), emptyList())
 
       val result = performanceService.applySeatChanges(
         1L,
@@ -505,7 +505,7 @@ class PerformanceServiceTest {
     @Test
     fun `다른 회차의 좌석을 변경하면 NOT_FOUND를 던진다`() {
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
-      given(seatRepository.findAllByPerformanceId(1L)).willReturn(emptyList())
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(emptyList())
 
       val exception = assertThrows<CustomException> {
         performanceService.applySeatChanges(
@@ -591,7 +591,7 @@ class PerformanceServiceTest {
       }
 
       assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
-      then(seatRepository).should().findAllByPerformanceId(1L)
+      then(seatRepository).should().findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)
       then(seatRepository).shouldHaveNoMoreInteractions()
     }
 
@@ -609,7 +609,7 @@ class PerformanceServiceTest {
         positionY = BigDecimal.ZERO,
       )
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
-      given(seatRepository.findAllByPerformanceId(1L)).willReturn(listOf(existingSeat))
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(listOf(existingSeat))
 
       val exception = assertThrows<CustomException> {
         performanceService.applySeatChanges(
@@ -619,7 +619,7 @@ class PerformanceServiceTest {
       }
 
       assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
-      then(seatRepository).should().findAllByPerformanceId(1L)
+      then(seatRepository).should().findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)
       then(seatRepository).shouldHaveNoMoreInteractions()
     }
   }

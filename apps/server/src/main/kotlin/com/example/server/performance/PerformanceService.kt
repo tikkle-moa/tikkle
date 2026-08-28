@@ -35,10 +35,11 @@ class PerformanceService(
   fun getPerformance(id: Long): PerformanceDetailResponse {
     val performance = performanceRepository.findById(id)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+    val seats = seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(id)
 
     return PerformanceDetailResponse(
       performance = PerformanceResponse.from(performance),
-      seats = findSeatResponses(id),
+      seats = seats.map(SeatResponse::from),
     )
   }
 
@@ -46,16 +47,13 @@ class PerformanceService(
   fun getSeats(performanceId: Long): SeatListResponse {
     performanceRepository.findById(performanceId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+    val seats = seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId)
 
     return SeatListResponse(
       serverTime = LocalDateTime.now(),
-      seats = findSeatResponses(performanceId),
+      seats = seats.map(SeatResponse::from),
     )
   }
-
-  private fun findSeatResponses(performanceId: Long): List<SeatResponse> =
-    seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId)
-      .map(SeatResponse::from)
 
   @Transactional
   fun applySeatChanges(performanceId: Long, request: ApplySeatChangesRequest): List<SeatResponse> {
@@ -74,7 +72,7 @@ class PerformanceService(
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 좌석을 수정하고 삭제할 수 없습니다.")
     }
 
-    val currentSeats = seatRepository.findAllByPerformanceId(performanceId)
+    val currentSeats = seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId)
     val currentSeatsById = currentSeats.associateBy { it.id }
     if (!currentSeatsById.keys.containsAll(requestedIds + request.deletedSeatIds)) {
       throw CustomException(ErrorCode.NOT_FOUND, "변경할 좌석을 찾을 수 없습니다.")
@@ -118,7 +116,7 @@ class PerformanceService(
     }
     seatRepository.saveAll(seats)
 
-    val updatedSeats = seatRepository.findAllByPerformanceId(performanceId)
+    val updatedSeats = seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId)
     return updatedSeats.map(SeatResponse::from)
   }
 
