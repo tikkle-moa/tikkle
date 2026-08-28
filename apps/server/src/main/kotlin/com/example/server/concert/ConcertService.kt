@@ -55,8 +55,8 @@ class ConcertService(
     val concert = concertRepository.findById(id)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND) }
 
-    concertRepository.delete(concert)
     performanceRepository.deleteAllByConcertId(id)
+    concertRepository.delete(concert)
   }
 
   @Transactional(readOnly = true)
