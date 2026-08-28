@@ -34,9 +34,6 @@ class Concert(
   @Column(nullable = false)
   var genre: ConcertGenre,
 
-  @Column(name = "venue_name", nullable = false, length = 255)
-  var venueName: String,
-
   @Column(name = "poster_url", length = 500)
   var posterUrl: String? = null,
 

@@ -19,7 +19,7 @@ data class ConcertListResponse(
       venueId = concert.venue.id,
       title = concert.title,
       genre = concert.genre,
-      venueName = concert.venueName,
+      venueName = concert.venue.name,
       posterUrl = concert.posterUrl,
       createdAt = concert.createdAt,
     )

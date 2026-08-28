@@ -3,32 +3,33 @@
 
 SET NAMES utf8mb4;
 
-INSERT INTO venues (
-    id,
-    name,
-    address,
-    description,
-    width,
-    height,
-    stage_position_x,
-    stage_position_y,
-    stage_width,
-    stage_height,
-    created_at
-)
+INSERT INTO
+    venues (
+        id,
+        name,
+        address,
+        description,
+        width,
+        height,
+        stage_position_x,
+        stage_position_y,
+        stage_width,
+        stage_height,
+        created_at
+    )
 VALUES (
-    900000,
-    'E2E 테스트 공연장',
-    '서울특별시 E2E구 테스트로 1',
-    'E2E 테스트 전용 공연장입니다.',
-    100.00,
-    100.00,
-    30.00,
-    7.50,
-    40.00,
-    15.00,
-    NOW()
-)
+        900000,
+        'E2E 테스트 공연장',
+        '서울특별시 E2E구 테스트로 1',
+        'E2E 테스트 전용 공연장입니다.',
+        100.00,
+        100.00,
+        30.00,
+        7.50,
+        40.00,
+        15.00,
+        NOW()
+    )
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     address = VALUES(address),
@@ -41,13 +42,16 @@ ON DUPLICATE KEY UPDATE
     stage_height = VALUES(stage_height);
 
 SET @e2e_venue_name = 'E2E 테스트 공연장';
-SET @e2e_venue_id = (
-    SELECT id
-    FROM venues
-    WHERE name = @e2e_venue_name
-    ORDER BY id
-    LIMIT 1
-);
+
+SET
+    @e2e_venue_id = (
+        SELECT id
+        FROM venues
+        WHERE
+            name = @e2e_venue_name
+        ORDER BY id
+        LIMIT 1
+    );
 
 INSERT INTO
     concerts (
@@ -55,7 +59,6 @@ INSERT INTO
         venue_id,
         title,
         genre,
-        venue_name,
         poster_url,
         description,
         created_at
@@ -84,7 +87,6 @@ ON DUPLICATE KEY UPDATE
     venue_id = VALUES(venue_id),
     title = VALUES(title),
     genre = VALUES(genre),
-    venue_name = VALUES(venue_name),
     poster_url = VALUES(poster_url),
     description = VALUES(description);
 
