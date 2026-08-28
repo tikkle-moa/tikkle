@@ -11,17 +11,25 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.PerformanceResponse
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.venue.repository.VenueRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class ConcertService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
+class ConcertService(
+  private val concertRepository: ConcertRepository,
+  private val performanceRepository: PerformanceRepository,
+  private val venueRepository: VenueRepository,
+) {
   @Transactional
   fun create(createConcertRequest: CreateConcertRequest): ConcertResponse {
+    val venue = venueRepository.findById(createConcertRequest.venueId)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연장을 찾을 수 없습니다.") }
     val concert = Concert(
+      venue = venue,
       title = createConcertRequest.title,
       genre = createConcertRequest.genre,
-      placeName = createConcertRequest.placeName,
+      venueName = venue.name,
       posterUrl = createConcertRequest.posterUrl,
       description = createConcertRequest.description,
     )
@@ -36,7 +44,6 @@ class ConcertService(private val concertRepository: ConcertRepository, private v
 
     updateConcertRequest.title.ifPresent { concert.title = it }
     updateConcertRequest.genre.ifPresent { concert.genre = it }
-    updateConcertRequest.placeName.ifPresent { concert.placeName = it }
     updateConcertRequest.posterUrl.ifPresent { concert.posterUrl = it }
     updateConcertRequest.description.ifPresent { concert.description = it }
 
