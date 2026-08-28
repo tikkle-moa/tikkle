@@ -58,6 +58,7 @@ class SecurityConfig(
         configureAuthAuthorization(auth)
         configureConcertAuthorization(auth)
         configurePerformanceAuthorization(auth)
+        configureVenueAuthorization(auth)
 
         auth.anyRequest().hasRole(UserRole.ADMIN.name)
       }
