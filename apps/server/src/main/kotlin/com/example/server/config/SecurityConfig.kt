@@ -96,7 +96,7 @@ class SecurityConfig(
 
   private fun configurePerformanceAuthorization(auth: AuthorizationRegistry) {
     auth
-      .requestMatchers(HttpMethod.GET, "/api/performances", "/api/performances/*").permitAll()
+      .requestMatchers(HttpMethod.GET, "/api/performances", "/api/performances/*", "/api/performances/*/seats").permitAll()
       .requestMatchers(HttpMethod.POST, "/api/performances").hasRole(UserRole.ADMIN.name)
       .requestMatchers(HttpMethod.PATCH, "/api/performances/**").hasRole(UserRole.ADMIN.name)
       .requestMatchers(HttpMethod.DELETE, "/api/performances/**").hasRole(UserRole.ADMIN.name)

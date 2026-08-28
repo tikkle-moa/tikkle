@@ -15,6 +15,7 @@ import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
 import com.example.server.performance.dto.SeatChangeRequest
+import com.example.server.performance.dto.SeatListResponse
 import com.example.server.performance.dto.SeatResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.types.PerformanceStatus
@@ -216,6 +217,44 @@ class PerformanceControllerTest {
         .willThrow(CustomException(ErrorCode.NOT_FOUND))
 
       mockMvc.get("/api/performances/99")
+        .andExpect {
+          status { isNotFound() }
+          jsonPath("$.success") { value(false) }
+          jsonPath("$.error.code") { value(404) }
+        }
+    }
+  }
+
+  @Nested
+  @DisplayName("GET /api/performances/{id}/seats")
+  inner class GetSeats {
+    @Test
+    fun `인증 없이 서버 시각과 좌석 목록을 조회한다`() {
+      val response = SeatListResponse(
+        serverTime = LocalDateTime.of(2026, 8, 27, 12, 0),
+        seats = performanceDetailResponse().seats,
+      )
+      given(performanceService.getSeats(1L)).willReturn(response)
+
+      mockMvc.get("/api/performances/1/seats")
+        .andExpect {
+          status { isOk() }
+          jsonPath("$.success") { value(true) }
+          jsonPath("$.data.serverTime") { value("2026-08-27T12:00:00") }
+          jsonPath("$.data.seats") { isArray() }
+          jsonPath("$.data.seats[0].sectionName") { value("A구역") }
+          jsonPath("$.data.seats[0].seatNumber") { value(1) }
+        }
+
+      then(performanceService).should().getSeats(1L)
+    }
+
+    @Test
+    fun `없는 공연 회차면 404를 반환한다`() {
+      given(performanceService.getSeats(99L))
+        .willThrow(CustomException(ErrorCode.NOT_FOUND))
+
+      mockMvc.get("/api/performances/99/seats")
         .andExpect {
           status { isNotFound() }
           jsonPath("$.success") { value(false) }

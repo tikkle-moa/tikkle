@@ -7,6 +7,7 @@ import com.example.server.performance.dto.ApplySeatChangesRequest
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
+import com.example.server.performance.dto.SeatListResponse
 import com.example.server.performance.dto.SeatResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
@@ -34,10 +35,23 @@ class PerformanceService(
   fun getPerformance(id: Long): PerformanceDetailResponse {
     val performance = performanceRepository.findById(id)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+    val seats = seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(id)
 
     return PerformanceDetailResponse(
       performance = PerformanceResponse.from(performance),
-      seats = emptyList(),
+      seats = seats.map(SeatResponse::from),
+    )
+  }
+
+  @Transactional(readOnly = true)
+  fun getSeats(performanceId: Long): SeatListResponse {
+    performanceRepository.findById(performanceId)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
+    val seats = seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId)
+
+    return SeatListResponse(
+      serverTime = LocalDateTime.now(),
+      seats = seats.map(SeatResponse::from),
     )
   }
 
@@ -58,7 +72,7 @@ class PerformanceService(
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 좌석을 수정하고 삭제할 수 없습니다.")
     }
 
-    val currentSeats = seatRepository.findAllByPerformanceId(performanceId)
+    val currentSeats = seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId)
     val currentSeatsById = currentSeats.associateBy { it.id }
     if (!currentSeatsById.keys.containsAll(requestedIds + request.deletedSeatIds)) {
       throw CustomException(ErrorCode.NOT_FOUND, "변경할 좌석을 찾을 수 없습니다.")
@@ -102,7 +116,7 @@ class PerformanceService(
     }
     seatRepository.saveAll(seats)
 
-    val updatedSeats = seatRepository.findAllByPerformanceId(performanceId)
+    val updatedSeats = seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(performanceId)
     return updatedSeats.map(SeatResponse::from)
   }
 

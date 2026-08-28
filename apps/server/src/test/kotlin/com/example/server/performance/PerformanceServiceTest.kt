@@ -69,6 +69,17 @@ class PerformanceServiceTest {
     bookingOpensAt = bookingOpensAt,
   )
 
+  private fun seat(id: Long, performance: Performance, sectionName: String, seatNumber: Int) = Seat(
+    id = id,
+    performance = performance,
+    sectionName = sectionName,
+    seatNumber = seatNumber,
+    seatLabel = "$sectionName $seatNumber 번",
+    price = 100_000,
+    positionX = BigDecimal("10.00"),
+    positionY = BigDecimal("20.00"),
+  )
+
   private fun seatRequest(id: Long? = null, seatNumber: Int = 1) = SeatChangeRequest(
     id = id,
     sectionName = "A구역",
@@ -85,13 +96,20 @@ class PerformanceServiceTest {
     @Test
     fun `공연 회차 상세를 반환한다`() {
       val performance = performance()
+      val seats = listOf(
+        seat(1L, performance, "A구역", 1),
+        seat(2L, performance, "A구역", 2),
+        seat(3L, performance, "B구역", 1),
+      )
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L))
+        .willReturn(seats)
 
       val result = performanceService.getPerformance(1L)
 
       assertThat(result.performance.id).isEqualTo(performance.id)
       assertThat(result.performance.concertId).isEqualTo(performance.concert.id)
-      assertThat(result.seats).isEmpty()
+      assertThat(result.seats.map { it.id }).containsExactly(1L, 2L, 3L)
     }
 
     @Test
@@ -179,6 +197,44 @@ class PerformanceServiceTest {
       val result = performanceService.getPerformances()
 
       assertThat(result).isEmpty()
+    }
+  }
+
+  @Nested
+  @DisplayName("getSeats")
+  inner class GetSeats {
+    @Test
+    fun `서버 시각과 정렬된 좌석 목록을 반환한다`() {
+      val performance = performance()
+      val seats = listOf(
+        seat(1L, performance, "A구역", 1),
+        seat(2L, performance, "A구역", 2),
+        seat(3L, performance, "B구역", 1),
+      )
+      given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L))
+        .willReturn(seats)
+
+      val before = LocalDateTime.now()
+      val result = performanceService.getSeats(1L)
+      val after = LocalDateTime.now()
+
+      assertThat(result.seats.map { it.id }).containsExactly(1L, 2L, 3L)
+      assertThat(result.serverTime).isBetween(before, after)
+      then(seatRepository).should()
+        .findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)
+    }
+
+    @Test
+    fun `없는 공연 회차면 NOT_FOUND를 던진다`() {
+      given(performanceRepository.findById(99L)).willReturn(Optional.empty())
+
+      val exception = assertThrows<CustomException> {
+        performanceService.getSeats(99L)
+      }
+
+      assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
+      then(seatRepository).shouldHaveNoInteractions()
     }
   }
 
@@ -403,7 +459,7 @@ class PerformanceServiceTest {
         positionY = BigDecimal("20.00"),
       )
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
-      given(seatRepository.findAllByPerformanceId(1L))
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L))
         .willReturn(listOf(existingSeat), listOf(createdSeat, existingSeat))
       given(seatRepository.saveAll<Seat>(anyList())).willAnswer { it.getArgument(0) }
 
@@ -432,7 +488,7 @@ class PerformanceServiceTest {
         positionY = BigDecimal.ZERO,
       )
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
-      given(seatRepository.findAllByPerformanceId(1L)).willReturn(listOf(seat), emptyList())
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(listOf(seat), emptyList())
 
       val result = performanceService.applySeatChanges(
         1L,
@@ -449,7 +505,7 @@ class PerformanceServiceTest {
     @Test
     fun `다른 회차의 좌석을 변경하면 NOT_FOUND를 던진다`() {
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
-      given(seatRepository.findAllByPerformanceId(1L)).willReturn(emptyList())
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(emptyList())
 
       val exception = assertThrows<CustomException> {
         performanceService.applySeatChanges(
@@ -535,7 +591,7 @@ class PerformanceServiceTest {
       }
 
       assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
-      then(seatRepository).should().findAllByPerformanceId(1L)
+      then(seatRepository).should().findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)
       then(seatRepository).shouldHaveNoMoreInteractions()
     }
 
@@ -553,7 +609,7 @@ class PerformanceServiceTest {
         positionY = BigDecimal.ZERO,
       )
       given(performanceRepository.findById(1L)).willReturn(Optional.of(performance))
-      given(seatRepository.findAllByPerformanceId(1L)).willReturn(listOf(existingSeat))
+      given(seatRepository.findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(listOf(existingSeat))
 
       val exception = assertThrows<CustomException> {
         performanceService.applySeatChanges(
@@ -563,7 +619,7 @@ class PerformanceServiceTest {
       }
 
       assertEquals(ErrorCode.BAD_REQUEST, exception.errorCode)
-      then(seatRepository).should().findAllByPerformanceId(1L)
+      then(seatRepository).should().findAllByPerformanceIdOrderBySectionNameAscSeatNumberAsc(1L)
       then(seatRepository).shouldHaveNoMoreInteractions()
     }
   }
