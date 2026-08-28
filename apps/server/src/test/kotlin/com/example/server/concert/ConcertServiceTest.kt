@@ -26,6 +26,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.inOrder
 import org.mockito.junit.jupiter.MockitoExtension
 import org.openapitools.jackson.nullable.JsonNullable
 import java.math.BigDecimal
@@ -246,9 +247,9 @@ class ConcertServiceTest {
 
       concertService.delete(1L)
 
-      then(concertRepository)
-        .should()
-        .delete(concert)
+      val order = inOrder(performanceRepository, concertRepository)
+      order.verify(performanceRepository).deleteAllByConcertId(1L)
+      order.verify(concertRepository).delete(concert)
     }
 
     @Test

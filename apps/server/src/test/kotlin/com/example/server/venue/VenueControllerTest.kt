@@ -10,6 +10,7 @@ import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
 import com.example.server.venue.dto.CreateVenueDetailRequest
 import com.example.server.venue.dto.CreateVenueRequest
+import com.example.server.venue.dto.CreateVenueSeatRequest
 import com.example.server.venue.dto.VenueDetailResponse
 import com.example.server.venue.dto.VenueResponse
 import com.example.server.venue.dto.VenueSeatResponse
@@ -72,7 +73,7 @@ class VenueControllerTest {
     fun `공연장 목록을 조회한다`() {
       given(venueService.getAllVenues()).willReturn(listOf(venueResponse()))
 
-      mockMvc.get("/api/venues") { with(authentication(adminAuth)) }.andExpect {
+      mockMvc.get("/api/venues").andExpect {
         status { isOk() }
         jsonPath("$.data[0].id") { value(1) }
         jsonPath("$.data[0].name") { value("테스트 공연장") }
@@ -87,7 +88,7 @@ class VenueControllerTest {
     fun `공연장과 좌석 상세를 조회한다`() {
       given(venueService.getVenueDetails(1L)).willReturn(detailResponse())
 
-      mockMvc.get("/api/venues/1") { with(authentication(adminAuth)) }.andExpect {
+      mockMvc.get("/api/venues/1").andExpect {
         status { isOk() }
         jsonPath("$.data.venue.id") { value(1) }
         jsonPath("$.data.venueSeats[0].seatLabel") { value("A구역 1번") }
@@ -109,9 +110,37 @@ class VenueControllerTest {
         contentType = MediaType.APPLICATION_JSON
         content = objectMapper.writeValueAsString(request)
       }.andExpect {
-        status { isOk() }
+        status { isCreated() }
         jsonPath("$.data.venue.name") { value("테스트 공연장") }
       }
+    }
+
+    @Test
+    fun `공연장 중첩 필드가 유효하지 않으면 생성할 수 없다`() {
+      val invalidRequest = createRequest().copy(venue = createRequest().venue.copy(name = " "))
+
+      mockMvc.post("/api/venues") {
+        with(authentication(adminAuth))
+        with(csrf())
+        contentType = MediaType.APPLICATION_JSON
+        content = objectMapper.writeValueAsString(invalidRequest)
+      }.andExpect { status { isBadRequest() } }
+
+      then(venueService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `좌석이 비어 있으면 공연장을 생성할 수 없다`() {
+      val invalidRequest = createRequest().copy(venueSeats = emptyList())
+
+      mockMvc.post("/api/venues") {
+        with(authentication(adminAuth))
+        with(csrf())
+        contentType = MediaType.APPLICATION_JSON
+        content = objectMapper.writeValueAsString(invalidRequest)
+      }.andExpect { status { isBadRequest() } }
+
+      then(venueService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -195,6 +224,16 @@ class VenueControllerTest {
       stagePositionY = BigDecimal("5.00"),
       stageWidth = BigDecimal("40.00"),
       stageHeight = BigDecimal("10.00"),
+    ),
+    venueSeats = listOf(
+      CreateVenueSeatRequest(
+        sectionName = "A구역",
+        seatNumber = 1,
+        seatLabel = "A구역 1번",
+        price = 50_000,
+        positionX = BigDecimal("10.00"),
+        positionY = BigDecimal("20.00"),
+      ),
     ),
   )
 

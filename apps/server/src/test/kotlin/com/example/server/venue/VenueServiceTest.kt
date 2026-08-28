@@ -1,5 +1,6 @@
 package com.example.server.venue
 
+import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.venue.dto.CreateVenueDetailRequest
@@ -23,6 +24,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.inOrder
 import org.mockito.junit.jupiter.MockitoExtension
 import org.openapitools.jackson.nullable.JsonNullable
 import java.math.BigDecimal
@@ -35,6 +37,9 @@ class VenueServiceTest {
 
   @Mock
   lateinit var venueSeatRepository: VenueSeatRepository
+
+  @Mock
+  lateinit var concertRepository: ConcertRepository
 
   @InjectMocks
   lateinit var venueService: VenueService
@@ -102,7 +107,7 @@ class VenueServiceTest {
     @Test
     fun `무대가 공연장 범위를 벗어나면 생성하지 않는다`() {
       val request = createRequest().copy(
-        venue = createRequest().venue.copy(stagePositionX = BigDecimal("5.00")),
+        venue = createRequest().venue.copy(stagePositionX = BigDecimal("80.01")),
       )
 
       val exception = assertThrows<CustomException> { venueService.createVenueDetails(request) }
@@ -116,14 +121,17 @@ class VenueServiceTest {
     fun `무대의 각 경계가 공연장 범위를 벗어나면 생성하지 않는다`() {
       val baseVenue = createRequest().venue
       val invalidVenues = listOf(
-        baseVenue.copy(stagePositionY = BigDecimal("5.00")),
-        baseVenue.copy(stagePositionX = BigDecimal("30.00")),
-        baseVenue.copy(stagePositionY = BigDecimal("15.00")),
+        baseVenue.copy(stagePositionX = BigDecimal("19.99")),
+        baseVenue.copy(stagePositionY = BigDecimal("9.99")),
+        baseVenue.copy(stagePositionX = BigDecimal("80.01")),
+        baseVenue.copy(stagePositionY = BigDecimal("90.01")),
       )
 
       invalidVenues.forEach { invalidVenue ->
         val exception = assertThrows<CustomException> {
-          venueService.createVenueDetails(CreateVenueDetailRequest(venue = invalidVenue))
+          venueService.createVenueDetails(
+            CreateVenueDetailRequest(venue = invalidVenue, venueSeats = createRequest().venueSeats),
+          )
         }
         assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
       }
@@ -259,7 +267,7 @@ class VenueServiceTest {
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
       given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(emptyList())
       val request = UpdateVenueDetailRequest(
-        venue = UpdateVenueRequest(stagePositionX = JsonNullable.of(BigDecimal("5.00"))),
+        venue = UpdateVenueRequest(stagePositionX = JsonNullable.of(BigDecimal("90.00"))),
       )
 
       val exception = assertThrows<CustomException> { venueService.updateVenueDetails(1L, request) }
@@ -280,8 +288,24 @@ class VenueServiceTest {
 
       venueService.deleteVenue(venueId)
 
-      then(venueRepository).should().delete(venue)
-      then(venueSeatRepository).should().deleteAllByVenueId(venueId)
+      val order = inOrder(venueSeatRepository, venueRepository)
+      order.verify(venueSeatRepository).deleteAllByVenueId(venueId)
+      order.verify(venueRepository).delete(venue)
+    }
+
+    @Test
+    fun `콘서트가 등록된 공연장은 CONFLICT 예외가 발생하고 삭제하지 않는다`() {
+      val venueId = 1L
+      given(venueRepository.findById(venueId)).willReturn(Optional.of(venue(venueId)))
+      given(concertRepository.existsByVenueId(venueId)).willReturn(true)
+
+      val exception = assertThrows<CustomException> {
+        venueService.deleteVenue(venueId)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      then(venueSeatRepository).shouldHaveNoInteractions()
+      then(venueRepository).shouldHaveNoMoreInteractions()
     }
 
     @Test
