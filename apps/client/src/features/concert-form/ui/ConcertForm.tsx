@@ -12,19 +12,28 @@ import { useConcertForm } from "../model/use-concert-form";
 interface ConcertFormProps {
   mode: ConcertFormMode;
   initialValues?: Partial<CreateConcertRequest>;
+  initialVenueName?: string;
   submitState: SubmitState;
   onSubmit: (values: CreateConcertRequest) => void | Promise<void>;
   onCancel?: () => void;
 }
 
-const ConcertForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: ConcertFormProps) => {
-  const { venues, isVenueLoading, isVenueError, isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } = useConcertForm({
-    submitState,
-    initialValues,
-    onSubmit,
-  });
+const ConcertForm = ({ mode, initialValues, initialVenueName, submitState, onSubmit, onCancel }: ConcertFormProps) => {
+  const { isCreateMode, venues, isVenueLoading, isVenueError, isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } =
+    useConcertForm({
+      mode,
+      submitState,
+      initialValues,
+      onSubmit,
+    });
 
-  if (isVenueLoading) {
+  let previewVenueName = initialVenueName ?? "";
+
+  if (isCreateMode && venues) {
+    previewVenueName = venues.find((venue) => venue.id === values.venueId)?.name ?? "";
+  }
+
+  if (isCreateMode && isVenueLoading) {
     return (
       <div className="flex h-40 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
         <LoaderCircle className="size-6 animate-spin text-slate-400" aria-hidden />
@@ -32,7 +41,7 @@ const ConcertForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: C
     );
   }
 
-  if (isVenueError || !venues || venues.length === 0) {
+  if (isCreateMode && (isVenueError || !venues || venues.length === 0)) {
     return (
       <div className="flex h-40 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
         <AlertCircle className="size-6 text-red-500" aria-hidden />
@@ -115,7 +124,7 @@ const ConcertForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: C
                 required
               />
 
-              {mode === "create" && (
+              {isCreateMode && venues && (
                 <ConcertFormSelect
                   field="venueId"
                   label="공연장"
@@ -170,7 +179,7 @@ const ConcertForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: C
                   id: -1,
                   ...values,
                   genre: values.genre || "BALLAD",
-                  venueName: venues.find((venue) => venue.id === values.venueId)?.name || "",
+                  venueName: previewVenueName,
                   createdAt: new Date().toISOString(),
                 }}
                 displayOptions={{ showGenre: true, showTitle: true, showPlaceName: true }}
