@@ -11,6 +11,7 @@ import com.example.server.venue.dto.VenueResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -57,7 +58,7 @@ class VenueController(private val venueService: VenueService) {
   @Operation(
     summary = "공연장 생성",
     description = "공연장과 좌석을 생성합니다.",
-    responses = [SwaggerApiResponse(responseCode = "200", description = "공연장 생성 성공")],
+    responses = [SwaggerApiResponse(responseCode = "201", description = "공연장 생성 성공")],
     security = [SecurityRequirement(name = "access_token")],
   )
   @ErrorResponse(
@@ -71,7 +72,7 @@ class VenueController(private val venueService: VenueService) {
   fun createVenueDetails(@Valid @RequestBody request: CreateVenueDetailRequest): ResponseEntity<ApiResponse.Success<VenueDetailResponse>> {
     val seatResponses = venueService.createVenueDetails(request)
 
-    return ResponseEntity.ok(ApiResponse.ok(seatResponses))
+    return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(seatResponses))
   }
 
   @Operation(
@@ -109,6 +110,7 @@ class VenueController(private val venueService: VenueService) {
       ErrorResponseItem(ErrorCode.UNAUTHORIZED),
       ErrorResponseItem(ErrorCode.FORBIDDEN),
       ErrorResponseItem(ErrorCode.NOT_FOUND, description = "공연장을 찾을 수 없음"),
+      ErrorResponseItem(ErrorCode.CONFLICT, description = "공연이 등록된 공연장"),
     ],
   )
   @DeleteMapping("/{id}")
