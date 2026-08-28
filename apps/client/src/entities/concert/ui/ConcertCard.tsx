@@ -32,7 +32,7 @@ const ConcertCard = ({
   } = {},
   onPosterError,
 }: ConcertCardProps) => {
-  const { posterUrl, title, placeName, GenreIcon, genreLabel, genreClassName } = useConcertCard({ concert });
+  const { posterUrl, title, venueName, GenreIcon, genreLabel, genreClassName } = useConcertCard({ concert });
 
   const { cardRef, tilt, glare, isHovered, outerShadow, handlePointerMove, handlePointerEnter, handlePointerLeave } = useConcertCardTilt({
     maxTilt,
@@ -69,7 +69,7 @@ const ConcertCard = ({
 
                 <p className="flex items-center gap-1 text-[10px] text-white/50">
                   <MapPin size={9} />
-                  {placeName}
+                  {venueName}
                 </p>
               </div>
             )}
@@ -111,7 +111,7 @@ const ConcertCard = ({
           {showPlaceName && (
             <p className="flex items-center gap-1 truncate text-xs text-gray-500">
               <MapPin size={12} className="shrink-0" />
-              {placeName}
+              {venueName}
             </p>
           )}
         </div>
