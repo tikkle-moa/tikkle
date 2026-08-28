@@ -1,5 +1,6 @@
 package com.example.server.venue
 
+import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.venue.dto.CreateVenueDetailRequest
@@ -17,7 +18,11 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 @Service
-class VenueService(private val venueRepository: VenueRepository, private val venueSeatRepository: VenueSeatRepository) {
+class VenueService(
+  private val venueRepository: VenueRepository,
+  private val venueSeatRepository: VenueSeatRepository,
+  private val concertRepository: ConcertRepository,
+) {
   @Transactional(readOnly = true)
   fun getAllVenues(): List<VenueResponse> {
     val venues = venueRepository.findAll()
@@ -166,8 +171,12 @@ class VenueService(private val venueRepository: VenueRepository, private val ven
     val venue = venueRepository.findById(venueId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "장소를 찾을 수 없습니다.") }
 
-    venueRepository.delete(venue)
+    if (concertRepository.existsByVenueId(venueId)) {
+      throw CustomException(ErrorCode.CONFLICT, "공연이 등록된 장소는 삭제할 수 없습니다.")
+    }
+
     venueSeatRepository.deleteAllByVenueId(venueId)
+    venueRepository.delete(venue)
   }
 
   private fun validateStagePosition(
