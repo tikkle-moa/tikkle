@@ -23,7 +23,7 @@ describe("ConcertForm", () => {
   it("공연장 목록을 조회하는 동안 로딩 화면을 표시한다", () => {
     mockUseVenues.mockReturnValue({ data: undefined, isLoading: true, isError: false });
 
-    const { container } = render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
+    const { container } = render(<ConcertForm mode="create" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
 
     expect(container.querySelector(".animate-spin")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "콘서트 등록" })).not.toBeInTheDocument();
@@ -35,14 +35,14 @@ describe("ConcertForm", () => {
   ])("공연장 목록을 사용할 수 없으면 오류 화면을 표시한다", ({ data, isError }) => {
     mockUseVenues.mockReturnValue({ data, isLoading: false, isError });
 
-    render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
+    render(<ConcertForm mode="create" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
 
     expect(screen.getByText("공연장 정보를 불러오지 못했습니다.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "콘서트 등록" })).not.toBeInTheDocument();
   });
 
   it("생성 모드의 모든 입력 필드를 렌더링한다", () => {
-    render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
+    render(<ConcertForm mode="create" submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
 
     expect(screen.getByRole("textbox", { name: /콘서트 제목/ })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /장르/ })).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe("ConcertForm", () => {
 
   it("필수값이 비어 있으면 오류를 표시하고 제출하지 않는다", async () => {
     const onSubmit = vi.fn();
-    render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onSubmit={onSubmit} />);
+    render(<ConcertForm mode="create" submitState={{ status: "idle" }} onSubmit={onSubmit} />);
 
     await userEvent.click(screen.getByRole("button", { name: "콘서트 등록" }));
 
@@ -66,7 +66,7 @@ describe("ConcertForm", () => {
 
   it("유효한 값을 API 요청 형태로 제출한다", async () => {
     const onSubmit = vi.fn();
-    render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onSubmit={onSubmit} />);
+    render(<ConcertForm mode="create" submitState={{ status: "idle" }} onSubmit={onSubmit} />);
 
     await userEvent.type(screen.getByRole("textbox", { name: /콘서트 제목/ }), "  Tikkle Live  ");
     await userEvent.selectOptions(screen.getByRole("combobox", { name: /장르/ }), "INDIE");
@@ -87,7 +87,7 @@ describe("ConcertForm", () => {
     render(
       <ConcertForm
         initialValues={{ venueId: 1, title: "기존 콘서트", genre: "BALLAD" }}
-        submitLabel="변경사항 저장"
+        mode="edit"
         submitState={{ status: "error", error: "콘서트를 수정하지 못했습니다." }}
         onSubmit={vi.fn()}
       />,
@@ -101,7 +101,7 @@ describe("ConcertForm", () => {
 
   it("취소 버튼을 실행하고 제출 중에는 모든 컨트롤을 비활성화한다", async () => {
     const onCancel = vi.fn();
-    render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "submitting" }} onCancel={onCancel} onSubmit={vi.fn()} />);
+    render(<ConcertForm mode="create" submitState={{ status: "submitting" }} onCancel={onCancel} onSubmit={vi.fn()} />);
 
     const cancelButton = screen.getByRole("button", { name: "취소" });
     expect(screen.getByRole("button", { name: "저장 중..." })).toBeDisabled();
@@ -115,7 +115,7 @@ describe("ConcertForm", () => {
 
   it("활성화된 취소 버튼을 누르면 onCancel을 호출한다", async () => {
     const onCancel = vi.fn();
-    render(<ConcertForm submitLabel="콘서트 등록" submitState={{ status: "idle" }} onCancel={onCancel} onSubmit={vi.fn()} />);
+    render(<ConcertForm mode="create" submitState={{ status: "idle" }} onCancel={onCancel} onSubmit={vi.fn()} />);
 
     await userEvent.click(screen.getByRole("button", { name: "취소" }));
 
@@ -125,12 +125,7 @@ describe("ConcertForm", () => {
   it("설명을 입력하면 값과 글자 수를 갱신해 제출한다", async () => {
     const onSubmit = vi.fn();
     render(
-      <ConcertForm
-        initialValues={{ venueId: 1, title: "공연", genre: "INDIE" }}
-        submitLabel="변경사항 저장"
-        submitState={{ status: "idle" }}
-        onSubmit={onSubmit}
-      />,
+      <ConcertForm initialValues={{ venueId: 1, title: "공연", genre: "INDIE" }} mode="edit" submitState={{ status: "idle" }} onSubmit={onSubmit} />,
     );
 
     const description = screen.getByRole("textbox", { name: /콘서트 설명/ });
@@ -145,7 +140,7 @@ describe("ConcertForm", () => {
     render(
       <ConcertForm
         initialValues={{ venueId: 1, title: "공연", genre: "INDIE", posterUrl: "https://example.com/missing.jpg" }}
-        submitLabel="콘서트 등록"
+        mode="create"
         submitState={{ status: "idle" }}
         onSubmit={vi.fn()}
       />,

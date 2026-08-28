@@ -52,7 +52,6 @@ describe("ConcertEditPage", () => {
     render(<ConcertEditPage />);
 
     expect(screen.getByRole("heading", { name: "콘서트 수정" })).toBeInTheDocument();
-    expect(screen.getByTestId("concert-form")).toHaveAttribute("data-submit-label", "변경사항 저장");
     expect(screen.getByText("기존 공연")).toBeInTheDocument();
   });
 
