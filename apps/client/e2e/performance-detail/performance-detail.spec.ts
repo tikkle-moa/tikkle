@@ -1,23 +1,14 @@
 import { expect, test } from "@playwright/test";
 
-const NORMAL_PERFORMANCE = {
-  id: 900000,
-  concertId: 900000,
-  name: "E2E 정상 콘서트 1회차",
-};
-
-const ENDED_PERFORMANCE = {
-  id: 900001,
-  name: "E2E 종료 회차",
-};
+import { E2E_SEED_PERFORMANCES } from "../config/e2e-seed-data.config";
 
 test.describe("공연 회차 상세", () => {
   test("정상 회차에 접근하면 공연 정보와 좌석 배치를 표시한다", async ({ page }) => {
     const responsePromise = page.waitForResponse(
-      (response) => response.url().endsWith(`/api/performances/${NORMAL_PERFORMANCE.id}`) && response.request().method() === "GET",
+      (response) => response.url().endsWith(`/api/performances/${E2E_SEED_PERFORMANCES.upcoming.id}`) && response.request().method() === "GET",
     );
 
-    await page.goto(`/performances/${NORMAL_PERFORMANCE.id}`);
+    await page.goto(`/performances/${E2E_SEED_PERFORMANCES.upcoming.id}`);
     const response = await responsePromise;
 
     expect(response.status()).toBe(200);
@@ -25,27 +16,30 @@ test.describe("공연 회차 상세", () => {
       success: true,
       data: {
         performance: {
-          id: NORMAL_PERFORMANCE.id,
-          concertId: NORMAL_PERFORMANCE.concertId,
-          name: NORMAL_PERFORMANCE.name,
+          id: E2E_SEED_PERFORMANCES.upcoming.id,
+          concertId: E2E_SEED_PERFORMANCES.upcoming.concertId,
+          name: E2E_SEED_PERFORMANCES.upcoming.name,
           status: "UPCOMING",
         },
         seats: [],
       },
     });
-    await expect(page.getByRole("heading", { name: NORMAL_PERFORMANCE.name })).toBeVisible();
+    await expect(page.getByRole("heading", { name: E2E_SEED_PERFORMANCES.upcoming.name })).toBeVisible();
     await expect(page.getByText("오픈 예정", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "콘서트 상세로 돌아가기" })).toHaveAttribute("href", `/concerts/${NORMAL_PERFORMANCE.concertId}`);
+    await expect(page.getByRole("link", { name: "콘서트 상세로 돌아가기" })).toHaveAttribute(
+      "href",
+      `/concerts/${E2E_SEED_PERFORMANCES.upcoming.concertId}`,
+    );
     await expect(page.getByRole("heading", { name: "좌석 배치 정보" })).toBeVisible();
-    await expect(page.getByText(`${NORMAL_PERFORMANCE.name} · 전체 0석`)).toBeVisible();
+    await expect(page.getByText(`${E2E_SEED_PERFORMANCES.upcoming.name} · 전체 0석`)).toBeVisible();
   });
 
   test("종료된 회차에 접근하면 상세 대신 종료 안내를 표시한다", async ({ page }) => {
     const responsePromise = page.waitForResponse(
-      (response) => response.url().endsWith(`/api/performances/${ENDED_PERFORMANCE.id}`) && response.request().method() === "GET",
+      (response) => response.url().endsWith(`/api/performances/${E2E_SEED_PERFORMANCES.ended.id}`) && response.request().method() === "GET",
     );
 
-    await page.goto(`/performances/${ENDED_PERFORMANCE.id}`);
+    await page.goto(`/performances/${E2E_SEED_PERFORMANCES.ended.id}`);
     const response = await responsePromise;
 
     expect(response.status()).toBe(200);
@@ -53,15 +47,15 @@ test.describe("공연 회차 상세", () => {
       success: true,
       data: {
         performance: {
-          id: ENDED_PERFORMANCE.id,
-          name: ENDED_PERFORMANCE.name,
+          id: E2E_SEED_PERFORMANCES.ended.id,
+          name: E2E_SEED_PERFORMANCES.ended.name,
           status: "ENDED",
         },
       },
     });
     await expect(page.getByRole("heading", { name: "종료된 공연 회차입니다." })).toBeVisible();
     await expect(page.getByText("다른 회차를 선택해 주세요.")).toBeVisible();
-    await expect(page.getByRole("heading", { name: ENDED_PERFORMANCE.name })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: E2E_SEED_PERFORMANCES.ended.name })).toHaveCount(0);
   });
 
   test("존재하지 않는 회차에 접근하면 404 응답과 오류 안내를 표시한다", async ({ page }) => {

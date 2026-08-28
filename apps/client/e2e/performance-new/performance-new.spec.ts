@@ -2,6 +2,7 @@ import { type Page, expect, test } from "@playwright/test";
 
 import { authenticatePage, createApiAuthHeaders, setApiRole } from "../api/auth.api";
 import { createConcert, deleteConcert } from "../api/concert.api";
+import { E2E_SEED_CONCERTS } from "../config/e2e-seed-data.config";
 
 const STARTS_AT = "2099-01-20T19:00";
 const UPDATED_STARTS_AT = "2099-01-21T19:00";
@@ -242,7 +243,7 @@ test.describe("공연 회차 등록 권한 검증", () => {
   test("일반 사용자는 공연 회차 등록 페이지에 접근할 수 없다", async ({ page }) => {
     await authenticatePage(page, "USER");
 
-    await page.goto("/concerts/900001/performances/new");
+    await page.goto(`/concerts/${E2E_SEED_CONCERTS.withoutPerformance.id}/performances/new`);
 
     await expect(page).toHaveURL("/");
   });
