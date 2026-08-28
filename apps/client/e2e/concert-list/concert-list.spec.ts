@@ -1,11 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { mockOAuthSession } from "../api/auth.api";
-
-const NORMAL_CONCERT = {
-  id: 900000,
-  title: "E2E 정상 콘서트",
-};
+import { E2E_SEED_CONCERTS } from "../config/e2e-seed-data.config";
 
 test.describe("콘서트 목록", () => {
   test("일반 사용자에게 콘서트 등록 버튼을 표시하지 않는다", async ({ page }) => {
@@ -27,12 +23,12 @@ test.describe("콘서트 목록", () => {
     await page.goto("/concerts");
 
     const concertDetailLink = page.getByRole("link", {
-      name: `${NORMAL_CONCERT.title} 상세 보기`,
+      name: `${E2E_SEED_CONCERTS.normal.title} 상세 보기`,
     });
 
     await expect(page.getByRole("heading", { name: "공연 목록" })).toBeVisible();
     await expect(concertDetailLink).toBeVisible();
-    await expect(concertDetailLink).toHaveAttribute("href", `/concerts/${NORMAL_CONCERT.id}`);
+    await expect(concertDetailLink).toHaveAttribute("href", `/concerts/${E2E_SEED_CONCERTS.normal.id}`);
     await expect(page.getByRole("link", { name: "콘서트 등록" })).toHaveAttribute("href", "/concerts/new");
   });
 
