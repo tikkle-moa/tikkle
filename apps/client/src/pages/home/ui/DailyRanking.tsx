@@ -72,7 +72,7 @@ const DailyRanking = () => {
                       </span>
                     </div>
 
-                    <p className="mt-0.5 truncate text-xs text-gray-400">{concert.placeName}</p>
+                    <p className="mt-0.5 truncate text-xs text-gray-400">{concert.venueName}</p>
                   </div>
                 </article>
               </Link>

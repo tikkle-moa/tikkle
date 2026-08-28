@@ -70,7 +70,7 @@ const ConcertDetailPage = () => {
               <dt className="text-gray-400">공연 장소</dt>
               <dd className="flex items-center gap-1.5 font-medium text-gray-700">
                 <MapPin className="size-4 text-gray-400" aria-hidden />
-                {concert.placeName}
+                {concert.venueName}
               </dd>
             </div>
 
