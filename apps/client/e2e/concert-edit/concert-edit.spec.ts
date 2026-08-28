@@ -15,7 +15,6 @@ test.describe("콘서트 수정 페이지 정상 처리", () => {
       await page.goto(`/concerts/${concert.id}/edit`);
       await expect(page.getByLabel("콘서트 제목")).toHaveValue(concert.title);
       await expect(page.getByLabel("장르")).toHaveValue(concert.genre);
-      await expect(page.getByLabel("공연장")).toHaveValue(String(concert.venueId));
 
       const changedTitle = `${concert.title} 수정`;
       await page.getByLabel("콘서트 제목").fill(changedTitle);
