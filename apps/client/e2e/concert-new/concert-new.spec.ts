@@ -3,12 +3,16 @@ import { randomUUID } from "node:crypto";
 
 import { authenticatePage, mockOAuthSession, setApiRole } from "../api/auth.api";
 import { deleteConcert } from "../api/concert.api";
+import { getDefaultVenue } from "../api/venue.api";
 
 const fillValidForm = async (page: Page, title: string) => {
+  const venue = await getDefaultVenue(page);
   await page.getByLabel("콘서트 제목").fill(title);
   await page.getByLabel("장르").selectOption("BALLAD");
-  await page.getByLabel("공연 장소").fill("E2E 공연장");
+  await page.getByLabel("공연장").selectOption(String(venue.id));
   await page.getByLabel("콘서트 설명").fill("정상 등록 시나리오");
+
+  return venue;
 };
 
 test.describe("콘서트 등록 페이지 정상 처리", () => {
@@ -22,7 +26,7 @@ test.describe("콘서트 등록 페이지 정상 처리", () => {
 
     try {
       await page.goto("/concerts/new");
-      await fillValidForm(page, title);
+      const venue = await fillValidForm(page, title);
 
       const responsePromise = page.waitForResponse((response) => response.url().endsWith("/api/concerts") && response.request().method() === "POST");
       await page.getByRole("button", { name: "콘서트 등록", exact: true }).click();
@@ -33,7 +37,7 @@ test.describe("콘서트 등록 페이지 정상 처리", () => {
       expect(response.request().postDataJSON()).toEqual({
         title,
         genre: "BALLAD",
-        placeName: "E2E 공연장",
+        venueId: venue.id,
         posterUrl: null,
         description: "정상 등록 시나리오",
       });
@@ -42,7 +46,8 @@ test.describe("콘서트 등록 페이지 정상 처리", () => {
         data: {
           title,
           genre: "BALLAD",
-          placeName: "E2E 공연장",
+          venueId: venue.id,
+          venueName: venue.name,
           posterUrl: null,
           description: "정상 등록 시나리오",
         },
@@ -109,7 +114,7 @@ test.describe("콘서트 등록 페이지 입력 오류", () => {
 
     await expect(page.getByText("콘서트 제목을 입력해 주세요.")).toBeVisible();
     await expect(page.getByText("장르를 선택해 주세요.")).toBeVisible();
-    await expect(page.getByText("공연 장소를 입력해 주세요.")).toBeVisible();
+    await expect(page.getByText("공연장을 선택해 주세요.")).toBeVisible();
     expect(postCount).toBe(0);
   });
 

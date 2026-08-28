@@ -15,13 +15,10 @@ test.describe("공연 회차 상세", () => {
     await expect(response.json()).resolves.toMatchObject({
       success: true,
       data: {
-        performance: {
-          id: E2E_SEED_PERFORMANCES.upcoming.id,
-          concertId: E2E_SEED_PERFORMANCES.upcoming.concertId,
-          name: E2E_SEED_PERFORMANCES.upcoming.name,
-          status: "UPCOMING",
-        },
-        seats: [],
+        id: E2E_SEED_PERFORMANCES.upcoming.id,
+        concertId: E2E_SEED_PERFORMANCES.upcoming.concertId,
+        name: E2E_SEED_PERFORMANCES.upcoming.name,
+        status: "UPCOMING",
       },
     });
     await expect(page.getByRole("heading", { name: E2E_SEED_PERFORMANCES.upcoming.name })).toBeVisible();
@@ -46,11 +43,9 @@ test.describe("공연 회차 상세", () => {
     await expect(response.json()).resolves.toMatchObject({
       success: true,
       data: {
-        performance: {
-          id: E2E_SEED_PERFORMANCES.ended.id,
-          name: E2E_SEED_PERFORMANCES.ended.name,
-          status: "ENDED",
-        },
+        id: E2E_SEED_PERFORMANCES.ended.id,
+        name: E2E_SEED_PERFORMANCES.ended.name,
+        status: "ENDED",
       },
     });
     await expect(page.getByRole("heading", { name: "종료된 공연 회차입니다." })).toBeVisible();
