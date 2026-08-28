@@ -6,6 +6,8 @@ import com.example.server.concert.types.ConcertGenre
 import com.example.server.config.TestcontainersConfig
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.venue.entity.Venue
+import com.example.server.venue.repository.VenueRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @SpringBootTest
@@ -27,10 +30,14 @@ class PerformanceRepositoryTest {
   @Autowired
   lateinit var performanceRepository: PerformanceRepository
 
+  @Autowired
+  lateinit var venueRepository: VenueRepository
+
   @BeforeEach
   fun setUp() {
     performanceRepository.deleteAll()
     concertRepository.deleteAll()
+    venueRepository.deleteAll()
   }
 
   @Test
@@ -76,9 +83,21 @@ class PerformanceRepositoryTest {
   }
 
   private fun concert(title: String): Concert = Concert(
+    venue = venueRepository.save(venue()),
     title = title,
     genre = ConcertGenre.BALLAD,
-    placeName = "테스트 공연장",
+    venueName = "테스트 공연장",
+  )
+
+  private fun venue(): Venue = Venue(
+    name = "테스트 공연장",
+    address = "서울",
+    width = BigDecimal("100.00"),
+    height = BigDecimal("100.00"),
+    stagePositionX = BigDecimal("50.00"),
+    stagePositionY = BigDecimal("10.00"),
+    stageWidth = BigDecimal("40.00"),
+    stageHeight = BigDecimal("10.00"),
   )
 
   private fun performance(concert: Concert, startsAt: LocalDateTime): Performance = Performance(

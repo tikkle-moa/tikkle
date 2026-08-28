@@ -10,13 +10,9 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
-import com.example.server.performance.dto.ApplySeatChangesRequest
 import com.example.server.performance.dto.CreatePerformanceRequest
-import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
-import com.example.server.performance.dto.SeatChangeRequest
-import com.example.server.performance.dto.SeatListResponse
-import com.example.server.performance.dto.SeatResponse
+import com.example.server.performance.dto.PerformanceSeatListResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.types.PerformanceStatus
 import org.junit.jupiter.api.BeforeEach
@@ -44,7 +40,6 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import tools.jackson.databind.ObjectMapper
-import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @WebMvcTest(PerformanceController::class)
@@ -115,24 +110,6 @@ class PerformanceControllerTest {
     status = PerformanceStatus.UPCOMING,
   )
 
-  private fun performanceDetailResponse(): PerformanceDetailResponse = PerformanceDetailResponse(
-    performance = performanceResponse(),
-    seats = listOf(
-      SeatResponse(
-        id = 1L,
-        performanceId = 1L,
-        sectionName = "A구역",
-        seatNumber = 1,
-        seatLabel = "A구역 1번",
-        price = 15000,
-        positionX = BigDecimal("5.23"),
-        positionY = BigDecimal("3.27"),
-        createdAt = LocalDateTime.of(2026, 7, 31, 13, 0),
-        booked = false,
-      ),
-    ),
-  )
-
   @Nested
   @DisplayName("GET /api/performances")
   inner class GetPerformances {
@@ -186,26 +163,17 @@ class PerformanceControllerTest {
   inner class GetPerformance {
     @Test
     fun `인증 없이 공연 회차 상세를 조회한다`() {
-      given(performanceService.getPerformance(1L)).willReturn(performanceDetailResponse())
+      given(performanceService.getPerformance(1L)).willReturn(performanceResponse())
 
       mockMvc.get("/api/performances/1")
         .andExpect {
           status { isOk() }
           jsonPath("$.success") { value(true) }
-          jsonPath("$.data.performance.id") { value(1) }
-          jsonPath("$.data.performance.concertId") { value(1) }
-          jsonPath("$.data.performance.startsAt") { value("2027-01-20T19:00:00") }
-          jsonPath("$.data.performance.bookingOpensAt") { value("2027-01-10T10:00:00") }
-          jsonPath("$.data.performance.createdAt") { value("2026-08-24T12:00:00") }
-          jsonPath("$.data.seats[0].id") { value(1) }
-          jsonPath("$.data.seats[0].performanceId") { value(1) }
-          jsonPath("$.data.seats[0].sectionName") { value("A구역") }
-          jsonPath("$.data.seats[0].seatNumber") { value(1) }
-          jsonPath("$.data.seats[0].seatLabel") { value("A구역 1번") }
-          jsonPath("$.data.seats[0].price") { value(15000) }
-          jsonPath("$.data.seats[0].positionX") { value(5.23) }
-          jsonPath("$.data.seats[0].positionY") { value(3.27) }
-          jsonPath("$.data.seats[0].createdAt") { value("2026-07-31T13:00:00") }
+          jsonPath("$.data.id") { value(1) }
+          jsonPath("$.data.concertId") { value(1) }
+          jsonPath("$.data.startsAt") { value("2027-01-20T19:00:00") }
+          jsonPath("$.data.bookingOpensAt") { value("2027-01-10T10:00:00") }
+          jsonPath("$.data.createdAt") { value("2026-08-24T12:00:00") }
         }
 
       then(performanceService).should().getPerformance(1L)
@@ -227,39 +195,23 @@ class PerformanceControllerTest {
 
   @Nested
   @DisplayName("GET /api/performances/{id}/seats")
-  inner class GetSeats {
+  inner class GetSeatsStatus {
     @Test
-    fun `인증 없이 서버 시각과 좌석 목록을 조회한다`() {
-      val response = SeatListResponse(
-        serverTime = LocalDateTime.of(2026, 8, 27, 12, 0),
-        seats = performanceDetailResponse().seats,
+    fun `인증 없이 서버 시각과 좌석 상태를 조회한다`() {
+      given(performanceService.getSeatsStatus(1L)).willReturn(
+        PerformanceSeatListResponse(LocalDateTime.now(), listOf(1L), emptyList()),
       )
-      given(performanceService.getSeats(1L)).willReturn(response)
-
-      mockMvc.get("/api/performances/1/seats")
-        .andExpect {
-          status { isOk() }
-          jsonPath("$.success") { value(true) }
-          jsonPath("$.data.serverTime") { value("2026-08-27T12:00:00") }
-          jsonPath("$.data.seats") { isArray() }
-          jsonPath("$.data.seats[0].sectionName") { value("A구역") }
-          jsonPath("$.data.seats[0].seatNumber") { value(1) }
-        }
-
-      then(performanceService).should().getSeats(1L)
+      mockMvc.get("/api/performances/1/seats").andExpect {
+        status { isOk() }
+        jsonPath("$.data.bookedSeats[0]") { value(1) }
+        jsonPath("$.data.heldSeats") { isArray() }
+      }
     }
 
     @Test
     fun `없는 공연 회차면 404를 반환한다`() {
-      given(performanceService.getSeats(99L))
-        .willThrow(CustomException(ErrorCode.NOT_FOUND))
-
-      mockMvc.get("/api/performances/99/seats")
-        .andExpect {
-          status { isNotFound() }
-          jsonPath("$.success") { value(false) }
-          jsonPath("$.error.code") { value(404) }
-        }
+      given(performanceService.getSeatsStatus(99L)).willThrow(CustomException(ErrorCode.NOT_FOUND))
+      mockMvc.get("/api/performances/99/seats").andExpect { status { isNotFound() } }
     }
   }
 
@@ -469,72 +421,6 @@ class PerformanceControllerTest {
       mockMvc.patch("/api/performances/1") {
         contentType = MediaType.APPLICATION_JSON
         content = """{"startsAt":"2027-01-21T19:00:00"}"""
-        with(authentication(userAuth))
-        with(csrf())
-      }.andExpect {
-        status { isForbidden() }
-      }
-
-      then(performanceService).shouldHaveNoInteractions()
-    }
-  }
-
-  @Nested
-  @DisplayName("PATCH /api/performances/{id}/seats")
-  inner class ApplySeatChanges {
-    private val request = ApplySeatChangesRequest(
-      seats = listOf(
-        SeatChangeRequest(
-          sectionName = "A구역",
-          seatNumber = 1,
-          seatLabel = "A-1",
-          price = 100_000,
-          positionX = BigDecimal("10.00"),
-          positionY = BigDecimal("20.00"),
-        ),
-      ),
-      deletedSeatIds = listOf(2L),
-    )
-
-    @Test
-    fun `관리자가 좌석을 일괄 변경하면 200을 반환한다`() {
-      val response = performanceDetailResponse().seats
-      given(performanceService.applySeatChanges(1L, request)).willReturn(response)
-
-      mockMvc.patch("/api/performances/1/seats") {
-        contentType = MediaType.APPLICATION_JSON
-        content = objectMapper.writeValueAsString(request)
-        with(authentication(adminAuth))
-        with(csrf())
-      }.andExpect {
-        status { isOk() }
-        jsonPath("$.success") { value(true) }
-        jsonPath("$.data[0].id") { value(1) }
-      }
-
-      then(performanceService).should().applySeatChanges(1L, request)
-    }
-
-    @Test
-    fun `좌석 ID가 양수가 아니면 400을 반환한다`() {
-      mockMvc.patch("/api/performances/1/seats") {
-        contentType = MediaType.APPLICATION_JSON
-        content = """{"deletedSeatIds":[0]}"""
-        with(authentication(adminAuth))
-        with(csrf())
-      }.andExpect {
-        status { isBadRequest() }
-        jsonPath("$.success") { value(false) }
-      }
-
-      then(performanceService).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `일반 사용자가 좌석을 변경하면 403을 반환한다`() {
-      mockMvc.patch("/api/performances/1/seats") {
-        contentType = MediaType.APPLICATION_JSON
-        content = objectMapper.writeValueAsString(request)
         with(authentication(userAuth))
         with(csrf())
       }.andExpect {
