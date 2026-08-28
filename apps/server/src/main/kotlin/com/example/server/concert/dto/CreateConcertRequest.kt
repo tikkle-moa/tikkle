@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
 
 data class CreateConcertRequest(
-  @field:Positive(message = "콘서트 ID는 양수여야 합니다.")
+  @field:Positive(message = "공연장 ID는 양수여야 합니다.")
   val venueId: Long,
 
   @field:NotBlank(message = "콘서트 제목은 빈 문자열이 될 수 없습니다.")
