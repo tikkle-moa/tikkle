@@ -56,6 +56,7 @@ class ConcertService(
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND) }
 
     concertRepository.delete(concert)
+    performanceRepository.deleteAllByConcertId(id)
   }
 
   @Transactional(readOnly = true)

@@ -28,4 +28,6 @@ interface PerformanceRepository : JpaRepository<Performance, Long> {
     """,
   )
   fun findAllUpcomingFirstOrderByStartsAtAsc(): List<Performance>
+
+  fun deleteAllByConcertId(concertId: Long): Void
 }
