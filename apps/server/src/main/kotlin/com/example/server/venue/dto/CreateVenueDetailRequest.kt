@@ -1,14 +1,23 @@
 package com.example.server.venue.dto
 
+import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.PositiveOrZero
 import jakarta.validation.constraints.Size
 import java.math.BigDecimal
 
-data class CreateVenueDetailRequest(val venue: CreateVenueRequest, val venueSeats: List<CreateVenueSeatRequest> = emptyList())
+data class CreateVenueDetailRequest(
+  @field:Valid
+  val venue: CreateVenueRequest,
+
+  @field:NotEmpty(message = "좌석을 하나 이상 입력해야 합니다.")
+  @field:Valid
+  val venueSeats: List<CreateVenueSeatRequest>,
+)
 
 data class CreateVenueRequest(
   @field:NotBlank(message = "장소명은 빈 문자열이 될 수 없습니다.")
