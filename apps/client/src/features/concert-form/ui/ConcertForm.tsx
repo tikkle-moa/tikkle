@@ -18,7 +18,28 @@ interface ConcertFormProps {
 }
 
 const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCancel }: ConcertFormProps) => {
-  const { isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } = useConcertForm({ submitState, initialValues, onSubmit });
+  const { venues, isVenueLoading, isVenueError, isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } = useConcertForm({
+    submitState,
+    initialValues,
+    onSubmit,
+  });
+
+  if (isVenueLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
+        <LoaderCircle className="size-6 animate-spin text-slate-400" aria-hidden />
+      </div>
+    );
+  }
+
+  if (isVenueError || !venues || venues.length === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
+        <AlertCircle className="size-6 text-red-500" aria-hidden />
+        <span className="ml-2 text-sm font-medium text-red-700">공연장 정보를 불러오지 못했습니다.</span>
+      </div>
+    );
+  }
 
   return (
     <form className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:rounded-2xl" noValidate onSubmit={handleSubmit}>
@@ -94,6 +115,17 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
                 required
               />
 
+              <ConcertFormSelect
+                field="venueId"
+                label="공연장"
+                isSubmitting={isSubmitting}
+                value={values.venueId}
+                options={venues.map((venue) => ({ value: String(venue.id), label: venue.name }))}
+                error={errors.venueId}
+                updateField={updateField}
+                required
+              />
+              {/* 
               <ConcertFormInput
                 field="placeName"
                 label="공연 장소"
@@ -103,7 +135,7 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
                 error={errors.placeName}
                 updateField={updateField}
                 required
-              />
+              /> */}
             </div>
 
             <ConcertFormInput
@@ -143,7 +175,13 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
 
             <div className="mx-auto max-w-70 lg:max-w-none">
               <ConcertCard
-                concert={{ id: -1, ...values, genre: values.genre || "BALLAD", createdAt: new Date().toISOString() }}
+                concert={{
+                  id: -1,
+                  ...values,
+                  genre: values.genre || "BALLAD",
+                  venueName: venues.find((venue) => venue.id === values.venueId)?.name || "",
+                  createdAt: new Date().toISOString(),
+                }}
                 displayOptions={{ showGenre: true, showTitle: true, showPlaceName: true }}
                 effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true }}
                 onPosterError={handlePosterError}

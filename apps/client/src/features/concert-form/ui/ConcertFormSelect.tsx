@@ -4,10 +4,10 @@ interface ConcertFormSelectProps {
   field: keyof CreateConcertRequest;
   label: string;
   isSubmitting: boolean;
-  value: string | null;
-  options: { label: string; value: string }[];
+  value: string | number | null;
+  options: { label: string; value: string | number }[];
   error?: string;
-  updateField: (field: keyof CreateConcertRequest, value: string) => void;
+  updateField: <K extends keyof CreateConcertRequest>(field: K, value: CreateConcertRequest[K]) => void;
   required?: boolean;
 }
 
@@ -30,12 +30,12 @@ const ConcertFormSelect = ({ field, label, isSubmitting, value, options, error, 
         disabled={isSubmitting}
         id={field}
         name={field}
-        onChange={(e) => updateField(field, e.target.value)}
+        onChange={(e) => updateField(field, typeof value === "number" ? Number(e.target.value) : e.target.value)}
         value={value ?? ""}
         required={required}
       >
-        <option value="" disabled>
-          장르를 선택해 주세요
+        <option value={typeof value === "number" ? 0 : ""} disabled>
+          옵션을 선택해 주세요
         </option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
