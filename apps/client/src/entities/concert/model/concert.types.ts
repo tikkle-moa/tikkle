@@ -21,4 +21,6 @@ export interface BookingStatusItem {
 
 export type ConcertResponse = components["schemas"]["ConcertResponse"];
 export type ConcertListResponse = components["schemas"]["ConcertListResponse"];
+
 export type CreateConcertRequest = components["schemas"]["CreateConcertRequest"];
+export type UpdateConcertRequest = components["schemas"]["UpdateConcertRequest"];

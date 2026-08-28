@@ -12,7 +12,8 @@ const { mockUseUpcomingConcerts, mockConcerts } = vi.hoisted(() => ({
       id: 1,
       title: "오픈 예정 콘서트 1",
       genre: "FESTIVAL" as const,
-      placeName: "올림픽공원",
+      venueId: 1,
+      venueName: "올림픽공원",
       posterUrl: "https://example.com/1.jpg",
       description: null,
       createdAt: new Date("2026-01-01").toISOString(),
@@ -21,7 +22,8 @@ const { mockUseUpcomingConcerts, mockConcerts } = vi.hoisted(() => ({
       id: 2,
       title: "오픈 예정 콘서트 2",
       genre: "INDIE" as const,
-      placeName: "블루스퀘어",
+      venueId: 2,
+      venueName: "블루스퀘어",
       posterUrl: "https://example.com/2.jpg",
       description: null,
       createdAt: new Date("2026-01-01").toISOString(),
@@ -59,8 +61,8 @@ describe("UpcomingConcert", () => {
     });
 
     it("모든 공연장을 렌더링한다", () => {
-      for (const { placeName } of mockConcerts) {
-        expect(screen.getByText(placeName)).toBeInTheDocument();
+      for (const { venueName } of mockConcerts) {
+        expect(screen.getByText(venueName)).toBeInTheDocument();
       }
     });
 

@@ -37,7 +37,6 @@ describe("ConcertNewPage", () => {
 
     expect(screen.getByRole("heading", { name: "콘서트 등록" })).toBeInTheDocument();
     expect(screen.getByText(/기본 정보와 포스터/)).toBeInTheDocument();
-    expect(screen.getByTestId("concert-form")).toHaveAttribute("data-submit-label", "콘서트 등록");
     expect(screen.getByTestId("concert-form")).toHaveAttribute("data-submit-status", "error");
     expect(screen.getByText("등록 오류")).toBeInTheDocument();
   });

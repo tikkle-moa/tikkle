@@ -12,7 +12,6 @@ export const validateConcertForm = (values: CreateConcertRequest, posterLoadFail
   const errors: ConcertFormErrors = {};
 
   const title = values.title.trim();
-  const placeName = values.placeName.trim();
   const posterUrl = values.posterUrl?.trim() ?? "";
   const description = values.description?.trim() ?? "";
 
@@ -22,10 +21,8 @@ export const validateConcertForm = (values: CreateConcertRequest, posterLoadFail
     errors.title = `콘서트 제목은 ${CONCERT_FORM_LIMITS.title}자 이하로 입력해 주세요.`;
   }
 
-  if (!placeName) {
-    errors.placeName = "공연 장소를 입력해 주세요.";
-  } else if (placeName.length > CONCERT_FORM_LIMITS.placeName) {
-    errors.placeName = `공연 장소는 ${CONCERT_FORM_LIMITS.placeName}자 이하로 입력해 주세요.`;
+  if (values.venueId <= 0) {
+    errors.venueId = "공연장을 선택해 주세요.";
   }
 
   if (!values.genre) {
@@ -57,9 +54,9 @@ export const validateConcertForm = (values: CreateConcertRequest, posterLoadFail
 };
 
 export const toConcertRequest = (values: CreateConcertRequest): CreateConcertRequest => ({
+  venueId: values.venueId,
   title: values.title.trim(),
   genre: values.genre,
-  placeName: values.placeName.trim(),
   posterUrl: values.posterUrl?.trim() || null,
   description: values.description?.trim() || null,
 });

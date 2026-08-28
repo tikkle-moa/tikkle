@@ -8,22 +8,22 @@ describe("admin concert form utils", () => {
     expect(errors).toMatchObject({
       title: expect.any(String),
       genre: expect.any(String),
-      placeName: expect.any(String),
+      venueId: expect.any(String),
     });
   });
 
   it("포스터 URL은 http 또는 https 주소만 허용한다", () => {
-    const values = getInitialConcertFormValues({ title: "Tikkle Live", genre: "INDIE", placeName: "공연장", posterUrl: "javascript:alert(1)" });
+    const values = getInitialConcertFormValues({ venueId: 1, title: "Tikkle Live", genre: "INDIE", posterUrl: "javascript:alert(1)" });
 
     expect(validateConcertForm(values).posterUrl).toContain("http");
   });
 
   it("URL 형식이 아니거나 이미지 로드에 실패한 포스터를 검증한다", () => {
-    const malformed = getInitialConcertFormValues({ title: "공연", genre: "INDIE", placeName: "공연장", posterUrl: "not a url" });
+    const malformed = getInitialConcertFormValues({ venueId: 1, title: "공연", genre: "INDIE", posterUrl: "not a url" });
     const loadFailed = getInitialConcertFormValues({
       title: "공연",
       genre: "INDIE",
-      placeName: "공연장",
+      venueId: 1,
       posterUrl: "https://example.com/missing.jpg",
     });
 
@@ -35,33 +35,32 @@ describe("admin concert form utils", () => {
     const values = getInitialConcertFormValues({
       title: "가".repeat(CONCERT_FORM_LIMITS.title + 1),
       genre: "INDIE",
-      placeName: "나".repeat(CONCERT_FORM_LIMITS.placeName + 1),
+      venueId: 1,
       posterUrl: `https://example.com/${"a".repeat(CONCERT_FORM_LIMITS.posterUrl)}`,
       description: "다".repeat(CONCERT_FORM_LIMITS.description + 1),
     });
 
     expect(validateConcertForm(values)).toMatchObject({
       title: expect.stringContaining(`${CONCERT_FORM_LIMITS.title}자`),
-      placeName: expect.stringContaining(`${CONCERT_FORM_LIMITS.placeName}자`),
       posterUrl: expect.stringContaining(`${CONCERT_FORM_LIMITS.posterUrl}자`),
       description: expect.stringContaining(CONCERT_FORM_LIMITS.description.toLocaleString()),
     });
   });
 
   it("유효한 http와 https URL은 허용한다", () => {
-    const base = { title: "공연", genre: "INDIE" as const, placeName: "공연장" };
+    const base = { venueId: 1, title: "공연", genre: "INDIE" as const };
 
     expect(validateConcertForm(getInitialConcertFormValues({ ...base, posterUrl: "http://example.com/poster.jpg" })).posterUrl).toBeUndefined();
     expect(validateConcertForm(getInitialConcertFormValues({ ...base, posterUrl: "https://example.com/poster.jpg" })).posterUrl).toBeUndefined();
   });
 
   it("문자열을 정리하고 빈 선택값은 null로 변환한다", () => {
-    const values = getInitialConcertFormValues({ title: "  Tikkle Live  ", genre: "INDIE", placeName: "  공연장 ", description: "  " });
+    const values = getInitialConcertFormValues({ venueId: 1, title: "  Tikkle Live  ", genre: "INDIE", description: "  " });
 
     expect(toConcertRequest(values)).toEqual({
+      venueId: 1,
       title: "Tikkle Live",
       genre: "INDIE",
-      placeName: "공연장",
       posterUrl: null,
       description: null,
     });

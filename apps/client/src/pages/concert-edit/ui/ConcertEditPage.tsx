@@ -48,13 +48,7 @@ const ConcertEditPage = () => {
       )}
 
       {loadState.status === "success" && (
-        <ConcertForm
-          initialValues={loadState.data}
-          submitLabel="변경사항 저장"
-          submitState={submitState}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-        />
+        <ConcertForm mode="edit" initialValues={loadState.data} submitState={submitState} onSubmit={handleSubmit} onCancel={handleCancel} />
       )}
     </div>
   );

@@ -6,14 +6,14 @@ interface UseConcertCardProps {
 }
 
 export const useConcertCard = ({ concert }: UseConcertCardProps) => {
-  const { posterUrl, title, placeName } = concert;
+  const { posterUrl, title, venueName } = concert;
 
   const { icon: GenreIcon, label: genreLabel, className: genreClassName } = CONCERT_GENRE_MAP[concert.genre];
 
   return {
     posterUrl,
     title,
-    placeName,
+    venueName,
     GenreIcon,
     genreLabel,
     genreClassName,

@@ -6,9 +6,10 @@ import java.time.LocalDateTime
 
 data class ConcertResponse(
   val id: Long,
+  val venueId: Long,
   val title: String,
   val genre: ConcertGenre,
-  val placeName: String,
+  val venueName: String,
   val posterUrl: String?,
   val description: String?,
   val createdAt: LocalDateTime,
@@ -16,9 +17,10 @@ data class ConcertResponse(
   companion object {
     fun from(concert: Concert): ConcertResponse = ConcertResponse(
       id = concert.id,
+      venueId = concert.venue.id,
       title = concert.title,
       genre = concert.genre,
-      placeName = concert.placeName,
+      venueName = concert.venueName,
       posterUrl = concert.posterUrl,
       description = concert.description,
       createdAt = concert.createdAt,

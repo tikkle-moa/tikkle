@@ -6,9 +6,10 @@ import type { ConcertListResponse } from "@entities/concert/model/concert.types"
 
 const makeConcert = (overrides: Partial<ConcertListResponse> = {}): ConcertListResponse => ({
   id: 1,
+  venueId: 1,
   title: "테스트 콘서트",
   genre: "BALLAD",
-  placeName: "올림픽공원",
+  venueName: "올림픽공원",
   posterUrl: "https://example.com/poster.jpg",
   createdAt: new Date("2026-01-01").toISOString(),
   ...overrides,

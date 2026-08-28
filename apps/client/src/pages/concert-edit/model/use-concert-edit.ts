@@ -12,6 +12,7 @@ import { CONCERT_QUERY_KEYS, type CreateConcertRequest } from "@entities/concert
 import type { SubmitState } from "@features/concert-form";
 
 import type { LoadState } from "./concert-edit.types";
+import { toUpdateConcertRequest } from "./concert-edit.utils";
 
 export const useConcertEdit = () => {
   const { concertId } = useParams();
@@ -60,17 +61,16 @@ export const useConcertEdit = () => {
       setSubmitState({ status: "error", error: "콘서트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." });
       return;
     }
-    const changedValues = Object.fromEntries(
-      Object.entries(values).filter(([key, value]) => value !== loadState.data[key as keyof CreateConcertRequest]),
-    ) as Partial<CreateConcertRequest>;
-    if (Object.keys(changedValues).length === 0) {
+    const updateConcertRequest = toUpdateConcertRequest(values, loadState.data);
+
+    if (Object.keys(updateConcertRequest).length === 0) {
       setSubmitState({ status: "error", error: "변경된 내용이 없습니다." });
       return;
     }
 
     setSubmitState({ status: "submitting" });
     try {
-      const { data, error, response } = await apiClient.PATCH(`/api/concerts/{id}`, { params: { path: { id } }, body: changedValues });
+      const { data, error, response } = await apiClient.PATCH(`/api/concerts/{id}`, { params: { path: { id } }, body: updateConcertRequest });
 
       if (!response.ok || error || !data) {
         setSubmitState({ status: "error", error: "콘서트 수정에 실패했습니다." });

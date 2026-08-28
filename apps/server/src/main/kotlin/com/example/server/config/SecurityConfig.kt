@@ -58,6 +58,7 @@ class SecurityConfig(
         configureAuthAuthorization(auth)
         configureConcertAuthorization(auth)
         configurePerformanceAuthorization(auth)
+        configureVenueAuthorization(auth)
 
         auth.anyRequest().hasRole(UserRole.ADMIN.name)
       }
@@ -100,6 +101,14 @@ class SecurityConfig(
       .requestMatchers(HttpMethod.POST, "/api/performances").hasRole(UserRole.ADMIN.name)
       .requestMatchers(HttpMethod.PATCH, "/api/performances/**").hasRole(UserRole.ADMIN.name)
       .requestMatchers(HttpMethod.DELETE, "/api/performances/**").hasRole(UserRole.ADMIN.name)
+  }
+
+  private fun configureVenueAuthorization(auth: AuthorizationRegistry) {
+    auth
+      .requestMatchers(HttpMethod.GET, "/api/venues", "/api/venues/*").permitAll()
+      .requestMatchers(HttpMethod.POST, "/api/venues").hasRole(UserRole.ADMIN.name)
+      .requestMatchers(HttpMethod.PATCH, "/api/venues/**").hasRole(UserRole.ADMIN.name)
+      .requestMatchers(HttpMethod.DELETE, "/api/venues/**").hasRole(UserRole.ADMIN.name)
   }
 
   @Bean

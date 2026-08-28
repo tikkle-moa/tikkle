@@ -102,9 +102,10 @@ class ConcertControllerTest {
 
   private fun concertResponse(id: Long = 1L, title: String = "아이유 콘서트"): ConcertResponse = ConcertResponse(
     id = id,
+    venueId = 1L,
     title = title,
     genre = ConcertGenre.BALLAD,
-    placeName = "올림픽 체조경기장",
+    venueName = "올림픽 체조경기장",
     posterUrl = null,
     description = null,
     createdAt = LocalDateTime.of(2026, 8, 18, 12, 0),
@@ -116,9 +117,9 @@ class ConcertControllerTest {
     @Test
     fun `관리자가 유효한 요청으로 콘서트를 생성한다`() {
       val request = CreateConcertRequest(
+        venueId = 1L,
         title = "아이유 콘서트",
         genre = ConcertGenre.BALLAD,
-        placeName = "올림픽 체조경기장",
       )
 
       given(concertService.create(request))
@@ -136,7 +137,7 @@ class ConcertControllerTest {
         jsonPath("$.data.id") { value(1) }
         jsonPath("$.data.title") { value("아이유 콘서트") }
         jsonPath("$.data.genre") { value("BALLAD") }
-        jsonPath("$.data.placeName") { value("올림픽 체조경기장") }
+        jsonPath("$.data.venueName") { value("올림픽 체조경기장") }
         jsonPath("$.data.posterUrl") { doesNotExist() }
         jsonPath("$.data.description") { doesNotExist() }
         jsonPath("$.data.createdAt") { exists() }
@@ -165,7 +166,7 @@ class ConcertControllerTest {
           {
             "title": "   ",
             "genre": "BALLAD",
-            "placeName": "올림픽 체조경기장"
+            "venueId": 1
           }
         """.trimIndent()
         with(authentication(adminAuth))
@@ -185,7 +186,7 @@ class ConcertControllerTest {
           {
             "title": "아이유 콘서트",
             "genre": "INVALID",
-            "placeName": "올림픽 체조경기장"
+            "venueId": 1
           }
         """.trimIndent()
         with(authentication(adminAuth))
@@ -200,9 +201,9 @@ class ConcertControllerTest {
     @Test
     fun `일반 사용자가 콘서트를 생성하면 403을 반환한다`() {
       val request = CreateConcertRequest(
+        venueId = 1L,
         title = "아이유 콘서트",
         genre = ConcertGenre.BALLAD,
-        placeName = "올림픽 체조경기장",
       )
 
       mockMvc.post("/api/concerts") {
@@ -220,9 +221,9 @@ class ConcertControllerTest {
     @Test
     fun `인증 없이 접근하면 401을 반환한다`() {
       val request = CreateConcertRequest(
+        venueId = 1L,
         title = "아이유 콘서트",
         genre = ConcertGenre.BALLAD,
-        placeName = "올림픽 체조경기장",
       )
 
       mockMvc.post("/api/concerts") {
@@ -292,7 +293,7 @@ class ConcertControllerTest {
     fun `null을 허용하지 않는 수정 필드에 null을 전달하면 400을 반환한다`() {
       mockMvc.patch("/api/concerts/1") {
         contentType = MediaType.APPLICATION_JSON
-        content = """{"title":null,"genre":null,"placeName":null}"""
+        content = """{"title":null,"genre":null}"""
         with(authentication(adminAuth))
         with(csrf())
       }.andExpect {
@@ -481,9 +482,10 @@ class ConcertControllerTest {
       val concerts = listOf(
         ConcertListResponse(
           id = 2L,
+          venueId = 1L,
           title = "최신 콘서트",
           genre = ConcertGenre.ROCK_METAL,
-          placeName = "수원",
+          venueName = "수원",
           posterUrl = "https://example.com/poster.png",
           createdAt = LocalDateTime.of(2026, 8, 17, 15, 0),
         ),

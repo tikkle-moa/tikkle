@@ -1,10 +1,11 @@
 import { Info } from "lucide-react";
 
-import type { PerformanceResponse, SeatResponse } from "@entities/performance";
+import type { PerformanceResponse } from "@entities/performance";
+import type { VenueSeatResponse } from "@entities/venue";
 
 interface PerformanceSeatMapProps {
   performance: PerformanceResponse;
-  seats: SeatResponse[];
+  seats: VenueSeatResponse[];
 }
 
 const PerformanceSeatMap = ({ performance, seats }: PerformanceSeatMapProps) => {

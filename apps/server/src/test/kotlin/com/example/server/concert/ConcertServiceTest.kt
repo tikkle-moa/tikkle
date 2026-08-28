@@ -13,6 +13,8 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.PerformanceResponse
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.venue.entity.Venue
+import com.example.server.venue.repository.VenueRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -24,8 +26,10 @@ import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.inOrder
 import org.mockito.junit.jupiter.MockitoExtension
 import org.openapitools.jackson.nullable.JsonNullable
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.Optional
 import kotlin.test.assertEquals
@@ -38,6 +42,9 @@ class ConcertServiceTest {
   @Mock
   lateinit var performanceRepository: PerformanceRepository
 
+  @Mock
+  lateinit var venueRepository: VenueRepository
+
   @InjectMocks
   lateinit var concertService: ConcertService
 
@@ -45,14 +52,15 @@ class ConcertServiceTest {
     id: Long = 1L,
     title: String = "기존 제목",
     genre: ConcertGenre = ConcertGenre.BALLAD,
-    placeName: String = "기존 장소",
+    venueName: String = "기존 장소",
     posterUrl: String? = "https://example.com/old.jpg",
     description: String? = "기존 설명",
   ): Concert = Concert(
     id = id,
+    venue = venue(),
     title = title,
     genre = genre,
-    placeName = placeName,
+    venueName = venueName,
     posterUrl = posterUrl,
     description = description,
   )
@@ -63,22 +71,24 @@ class ConcertServiceTest {
     @Test
     fun `콘서트를 생성하면 저장된 콘서트를 반환한다`() {
       val request = CreateConcertRequest(
+        venueId = 1L,
         title = "아이유 콘서트",
         genre = ConcertGenre.BALLAD,
-        placeName = "올림픽 체조경기장",
         posterUrl = "https://example.com/poster.jpg",
         description = "아이유의 단독 콘서트입니다.",
       )
 
       val saved = Concert(
         id = 1L,
+        venue = venue(),
         title = request.title,
         genre = request.genre,
-        placeName = request.placeName,
+        venueName = "올림픽 체조경기장",
         posterUrl = request.posterUrl,
         description = request.description,
       )
 
+      given(venueRepository.findById(1L)).willReturn(Optional.of(venue()))
       given(concertRepository.save(any(Concert::class.java)))
         .willReturn(saved)
 
@@ -87,13 +97,32 @@ class ConcertServiceTest {
       assertEquals(saved.id, result.id)
       assertEquals(saved.title, result.title)
       assertEquals(saved.genre, result.genre)
-      assertEquals(saved.placeName, result.placeName)
+      assertEquals(saved.venueName, result.venueName)
       assertEquals(saved.posterUrl, result.posterUrl)
       assertEquals(saved.description, result.description)
 
       then(concertRepository)
         .should()
         .save(any(Concert::class.java))
+    }
+
+    @Test
+    fun `존재하지 않는 공연장으로 콘서트를 생성하면 NOT_FOUND 예외를 던진다`() {
+      val request = CreateConcertRequest(
+        venueId = 99L,
+        title = "아이유 콘서트",
+        genre = ConcertGenre.BALLAD,
+        posterUrl = null,
+        description = null,
+      )
+      given(venueRepository.findById(99L)).willReturn(Optional.empty())
+
+      val exception = assertThrows<CustomException> {
+        concertService.create(request)
+      }
+
+      assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
+      then(concertRepository).shouldHaveNoInteractions()
     }
   }
 
@@ -105,7 +134,7 @@ class ConcertServiceTest {
       val concert = concert(
         title = "기존 제목",
         genre = ConcertGenre.ROCK_METAL,
-        placeName = "기존 장소",
+        venueName = "기존 장소",
       )
 
       given(concertRepository.findById(1L))
@@ -114,18 +143,17 @@ class ConcertServiceTest {
       val request = UpdateConcertRequest(
         title = JsonNullable.of("새 제목"),
         genre = JsonNullable.of(ConcertGenre.BALLAD),
-        placeName = JsonNullable.of("새 장소"),
       )
 
       val result = concertService.update(1L, request)
 
       assertEquals("새 제목", concert.title)
       assertEquals(ConcertGenre.BALLAD, concert.genre)
-      assertEquals("새 장소", concert.placeName)
+      assertEquals("기존 장소", concert.venueName)
 
       assertEquals("새 제목", result.title)
       assertEquals(ConcertGenre.BALLAD, result.genre)
-      assertEquals("새 장소", result.placeName)
+      assertEquals("기존 장소", result.venueName)
     }
 
     @Test
@@ -142,7 +170,7 @@ class ConcertServiceTest {
 
       assertEquals("기존 제목", result.title)
       assertEquals(ConcertGenre.BALLAD, result.genre)
-      assertEquals("기존 장소", result.placeName)
+      assertEquals("기존 장소", result.venueName)
       assertEquals("https://example.com/old.jpg", result.posterUrl)
       assertEquals("기존 설명", result.description)
     }
@@ -219,9 +247,9 @@ class ConcertServiceTest {
 
       concertService.delete(1L)
 
-      then(concertRepository)
-        .should()
-        .delete(concert)
+      val order = inOrder(performanceRepository, concertRepository)
+      order.verify(performanceRepository).deleteAllByConcertId(1L)
+      order.verify(concertRepository).delete(concert)
     }
 
     @Test
@@ -345,5 +373,17 @@ class ConcertServiceTest {
     startsAt = startsAt,
     bookingOpensAt = LocalDateTime.of(2026, 8, 1, 10, 0),
     createdAt = LocalDateTime.of(2026, 7, 1, 10, 0),
+  )
+
+  private fun venue(): Venue = Venue(
+    id = 1L,
+    name = "올림픽 체조경기장",
+    address = "서울",
+    width = BigDecimal("100.00"),
+    height = BigDecimal("100.00"),
+    stagePositionX = BigDecimal("20.00"),
+    stagePositionY = BigDecimal("5.00"),
+    stageWidth = BigDecimal("40.00"),
+    stageHeight = BigDecimal("10.00"),
   )
 }

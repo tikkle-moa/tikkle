@@ -5,13 +5,13 @@ import type { CreateConcertRequest } from "@entities/concert";
 import { CONCERT_FORM_LIMITS } from "../model/concert-form.constants";
 
 interface ConcertFormTextareaProps {
-  field: Exclude<keyof CreateConcertRequest, "genre">;
+  field: Exclude<keyof CreateConcertRequest, "genre" | "venueId">;
   label: string;
   isSubmitting: boolean;
   value: string | null;
   placeholder: string;
   error?: string;
-  updateField: (field: keyof CreateConcertRequest, value: string) => void;
+  updateField: <K extends keyof CreateConcertRequest>(field: K, value: CreateConcertRequest[K]) => void;
   required?: boolean;
 }
 

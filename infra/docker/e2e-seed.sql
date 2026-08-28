@@ -3,38 +3,88 @@
 
 SET NAMES utf8mb4;
 
+INSERT INTO venues (
+    id,
+    name,
+    address,
+    description,
+    width,
+    height,
+    stage_position_x,
+    stage_position_y,
+    stage_width,
+    stage_height,
+    created_at
+)
+VALUES (
+    900000,
+    'E2E 테스트 공연장',
+    '서울특별시 E2E구 테스트로 1',
+    'E2E 테스트 전용 공연장입니다.',
+    100.00,
+    100.00,
+    30.00,
+    7.50,
+    40.00,
+    15.00,
+    NOW()
+)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    address = VALUES(address),
+    description = VALUES(description),
+    width = VALUES(width),
+    height = VALUES(height),
+    stage_position_x = VALUES(stage_position_x),
+    stage_position_y = VALUES(stage_position_y),
+    stage_width = VALUES(stage_width),
+    stage_height = VALUES(stage_height);
+
+SET @e2e_venue_name = 'E2E 테스트 공연장';
+SET @e2e_venue_id = (
+    SELECT id
+    FROM venues
+    WHERE name = @e2e_venue_name
+    ORDER BY id
+    LIMIT 1
+);
+
 INSERT INTO
     concerts (
         id,
+        venue_id,
         title,
         genre,
-        place_name,
+        venue_name,
         poster_url,
         description,
         created_at
     )
 VALUES (
         900000,
+        @e2e_venue_id,
         'E2E 정상 콘서트',
         'INDIE',
-        'E2E 테스트 공연장',
+        @e2e_venue_name,
         NULL,
         '정상 상세 흐름 검증용 데이터입니다.',
         NOW()
     ),
     (
         900001,
+        @e2e_venue_id,
         'E2E 회차 없는 콘서트',
         'INDIE',
-        'E2E 테스트 공연장',
+        @e2e_venue_name,
         NULL,
         '회차 없음 상태 검증용 데이터입니다.',
         NOW()
     )
 ON DUPLICATE KEY UPDATE
+    venue_id = VALUES(venue_id),
     title = VALUES(title),
     genre = VALUES(genre),
-    place_name = VALUES(place_name),
+    venue_name = VALUES(venue_name),
     poster_url = VALUES(poster_url),
     description = VALUES(description);
 

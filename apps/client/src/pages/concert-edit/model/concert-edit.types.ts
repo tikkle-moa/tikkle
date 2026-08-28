@@ -1,3 +1,3 @@
-import type { CreateConcertRequest } from "@entities/concert";
+import type { ConcertResponse } from "@entities/concert";
 
-export type LoadState = { status: "loading" } | { status: "error"; error: string } | { status: "success"; data: CreateConcertRequest };
+export type LoadState = { status: "loading" } | { status: "error"; error: string } | { status: "success"; data: ConcertResponse };

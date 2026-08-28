@@ -8,6 +8,5 @@ export interface PerformanceStatusItem {
 }
 
 export type PerformanceResponse = components["schemas"]["PerformanceResponse"];
-export type SeatResponse = components["schemas"]["SeatResponse"];
 export type CreatePerformanceRequest = components["schemas"]["CreatePerformanceRequest"];
 export type UpdatePerformanceRequest = components["schemas"]["UpdatePerformanceRequest"];

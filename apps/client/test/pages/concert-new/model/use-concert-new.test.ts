@@ -21,7 +21,7 @@ vi.mock("react-router", async (importOriginal) => {
 });
 vi.mock("@shared/api", () => ({ apiClient: { POST: mockPost } }));
 
-const values = { title: "공연", genre: "INDIE" as const, placeName: "공연장", posterUrl: null, description: null };
+const values = { venueId: 1, title: "공연", genre: "INDIE" as const, posterUrl: null, description: null };
 
 describe("useConcertNew", () => {
   beforeEach(() => vi.clearAllMocks());

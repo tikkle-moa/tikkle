@@ -46,13 +46,12 @@ describe("ConcertEditPage", () => {
       ...baseState,
       loadState: {
         status: "success",
-        data: { title: "기존 공연", genre: "INDIE", placeName: "공연장", posterUrl: null, description: null },
+        data: { title: "기존 공연", genre: "INDIE", venueId: 1, venueName: "공연장", posterUrl: null, description: null },
       },
     });
     render(<ConcertEditPage />);
 
     expect(screen.getByRole("heading", { name: "콘서트 수정" })).toBeInTheDocument();
-    expect(screen.getByTestId("concert-form")).toHaveAttribute("data-submit-label", "변경사항 저장");
     expect(screen.getByText("기존 공연")).toBeInTheDocument();
   });
 

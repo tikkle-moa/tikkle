@@ -1,12 +1,12 @@
-package com.example.server.performance.dto
+package com.example.server.venue.dto
 
-import com.example.server.performance.entity.Seat
+import com.example.server.venue.entity.VenueSeat
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
-data class SeatResponse(
+data class VenueSeatResponse(
   val id: Long,
-  val performanceId: Long,
+  val venueId: Long,
   val sectionName: String,
   val seatNumber: Int,
   val seatLabel: String,
@@ -14,12 +14,11 @@ data class SeatResponse(
   val positionX: BigDecimal,
   val positionY: BigDecimal,
   val createdAt: LocalDateTime,
-  val booked: Boolean,
 ) {
   companion object {
-    fun from(seat: Seat, booked: Boolean = false): SeatResponse = SeatResponse(
+    fun from(seat: VenueSeat): VenueSeatResponse = VenueSeatResponse(
       id = seat.id,
-      performanceId = seat.performance.id,
+      venueId = seat.venue.id,
       sectionName = seat.sectionName,
       seatNumber = seat.seatNumber,
       seatLabel = seat.seatLabel,
@@ -27,7 +26,6 @@ data class SeatResponse(
       positionX = seat.positionX,
       positionY = seat.positionY,
       createdAt = seat.createdAt,
-      booked = booked,
     )
   }
 }

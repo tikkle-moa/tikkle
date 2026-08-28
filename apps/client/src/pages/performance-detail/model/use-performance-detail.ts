@@ -11,8 +11,8 @@ export const usePerformanceDetail = () => {
 
   return {
     isParamValid,
-    performance: data?.performance,
-    seats: data?.seats,
+    performance: data,
+    seats: [],
     isError,
     isPending,
   };

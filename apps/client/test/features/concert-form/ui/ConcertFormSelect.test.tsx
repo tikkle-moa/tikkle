@@ -15,7 +15,7 @@ describe("ConcertFormSelect", () => {
 
     const select = screen.getByRole("combobox", { name: "장르" });
     expect(select).toHaveValue("");
-    expect(screen.getByRole("option", { name: "장르를 선택해 주세요" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: "옵션을 선택해 주세요" })).toBeDisabled();
     await userEvent.selectOptions(select, "INDIE");
     expect(updateField).toHaveBeenCalledWith("genre", "INDIE");
   });

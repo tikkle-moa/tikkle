@@ -6,19 +6,40 @@ import ConcertFormInput from "./ConcertFormInput";
 import ConcertFormSelect from "./ConcertFormSelect";
 import ConcertFormTextarea from "./ConcertFormTextarea";
 
-import type { SubmitState } from "../model/concert-form.types";
+import type { ConcertFormMode, SubmitState } from "../model/concert-form.types";
 import { useConcertForm } from "../model/use-concert-form";
 
 interface ConcertFormProps {
+  mode: ConcertFormMode;
   initialValues?: Partial<CreateConcertRequest>;
-  submitLabel: string;
   submitState: SubmitState;
   onSubmit: (values: CreateConcertRequest) => void | Promise<void>;
   onCancel?: () => void;
 }
 
-const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCancel }: ConcertFormProps) => {
-  const { isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } = useConcertForm({ submitState, initialValues, onSubmit });
+const ConcertForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: ConcertFormProps) => {
+  const { venues, isVenueLoading, isVenueError, isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } = useConcertForm({
+    submitState,
+    initialValues,
+    onSubmit,
+  });
+
+  if (isVenueLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
+        <LoaderCircle className="size-6 animate-spin text-slate-400" aria-hidden />
+      </div>
+    );
+  }
+
+  if (isVenueError || !venues || venues.length === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
+        <AlertCircle className="size-6 text-red-500" aria-hidden />
+        <span className="ml-2 text-sm font-medium text-red-700">공연장 정보를 불러오지 못했습니다.</span>
+      </div>
+    );
+  }
 
   return (
     <form className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:rounded-2xl" noValidate onSubmit={handleSubmit}>
@@ -57,7 +78,7 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
             >
               {isSubmitting && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
 
-              {isSubmitting ? "저장 중..." : submitLabel}
+              {isSubmitting ? "저장 중..." : mode === "create" ? "콘서트 등록" : "변경사항 저장"}
             </button>
           </div>
         </div>
@@ -82,7 +103,7 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
               required
             />
 
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className={`grid gap-6 ${mode === "create" ? "sm:grid-cols-2" : "grid-cols-1"}`}>
               <ConcertFormSelect
                 field="genre"
                 label="장르"
@@ -94,16 +115,18 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
                 required
               />
 
-              <ConcertFormInput
-                field="placeName"
-                label="공연 장소"
-                isSubmitting={isSubmitting}
-                placeholder="예: 올림픽공원 KSPO DOME"
-                value={values.placeName}
-                error={errors.placeName}
-                updateField={updateField}
-                required
-              />
+              {mode === "create" && (
+                <ConcertFormSelect
+                  field="venueId"
+                  label="공연장"
+                  isSubmitting={isSubmitting}
+                  value={values.venueId}
+                  options={venues.map((venue) => ({ value: String(venue.id), label: venue.name }))}
+                  error={errors.venueId}
+                  updateField={updateField}
+                  required
+                />
+              )}
             </div>
 
             <ConcertFormInput
@@ -143,7 +166,13 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
 
             <div className="mx-auto max-w-70 lg:max-w-none">
               <ConcertCard
-                concert={{ id: -1, ...values, genre: values.genre || "BALLAD", createdAt: new Date().toISOString() }}
+                concert={{
+                  id: -1,
+                  ...values,
+                  genre: values.genre || "BALLAD",
+                  venueName: venues.find((venue) => venue.id === values.venueId)?.name || "",
+                  createdAt: new Date().toISOString(),
+                }}
                 displayOptions={{ showGenre: true, showTitle: true, showPlaceName: true }}
                 effectOptions={{ disableTilt: true, disableScale: true, disableGlare: true }}
                 onPosterError={handlePosterError}

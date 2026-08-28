@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface ConcertRepository : JpaRepository<Concert, Long> {
   fun findAllByOrderByCreatedAtDesc(): List<Concert>
+  fun existsByVenueId(venueId: Long): Boolean
 }

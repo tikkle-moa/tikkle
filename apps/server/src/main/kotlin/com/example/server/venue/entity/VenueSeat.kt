@@ -1,4 +1,4 @@
-package com.example.server.performance.entity
+package com.example.server.venue.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -16,19 +16,19 @@ import java.time.LocalDateTime
 
 @Entity
 @Table(
-  name = "seats",
+  name = "venue_seats",
   uniqueConstraints = [
-    UniqueConstraint(name = "uq_seat", columnNames = ["performance_id", "section_name", "seat_number"]),
+    UniqueConstraint(name = "uq_venue_seat", columnNames = ["venue_id", "section_name", "seat_number"]),
   ],
 )
-class Seat(
+class VenueSeat(
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   var id: Long = 0,
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "performance_id", nullable = false)
-  var performance: Performance,
+  @JoinColumn(name = "venue_id", nullable = false)
+  var venue: Venue,
 
   @Column(name = "section_name", nullable = false, length = 50)
   var sectionName: String,

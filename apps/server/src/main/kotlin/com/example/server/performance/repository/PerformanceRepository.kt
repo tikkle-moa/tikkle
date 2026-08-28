@@ -3,6 +3,7 @@ package com.example.server.performance.repository
 import com.example.server.concert.entity.Concert
 import com.example.server.performance.entity.Performance
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 
 interface PerformanceRepository : JpaRepository<Performance, Long> {
@@ -28,4 +29,8 @@ interface PerformanceRepository : JpaRepository<Performance, Long> {
     """,
   )
   fun findAllUpcomingFirstOrderByStartsAtAsc(): List<Performance>
+
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("DELETE FROM Performance p WHERE p.concert.id = :concertId")
+  fun deleteAllByConcertId(concertId: Long): Int
 }
