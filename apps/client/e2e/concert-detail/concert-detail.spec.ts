@@ -3,6 +3,11 @@ import { type Page, expect, test } from "@playwright/test";
 import { authenticatePage, createApiAuthHeaders, mockOAuthSession } from "../api/auth.api";
 import { createConcert, deleteConcert } from "../api/concert.api";
 
+const CONCERT_WITH_PERFORMANCE = {
+  id: 900000,
+  title: "E2E 정상 콘서트",
+};
+
 const CONCERT_WITHOUT_PERFORMANCE = {
   id: 900001,
   title: "E2E 회차 없는 콘서트",
@@ -150,5 +155,27 @@ test.describe("콘서트 상세 예매 패널 회차 관리", () => {
       }
       await deleteConcert(page, concert.id);
     }
+  });
+});
+
+test.describe("콘서트 상세 예매 패널 권한", () => {
+  test("일반 사용자에게 회차 관리 버튼을 표시하지 않는다", async ({ page }) => {
+    await mockOAuthSession(page, "USER");
+
+    await page.goto(`/concerts/${CONCERT_WITH_PERFORMANCE.id}`);
+
+    await expect(page.getByRole("list", { name: "공연 회차 목록" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "공연 회차 추가" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "공연 회차 수정" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "공연 회차 삭제" })).toHaveCount(0);
+  });
+
+  test("비로그인 사용자에게 회차 관리 버튼을 표시하지 않는다", async ({ page }) => {
+    await page.goto(`/concerts/${CONCERT_WITH_PERFORMANCE.id}`);
+
+    await expect(page.getByRole("list", { name: "공연 회차 목록" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "공연 회차 추가" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "공연 회차 수정" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "공연 회차 삭제" })).toHaveCount(0);
   });
 });
