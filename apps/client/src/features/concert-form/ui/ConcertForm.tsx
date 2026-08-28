@@ -6,18 +6,18 @@ import ConcertFormInput from "./ConcertFormInput";
 import ConcertFormSelect from "./ConcertFormSelect";
 import ConcertFormTextarea from "./ConcertFormTextarea";
 
-import type { SubmitState } from "../model/concert-form.types";
+import type { ConcertFormMode, SubmitState } from "../model/concert-form.types";
 import { useConcertForm } from "../model/use-concert-form";
 
 interface ConcertFormProps {
+  mode: ConcertFormMode;
   initialValues?: Partial<CreateConcertRequest>;
-  submitLabel: string;
   submitState: SubmitState;
   onSubmit: (values: CreateConcertRequest) => void | Promise<void>;
   onCancel?: () => void;
 }
 
-const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCancel }: ConcertFormProps) => {
+const ConcertForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: ConcertFormProps) => {
   const { venues, isVenueLoading, isVenueError, isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } = useConcertForm({
     submitState,
     initialValues,
@@ -78,7 +78,7 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
             >
               {isSubmitting && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
 
-              {isSubmitting ? "저장 중..." : submitLabel}
+              {isSubmitting ? "저장 중..." : mode === "create" ? "콘서트 등록" : "변경사항 저장"}
             </button>
           </div>
         </div>
@@ -103,7 +103,7 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
               required
             />
 
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className={`grid gap-6 ${mode === "create" ? "sm:grid-cols-2" : "grid-cols-1"}`}>
               <ConcertFormSelect
                 field="genre"
                 label="장르"
@@ -115,27 +115,18 @@ const ConcertForm = ({ initialValues, submitLabel, submitState, onSubmit, onCanc
                 required
               />
 
-              <ConcertFormSelect
-                field="venueId"
-                label="공연장"
-                isSubmitting={isSubmitting}
-                value={values.venueId}
-                options={venues.map((venue) => ({ value: String(venue.id), label: venue.name }))}
-                error={errors.venueId}
-                updateField={updateField}
-                required
-              />
-              {/* 
-              <ConcertFormInput
-                field="placeName"
-                label="공연 장소"
-                isSubmitting={isSubmitting}
-                placeholder="예: 올림픽공원 KSPO DOME"
-                value={values.placeName}
-                error={errors.placeName}
-                updateField={updateField}
-                required
-              /> */}
+              {mode === "create" && (
+                <ConcertFormSelect
+                  field="venueId"
+                  label="공연장"
+                  isSubmitting={isSubmitting}
+                  value={values.venueId}
+                  options={venues.map((venue) => ({ value: String(venue.id), label: venue.name }))}
+                  error={errors.venueId}
+                  updateField={updateField}
+                  required
+                />
+              )}
             </div>
 
             <ConcertFormInput
