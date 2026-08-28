@@ -4,12 +4,9 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.global.openapi.ErrorResponse
 import com.example.server.global.openapi.ErrorResponseItem
 import com.example.server.global.response.ApiResponse
-import com.example.server.performance.dto.ApplySeatChangesRequest
 import com.example.server.performance.dto.CreatePerformanceRequest
-import com.example.server.performance.dto.PerformanceDetailResponse
 import com.example.server.performance.dto.PerformanceResponse
-import com.example.server.performance.dto.SeatListResponse
-import com.example.server.performance.dto.SeatResponse
+import com.example.server.performance.dto.PerformanceSeatListResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -52,16 +49,16 @@ class PerformanceController(private val performanceService: PerformanceService) 
     ],
   )
   @GetMapping("/{id}")
-  fun getPerformance(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<PerformanceDetailResponse>> {
+  fun getPerformance(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<PerformanceResponse>> {
     val performanceResponse = performanceService.getPerformance(id)
 
     return ResponseEntity.ok(ApiResponse.ok(performanceResponse))
   }
 
   @Operation(
-    summary = "공연 좌석 목록 조회",
-    description = "공연 회차의 좌석을 구역명과 좌석 번호 순으로 반환합니다.",
-    responses = [SwaggerApiResponse(responseCode = "200", description = "공연 좌석 목록 조회 성공")],
+    summary = "공연 좌석 상태 목록 조회",
+    description = "공연 회차의 좌석 상태 목록을 반환합니다.",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "공연 좌석 상태 목록 조회 성공")],
   )
   @ErrorResponse(
     responses = [
@@ -69,8 +66,8 @@ class PerformanceController(private val performanceService: PerformanceService) 
     ],
   )
   @GetMapping("/{id}/seats")
-  fun getSeats(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<SeatListResponse>> {
-    val seatListResponse = performanceService.getSeats(id)
+  fun getSeatsStatus(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<PerformanceSeatListResponse>> {
+    val seatListResponse = performanceService.getSeatsStatus(id)
 
     return ResponseEntity.ok(ApiResponse.ok(seatListResponse))
   }
@@ -95,30 +92,6 @@ class PerformanceController(private val performanceService: PerformanceService) 
 
     return ResponseEntity.status(HttpStatus.CREATED)
       .body(ApiResponse.ok(performanceResponse))
-  }
-
-  @Operation(
-    summary = "좌석 일괄 생성 및 수정",
-    description = "ID가 없는 좌석은 생성하고, ID가 있는 좌석은 수정하며, deletedSeatIds에 포함된 좌석은 삭제합니다.",
-    responses = [SwaggerApiResponse(responseCode = "200", description = "좌석 일괄 변경 성공")],
-    security = [SecurityRequirement(name = "access_token")],
-  )
-  @ErrorResponse(
-    responses = [
-      ErrorResponseItem(ErrorCode.BAD_REQUEST),
-      ErrorResponseItem(ErrorCode.UNAUTHORIZED),
-      ErrorResponseItem(ErrorCode.FORBIDDEN),
-      ErrorResponseItem(ErrorCode.NOT_FOUND, description = "공연 회차 또는 좌석을 찾을 수 없음"),
-    ],
-  )
-  @PatchMapping("/{id}/seats")
-  fun applySeatChanges(
-    @PathVariable id: Long,
-    @Valid @RequestBody request: ApplySeatChangesRequest,
-  ): ResponseEntity<ApiResponse.Success<List<SeatResponse>>> {
-    val seatResponses = performanceService.applySeatChanges(id, request)
-
-    return ResponseEntity.ok(ApiResponse.ok(seatResponses))
   }
 
   @Operation(
