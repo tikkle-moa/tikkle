@@ -102,6 +102,14 @@ class SecurityConfig(
       .requestMatchers(HttpMethod.DELETE, "/api/performances/**").hasRole(UserRole.ADMIN.name)
   }
 
+  private fun configureVenueAuthorization(auth: AuthorizationRegistry) {
+    auth
+      .requestMatchers(HttpMethod.GET, "/api/venues", "/api/venues/*").permitAll()
+      .requestMatchers(HttpMethod.POST, "/api/venues").hasRole(UserRole.ADMIN.name)
+      .requestMatchers(HttpMethod.PATCH, "/api/venues/**").hasRole(UserRole.ADMIN.name)
+      .requestMatchers(HttpMethod.DELETE, "/api/venues/**").hasRole(UserRole.ADMIN.name)
+  }
+
   @Bean
   fun corsConfigurationSource(): UrlBasedCorsConfigurationSource {
     val configuration = CorsConfiguration().apply {

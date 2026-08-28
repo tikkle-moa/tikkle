@@ -3,4 +3,7 @@ package com.example.server.venue.repository
 import com.example.server.venue.entity.VenueSeat
 import org.springframework.data.jpa.repository.JpaRepository
 
-interface VenueSeatRepository : JpaRepository<VenueSeat, Long>
+interface VenueSeatRepository : JpaRepository<VenueSeat, Long> {
+  fun findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(venueId: Long): List<VenueSeat>
+  fun deleteAllByVenueId(venueId: Long): Void
+}
