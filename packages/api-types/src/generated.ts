@@ -4,6 +4,30 @@
  */
 
 export interface paths {
+  "/api/venues": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 공연장 목록 조회
+     * @description 공연장 목록을 조회합니다.
+     */
+    get: operations["getAllVenues"];
+    put?: never;
+    /**
+     * 공연장 생성
+     * @description 공연장과 좌석을 생성합니다.
+     */
+    post: operations["createVenueDetails"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/performances": {
     parameters: {
       query?: never;
@@ -92,6 +116,34 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/venues/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 공연장 상세 조회
+     * @description 공연장과 좌석 정보를 조회합니다.
+     */
+    get: operations["getVenueDetails"];
+    put?: never;
+    post?: never;
+    /**
+     * 공연장 삭제
+     * @description 공연장과 좌석을 삭제합니다.
+     */
+    delete: operations["deleteVenue"];
+    options?: never;
+    head?: never;
+    /**
+     * 공연장 일괄 생성 / 수정 / 삭제
+     * @description 공연장과 좌석을 일괄적으로 생성, 수정, 삭제합니다. 요청에 포함된 좌석 정보는 공연장에 대한 좌석 정보를 완전히 대체합니다. 즉, 요청에 포함되지 않은 좌석은 삭제됩니다.
+     */
+    patch: operations["updateVenueDetails"];
+    trace?: never;
+  };
   "/api/performances/{id}": {
     parameters: {
       query?: never;
@@ -120,30 +172,6 @@ export interface paths {
     patch: operations["update"];
     trace?: never;
   };
-  "/api/performances/{id}/seats": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * 공연 좌석 목록 조회
-     * @description 공연 회차의 좌석을 구역명과 좌석 번호 순으로 반환합니다.
-     */
-    get: operations["getSeats"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /**
-     * 좌석 일괄 생성 및 수정
-     * @description ID가 없는 좌석은 생성하고, ID가 있는 좌석은 수정하며, deletedSeatIds에 포함된 좌석은 삭제합니다.
-     */
-    patch: operations["applySeatChanges"];
-    trace?: never;
-  };
   "/api/concerts/{id}": {
     parameters: {
       query?: never;
@@ -170,6 +198,26 @@ export interface paths {
      * @description 기존 콘서트 정보를 수정합니다.
      */
     patch: operations["update_1"];
+    trace?: never;
+  };
+  "/api/performances/{id}/seats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 공연 좌석 상태 목록 조회
+     * @description 공연 회차의 좌석 상태 목록을 반환합니다.
+     */
+    get: operations["getSeatsStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/api/auth/oauth/{oauth_provider}": {
@@ -236,6 +284,73 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    CreateVenueDetailRequest: {
+      venue: components["schemas"]["CreateVenueRequest"];
+      venueSeats: components["schemas"]["CreateVenueSeatRequest"][];
+    };
+    CreateVenueRequest: {
+      name: string;
+      address: string;
+      description: string | null;
+      width: number;
+      height: number;
+      stagePositionX: number;
+      stagePositionY: number;
+      stageWidth: number;
+      stageHeight: number;
+    };
+    CreateVenueSeatRequest: {
+      /** Format: int64 */
+      id: number | null;
+      sectionName: string;
+      /** Format: int32 */
+      seatNumber: number;
+      seatLabel: string;
+      /** Format: int32 */
+      price: number;
+      positionX: number;
+      positionY: number;
+    };
+    SuccessVenueDetailResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["VenueDetailResponse"];
+    };
+    VenueDetailResponse: {
+      venue: components["schemas"]["VenueResponse"];
+      venueSeats: components["schemas"]["VenueSeatResponse"][];
+    };
+    VenueResponse: {
+      /** Format: int64 */
+      id: number;
+      name: string;
+      address: string;
+      description: string | null;
+      width: number;
+      height: number;
+      stagePositionX: number;
+      stagePositionY: number;
+      stageWidth: number;
+      stageHeight: number;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    VenueSeatResponse: {
+      /** Format: int64 */
+      id: number;
+      /** Format: int64 */
+      venueId: number;
+      sectionName: string;
+      /** Format: int32 */
+      seatNumber: number;
+      seatLabel: string;
+      /** Format: int32 */
+      price: number;
+      positionX: number;
+      positionY: number;
+      /** Format: date-time */
+      createdAt: string;
+    };
     CreatePerformanceRequest: {
       /** Format: int64 */
       concertId: number;
@@ -269,18 +384,21 @@ export interface components {
     /** @enum {string} */
     ConcertGenre: "BALLAD" | "ROCK_METAL" | "RAP_HIPHOP" | "JAZZ_SOUL" | "TROT" | "INTERNATIONAL_ARTIST" | "FESTIVAL" | "INDIE";
     CreateConcertRequest: {
+      /** Format: int64 */
+      venueId: number;
       title: string;
       genre: components["schemas"]["ConcertGenre"];
-      placeName: string;
       posterUrl: string | null;
       description: string | null;
     };
     ConcertResponse: {
       /** Format: int64 */
       id: number;
+      /** Format: int64 */
+      venueId: number;
       title: string;
       genre: components["schemas"]["ConcertGenre"];
-      placeName: string;
+      venueName: string;
       posterUrl: string | null;
       description: string | null;
       /** Format: date-time */
@@ -297,18 +415,23 @@ export interface components {
       /** @enum {string|null} */
       data: null;
     };
-    UpdatePerformanceRequest: {
+    UpdateVenueDetailRequest: {
+      venue: components["schemas"]["UpdateVenueRequest"] | null;
+      venueSeats: components["schemas"]["UpdateVenueSeatRequest"][] | null;
+      deletedSeatIds: number[] | null;
+    };
+    UpdateVenueRequest: {
       name?: string;
-      /** Format: date-time */
-      startsAt?: string;
-      /** Format: date-time */
-      bookingOpensAt?: string | null;
+      address?: string;
+      description?: string | null;
+      width?: number;
+      height?: number;
+      stagePositionX?: number;
+      stagePositionY?: number;
+      stageWidth?: number;
+      stageHeight?: number;
     };
-    ApplySeatChangesRequest: {
-      seats: components["schemas"]["SeatChangeRequest"][];
-      deletedSeatIds: number[];
-    };
-    SeatChangeRequest: {
+    UpdateVenueSeatRequest: {
       /** Format: int64 */
       id: number | null;
       sectionName: string;
@@ -320,65 +443,54 @@ export interface components {
       positionX: number;
       positionY: number;
     };
-    SeatResponse: {
-      /** Format: int64 */
-      id: number;
-      /** Format: int64 */
-      performanceId: number;
-      sectionName: string;
-      /** Format: int32 */
-      seatNumber: number;
-      seatLabel: string;
-      /** Format: int32 */
-      price: number;
-      positionX: number;
-      positionY: number;
+    UpdatePerformanceRequest: {
+      name?: string;
       /** Format: date-time */
-      createdAt: string;
-      booked: boolean;
-    };
-    SuccessListSeatResponse: {
-      /** @enum {boolean} */
-      success: true;
-      data: components["schemas"]["SeatResponse"][];
+      startsAt?: string;
+      /** Format: date-time */
+      bookingOpensAt?: string | null;
     };
     UpdateConcertRequest: {
       title?: string;
       genre?: components["schemas"]["ConcertGenre"];
-      placeName?: string;
       posterUrl?: string | null;
       description?: string | null;
+    };
+    SuccessListVenueResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["VenueResponse"][];
     };
     SuccessListPerformanceResponse: {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["PerformanceResponse"][];
     };
-    PerformanceDetailResponse: {
-      performance: components["schemas"]["PerformanceResponse"];
-      seats: components["schemas"]["SeatResponse"][];
+    HeldSeat: {
+      /** Format: int64 */
+      id: number;
+      /** Format: date-time */
+      expiresAt: string;
     };
-    SuccessPerformanceDetailResponse: {
-      /** @enum {boolean} */
-      success: true;
-      data: components["schemas"]["PerformanceDetailResponse"];
-    };
-    SeatListResponse: {
+    PerformanceSeatListResponse: {
       /** Format: date-time */
       serverTime: string;
-      seats: components["schemas"]["SeatResponse"][];
+      bookedSeats: number[];
+      heldSeats: components["schemas"]["HeldSeat"][];
     };
-    SuccessSeatListResponse: {
+    SuccessPerformanceSeatListResponse: {
       /** @enum {boolean} */
       success: true;
-      data: components["schemas"]["SeatListResponse"];
+      data: components["schemas"]["PerformanceSeatListResponse"];
     };
     ConcertListResponse: {
       /** Format: int64 */
       id: number;
+      /** Format: int64 */
+      venueId: number;
       title: string;
       genre: components["schemas"]["ConcertGenre"];
-      placeName: string;
+      venueName: string;
       posterUrl: string | null;
       /** Format: date-time */
       createdAt: string;
@@ -444,6 +556,104 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  getAllVenues: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공연장 목록 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessListVenueResponse"];
+        };
+      };
+    };
+  };
+  createVenueDetails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateVenueDetailRequest"];
+      };
+    };
+    responses: {
+      /** @description 공연장 생성 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessVenueDetailResponse"];
+        };
+      };
+      /** @description 잘못된 요청입니다. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
   getPerformances: {
     parameters: {
       query?: never;
@@ -756,6 +966,220 @@ export interface operations {
       };
     };
   };
+  getVenueDetails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공연장 상세 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessVenueDetailResponse"];
+        };
+      };
+      /** @description 공연장을 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  deleteVenue: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공연장 삭제 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EmptySuccess"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 공연장을 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  updateVenueDetails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateVenueDetailRequest"];
+      };
+    };
+    responses: {
+      /** @description 공연장 일괄 생성 / 수정 / 삭제 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessVenueDetailResponse"];
+        };
+      };
+      /** @description 잘못된 요청입니다. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 공연장 또는 좌석을 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
   getPerformance: {
     parameters: {
       query?: never;
@@ -773,7 +1197,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SuccessPerformanceDetailResponse"];
+          "application/json": components["schemas"]["SuccessPerformanceResponse"];
         };
       };
       /** @description 공연 회차를 찾을 수 없음 */
@@ -951,144 +1375,6 @@ export interface operations {
         };
       };
       /** @description 공연 회차 또는 콘서트를 찾을 수 없음 */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          /**
-           * @example {
-           *       "success": false,
-           *       "error": {
-           *         "code": 404,
-           *         "message": "대상을 찾을 수 없습니다."
-           *       }
-           *     }
-           */
-          "application/json": components["schemas"]["Failure"];
-        };
-      };
-    };
-  };
-  getSeats: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description 공연 좌석 목록 조회 성공 */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SuccessSeatListResponse"];
-        };
-      };
-      /** @description 공연 회차를 찾을 수 없음 */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          /**
-           * @example {
-           *       "success": false,
-           *       "error": {
-           *         "code": 404,
-           *         "message": "대상을 찾을 수 없습니다."
-           *       }
-           *     }
-           */
-          "application/json": components["schemas"]["Failure"];
-        };
-      };
-    };
-  };
-  applySeatChanges: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ApplySeatChangesRequest"];
-      };
-    };
-    responses: {
-      /** @description 좌석 일괄 변경 성공 */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SuccessListSeatResponse"];
-        };
-      };
-      /** @description 잘못된 요청입니다. */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          /**
-           * @example {
-           *       "success": false,
-           *       "error": {
-           *         "code": 400,
-           *         "message": "잘못된 요청입니다."
-           *       }
-           *     }
-           */
-          "application/json": components["schemas"]["Failure"];
-        };
-      };
-      /** @description 인증이 필요합니다. */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          /**
-           * @example {
-           *       "success": false,
-           *       "error": {
-           *         "code": 401,
-           *         "message": "인증이 필요합니다."
-           *       }
-           *     }
-           */
-          "application/json": components["schemas"]["Failure"];
-        };
-      };
-      /** @description 접근 권한이 필요합니다. */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          /**
-           * @example {
-           *       "success": false,
-           *       "error": {
-           *         "code": 403,
-           *         "message": "접근 권한이 필요합니다."
-           *       }
-           *     }
-           */
-          "application/json": components["schemas"]["Failure"];
-        };
-      };
-      /** @description 공연 회차 또는 좌석을 찾을 수 없음 */
       404: {
         headers: {
           [name: string]: unknown;
@@ -1303,6 +1589,46 @@ export interface operations {
         };
       };
       /** @description 콘서트를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  getSeatsStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공연 좌석 상태 목록 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessPerformanceSeatListResponse"];
+        };
+      };
+      /** @description 공연 회차를 찾을 수 없음 */
       404: {
         headers: {
           [name: string]: unknown;
