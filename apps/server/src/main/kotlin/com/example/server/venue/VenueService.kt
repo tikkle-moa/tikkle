@@ -43,7 +43,7 @@ class VenueService(private val venueRepository: VenueRepository, private val ven
     val stageWidth = request.venue.stageWidth
     val stageHeight = request.venue.stageHeight
 
-    validateStagePosition(stagePositionX, stagePositionY, stageWidth, stageHeight)
+    validateStagePosition(request.venue.width, request.venue.height, stagePositionX, stagePositionY, stageWidth, stageHeight)
 
     val savedVenue = venueRepository.save(
       Venue(
@@ -117,8 +117,10 @@ class VenueService(private val venueRepository: VenueRepository, private val ven
       val stagePositionY = request.venue.stagePositionY.orElse(venue.stagePositionY)
       val stageWidth = request.venue.stageWidth.orElse(venue.stageWidth)
       val stageHeight = request.venue.stageHeight.orElse(venue.stageHeight)
+      val venueWidth = request.venue.width.orElse(venue.width)
+      val venueHeight = request.venue.height.orElse(venue.height)
 
-      validateStagePosition(stagePositionX, stagePositionY, stageWidth, stageHeight)
+      validateStagePosition(venueWidth, venueHeight, stagePositionX, stagePositionY, stageWidth, stageHeight)
     }
 
     val venueSeats = request.venueSeats?.map { seatRequest ->
@@ -168,13 +170,20 @@ class VenueService(private val venueRepository: VenueRepository, private val ven
     venueSeatRepository.deleteAllByVenueId(venueId)
   }
 
-  private fun validateStagePosition(x: BigDecimal, y: BigDecimal, width: BigDecimal, height: BigDecimal) {
-    val leftTopX = x.subtract(width.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
-    val leftTopY = y.subtract(height.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
-    val rightBottomX = x.add(width.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
-    val rightBottomY = y.add(height.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
+  private fun validateStagePosition(
+    venueWidth: BigDecimal,
+    venueHeight: BigDecimal,
+    stagePositionX: BigDecimal,
+    stagePositionY: BigDecimal,
+    stageWidth: BigDecimal,
+    stageHeight: BigDecimal,
+  ) {
+    val leftTopX = stagePositionX.subtract(stageWidth.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
+    val leftTopY = stagePositionY.subtract(stageHeight.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
+    val rightBottomX = stagePositionX.add(stageWidth.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
+    val rightBottomY = stagePositionY.add(stageHeight.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
 
-    if (leftTopX < BigDecimal(0) || leftTopY < BigDecimal(0) || rightBottomX > width || rightBottomY > height) {
+    if (leftTopX < BigDecimal.ZERO || leftTopY < BigDecimal.ZERO || rightBottomX > venueWidth || rightBottomY > venueHeight) {
       throw CustomException(ErrorCode.BAD_REQUEST, "무대가 장소의 범위를 벗어났습니다.")
     }
   }
