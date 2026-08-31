@@ -40,6 +40,7 @@ vi.mock("@pages/concert-detail/model/use-performance-booking-panel", () => ({
 const makePerformance = (overrides: Partial<PerformanceResponse> = {}): PerformanceResponse => ({
   id: 1,
   concertId: 1,
+  venueId: 1,
   name: "Tikkle Live",
   startsAt: "2026-09-01T19:00:00",
   bookingOpensAt: null,
