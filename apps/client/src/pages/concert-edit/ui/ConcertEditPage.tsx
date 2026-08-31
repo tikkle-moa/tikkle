@@ -48,7 +48,14 @@ const ConcertEditPage = () => {
       )}
 
       {loadState.status === "success" && (
-        <ConcertForm mode="edit" initialValues={loadState.data} submitState={submitState} onSubmit={handleSubmit} onCancel={handleCancel} />
+        <ConcertForm
+          mode="edit"
+          initialValues={loadState.data}
+          initialVenueName={loadState.data.venueName}
+          submitState={submitState}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+        />
       )}
     </div>
   );

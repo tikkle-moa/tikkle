@@ -45,7 +45,6 @@ class PerformanceServiceTest {
     venue = venue(),
     title = "아이유 콘서트",
     genre = ConcertGenre.BALLAD,
-    venueName = "올림픽 체조경기장",
   )
 
   private fun performance(

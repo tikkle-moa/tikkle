@@ -60,7 +60,6 @@ class ConcertServiceTest {
     venue = venue(),
     title = title,
     genre = genre,
-    venueName = venueName,
     posterUrl = posterUrl,
     description = description,
   )
@@ -83,7 +82,6 @@ class ConcertServiceTest {
         venue = venue(),
         title = request.title,
         genre = request.genre,
-        venueName = "올림픽 체조경기장",
         posterUrl = request.posterUrl,
         description = request.description,
       )
@@ -97,7 +95,6 @@ class ConcertServiceTest {
       assertEquals(saved.id, result.id)
       assertEquals(saved.title, result.title)
       assertEquals(saved.genre, result.genre)
-      assertEquals(saved.venueName, result.venueName)
       assertEquals(saved.posterUrl, result.posterUrl)
       assertEquals(saved.description, result.description)
 
@@ -149,11 +146,9 @@ class ConcertServiceTest {
 
       assertEquals("새 제목", concert.title)
       assertEquals(ConcertGenre.BALLAD, concert.genre)
-      assertEquals("기존 장소", concert.venueName)
 
       assertEquals("새 제목", result.title)
       assertEquals(ConcertGenre.BALLAD, result.genre)
-      assertEquals("기존 장소", result.venueName)
     }
 
     @Test
@@ -170,7 +165,6 @@ class ConcertServiceTest {
 
       assertEquals("기존 제목", result.title)
       assertEquals(ConcertGenre.BALLAD, result.genre)
-      assertEquals("기존 장소", result.venueName)
       assertEquals("https://example.com/old.jpg", result.posterUrl)
       assertEquals("기존 설명", result.description)
     }

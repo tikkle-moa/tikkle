@@ -86,7 +86,6 @@ class PerformanceRepositoryTest {
     venue = venueRepository.save(venue()),
     title = title,
     genre = ConcertGenre.BALLAD,
-    venueName = "테스트 공연장",
   )
 
   private fun venue(): Venue = Venue(

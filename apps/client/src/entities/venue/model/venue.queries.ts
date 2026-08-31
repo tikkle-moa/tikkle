@@ -4,9 +4,10 @@ import { apiClient } from "@shared/api";
 
 import { VENUE_QUERY_KEYS } from "./venue.constants";
 
-export const useVenues = () =>
+export const useVenues = (enabled = true) =>
   useQuery({
     queryKey: VENUE_QUERY_KEYS.all,
+    enabled,
     queryFn: async () => {
       const { data, error, response } = await apiClient.GET("/api/venues");
 

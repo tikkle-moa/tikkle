@@ -590,7 +590,7 @@ export interface operations {
     };
     responses: {
       /** @description 공연장 생성 성공 */
-      200: {
+      201: {
         headers: {
           [name: string]: unknown;
         };
@@ -1074,6 +1074,24 @@ export interface operations {
            *       "error": {
            *         "code": 404,
            *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 공연이 등록된 공연장 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 409,
+           *         "message": "예상치 못한 충돌이 발생했습니다."
            *       }
            *     }
            */

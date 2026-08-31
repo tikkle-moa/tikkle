@@ -29,7 +29,6 @@ class ConcertService(
       venue = venue,
       title = createConcertRequest.title,
       genre = createConcertRequest.genre,
-      venueName = venue.name,
       posterUrl = createConcertRequest.posterUrl,
       description = createConcertRequest.description,
     )
