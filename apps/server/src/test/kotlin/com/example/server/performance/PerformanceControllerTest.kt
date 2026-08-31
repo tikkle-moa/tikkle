@@ -97,12 +97,14 @@ class PerformanceControllerTest {
   private fun performanceResponse(
     id: Long = 1L,
     concertId: Long = 1L,
+    venueId: Long = 1L,
     name: String = "1회차",
     startsAt: LocalDateTime = LocalDateTime.of(2027, 1, 20, 19, 0),
     bookingOpensAt: LocalDateTime? = LocalDateTime.of(2027, 1, 10, 10, 0),
   ): PerformanceResponse = PerformanceResponse(
     id = id,
     concertId = concertId,
+    venueId = venueId,
     name = name,
     startsAt = startsAt,
     bookingOpensAt = bookingOpensAt,
@@ -171,6 +173,7 @@ class PerformanceControllerTest {
           jsonPath("$.success") { value(true) }
           jsonPath("$.data.id") { value(1) }
           jsonPath("$.data.concertId") { value(1) }
+          jsonPath("$.data.venueId") { value(1) }
           jsonPath("$.data.startsAt") { value("2027-01-20T19:00:00") }
           jsonPath("$.data.bookingOpensAt") { value("2027-01-10T10:00:00") }
           jsonPath("$.data.createdAt") { value("2026-08-24T12:00:00") }

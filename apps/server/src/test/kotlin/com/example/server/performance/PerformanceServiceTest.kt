@@ -84,6 +84,7 @@ class PerformanceServiceTest {
 
       assertThat(result.id).isEqualTo(performance.id)
       assertThat(result.concertId).isEqualTo(performance.concert.id)
+      assertThat(result.venueId).isEqualTo(performance.concert.venue.id)
     }
 
     @Test
