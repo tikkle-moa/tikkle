@@ -8,13 +8,14 @@ import DetailMessage from "@shared/ui/DetailMessage";
 
 import { PERFORMANCE_STATUS_MAP } from "@entities/performance";
 
+import { VenueMap } from "@features/venue-map";
+
 import PerformanceDetailSkeleton from "./PerformanceDetailSkeleton";
-import PerformanceSeatMap from "./PerformanceSeatMap";
 
 import { usePerformanceDetail } from "../model/use-performance-detail";
 
 const PerformanceDetailPage = () => {
-  const { performance, seats, isError, isParamValid, isPending } = usePerformanceDetail();
+  const { performance, venue, seats, isError, isParamValid, isPending } = usePerformanceDetail();
 
   if (!isParamValid) {
     return <DetailMessage title="잘못된 공연 회차입니다." description="올바르지 않은 공연 회차 ID입니다." />;
@@ -24,7 +25,7 @@ const PerformanceDetailPage = () => {
     return <PerformanceDetailSkeleton />;
   }
 
-  if (isError || !performance || !seats) {
+  if (isError || !performance || !venue) {
     return <DetailMessage title="공연 회차를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
@@ -97,7 +98,7 @@ const PerformanceDetailPage = () => {
         <Ticket className="absolute top-5 right-5 size-8 text-white/10 sm:size-12" aria-hidden />
       </section>
 
-      <PerformanceSeatMap performance={performance} seats={seats} />
+      <VenueMap venue={venue} seats={seats} />
     </div>
   );
 };
