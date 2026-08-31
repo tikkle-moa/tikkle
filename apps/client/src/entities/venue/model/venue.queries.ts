@@ -18,3 +18,20 @@ export const useVenues = (enabled = true) =>
       return data.data;
     },
   });
+
+export const useVenueDetail = (venueId: number) =>
+  useQuery({
+    queryKey: VENUE_QUERY_KEYS.detail(venueId),
+    enabled: Number.isInteger(venueId) && venueId > 0,
+    queryFn: async () => {
+      const { data, error, response } = await apiClient.GET("/api/venues/{id}", {
+        params: { path: { id: venueId } },
+      });
+
+      if (!response.ok || error || !data) {
+        throw new Error("공연장 상세 정보를 불러오지 못했습니다.");
+      }
+
+      return data.data;
+    },
+  });
