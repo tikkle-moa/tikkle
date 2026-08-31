@@ -7,6 +7,7 @@ import java.time.LocalDateTime
 data class PerformanceResponse(
   val id: Long,
   val concertId: Long,
+  val venueId: Long,
   val name: String,
   val startsAt: LocalDateTime,
   val bookingOpensAt: LocalDateTime?,
@@ -17,6 +18,7 @@ data class PerformanceResponse(
     fun from(performance: Performance, isSoldOut: Boolean = false): PerformanceResponse = PerformanceResponse(
       id = performance.id,
       concertId = performance.concert.id,
+      venueId = performance.concert.venue.id,
       name = performance.name,
       startsAt = performance.startsAt,
       bookingOpensAt = performance.bookingOpensAt,
