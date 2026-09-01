@@ -1,5 +1,11 @@
 import { useResizeTextarea } from "@shared/model/use-resize-textarea";
 
+import {
+  VENUE_FORM_FIELD_ERROR_CLASS_NAME,
+  VENUE_FORM_FIELD_STATE_CLASS_NAME,
+  VENUE_FORM_FIELD_VALID_CLASS_NAME,
+} from "../model/venue-form.constants";
+
 interface VenueFormTextareaProps {
   id: string;
   label: string;
@@ -40,10 +46,8 @@ const VenueFormTextarea = ({ id, label, value, maxLength, error, placeholder, re
         disabled={disabled}
         aria-describedby={error ? errorId : undefined}
         aria-invalid={Boolean(error)}
-        className={`mt-2 min-h-48 w-full resize-none overflow-hidden rounded-xl border bg-white px-4 py-3 text-sm leading-6 text-slate-900 shadow-xs transition-[border-color,box-shadow] outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 ${
-          error
-            ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
-            : "focus:border-brand-primary border-slate-200 focus:ring-2 focus:ring-violet-100"
+        className={`mt-2 min-h-48 w-full resize-none overflow-hidden rounded-xl px-4 py-3 text-sm leading-6 shadow-xs transition-[border-color,box-shadow] disabled:text-slate-500 ${VENUE_FORM_FIELD_STATE_CLASS_NAME} ${
+          error ? VENUE_FORM_FIELD_ERROR_CLASS_NAME : VENUE_FORM_FIELD_VALID_CLASS_NAME
         }`}
         onChange={(e) => onChange(e.target.value)}
         required={required}

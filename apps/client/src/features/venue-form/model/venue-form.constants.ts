@@ -24,3 +24,10 @@ export const EMPTY_VENUE_FORM_VALUES: CreateVenueRequest = {
 export const BASIC_ERROR_KEYS = new Set(["name", "address", "description"]);
 
 export const LAYOUT_ERROR_KEYS = new Set(["width", "height", "stagePositionX", "stagePositionY", "stageWidth", "stageHeight"]);
+
+export const VENUE_FORM_FIELD_STATE_CLASS_NAME =
+  "border bg-white text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50";
+
+export const VENUE_FORM_FIELD_VALID_CLASS_NAME = "border-slate-200 focus:border-brand-primary focus:ring-violet-100";
+
+export const VENUE_FORM_FIELD_ERROR_CLASS_NAME = "border-red-300 focus:border-red-400 focus:ring-red-100";
