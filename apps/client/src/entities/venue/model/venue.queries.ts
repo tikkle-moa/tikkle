@@ -19,10 +19,10 @@ export const useVenues = (enabled = true) =>
     },
   });
 
-export const useVenueDetail = (venueId: number) =>
+export const useVenueDetail = (venueId: number, enabled = true) =>
   useQuery({
     queryKey: VENUE_QUERY_KEYS.detail(venueId),
-    enabled: Number.isInteger(venueId) && venueId > 0,
+    enabled: enabled && Number.isInteger(venueId) && venueId > 0,
     queryFn: async () => {
       const { data, error, response } = await apiClient.GET("/api/venues/{id}", {
         params: { path: { id: venueId } },

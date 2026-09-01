@@ -9,16 +9,19 @@ export const usePerformanceDetail = () => {
   const isParamValid = Number.isInteger(id) && id > 0;
 
   const performanceQuery = usePerformanceDetailQuery(id);
-  const venueQuery = useVenueDetail(performanceQuery.data?.venueId ?? 0);
+  const performance = performanceQuery.data;
+  const shouldLoadVenue = performance?.status !== "ENDED";
+  const venueQuery = useVenueDetail(performance?.venueId ?? 0, shouldLoadVenue);
 
-  const isVenuePending = performanceQuery.isSuccess && venueQuery.isPending;
+  const isVenuePending = performanceQuery.isSuccess && shouldLoadVenue && venueQuery.isPending;
+  const isVenueError = shouldLoadVenue && venueQuery.isError;
 
   return {
     isParamValid,
-    performance: performanceQuery.data,
+    performance,
     venue: venueQuery.data?.venue,
     seats: venueQuery.data?.venueSeats ?? [],
-    isError: performanceQuery.isError || venueQuery.isError,
+    isError: performanceQuery.isError || isVenueError,
     isPending: performanceQuery.isPending || isVenuePending,
   };
 };

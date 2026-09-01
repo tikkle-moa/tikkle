@@ -25,12 +25,16 @@ const PerformanceDetailPage = () => {
     return <PerformanceDetailSkeleton />;
   }
 
-  if (isError || !performance || !venue) {
+  if (isError || !performance) {
     return <DetailMessage title="공연 회차를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
   if (performance.status === "ENDED") {
     return <DetailMessage title="종료된 공연 회차입니다." description="다른 회차를 선택해 주세요." />;
+  }
+
+  if (!venue) {
+    return <DetailMessage title="공연 회차를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
   const { label: statusLabel, className: statusClassName } = PERFORMANCE_STATUS_MAP[performance.status];
