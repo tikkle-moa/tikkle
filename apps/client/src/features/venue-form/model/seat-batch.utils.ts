@@ -45,6 +45,6 @@ export const createVenueSeat = (venueWidth: number, venueHeight: number): Create
   seatNumber: 0,
   seatLabel: "",
   price: 0,
-  positionX: Math.round((venueWidth / 2) * 100) / 100,
-  positionY: Math.round((venueHeight / 2) * 100) / 100,
+  positionX: Math.round(Math.random() * venueWidth * 100) / 100,
+  positionY: Math.round(Math.random() * venueHeight * 100) / 100,
 });
