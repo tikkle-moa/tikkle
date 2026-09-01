@@ -1,0 +1,63 @@
+import { type SubmitEvent, useEffect, useState } from "react";
+
+import type { SubmitState } from "@shared/model/form.types";
+
+import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+
+import { EMPTY_VENUE_FORM_VALUES } from "./venue-form.constants";
+import type { VenueFormErrors } from "./venue-form.types";
+import { toCreateVenueRequest, validateVenueForm } from "./venue-form.utils";
+
+interface UseVenueFormProps {
+  initialValues?: CreateVenueDetailRequest;
+  submitState: SubmitState;
+  onSubmit: (values: CreateVenueDetailRequest) => void | Promise<void>;
+}
+
+export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueFormProps) => {
+  const [venue, setVenue] = useState<CreateVenueRequest>(EMPTY_VENUE_FORM_VALUES);
+  const [venueSeats, setVenueSeats] = useState<CreateVenueSeatRequest[]>([]);
+
+  const [errors, setErrors] = useState<VenueFormErrors>({});
+
+  const isSubmitting = submitState.status === "submitting";
+
+  useEffect(() => {
+    if (!initialValues) return;
+
+    const initializeForm = () => {
+      setVenue({ ...initialValues.venue });
+      setVenueSeats(initialValues.venueSeats.map((seat) => ({ ...seat })));
+      setErrors({});
+    };
+
+    initializeForm();
+  }, [initialValues]);
+
+  const updateVenue = <K extends keyof CreateVenueRequest>(field: K, value: CreateVenueRequest[K]) => {
+    setVenue((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: "" }));
+  };
+
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const nextErrors = validateVenueForm(venue, venueSeats);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    await onSubmit(toCreateVenueRequest(venue, venueSeats));
+  };
+
+  return {
+    venue,
+    venueSeats,
+    errors,
+    isSubmitting,
+    updateVenue,
+    setVenue,
+    setVenueSeats,
+    setErrors,
+    handleSubmit,
+  };
+};
