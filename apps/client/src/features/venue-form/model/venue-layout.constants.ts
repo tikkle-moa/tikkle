@@ -6,6 +6,8 @@ export const VENUE_LAYOUT_MIN_VISIBLE_SIZE = 50;
 export const VENUE_LAYOUT_ZOOM_FACTOR = 1.5;
 export const VENUE_LAYOUT_WHEEL_ZOOM_FACTOR = 1.2;
 
+export const DOUBLE_CLICK_DELAY_MS = 350;
+
 export const SECTION_COLORS = [
   "#38bdf8",
   "#34d399",

@@ -4,14 +4,13 @@ import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue
 
 import type { VenueFormErrors } from "./venue-form.types";
 import {
+  DOUBLE_CLICK_DELAY_MS,
   VENUE_LAYOUT_MIN_VISIBLE_SIZE,
   VENUE_LAYOUT_MIN_ZOOM,
   VENUE_LAYOUT_WHEEL_ZOOM_FACTOR,
   VENUE_LAYOUT_ZOOM_FACTOR,
 } from "./venue-layout.constants";
 import type { VenueLayoutDragState } from "./venue-layout.types";
-
-const DOUBLE_CLICK_DELAY_MS = 350;
 
 interface UseVenueLayoutInteractionProps {
   venue: CreateVenueRequest;
