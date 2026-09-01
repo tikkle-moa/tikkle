@@ -1,6 +1,6 @@
 import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
-import { toCreateVenueRequest, validateVenueForm } from "@features/venue-form/model/venue-form.utils";
+import { createVenueSeat, toCreateVenueRequest, validateVenueForm } from "@features/venue-form/model/venue-form.utils";
 
 const venue: CreateVenueRequest = {
   name: "공연장",
@@ -106,5 +106,18 @@ describe("venue form utils", () => {
     const errors = validateVenueForm({ ...venue, width: -1, height: -1 }, [{ ...seats[0], positionX: 1_000_000, positionY: 1_000_000 }]);
     expect(errors["seat.0.positionX"]).toBeTruthy();
     expect(errors["seat.0.positionY"]).toBeTruthy();
+  });
+
+  it("단일 좌석을 공연장 범위 내의 랜덤 좌표에 생성한다", () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0.25).mockReturnValueOnce(0.75);
+
+    expect(createVenueSeat(101, 81)).toEqual({
+      sectionName: "",
+      seatNumber: 0,
+      seatLabel: "",
+      price: 0,
+      positionX: 25.25,
+      positionY: 60.75,
+    });
   });
 });

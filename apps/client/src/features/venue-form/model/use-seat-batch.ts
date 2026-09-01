@@ -8,10 +8,11 @@ import { createSeatBatch, validateSeatBatch } from "./seat-batch.utils";
 
 interface UseSeatBatchProps {
   venue: CreateVenueRequest;
+  venueSeats: CreateVenueSeatRequest[];
   onAddSeats: (seats: CreateVenueSeatRequest[]) => void;
 }
 
-export const useSeatBatch = ({ venue, onAddSeats }: UseSeatBatchProps) => {
+export const useSeatBatch = ({ venue, venueSeats, onAddSeats }: UseSeatBatchProps) => {
   const [values, setValues] = useState<SeatBatchValues>({ ...EMPTY_SEAT_BATCH_VALUES });
   const [error, setError] = useState<string | null>(null);
   const count = values.rows * values.columns;
@@ -22,7 +23,7 @@ export const useSeatBatch = ({ venue, onAddSeats }: UseSeatBatchProps) => {
   };
 
   const handleCreate = () => {
-    const nextError = validateSeatBatch(values, venue.width, venue.height);
+    const nextError = validateSeatBatch(values, venueSeats, venue.width, venue.height);
     setError(nextError);
     if (nextError) return;
     onAddSeats(createSeatBatch(values));

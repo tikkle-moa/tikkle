@@ -2,8 +2,8 @@ import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, use
 
 import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
-import { createVenueSeat } from "./seat-batch.utils";
 import type { VenueFormErrors } from "./venue-form.types";
+import { createVenueSeat } from "./venue-form.utils";
 
 interface UseVenueSeatFormProps {
   venue: CreateVenueRequest;

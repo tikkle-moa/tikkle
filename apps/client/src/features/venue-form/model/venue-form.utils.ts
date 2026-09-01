@@ -110,3 +110,12 @@ export const toCreateVenueRequest = (venue: CreateVenueRequest, venueSeats: Crea
     positionY: toRound(seat.positionY, 2),
   })),
 });
+
+export const createVenueSeat = (venueWidth: number, venueHeight: number): CreateVenueSeatRequest => ({
+  sectionName: "",
+  seatNumber: 0,
+  seatLabel: "",
+  price: 0,
+  positionX: Math.round(Math.random() * venueWidth * 100) / 100,
+  positionY: Math.round(Math.random() * venueHeight * 100) / 100,
+});

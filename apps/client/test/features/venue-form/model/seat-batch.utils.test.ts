@@ -1,5 +1,5 @@
 import type { SeatBatchValues } from "@features/venue-form/model/seat-batch.types";
-import { createSeatBatch, createVenueSeat, validateSeatBatch } from "@features/venue-form/model/seat-batch.utils";
+import { createSeatBatch, validateSeatBatch } from "@features/venue-form/model/seat-batch.utils";
 
 const values: SeatBatchValues = {
   sectionName: " A구역 ",
@@ -35,23 +35,16 @@ describe("seat batch utils", () => {
     [{ ...values, gapX: 0 }, "좌석 간격은 0보다 커야 합니다."],
     [{ ...values, sectionName: "가".repeat(51) }, "구역명은 50자 이하로 입력해 주세요."],
   ])("잘못된 일괄 생성값을 검증한다", (invalidValues, expected) => {
-    expect(validateSeatBatch(invalidValues as SeatBatchValues, 100, 100)).toBe(expected);
+    expect(validateSeatBatch(invalidValues as SeatBatchValues, [], 100, 100)).toBe(expected);
   });
 
   it("마지막 좌석이 공연장 밖으로 나가면 생성하지 않는다", () => {
-    expect(validateSeatBatch({ ...values, startX: 90 }, 100, 100)).toBe("생성될 좌석이 공연장 범위를 벗어납니다.");
+    expect(validateSeatBatch({ ...values, startX: 90 }, [], 100, 100)).toBe("생성될 좌석이 공연장 범위를 벗어납니다.");
   });
 
-  it("단일 좌석을 공연장 범위 내의 랜덤 좌표에 생성한다", () => {
-    vi.spyOn(Math, "random").mockReturnValueOnce(0.25).mockReturnValueOnce(0.75);
+  it("기존 좌석과 같은 구역 및 좌석 번호가 포함되면 생성하지 않는다", () => {
+    const existingVenueSeats = [{ sectionName: " A구역 ", seatNumber: 11, seatLabel: "A 11번", price: 50_000, positionX: 10, positionY: 10 }];
 
-    expect(createVenueSeat(101, 81)).toEqual({
-      sectionName: "",
-      seatNumber: 0,
-      seatLabel: "",
-      price: 0,
-      positionX: 25.25,
-      positionY: 60.75,
-    });
+    expect(validateSeatBatch(values, existingVenueSeats, 100, 100)).toBe("같은 구역에 중복된 좌석 번호가 있습니다.");
   });
 });

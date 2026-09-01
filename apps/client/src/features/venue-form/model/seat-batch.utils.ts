@@ -3,7 +3,7 @@ import type { CreateVenueSeatRequest } from "@entities/venue";
 import type { SeatBatchValues } from "./seat-batch.types";
 import { VENUE_FORM_LIMITS } from "./venue-form.constants";
 
-export const validateSeatBatch = (values: SeatBatchValues, venueWidth: number, venueHeight: number) => {
+export const validateSeatBatch = (values: SeatBatchValues, existingVenueSeats: CreateVenueSeatRequest[], venueWidth: number, venueHeight: number) => {
   if (!values.sectionName.trim()) return "구역명을 입력해 주세요.";
   if (values.sectionName.trim().length > VENUE_FORM_LIMITS.venueSeatSection) return "구역명은 50자 이하로 입력해 주세요.";
 
@@ -19,6 +19,14 @@ export const validateSeatBatch = (values: SeatBatchValues, venueWidth: number, v
   const lastX = values.startX + (values.columns - 1) * values.gapX;
   const lastY = values.startY + (values.rows - 1) * values.gapY;
   if (values.startX < 0 || values.startY < 0 || lastX > venueWidth || lastY > venueHeight) return "생성될 좌석이 공연장 범위를 벗어납니다.";
+
+  const existingVenueSeatKeys = new Set(existingVenueSeats.map((seat) => `${seat.sectionName.trim()}\u0000${seat.seatNumber}`));
+  const hasDuplicateVenueSeat = Array.from(
+    { length: values.rows * values.columns },
+    (_, index) => `${values.sectionName.trim()}\u0000${values.startSeatNumber + index}`,
+  ).some((venueSeatKey) => existingVenueSeatKeys.has(venueSeatKey));
+  if (hasDuplicateVenueSeat) return "같은 구역에 중복된 좌석 번호가 있습니다.";
+
   return null;
 };
 
@@ -39,12 +47,3 @@ export const createSeatBatch = (values: SeatBatchValues): CreateVenueSeatRequest
 
   return venueSeats;
 };
-
-export const createVenueSeat = (venueWidth: number, venueHeight: number): CreateVenueSeatRequest => ({
-  sectionName: "",
-  seatNumber: 0,
-  seatLabel: "",
-  price: 0,
-  positionX: Math.round(Math.random() * venueWidth * 100) / 100,
-  positionY: Math.round(Math.random() * venueHeight * 100) / 100,
-});

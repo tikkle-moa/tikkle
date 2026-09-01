@@ -212,7 +212,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
         </div>
       )}
 
-      <SeatBatchCreator venue={venue} isSubmitting={isSubmitting} onAddSeats={handleAddSeats} />
+      <SeatBatchCreator venue={venue} venueSeats={venueSeats} isSubmitting={isSubmitting} onAddSeats={handleAddSeats} />
     </section>
   );
 };

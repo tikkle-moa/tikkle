@@ -11,12 +11,13 @@ import { useSeatBatch } from "../model/use-seat-batch";
 
 interface SeatBatchCreatorProps {
   venue: CreateVenueRequest;
+  venueSeats: CreateVenueSeatRequest[];
   isSubmitting: boolean;
   onAddSeats: (seats: CreateVenueSeatRequest[]) => void;
 }
 
-const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorProps) => {
-  const { values, error, count, updateValue, handleCreate } = useSeatBatch({ venue, onAddSeats });
+const SeatBatchCreator = ({ venue, venueSeats, isSubmitting, onAddSeats }: SeatBatchCreatorProps) => {
+  const { values, error, count, updateValue, handleCreate } = useSeatBatch({ venue, venueSeats, onAddSeats });
 
   return (
     <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4 sm:p-5">
