@@ -140,6 +140,8 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             id="venue-stage-x"
             label="무대 X 좌표"
             value={venue.stagePositionX}
+            min={venue.stageWidth / 2}
+            max={venue.width - venue.stageWidth / 2}
             error={errors.stagePositionX}
             required
             disabled={isSubmitting}
@@ -149,6 +151,8 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             id="venue-stage-y"
             label="무대 Y 좌표"
             value={venue.stagePositionY}
+            min={venue.stageHeight / 2}
+            max={venue.height - venue.stageHeight / 2}
             error={errors.stagePositionY}
             required
             disabled={isSubmitting}
@@ -157,8 +161,8 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
           <VenueFormNumberInput
             id="venue-stage-width"
             label="무대 가로"
-            max={999.99}
             value={venue.stageWidth}
+            max={Math.max(0, Math.min(999.99, venue.stagePositionX * 2, (venue.width - venue.stagePositionX) * 2))}
             error={errors.stageWidth}
             required
             disabled={isSubmitting}
@@ -167,8 +171,8 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
           <VenueFormNumberInput
             id="venue-stage-height"
             label="무대 세로"
-            max={999.99}
             value={venue.stageHeight}
+            max={Math.max(0, Math.min(999.99, venue.stagePositionY * 2, (venue.height - venue.stagePositionY) * 2))}
             error={errors.stageHeight}
             required
             disabled={isSubmitting}
