@@ -1,3 +1,5 @@
+import { toRound } from "@shared/lib/number.utils";
+
 import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
 import { VENUE_FORM_LIMITS } from "./venue-form.constants";
@@ -92,19 +94,19 @@ export const toCreateVenueRequest = (venue: CreateVenueRequest, venueSeats: Crea
     name: venue.name.trim(),
     address: venue.address.trim(),
     description: venue.description === null ? null : venue.description.trim(),
-    width: venue.width,
-    height: venue.height,
-    stagePositionX: venue.stagePositionX,
-    stagePositionY: venue.stagePositionY,
-    stageWidth: venue.stageWidth,
-    stageHeight: venue.stageHeight,
+    width: toRound(venue.width, 2),
+    height: toRound(venue.height, 2),
+    stagePositionX: toRound(venue.stagePositionX, 2),
+    stagePositionY: toRound(venue.stagePositionY, 2),
+    stageWidth: toRound(venue.stageWidth, 2),
+    stageHeight: toRound(venue.stageHeight, 2),
   },
   venueSeats: venueSeats.map((seat) => ({
     sectionName: seat.sectionName.trim(),
-    seatNumber: seat.seatNumber,
+    seatNumber: toRound(seat.seatNumber, 0),
     seatLabel: seat.seatLabel.trim(),
-    price: seat.price,
-    positionX: seat.positionX,
-    positionY: seat.positionY,
+    price: toRound(seat.price, 0),
+    positionX: toRound(seat.positionX, 2),
+    positionY: toRound(seat.positionY, 2),
   })),
 });

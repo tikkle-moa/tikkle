@@ -1,5 +1,7 @@
 import { Grid3X3, WandSparkles } from "lucide-react";
 
+import { toRound } from "@shared/lib/number.utils";
+
 import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
 import VenueFormNumberInput from "./VenueFormNumberInput";
@@ -43,7 +45,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
           min={1}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("rows", Math.trunc(value))}
+          onChange={(value) => updateValue("rows", toRound(value))}
         />
         <VenueFormNumberInput
           id="batch-columns"
@@ -52,7 +54,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
           min={1}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("columns", Math.trunc(value))}
+          onChange={(value) => updateValue("columns", toRound(value))}
         />
         <VenueFormNumberInput
           id="batch-start-number"
@@ -62,7 +64,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
           max={null}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("startSeatNumber", Math.trunc(value))}
+          onChange={(value) => updateValue("startSeatNumber", toRound(value))}
         />
         <VenueFormNumberInput
           id="batch-price"
@@ -71,7 +73,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
           max={null}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("price", Math.trunc(value))}
+          onChange={(value) => updateValue("price", toRound(value))}
         />
         <VenueFormNumberInput
           id="batch-start-x"
@@ -80,7 +82,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
           max={venue.width}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("startX", value)}
+          onChange={(value) => updateValue("startX", toRound(value, 2))}
         />
         <VenueFormNumberInput
           id="batch-start-y"
@@ -89,7 +91,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
           max={venue.height}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("startY", value)}
+          onChange={(value) => updateValue("startY", toRound(value, 2))}
         />
         <VenueFormNumberInput
           id="batch-gap-x"
@@ -97,7 +99,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
           value={values.gapX}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("gapX", value)}
+          onChange={(value) => updateValue("gapX", toRound(value, 2))}
         />
         <VenueFormNumberInput
           id="batch-gap-y"
@@ -105,7 +107,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
           value={values.gapY}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("gapY", value)}
+          onChange={(value) => updateValue("gapY", toRound(value, 2))}
         />
       </div>
       {error && (

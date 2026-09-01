@@ -1,5 +1,6 @@
 import { AlertCircle, Building2, LoaderCircle } from "lucide-react";
 
+import { toRound } from "@shared/lib/number.utils";
 import type { SubmitState } from "@shared/model/form.types";
 
 import type { CreateVenueDetailRequest } from "@entities/venue";
@@ -125,7 +126,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             error={errors.width}
             required
             disabled={isSubmitting}
-            onChange={(value) => updateVenue("width", value)}
+            onChange={(value) => updateVenue("width", toRound(value, 2))}
           />
           <VenueFormNumberInput
             id="venue-height"
@@ -134,7 +135,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             error={errors.height}
             required
             disabled={isSubmitting}
-            onChange={(value) => updateVenue("height", value)}
+            onChange={(value) => updateVenue("height", toRound(value, 2))}
           />
           <VenueFormNumberInput
             id="venue-stage-x"
@@ -145,7 +146,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             error={errors.stagePositionX}
             required
             disabled={isSubmitting}
-            onChange={(value) => updateVenue("stagePositionX", value)}
+            onChange={(value) => updateVenue("stagePositionX", toRound(value, 2))}
           />
           <VenueFormNumberInput
             id="venue-stage-y"
@@ -156,7 +157,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             error={errors.stagePositionY}
             required
             disabled={isSubmitting}
-            onChange={(value) => updateVenue("stagePositionY", value)}
+            onChange={(value) => updateVenue("stagePositionY", toRound(value, 2))}
           />
           <VenueFormNumberInput
             id="venue-stage-width"
@@ -166,7 +167,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             error={errors.stageWidth}
             required
             disabled={isSubmitting}
-            onChange={(value) => updateVenue("stageWidth", value)}
+            onChange={(value) => updateVenue("stageWidth", toRound(value, 2))}
           />
           <VenueFormNumberInput
             id="venue-stage-height"
@@ -176,7 +177,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             error={errors.stageHeight}
             required
             disabled={isSubmitting}
-            onChange={(value) => updateVenue("stageHeight", value)}
+            onChange={(value) => updateVenue("stageHeight", toRound(value, 2))}
           />
         </div>
       </section>

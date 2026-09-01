@@ -2,6 +2,8 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { Armchair, Plus, Trash2, Undo2 } from "lucide-react";
 
+import { toRound } from "@shared/lib/number.utils";
+
 import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
 import SeatBatchCreator from "./SeatBatchCreator";
@@ -134,7 +136,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
                   error={errors[`seat.${selectedSeatIndices[0]}.seatNumber`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "seatNumber", Math.trunc(value))}
+                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "seatNumber", toRound(value))}
                 />
                 <VenueFormTextInput
                   id="selected-seat-label"
@@ -153,7 +155,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
                   error={errors[`seat.${selectedSeatIndices[0]}.price`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "price", Math.trunc(value))}
+                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "price", toRound(value))}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-x"
@@ -163,7 +165,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
                   error={errors[`seat.${selectedSeatIndices[0]}.positionX`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "positionX", value)}
+                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "positionX", toRound(value, 2))}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-y"
@@ -173,7 +175,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
                   error={errors[`seat.${selectedSeatIndices[0]}.positionY`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "positionY", value)}
+                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "positionY", toRound(value, 2))}
                 />
               </div>
             </div>
