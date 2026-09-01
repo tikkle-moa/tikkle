@@ -19,6 +19,7 @@ const mapElement = {
 interface PointerEventOptions {
   button?: number;
   pointerType?: "mouse" | "touch";
+  target?: EventTarget;
 }
 
 const createPointerEvent = (pointerId: number, clientX: number, clientY: number, options: PointerEventOptions = {}) =>
@@ -29,6 +30,7 @@ const createPointerEvent = (pointerId: number, clientX: number, clientY: number,
     clientX,
     clientY,
     currentTarget: mapElement,
+    target: options.target ?? mapElement,
   }) as PointerEvent<SVGSVGElement>;
 
 const createKeyboardEvent = (key: string) => {
@@ -128,6 +130,24 @@ describe("useVenueMapViewport", () => {
     expect(reset.preventDefault).toHaveBeenCalledTimes(1);
     expect(result.current.zoom).toBe(1);
     expect(result.current.viewBox).toBe("0 0 100 100");
+  });
+
+  it("좌석을 누르면 지도 포인터 캡처를 시작하지 않는다", () => {
+    const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
+    const seatElement = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+
+    seatElement.setAttribute("data-seat-id", "1");
+
+    act(() => {
+      result.current.handlePointerDown(
+        createPointerEvent(1, 50, 50, {
+          pointerType: "mouse",
+          target: seatElement,
+        }),
+      );
+    });
+
+    expect(mockSetPointerCapture).not.toHaveBeenCalled();
   });
 
   it("pan gesture를 시작하지 않은 포인터 이동은 확대 후에도 무시한다", () => {
