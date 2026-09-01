@@ -21,12 +21,14 @@ interface PerformanceRepository : JpaRepository<Performance, Long> {
 
   @Query(
     """
-      SELECT p
-      FROM Performance p
-      ORDER BY
-        CASE WHEN p.startsAt >= CURRENT_TIMESTAMP THEN 0 ELSE 1 END ASC,
-        p.startsAt ASC
-    """,
+    SELECT p
+    FROM Performance p
+    JOIN FETCH p.concert c
+    JOIN FETCH c.venue
+    ORDER BY
+      CASE WHEN p.startsAt >= CURRENT_TIMESTAMP THEN 0 ELSE 1 END ASC,
+      p.startsAt ASC
+  """,
   )
   fun findAllUpcomingFirstOrderByStartsAtAsc(): List<Performance>
 
