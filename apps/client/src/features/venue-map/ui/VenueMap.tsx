@@ -17,6 +17,7 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
     mapRef,
     selectedSeat,
     selectSeat,
+    getSeatTabIndex,
     handleSeatKeyDown,
     viewBox,
     zoom,
@@ -33,6 +34,7 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
   } = useVenueMap({
     width: venue.width,
     height: venue.height,
+    seats,
   });
 
   const sections = useMemo(() => [...new Set(seats.map((seat) => seat.sectionName))], [seats]);
@@ -115,7 +117,8 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
                       fill="transparent"
                       pointerEvents="all"
                       role="button"
-                      tabIndex={0}
+                      tabIndex={getSeatTabIndex(seat)}
+                      data-seat-id={seat.id}
                       aria-label={`${seat.seatLabel}, ${seat.price.toLocaleString()}원`}
                       aria-pressed={isSelected}
                       onClick={() => {
