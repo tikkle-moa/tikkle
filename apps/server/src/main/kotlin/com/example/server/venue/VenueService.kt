@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
+import kotlin.collections.distinct
+import kotlin.collections.plus
 
 @Service
 class VenueService(
@@ -49,6 +51,10 @@ class VenueService(
     val stageHeight = request.venue.stageHeight
 
     validateStagePosition(request.venue.width, request.venue.height, stagePositionX, stagePositionY, stageWidth, stageHeight)
+    val seatKeys = request.venueSeats.map { it.sectionName to it.seatNumber }
+    if (seatKeys.size != seatKeys.distinct().size) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
+    }
 
     val savedVenue = venueRepository.save(
       Venue(

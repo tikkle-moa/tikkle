@@ -300,8 +300,6 @@ export interface components {
       stageHeight: number;
     };
     CreateVenueSeatRequest: {
-      /** Format: int64 */
-      id: number | null;
       sectionName: string;
       /** Format: int32 */
       seatNumber: number;

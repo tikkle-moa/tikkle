@@ -57,9 +57,6 @@ data class CreateVenueRequest(
 )
 
 data class CreateVenueSeatRequest(
-  @field:Positive(message = "좌석 ID는 양수여야 합니다.")
-  val id: Long? = null,
-
   @field:NotBlank(message = "구역명은 빈 문자열이 될 수 없습니다.")
   @field:Size(max = 50, message = "구역명은 최대 50자까지 입력할 수 있습니다.")
   val sectionName: String,
