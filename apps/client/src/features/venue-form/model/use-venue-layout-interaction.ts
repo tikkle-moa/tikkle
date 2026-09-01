@@ -48,7 +48,7 @@ export const useVenueLayoutInteraction = ({
   const safeHeight = Math.max(venue.height, 1);
   const viewWidth = safeWidth / zoom;
   const viewHeight = safeHeight / zoom;
-  const maxZoom = Math.max(safeWidth / VENUE_LAYOUT_MIN_VISIBLE_SIZE, safeHeight / VENUE_LAYOUT_MIN_VISIBLE_SIZE);
+  const maxZoom = Math.max(VENUE_LAYOUT_MIN_ZOOM, safeWidth / VENUE_LAYOUT_MIN_VISIBLE_SIZE, safeHeight / VENUE_LAYOUT_MIN_VISIBLE_SIZE);
 
   const applyZoom = useCallback(
     (nextZoom: number) => {
