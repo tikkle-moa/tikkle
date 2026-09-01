@@ -118,7 +118,7 @@ describe("PerformanceDetailPage", () => {
 
     renderPage();
 
-    expect(screen.getByRole("heading", { name: "공연 회차를 불러오지 못했습니다." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "연결된 공연장 정보를 불러오지 못했습니다." })).toBeInTheDocument();
     expect(screen.getByText("잠시 후 다시 시도해 주세요.")).toBeInTheDocument();
   });
 

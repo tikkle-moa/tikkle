@@ -34,7 +34,7 @@ const PerformanceDetailPage = () => {
   }
 
   if (!venue) {
-    return <DetailMessage title="공연 회차를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
+    return <DetailMessage title="연결된 공연장 정보를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
   const { label: statusLabel, className: statusClassName } = PERFORMANCE_STATUS_MAP[performance.status];
