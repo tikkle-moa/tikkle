@@ -111,6 +111,9 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
   const handlePointerDown = (event: PointerEvent<SVGSVGElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
+    const isSeatTarget = event.target instanceof Element && event.target.closest("[data-seat-id]") !== null;
+    if (isSeatTarget) return;
+
     event.currentTarget.setPointerCapture(event.pointerId);
     pointersRef.current.set(event.pointerId, getPoint(event));
 
