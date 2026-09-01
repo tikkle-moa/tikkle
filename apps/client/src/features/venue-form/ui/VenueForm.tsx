@@ -83,7 +83,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
             <p className="text-sm font-semibold">입력 내용을 다시 확인해 주세요.</p>
 
             <p className="mt-1 text-xs leading-5 text-red-600">
-              {errorSections.join(", ")}에서 {Object.keys(errors).length}개의 오류가 발견되었습니다.
+              {errorSections.join(", ")}에서 {errorCount}개의 오류가 발견되었습니다.
             </p>
           </div>
         </div>

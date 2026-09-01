@@ -49,7 +49,7 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
     await onSubmit(toCreateVenueRequest(venue, venueSeats));
   };
 
-  const errorKeys = Object.keys(errors);
+  const errorKeys = Object.entries(errors).flatMap(([key, message]) => (message ? [key] : []));
   const errorCount = errorKeys.length;
   const errorSections = getErrorSections(errorKeys);
 
