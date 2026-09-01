@@ -107,7 +107,6 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
           maxLength={VENUE_FORM_LIMITS.venueDescription}
           error={errors.description}
           placeholder="공연장의 특징이나 이용 안내를 입력하세요."
-          required
           disabled={isSubmitting}
           onChange={(value) => updateVenue("description", value === "" ? null : value)}
         />
