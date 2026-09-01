@@ -37,7 +37,6 @@ class PerformanceRepositoryTest {
   fun setUp() {
     performanceRepository.deleteAll()
     concertRepository.deleteAll()
-    venueRepository.deleteAll()
   }
 
   @Test
