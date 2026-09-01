@@ -8,6 +8,23 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+
+          if (id.includes("react-router")) return "router-vendor";
+          if (id.includes("@tanstack")) return "query-vendor";
+          if (id.includes("swiper")) return "swiper-vendor";
+          if (id.includes("lucide-react")) return "icon-vendor";
+          if (id.includes("openapi-fetch")) return "api-vendor";
+
+          return "vendor";
+        },
+      },
+    },
+  },
   test: {
     dir: "./test",
     globals: true,

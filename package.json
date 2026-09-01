@@ -5,6 +5,8 @@
   "scripts": {
     "dev:client": "pnpm -F client dev",
     "dev:server": "cd apps/server && ./gradlew bootRun",
+    "build:client": "pnpm -F client build",
+    "build:server": "cd apps/server && ./gradlew build",
     "test:client": "pnpm -F client test",
     "test:client:coverage": "pnpm -F client test:coverage",
     "test:server": "cd apps/server && ./gradlew test --console=plain --quiet",
