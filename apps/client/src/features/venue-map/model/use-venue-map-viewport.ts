@@ -1,35 +1,6 @@
 import { type KeyboardEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-interface UseVenueMapViewportParams {
-  width: number;
-  height: number;
-}
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-interface Viewport {
-  zoom: number;
-  centerX: number;
-  centerY: number;
-}
-
-interface Gesture {
-  kind: "pan" | "pinch";
-  startViewport: Viewport;
-  startPoint?: Point;
-  startDistance?: number;
-  startMidpoint?: Point;
-  hasMoved: boolean;
-}
-
-type PinchGesture = Gesture & {
-  kind: "pinch";
-  startDistance: number;
-  startMidpoint: Point;
-};
+import type { Gesture, PanGesture, PinchGesture, Point, UseVenueMapViewportParams, Viewport } from "./venue-map-viewport.types";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
@@ -108,22 +79,26 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
   };
 
   const startPan = (point: Point) => {
-    gestureRef.current = {
+    const gesture: PanGesture = {
       kind: "pan",
       startViewport: getCurrentViewport(),
       startPoint: point,
       hasMoved: false,
     };
+
+    gestureRef.current = gesture;
   };
 
   const startPinch = (first: Point, second: Point) => {
-    gestureRef.current = {
+    const gesture: PinchGesture = {
       kind: "pinch",
       startViewport: getCurrentViewport(),
       startDistance: getDistance(first, second),
       startMidpoint: getMidpoint(first, second),
       hasMoved: false,
     };
+
+    gestureRef.current = gesture;
   };
 
   const changeZoom = useCallback(
@@ -172,7 +147,7 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     }
 
     const gesture = gestureRef.current;
-    if (!gesture || gesture.kind !== "pan" || !gesture.startPoint) return;
+    if (!gesture || gesture.kind !== "pan") return;
 
     const point = getPoint(event);
     if (getDistance(gesture.startPoint, point) < DRAG_THRESHOLD) return;
