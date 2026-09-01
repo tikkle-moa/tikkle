@@ -77,7 +77,7 @@ describe("usePerformanceDetail", () => {
       isParamValid: true,
       performance,
       venue,
-      seats: [],
+      venueSeats: [],
       isError: false,
       isPending: false,
     });
@@ -121,7 +121,7 @@ describe("usePerformanceDetail", () => {
       isParamValid: true,
       performance: endedPerformance,
       venue: undefined,
-      seats: [],
+      venueSeats: [],
       isError: false,
       isPending: false,
     });

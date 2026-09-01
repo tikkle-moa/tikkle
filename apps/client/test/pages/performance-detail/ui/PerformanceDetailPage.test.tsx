@@ -40,7 +40,7 @@ const pageState = {
     status: "UPCOMING",
   },
   venue,
-  seats: [],
+  venueSeats: [],
   isError: false,
   isParamValid: true,
   isPending: false,
@@ -100,7 +100,7 @@ describe("PerformanceDetailPage", () => {
       ...pageState,
       performance: { ...pageState.performance, status: "ENDED" },
       venue: undefined,
-      seats: [],
+      venueSeats: [],
     });
 
     renderPage();
