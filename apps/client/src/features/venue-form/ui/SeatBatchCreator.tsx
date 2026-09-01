@@ -115,7 +115,7 @@ const SeatBatchCreator = ({ venue, isSubmitting, onAddSeats }: SeatBatchCreatorP
       )}
       <button
         className="bg-brand-primary mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
-        disabled={isSubmitting || count < 1}
+        disabled={isSubmitting || !Number.isFinite(count) || count < 1}
         onClick={handleCreate}
         type="button"
       >

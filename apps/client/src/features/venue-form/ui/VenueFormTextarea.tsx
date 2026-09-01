@@ -33,6 +33,7 @@ const VenueFormTextarea = ({ id, label, value, maxLength, error, placeholder, re
 
       <textarea
         ref={textareaRef}
+        id={id}
         value={value ?? ""}
         maxLength={maxLength}
         placeholder={placeholder}
@@ -45,7 +46,7 @@ const VenueFormTextarea = ({ id, label, value, maxLength, error, placeholder, re
             : "focus:border-brand-primary border-slate-200 focus:ring-2 focus:ring-violet-100"
         }`}
         onChange={(e) => onChange(e.target.value)}
-        required
+        required={required}
       />
 
       {error && (
