@@ -13,6 +13,7 @@ import { PerformanceDetailPage } from "@pages/performance-detail";
 import { PerformanceNewPage } from "@pages/performance-new";
 import { SearchPage } from "@pages/search";
 import { VenueDetailPage } from "@pages/venue-detail";
+import { VenueNewPage } from "@pages/venue-new";
 
 import AdminGuard from "./AdminGuard";
 import AppLayout from "./AppLayout";
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
           {
             element: <AdminGuard />,
             children: [
+              { path: ROUTE_PATHS.VENUE_NEW, element: <VenueNewPage /> },
               { path: ROUTE_PATHS.CONCERT_NEW, element: <ConcertNewPage /> },
               { path: ROUTE_PATHS.CONCERT_EDIT, element: <ConcertEditPage /> },
               { path: ROUTE_PATHS.PERFORMANCE_NEW, element: <PerformanceNewPage /> },
