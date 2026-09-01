@@ -74,12 +74,13 @@ describe("useVenueSeatForm", () => {
     expect(result.current.errors.venueSeats).toBe("");
   });
 
-  it("좌석 추가 시 공연장 중앙에 추가하고 새 좌석을 선택한다", () => {
+  it("좌석 추가 시 랜덤 좌표에 추가하고 새 좌석을 선택한다", () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0.25).mockReturnValueOnce(0.75);
     const { result } = renderHook(useTestVenueSeatForm);
 
     act(() => result.current.handleAddSeat());
 
-    expect(result.current.venueSeats.at(-1)).toMatchObject({ positionX: 50, positionY: 40 });
+    expect(result.current.venueSeats.at(-1)).toMatchObject({ positionX: 25, positionY: 60 });
     expect(result.current.selectedSeatIndices).toEqual([3]);
   });
 

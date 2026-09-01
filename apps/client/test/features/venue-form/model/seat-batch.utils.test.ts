@@ -42,14 +42,16 @@ describe("seat batch utils", () => {
     expect(validateSeatBatch({ ...values, startX: 90 }, 100, 100)).toBe("생성될 좌석이 공연장 범위를 벗어납니다.");
   });
 
-  it("단일 좌석을 공연장 중앙에 생성한다", () => {
+  it("단일 좌석을 공연장 범위 내의 랜덤 좌표에 생성한다", () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0.25).mockReturnValueOnce(0.75);
+
     expect(createVenueSeat(101, 81)).toEqual({
       sectionName: "",
       seatNumber: 0,
       seatLabel: "",
       price: 0,
-      positionX: 50.5,
-      positionY: 40.5,
+      positionX: 25.25,
+      positionY: 60.75,
     });
   });
 });
