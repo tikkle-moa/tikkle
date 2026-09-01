@@ -6,11 +6,11 @@ import type { SeatNavigationDirection } from "./venue-map-selection.types";
 export const isSeatNavigationDirection = (key: string): key is SeatNavigationDirection =>
   key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown";
 
-export const findAdjacentSeat = (currentSeat: VenueSeatResponse, seats: VenueSeatResponse[], direction: SeatNavigationDirection) => {
+export const findAdjacentSeat = (currentSeat: VenueSeatResponse, venueSeats: VenueSeatResponse[], direction: SeatNavigationDirection) => {
   const isHorizontal = direction === "ArrowLeft" || direction === "ArrowRight";
   const isPositive = direction === "ArrowRight" || direction === "ArrowDown";
 
-  return seats.reduce<VenueSeatResponse | null>((closestSeat, seat) => {
+  return venueSeats.reduce<VenueSeatResponse | null>((closestSeat, seat) => {
     if (seat.id === currentSeat.id) return closestSeat;
 
     const primaryOffset = isHorizontal ? seat.positionX - currentSeat.positionX : seat.positionY - currentSeat.positionY;

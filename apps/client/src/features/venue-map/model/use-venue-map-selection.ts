@@ -4,7 +4,7 @@ import type { VenueSeatResponse } from "@entities/venue";
 
 import { findAdjacentSeat, isSeatNavigationDirection } from "./venue-map-selection.utils";
 
-export const useVenueMapSelection = (seats: VenueSeatResponse[] = []) => {
+export const useVenueMapSelection = (venueSeats: VenueSeatResponse[] = []) => {
   const [selectedSeat, setSelectedSeat] = useState<VenueSeatResponse | null>(null);
 
   const selectSeat = (seat: VenueSeatResponse | null) => {
@@ -12,7 +12,7 @@ export const useVenueMapSelection = (seats: VenueSeatResponse[] = []) => {
   };
 
   const getSeatTabIndex = (seat: VenueSeatResponse) => {
-    const focusableSeatId = selectedSeat?.id ?? seats[0]?.id;
+    const focusableSeatId = selectedSeat?.id ?? venueSeats[0]?.id;
 
     return focusableSeatId === seat.id ? 0 : -1;
   };
@@ -27,7 +27,7 @@ export const useVenueMapSelection = (seats: VenueSeatResponse[] = []) => {
 
     if (!isSeatNavigationDirection(event.key)) return;
 
-    const adjacentSeat = findAdjacentSeat(seat, seats, event.key);
+    const adjacentSeat = findAdjacentSeat(seat, venueSeats, event.key);
     if (!adjacentSeat) return;
 
     event.preventDefault();

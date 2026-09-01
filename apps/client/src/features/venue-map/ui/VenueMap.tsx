@@ -9,10 +9,10 @@ import { createSectionColorMap } from "../model/venue-map.utils";
 
 interface VenueMapProps {
   venue: VenueResponse;
-  seats: VenueSeatResponse[];
+  venueSeats: VenueSeatResponse[];
 }
 
-const VenueMap = ({ venue, seats }: VenueMapProps) => {
+const VenueMap = ({ venue, venueSeats }: VenueMapProps) => {
   const {
     mapRef,
     selectedSeat,
@@ -34,10 +34,10 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
   } = useVenueMap({
     width: venue.width,
     height: venue.height,
-    seats,
+    venueSeats,
   });
 
-  const sections = useMemo(() => [...new Set(seats.map((seat) => seat.sectionName))], [seats]);
+  const sections = useMemo(() => [...new Set(venueSeats.map((seat) => seat.sectionName))], [venueSeats]);
   const sectionColors = useMemo(() => createSectionColorMap(venue.id, sections), [venue.id, sections]);
   const stageX = venue.stagePositionX - venue.stageWidth / 2;
   const stageY = venue.stagePositionY - venue.stageHeight / 2;
@@ -53,7 +53,7 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
         <div className="border-b border-gray-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-bold text-gray-900">좌석 배치 정보</h2>
           <p className="mt-1 text-xs text-gray-500">
-            {venue.name} · 전체 {seats.length}석
+            {venue.name} · 전체 {venueSeats.length}석
           </p>
         </div>
 
@@ -94,7 +94,7 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
                 STAGE
               </text>
 
-              {seats.map((seat) => {
+              {venueSeats.map((seat) => {
                 const isSelected = selectedSeat?.id === seat.id;
 
                 return (

@@ -89,7 +89,7 @@ afterAll(() => {
 
 describe("VenueMap", () => {
   it("공연장 가상 캔버스와 정적 좌석을 렌더링한다", () => {
-    const { container } = render(<VenueMap venue={venue} seats={seats} />);
+    const { container } = render(<VenueMap venue={venue} venueSeats={seats} />);
 
     expect(screen.getByRole("heading", { name: "좌석 배치 정보" })).toBeInTheDocument();
     expect(screen.getByText("올림픽공원 KSPO DOME · 전체 2석")).toBeInTheDocument();
@@ -109,7 +109,7 @@ describe("VenueMap", () => {
   it("좌석을 클릭하면 해당 좌석 정보를 표시한다", async () => {
     const user = userEvent.setup();
 
-    render(<VenueMap venue={venue} seats={seats} />);
+    render(<VenueMap venue={venue} venueSeats={seats} />);
 
     const seat = screen.getByRole("button", { name: "A구역 1열 1번, 150,000원" });
     await user.click(seat);
@@ -121,7 +121,7 @@ describe("VenueMap", () => {
   it("확대 제어 버튼으로 확대와 축소할 수 있다", async () => {
     const user = userEvent.setup();
 
-    render(<VenueMap venue={venue} seats={seats} />);
+    render(<VenueMap venue={venue} venueSeats={seats} />);
 
     const zoomOut = screen.getByRole("button", { name: "축소" });
     const zoomIn = screen.getByRole("button", { name: "확대" });
@@ -142,7 +142,7 @@ describe("VenueMap", () => {
   });
 
   it("Option 휠일 때만 지도 확대와 기본 스크롤 방지를 적용한다", () => {
-    render(<VenueMap venue={venue} seats={seats} />);
+    render(<VenueMap venue={venue} venueSeats={seats} />);
 
     const map = screen.getByLabelText("올림픽공원 KSPO DOME 좌석 배치도");
     const mapContainer = map.parentElement;
@@ -204,7 +204,7 @@ describe("VenueMap", () => {
   it("Enter 키로도 좌석 정보를 확인할 수 있다", async () => {
     const user = userEvent.setup();
 
-    render(<VenueMap venue={venue} seats={seats} />);
+    render(<VenueMap venue={venue} venueSeats={seats} />);
 
     const seat = screen.getByRole("button", { name: "A구역 1열 2번, 150,000원" });
     seat.focus();
@@ -216,7 +216,7 @@ describe("VenueMap", () => {
   });
 
   it("지도 내부의 두 손가락 제스처와 Safari 제스처만 브라우저 확대를 막는다", () => {
-    render(<VenueMap venue={venue} seats={seats} />);
+    render(<VenueMap venue={venue} venueSeats={seats} />);
 
     const map = screen.getByLabelText("올림픽공원 KSPO DOME 좌석 배치도");
     const mapContainer = map.parentElement;
@@ -258,7 +258,7 @@ describe("VenueMap", () => {
   it("드래그 중에는 grabbing 커서를 표시하고 드래그 직후 좌석 클릭을 무시한다", async () => {
     const user = userEvent.setup();
 
-    render(<VenueMap venue={venue} seats={seats} />);
+    render(<VenueMap venue={venue} venueSeats={seats} />);
 
     const map = screen.getByLabelText("올림픽공원 KSPO DOME 좌석 배치도");
     const seat = screen.getByRole("button", { name: "A구역 1열 1번, 150,000원" });

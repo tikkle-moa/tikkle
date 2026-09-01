@@ -6,10 +6,10 @@ import { useVenueMapViewport } from "./use-venue-map-viewport";
 interface UseVenueMapParams {
   width: number;
   height: number;
-  seats?: VenueSeatResponse[];
+  venueSeats?: VenueSeatResponse[];
 }
 
-export const useVenueMap = ({ width, height, seats }: UseVenueMapParams) => ({
-  ...useVenueMapSelection(seats),
+export const useVenueMap = ({ width, height, venueSeats }: UseVenueMapParams) => ({
+  ...useVenueMapSelection(venueSeats),
   ...useVenueMapViewport({ width, height }),
 });
