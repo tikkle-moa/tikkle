@@ -16,7 +16,7 @@ interface ConcertFormTextareaProps {
 }
 
 const ConcertFormTextarea = ({ field, label, isSubmitting, placeholder, value, error, updateField, required = false }: ConcertFormTextareaProps) => {
-  const { textareaRef } = useResizeTextarea({ value: value });
+  const { textareaRef } = useResizeTextarea({ value });
 
   return (
     <div className="group">

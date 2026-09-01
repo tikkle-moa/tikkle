@@ -6,10 +6,9 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@shared/api";
 import { ROUTE_PATHS } from "@shared/config/router.config";
+import type { SubmitState } from "@shared/model/form.types";
 
 import { type CreateVenueDetailRequest, VENUE_QUERY_KEYS } from "@entities/venue";
-
-import type { SubmitState } from "@features/concert-form";
 
 export const useVenueNew = () => {
   const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
