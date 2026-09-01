@@ -1,6 +1,7 @@
 export const ROUTE_PATHS = {
   HOME: "/",
   LOGIN: "/login",
+  VENUE_LIST: "/venues",
   VENUE_NEW: "/venues/new",
   CONCERT_LIST: "/concerts",
   CONCERT_DETAIL: "/concerts/:concertId",
@@ -17,7 +18,7 @@ export const ROUTE_PATHS = {
 
 export type RoutePaths = (typeof ROUTE_PATHS)[keyof typeof ROUTE_PATHS];
 
-export const AUTH_GUARD_PATHS: RoutePaths[] = [ROUTE_PATHS.MY_FAVORITES, ROUTE_PATHS.MY_RESERVATIONS];
+export const AUTH_GUARD_PATHS: RoutePaths[] = [ROUTE_PATHS.MY_FAVORITES, ROUTE_PATHS.MY_RESERVATIONS, ROUTE_PATHS.VENUE_LIST];
 export const ADMIN_GUARD_PATHS: RoutePaths[] = [
   ROUTE_PATHS.CONCERT_NEW,
   ROUTE_PATHS.CONCERT_EDIT,
