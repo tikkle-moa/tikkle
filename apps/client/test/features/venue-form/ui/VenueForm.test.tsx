@@ -55,4 +55,15 @@ describe("VenueForm", () => {
     expect(screen.getByRole("button", { name: "등록 중..." })).toBeDisabled();
     unmount();
   });
+
+  it("제출 검증에 실패하면 오류 개수와 영역을 안내한다", () => {
+    render(<VenueForm mode="create" initialValues={initialValues} submitState={{ status: "idle" }} onSubmit={vi.fn()} />);
+    const nameInput = screen.getByLabelText(/공연장 이름/);
+    fireEvent.change(nameInput, { target: { value: "" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "공연장 등록" }));
+
+    expect(screen.getByText("공연장 이름을 입력해 주세요.")).toBeInTheDocument();
+    expect(screen.getByText("기본 정보에서 1개의 오류가 발견되었습니다.")).toBeInTheDocument();
+  });
 });

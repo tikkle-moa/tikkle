@@ -1,6 +1,6 @@
 import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
-import { createVenueSeat, toCreateVenueRequest, validateVenueForm } from "@features/venue-form/model/venue-form.utils";
+import { createVenueSeat, getErrorSections, toCreateVenueRequest, validateVenueForm } from "@features/venue-form/model/venue-form.utils";
 
 const venue: CreateVenueRequest = {
   name: "공연장",
@@ -119,5 +119,15 @@ describe("venue form utils", () => {
       positionX: 25.25,
       positionY: 60.75,
     });
+  });
+
+  it("오류 키를 기본 정보, 레이아웃, 좌석 및 기타 영역으로 중복 없이 분류한다", () => {
+    expect(getErrorSections(["name", "address", "width", "stageHeight", "venueSeats", "seat.0.seatNumber", "unknown"])).toEqual([
+      "기본 정보",
+      "공연장 및 무대 크기",
+      "좌석 정보",
+      "기타",
+    ]);
+    expect(getErrorSections([])).toEqual([]);
   });
 });

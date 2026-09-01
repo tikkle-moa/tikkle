@@ -104,4 +104,11 @@ describe("VenueSeatForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "선택 좌석 삭제" }));
     expect(screen.queryByRole("button", { name: "A1" })).not.toBeInTheDocument();
   });
+
+  it("오류가 있는 좌석을 목록에서 강조한다", () => {
+    render(<TestForm initialErrors={{ "seat.1.seatLabel": "좌석 표시를 입력해 주세요." }} />);
+
+    expect(screen.getByRole("button", { name: "좌석 2" })).toHaveClass("border-red-300", "bg-red-50", "text-red-700");
+    expect(screen.getByText("편집할 좌석을 선택하세요")).toBeInTheDocument();
+  });
 });

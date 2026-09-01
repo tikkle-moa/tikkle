@@ -30,9 +30,13 @@ describe("useVenueForm", () => {
     expect(result.current.venue).toEqual(initialValues.venue);
     expect(result.current.venueSeats).toEqual(initialValues.venueSeats);
     act(() => result.current.setErrors({ name: "오류" }));
+    expect(result.current.errorCount).toBe(1);
+    expect(result.current.errorSections).toEqual(["기본 정보"]);
     act(() => result.current.updateVenue("name", "새 공연장"));
     expect(result.current.venue.name).toBe("새 공연장");
     expect(result.current.errors.name).toBe("");
+    expect(result.current.errorCount).toBe(0);
+    expect(result.current.errorSections).toEqual([]);
   });
 
   it("초기값이 없으면 빈 폼을 사용하고 제출 중 상태를 제공한다", () => {
@@ -46,6 +50,8 @@ describe("useVenueForm", () => {
     const { result } = renderHook(() => useVenueForm({ submitState: { status: "idle" }, onSubmit }));
     await act(() => result.current.handleSubmit(submitEvent));
     expect(result.current.errors.name).toBeTruthy();
+    expect(result.current.errorCount).toBeGreaterThan(0);
+    expect(result.current.errorSections).toEqual(["기본 정보", "좌석 정보"]);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
