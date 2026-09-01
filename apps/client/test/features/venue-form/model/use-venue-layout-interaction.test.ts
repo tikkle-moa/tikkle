@@ -5,7 +5,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
 import { useVenueLayoutInteraction } from "@features/venue-form/model/use-venue-layout-interaction";
-import { VENUE_LAYOUT_MIN_VISIBLE_SIZE } from "@features/venue-form/model/venue-layout.constants";
+import { VENUE_LAYOUT_MIN_ZOOM } from "@features/venue-form/model/venue-layout.constants";
 
 const venue: CreateVenueRequest = {
   name: "공연장",
@@ -51,10 +51,10 @@ const createFullPointerEvent = (overrides: Record<string, unknown> = {}) =>
     ...overrides,
   }) as unknown as ReactPointerEvent<SVGSVGElement>;
 
-const renderInteraction = () => {
+const renderInteraction = (currentVenue = venue) => {
   const setSelectedSeatIndices = vi.fn();
   const props = {
-    venue,
+    venue: currentVenue,
     venueSeats,
     selectedSeatIndices: [] as number[],
     isSubmitting: false,
@@ -105,13 +105,29 @@ describe("useVenueLayoutInteraction", () => {
     expect(props.onLayoutChangeStart).toHaveBeenCalledTimes(2);
   });
 
-  it("공연장 크기에 따라 최대 확대 배율을 계산하고 제한한다", () => {
+  it("100 x 100 공연장은 최대 10배까지 확대한다", () => {
     const { result } = renderInteraction();
-    const expectedMaxZoom = Math.max(venue.width, venue.height) / VENUE_LAYOUT_MIN_VISIBLE_SIZE;
 
-    expect(result.current.maxZoom).toBe(expectedMaxZoom);
+    expect(result.current.maxZoom).toBe(2);
     act(() => result.current.applyZoom(100));
-    expect(result.current.zoom).toBe(expectedMaxZoom);
+    expect(result.current.zoom).toBe(2);
+  });
+
+  it("1000 x 1000 공연장은 최대 100배까지 확대한다", () => {
+    const largeVenue = { ...venue, width: 1_000, height: 1_000 };
+    const { result } = renderInteraction(largeVenue);
+
+    expect(result.current.maxZoom).toBe(20);
+  });
+
+  it("10보다 작은 공연장도 최소 확대 배율 1을 유지한다", () => {
+    const smallVenue = { ...venue, width: 5, height: 5, stagePositionX: 2.5, stagePositionY: 2.5 };
+    const { result } = renderInteraction(smallVenue);
+
+    expect(result.current.maxZoom).toBe(VENUE_LAYOUT_MIN_ZOOM);
+    act(() => result.current.applyZoom(10));
+    expect(result.current.zoom).toBe(VENUE_LAYOUT_MIN_ZOOM);
+    expect(result.current.pan).toEqual({ x: 0, y: 0 });
   });
 
   it("Alt 키 상태와 키보드 확대, 축소, 초기화 및 선택 해제를 처리한다", () => {
