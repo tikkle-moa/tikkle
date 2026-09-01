@@ -5,7 +5,7 @@ import { Info, Minus, Plus } from "lucide-react";
 import type { VenueResponse, VenueSeatResponse } from "@entities/venue";
 
 import { useVenueMap } from "../model/use-venue-map";
-import { createSectionColorMap } from "../model/venue-map.constants";
+import { createSectionColorMap } from "../model/venue-map.utils";
 
 interface VenueMapProps {
   venue: VenueResponse;
