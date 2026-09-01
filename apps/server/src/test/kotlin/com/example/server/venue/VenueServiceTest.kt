@@ -139,6 +139,22 @@ class VenueServiceTest {
       then(venueRepository).shouldHaveNoInteractions()
       then(venueSeatRepository).shouldHaveNoInteractions()
     }
+
+    @Test
+    fun `같은 구역의 좌석 번호가 중복되면 생성하지 않는다`() {
+      val request = createRequest()
+      val duplicatedSeat = request.venueSeats.single().copy(seatLabel = "중복 좌석")
+      val duplicatedRequest = request.copy(venueSeats = request.venueSeats + duplicatedSeat)
+
+      val exception = assertThrows<CustomException> {
+        venueService.createVenueDetails(duplicatedRequest)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
+      assertThat(exception.message).contains("같은 구역의 좌석 번호가 중복되었습니다.")
+      then(venueRepository).shouldHaveNoInteractions()
+      then(venueSeatRepository).shouldHaveNoInteractions()
+    }
   }
 
   @Nested
