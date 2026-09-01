@@ -1,20 +1,12 @@
-import { type KeyboardEvent, useState } from "react";
+import { useVenueMapSelection } from "./use-venue-map-selection";
+import { useVenueMapViewport } from "./use-venue-map-viewport";
 
-import type { VenueSeatResponse } from "@entities/venue";
+interface UseVenueMapParams {
+  width: number;
+  height: number;
+}
 
-export const useVenueMap = () => {
-  const [selectedSeat, setSelectedSeat] = useState<VenueSeatResponse | null>(null);
-
-  const handleSeatKeyDown = (event: KeyboardEvent<SVGRectElement>, seat: VenueSeatResponse) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      setSelectedSeat(seat);
-    }
-  };
-
-  return {
-    selectedSeat,
-    selectSeat: setSelectedSeat,
-    handleSeatKeyDown,
-  };
-};
+export const useVenueMap = ({ width, height }: UseVenueMapParams) => ({
+  ...useVenueMapSelection(),
+  ...useVenueMapViewport({ width, height }),
+});
