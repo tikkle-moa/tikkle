@@ -72,7 +72,7 @@ describe("usePerformanceDetail", () => {
     const { result } = renderHook(() => usePerformanceDetail());
 
     expect(mockUsePerformanceDetailQuery).toHaveBeenCalledWith(3);
-    expect(mockUseVenueDetailQuery).toHaveBeenCalledWith(1);
+    expect(mockUseVenueDetailQuery).toHaveBeenCalledWith(1, true);
     expect(result.current).toEqual({
       isParamValid: true,
       performance,
@@ -95,8 +95,36 @@ describe("usePerformanceDetail", () => {
     const { result } = renderHook(() => usePerformanceDetail());
 
     expect(mockUsePerformanceDetailQuery).toHaveBeenCalledWith(Number.NaN);
-    expect(mockUseVenueDetailQuery).toHaveBeenCalledWith(0);
+    expect(mockUseVenueDetailQuery).toHaveBeenCalledWith(0, true);
     expect(result.current.isParamValid).toBe(false);
+  });
+
+  it("종료된 회차는 공연장 조회를 비활성화하고 해당 상태를 무시한다", () => {
+    const endedPerformance = { ...performance, status: "ENDED" };
+
+    mockUsePerformanceDetailQuery.mockReturnValue({
+      data: endedPerformance,
+      isError: false,
+      isPending: false,
+      isSuccess: true,
+    });
+    mockUseVenueDetailQuery.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isPending: true,
+    });
+
+    const { result } = renderHook(() => usePerformanceDetail());
+
+    expect(mockUseVenueDetailQuery).toHaveBeenCalledWith(1, false);
+    expect(result.current).toEqual({
+      isParamValid: true,
+      performance: endedPerformance,
+      venue: undefined,
+      seats: [],
+      isError: false,
+      isPending: false,
+    });
   });
 
   it("공연 조회 중에는 로딩 상태를 반환한다", () => {

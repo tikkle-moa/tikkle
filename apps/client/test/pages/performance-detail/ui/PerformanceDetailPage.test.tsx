@@ -99,6 +99,8 @@ describe("PerformanceDetailPage", () => {
     mockUsePerformanceDetail.mockReturnValue({
       ...pageState,
       performance: { ...pageState.performance, status: "ENDED" },
+      venue: undefined,
+      seats: [],
     });
 
     renderPage();
@@ -106,6 +108,18 @@ describe("PerformanceDetailPage", () => {
     expect(screen.getByRole("heading", { name: "종료된 공연 회차입니다." })).toBeInTheDocument();
     expect(screen.getByText("다른 회차를 선택해 주세요.")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "좌석 배치 정보" })).not.toBeInTheDocument();
+  });
+
+  it("공연장 정보가 없으면 오류 안내를 표시한다", () => {
+    mockUsePerformanceDetail.mockReturnValue({
+      ...pageState,
+      venue: undefined,
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "공연 회차를 불러오지 못했습니다." })).toBeInTheDocument();
+    expect(screen.getByText("잠시 후 다시 시도해 주세요.")).toBeInTheDocument();
   });
 
   it("잘못된 ID이면 안내 메시지를 표시한다", () => {

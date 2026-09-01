@@ -104,4 +104,12 @@ describe("useVenueDetail", () => {
 
     expect(mockGet).not.toHaveBeenCalled();
   });
+
+  it("비활성화된 공연장 상세 조회에는 요청하지 않는다", () => {
+    renderHook(() => useVenueDetail(1, false), {
+      wrapper: createWrapper(),
+    });
+
+    expect(mockGet).not.toHaveBeenCalled();
+  });
 });
