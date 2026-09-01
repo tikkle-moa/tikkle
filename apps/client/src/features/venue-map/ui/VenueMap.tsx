@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { Info } from "lucide-react";
+import { Info, Minus, Plus } from "lucide-react";
 
 import type { VenueResponse, VenueSeatResponse } from "@entities/venue";
 
@@ -21,6 +21,10 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
     viewBox,
     zoom,
     isDragging,
+    canZoomIn,
+    canZoomOut,
+    zoomIn,
+    zoomOut,
     consumeSeatClick,
     handleKeyDown,
     handlePointerDown,
@@ -52,7 +56,7 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
         </div>
 
         <div className="px-3 py-5 sm:px-8 sm:py-7">
-          <div ref={mapRef} className="relative">
+          <div ref={mapRef} className="relative" style={{ touchAction: "none" }}>
             <svg
               aria-label={`${venue.name} 좌석 배치도`}
               className={`w-full rounded-xl bg-linear-to-b from-violet-50/70 via-white to-sky-50/70 ring-1 ring-gray-100 ${
@@ -60,7 +64,6 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
               }`}
               viewBox={viewBox}
               tabIndex={0}
-              style={{ touchAction: "none" }}
               onKeyDown={handleKeyDown}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
@@ -146,12 +149,35 @@ const VenueMap = ({ venue, seats }: VenueMapProps) => {
                 <p>Option + 스크롤 또는 두 손가락으로 확대할 수 있습니다. 확대 후 드래그하여 이동하세요.</p>
               )}
             </div>
-            <output
-              aria-label="현재 확대 비율"
-              className="pointer-events-none absolute top-3 right-3 rounded-md border border-gray-200 bg-white/90 px-2 py-1 text-xs font-semibold text-gray-600 shadow-sm backdrop-blur"
+            <div
+              role="group"
+              aria-label="좌석 배치도 확대 제어"
+              className="absolute top-3 right-3 flex items-center overflow-hidden rounded-md border border-gray-200 bg-white/90 text-gray-600 shadow-sm backdrop-blur"
             >
-              {Math.round(zoom * 100)}%
-            </output>
+              <button
+                type="button"
+                aria-label="축소"
+                className="p-1.5 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300"
+                disabled={!canZoomOut}
+                onClick={zoomOut}
+              >
+                <Minus className="size-3.5" aria-hidden />
+              </button>
+
+              <output aria-label="현재 확대 비율" className="min-w-11 border-x border-gray-200 px-1 text-center text-xs font-semibold">
+                {Math.round(zoom * 100)}%
+              </output>
+
+              <button
+                type="button"
+                aria-label="확대"
+                className="p-1.5 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300"
+                disabled={!canZoomIn}
+                onClick={zoomIn}
+              >
+                <Plus className="size-3.5" aria-hidden />
+              </button>
+            </div>
           </div>
         </div>
       </div>

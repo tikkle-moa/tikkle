@@ -25,6 +25,12 @@ interface Gesture {
   hasMoved: boolean;
 }
 
+type PinchGesture = Gesture & {
+  kind: "pinch";
+  startDistance: number;
+  startMidpoint: Point;
+};
+
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_FACTOR = 1.2;
@@ -110,12 +116,7 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     };
   };
 
-  const startPinch = () => {
-    const points = [...pointersRef.current.values()];
-    if (points.length < 2) return;
-
-    const [first, second] = points;
-
+  const startPinch = (first: Point, second: Point) => {
     gestureRef.current = {
       kind: "pinch",
       startViewport: getCurrentViewport(),
@@ -125,6 +126,17 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     };
   };
 
+  const changeZoom = useCallback(
+    (factor: number) => {
+      const current = getCurrentViewport();
+      const center = { x: 0.5, y: 0.5 };
+      const zoom = Math.min(Math.max(current.zoom * factor, MIN_ZOOM), MAX_ZOOM);
+
+      setNextViewport(zoomAt(current, center, center, zoom, width, height));
+    },
+    [getCurrentViewport, height, setNextViewport, width],
+  );
+
   const handlePointerDown = (event: PointerEvent<SVGSVGElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
@@ -132,7 +144,9 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     pointersRef.current.set(event.pointerId, getPoint(event));
 
     if (pointersRef.current.size >= 2) {
-      startPinch();
+      const [first, second] = [...pointersRef.current.values()];
+
+      startPinch(first!, second!);
       return;
     }
 
@@ -147,21 +161,13 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     pointersRef.current.set(event.pointerId, getPoint(event));
 
     if (pointersRef.current.size >= 2) {
-      if (gestureRef.current?.kind !== "pinch") {
-        startPinch();
-      }
-
-      const gesture = gestureRef.current;
-      const points = [...pointersRef.current.values()];
-
-      if (!gesture || gesture.kind !== "pinch" || points.length < 2 || !gesture.startDistance || !gesture.startMidpoint) return;
-
-      const [first, second] = points;
-      const zoom = Math.min(Math.max(gesture.startViewport.zoom * (getDistance(first, second) / gesture.startDistance), MIN_ZOOM), MAX_ZOOM);
+      const gesture = gestureRef.current as PinchGesture;
+      const [first, second] = [...pointersRef.current.values()];
+      const zoom = Math.min(Math.max(gesture.startViewport.zoom * (getDistance(first!, second!) / gesture.startDistance), MIN_ZOOM), MAX_ZOOM);
 
       gesture.hasMoved = true;
       setIsDragging(true);
-      setNextViewport(zoomAt(gesture.startViewport, gesture.startMidpoint, getMidpoint(first, second), zoom, width, height));
+      setNextViewport(zoomAt(gesture.startViewport, gesture.startMidpoint, getMidpoint(first!, second!), zoom, width, height));
       return;
     }
 
@@ -208,9 +214,7 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
       event.preventDefault();
       event.stopPropagation();
 
-      const mapElement = mapRef.current;
-      if (!mapElement) return;
-
+      const mapElement = event.currentTarget as HTMLDivElement;
       const bounds = mapElement.getBoundingClientRect();
       const point = {
         x: (event.clientX - bounds.left) / bounds.width,
@@ -228,10 +232,26 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     const mapElement = mapRef.current;
     if (!mapElement) return;
 
+    const preventBrowserPinch = (event: TouchEvent) => {
+      if (event.touches.length >= 2) {
+        event.preventDefault();
+      }
+    };
+
+    const preventSafariGesture = (event: Event) => {
+      event.preventDefault();
+    };
+
     mapElement.addEventListener("wheel", handleAltWheel, { passive: false });
+    mapElement.addEventListener("touchmove", preventBrowserPinch, { passive: false });
+    mapElement.addEventListener("gesturestart", preventSafariGesture, { passive: false });
+    mapElement.addEventListener("gesturechange", preventSafariGesture, { passive: false });
 
     return () => {
       mapElement.removeEventListener("wheel", handleAltWheel);
+      mapElement.removeEventListener("touchmove", preventBrowserPinch);
+      mapElement.removeEventListener("gesturestart", preventSafariGesture);
+      mapElement.removeEventListener("gesturechange", preventSafariGesture);
     };
   }, [handleAltWheel]);
 
@@ -274,6 +294,10 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     viewBox,
     zoom: viewport.zoom,
     isDragging,
+    canZoomIn: viewport.zoom < MAX_ZOOM,
+    canZoomOut: viewport.zoom > MIN_ZOOM,
+    zoomIn: () => changeZoom(ZOOM_FACTOR),
+    zoomOut: () => changeZoom(1 / ZOOM_FACTOR),
     consumeSeatClick,
     handleKeyDown,
     handlePointerDown,
