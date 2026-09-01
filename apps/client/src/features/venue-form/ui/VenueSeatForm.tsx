@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { Armchair, Plus, Trash2, Undo2 } from "lucide-react";
+import { Armchair, CircleAlert, Plus, Trash2, Undo2 } from "lucide-react";
 
 import { toRound } from "@shared/lib/number.utils";
 
@@ -13,6 +13,7 @@ import VenueLayoutEditor from "./VenueLayoutEditor";
 
 import { useVenueSeatForm } from "../model/use-venue-seat-form";
 import type { VenueFormErrors } from "../model/venue-form.types";
+import { getVenueSeatClassName } from "../model/venue-form.utils";
 
 interface VenueSeatFormProps {
   venue: CreateVenueRequest;
@@ -27,6 +28,7 @@ interface VenueSeatFormProps {
 const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setVenueSeats, setErrors }: VenueSeatFormProps) => {
   const {
     selectedSeatIndices,
+    errorSeatIndices,
     canUndo,
     setSelectedSeatIndices,
     saveLayoutSnapshot,
@@ -35,7 +37,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
     handleAddSeats,
     handleRemoveSelectedSeats,
     updateVenueSeat,
-  } = useVenueSeatForm({ venue, venueSeats, setVenue, setVenueSeats, setErrors });
+  } = useVenueSeatForm({ venue, venueSeats, errors, setVenue, setVenueSeats, setErrors });
 
   return (
     <section className="space-y-6 p-4 sm:p-6">
@@ -194,21 +196,25 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
 
       {venueSeats.length > 0 && (
         <div className="flex max-h-32 scrollbar-thin flex-wrap gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-          {venueSeats.map((seat, index) => (
-            <button
-              className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${selectedSeatIndices.includes(index) ? "border-violet-300 bg-violet-100 text-violet-700" : "border-slate-200 bg-white text-slate-600 hover:border-violet-200"}`}
-              key={`${seat.sectionName}-${seat.seatNumber}-${index}`}
-              onClick={(event) =>
-                setSelectedSeatIndices((current) => {
-                  if (!event.shiftKey) return [index];
-                  return current.includes(index) ? current.filter((selectedIndex) => selectedIndex !== index) : [...current, index];
-                })
-              }
-              type="button"
-            >
-              {seat.seatLabel || `좌석 ${index + 1}`}
-            </button>
-          ))}
+          {venueSeats.map((seat, index) => {
+            const hasError = errorSeatIndices.has(index);
+            const isSelected = selectedSeatIndices.includes(index);
+            return (
+              <button
+                className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${getVenueSeatClassName(hasError, isSelected)}`}
+                key={`${seat.sectionName}-${seat.seatNumber}-${index}`}
+                onClick={(event) =>
+                  setSelectedSeatIndices((current) => {
+                    if (!event.shiftKey) return [index];
+                    return current.includes(index) ? current.filter((selectedIndex) => selectedIndex !== index) : [...current, index];
+                  })
+                }
+                type="button"
+              >
+                {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />} {seat.seatLabel || `좌석 ${index + 1}`}
+              </button>
+            );
+          })}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { AlertCircle, Building2, LoaderCircle } from "lucide-react";
+import { AlertCircle, Building2, CircleAlert, LoaderCircle } from "lucide-react";
 
 import { toRound } from "@shared/lib/number.utils";
 import type { SubmitState } from "@shared/model/form.types";
@@ -23,11 +23,12 @@ interface VenueFormProps {
 }
 
 const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: VenueFormProps) => {
-  const { venue, venueSeats, errors, isSubmitting, updateVenue, setVenue, setVenueSeats, setErrors, handleSubmit } = useVenueForm({
-    initialValues,
-    submitState,
-    onSubmit,
-  });
+  const { venue, venueSeats, errors, errorCount, errorSections, isSubmitting, updateVenue, setVenue, setVenueSeats, setErrors, handleSubmit } =
+    useVenueForm({
+      initialValues,
+      submitState,
+      onSubmit,
+    });
 
   return (
     <form className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" noValidate onSubmit={handleSubmit}>
@@ -72,6 +73,20 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
         >
           <AlertCircle className="size-4 shrink-0" aria-hidden /> {submitState.error}
         </p>
+      )}
+
+      {errorCount > 0 && (
+        <div className="m-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 sm:mx-6" role="alert">
+          <CircleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
+
+          <div>
+            <p className="text-sm font-semibold">입력 내용을 다시 확인해 주세요.</p>
+
+            <p className="mt-1 text-xs leading-5 text-red-600">
+              {errorSections.join(", ")}에서 {Object.keys(errors).length}개의 오류가 발견되었습니다.
+            </p>
+          </div>
+        </div>
       )}
 
       <section className="space-y-6 border-b border-slate-200 p-4 sm:p-6">

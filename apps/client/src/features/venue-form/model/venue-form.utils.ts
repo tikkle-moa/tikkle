@@ -2,7 +2,7 @@ import { toRound } from "@shared/lib/number.utils";
 
 import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
-import { VENUE_FORM_LIMITS } from "./venue-form.constants";
+import { BASIC_ERROR_KEYS, LAYOUT_ERROR_KEYS, VENUE_FORM_LIMITS } from "./venue-form.constants";
 import type { VenueFormErrors } from "./venue-form.types";
 
 const validateStagePosition = (
@@ -119,3 +119,27 @@ export const createVenueSeat = (venueWidth: number, venueHeight: number): Create
   positionX: Math.round(Math.random() * venueWidth * 100) / 100,
   positionY: Math.round(Math.random() * venueHeight * 100) / 100,
 });
+
+export const getVenueSeatClassName = (hasError: boolean, isSelected: boolean) => {
+  if (hasError) return "border-red-300 bg-red-50 text-red-700";
+  if (isSelected) return "border-violet-300 bg-violet-100 text-violet-700";
+  return "border-slate-200 bg-white text-slate-600 hover:border-violet-200";
+};
+
+export const getErrorSections = (errorKeys: string[]): string[] => {
+  const errorSections = new Set<string>();
+
+  errorKeys.forEach((key) => {
+    if (BASIC_ERROR_KEYS.has(key)) {
+      errorSections.add("기본 정보");
+    } else if (LAYOUT_ERROR_KEYS.has(key)) {
+      errorSections.add("공연장 및 무대 크기");
+    } else if (key === "venueSeats" || key.startsWith("seat.")) {
+      errorSections.add("좌석 정보");
+    } else {
+      errorSections.add("기타");
+    }
+  });
+
+  return [...errorSections];
+};

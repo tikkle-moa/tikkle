@@ -20,3 +20,7 @@ export const EMPTY_VENUE_FORM_VALUES: CreateVenueRequest = {
   stageWidth: 40,
   stageHeight: 10,
 };
+
+export const BASIC_ERROR_KEYS = new Set(["name", "address", "description"]);
+
+export const LAYOUT_ERROR_KEYS = new Set(["width", "height", "stagePositionX", "stagePositionY", "stageWidth", "stageHeight"]);

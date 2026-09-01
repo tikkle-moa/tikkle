@@ -8,15 +8,23 @@ import { createVenueSeat } from "./venue-form.utils";
 interface UseVenueSeatFormProps {
   venue: CreateVenueRequest;
   venueSeats: CreateVenueSeatRequest[];
+  errors: VenueFormErrors;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
   setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
 }
 
-export const useVenueSeatForm = ({ venue, venueSeats, setVenue, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
+export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
   const [selectedSeatIndices, setSelectedSeatIndices] = useState<number[]>([]);
   const historyRef = useRef<CreateVenueDetailRequest[]>([]);
   const [canUndo, setCanUndo] = useState(false);
+
+  const errorSeatIndices = new Set(
+    Object.keys(errors).flatMap((key) => {
+      const match = key.match(/^seat\.(\d+)\./);
+      return match ? [Number(match[1])] : [];
+    }),
+  );
 
   const saveLayoutSnapshot = () => {
     historyRef.current = [...historyRef.current.slice(-49), { venue: { ...venue }, venueSeats: venueSeats.map((seat) => ({ ...seat })) }];
@@ -74,6 +82,7 @@ export const useVenueSeatForm = ({ venue, venueSeats, setVenue, setVenueSeats, s
 
   return {
     selectedSeatIndices,
+    errorSeatIndices,
     canUndo,
     setSelectedSeatIndices,
     saveLayoutSnapshot,

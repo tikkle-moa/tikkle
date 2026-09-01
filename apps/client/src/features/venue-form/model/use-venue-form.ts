@@ -6,7 +6,7 @@ import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatReque
 
 import { EMPTY_VENUE_FORM_VALUES } from "./venue-form.constants";
 import type { VenueFormErrors } from "./venue-form.types";
-import { toCreateVenueRequest, validateVenueForm } from "./venue-form.utils";
+import { getErrorSections, toCreateVenueRequest, validateVenueForm } from "./venue-form.utils";
 
 interface UseVenueFormProps {
   initialValues?: CreateVenueDetailRequest;
@@ -49,10 +49,16 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
     await onSubmit(toCreateVenueRequest(venue, venueSeats));
   };
 
+  const errorKeys = Object.keys(errors);
+  const errorCount = errorKeys.length;
+  const errorSections = getErrorSections(errorKeys);
+
   return {
     venue,
     venueSeats,
     errors,
+    errorCount,
+    errorSections,
     isSubmitting,
     updateVenue,
     setVenue,
