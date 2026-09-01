@@ -1,6 +1,9 @@
 -- 기본 공연장을 10구역 1,500석 가상 좌석 배치도로 구성한다.
 -- 가상 캔버스는 1,600 × 900이며 각 구역은 15열 × 10행, 150석이다.
 -- A~E구역은 전방, F~J구역은 후방에 배치한다.
+-- V6에서 venues 테이블 생성 직후 기본 공연장을 최초로 삽입하므로 ID는 1이다.
+
+SET @default_venue_id = 1;
 
 UPDATE venues
 SET
@@ -12,7 +15,7 @@ SET
     stage_width = 420.00,
     stage_height = 54.00
 WHERE
-    name = '올림픽공원 KSPO DOME';
+    id = @default_venue_id;
 
 INSERT INTO
     venue_seats (
@@ -147,4 +150,4 @@ FROM
         SELECT 14
     ) seat_columns
 WHERE
-    venue.name = '올림픽공원 KSPO DOME';
+    venue.id = @default_venue_id;
