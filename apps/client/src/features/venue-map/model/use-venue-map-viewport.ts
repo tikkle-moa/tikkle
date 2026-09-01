@@ -1,14 +1,10 @@
 import { type KeyboardEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { VENUE_MAP_DRAG_THRESHOLD, VENUE_MAP_MAX_ZOOM, VENUE_MAP_MIN_ZOOM, VENUE_MAP_ZOOM_FACTOR } from "./venue-map-viewport.constants";
 import type { Gesture, PanGesture, PinchGesture, Point, UseVenueMapViewportParams, Viewport } from "./venue-map-viewport.types";
 
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 4;
-const ZOOM_FACTOR = 1.2;
-const DRAG_THRESHOLD = 0.01;
-
 const createInitialViewport = ({ width, height }: UseVenueMapViewportParams): Viewport => ({
-  zoom: MIN_ZOOM,
+  zoom: VENUE_MAP_MIN_ZOOM,
   centerX: width / 2,
   centerY: height / 2,
 });
@@ -105,7 +101,7 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     (factor: number) => {
       const current = getCurrentViewport();
       const center = { x: 0.5, y: 0.5 };
-      const zoom = Math.min(Math.max(current.zoom * factor, MIN_ZOOM), MAX_ZOOM);
+      const zoom = Math.min(Math.max(current.zoom * factor, VENUE_MAP_MIN_ZOOM), VENUE_MAP_MAX_ZOOM);
 
       setNextViewport(zoomAt(current, center, center, zoom, width, height));
     },
@@ -125,7 +121,7 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
       return;
     }
 
-    if (getCurrentViewport().zoom > MIN_ZOOM) {
+    if (getCurrentViewport().zoom > VENUE_MAP_MIN_ZOOM) {
       startPan(getPoint(event));
     }
   };
@@ -138,7 +134,10 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     if (pointersRef.current.size >= 2) {
       const gesture = gestureRef.current as PinchGesture;
       const [first, second] = [...pointersRef.current.values()];
-      const zoom = Math.min(Math.max(gesture.startViewport.zoom * (getDistance(first!, second!) / gesture.startDistance), MIN_ZOOM), MAX_ZOOM);
+      const zoom = Math.min(
+        Math.max(gesture.startViewport.zoom * (getDistance(first!, second!) / gesture.startDistance), VENUE_MAP_MIN_ZOOM),
+        VENUE_MAP_MAX_ZOOM,
+      );
 
       gesture.hasMoved = true;
       setIsDragging(true);
@@ -150,7 +149,7 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     if (!gesture || gesture.kind !== "pan") return;
 
     const point = getPoint(event);
-    if (getDistance(gesture.startPoint, point) < DRAG_THRESHOLD) return;
+    if (getDistance(gesture.startPoint, point) < VENUE_MAP_DRAG_THRESHOLD) return;
 
     const viewWidth = width / gesture.startViewport.zoom;
     const viewHeight = height / gesture.startViewport.zoom;
@@ -173,7 +172,7 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
 
     pointersRef.current.delete(event.pointerId);
 
-    if (pointersRef.current.size === 1 && getCurrentViewport().zoom > MIN_ZOOM) {
+    if (pointersRef.current.size === 1 && getCurrentViewport().zoom > VENUE_MAP_MIN_ZOOM) {
       startPan([...pointersRef.current.values()][0]);
     } else {
       gestureRef.current = null;
@@ -196,7 +195,10 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
         y: (event.clientY - bounds.top) / bounds.height,
       };
       const current = getCurrentViewport();
-      const zoom = Math.min(Math.max(current.zoom * (event.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR), MIN_ZOOM), MAX_ZOOM);
+      const zoom = Math.min(
+        Math.max(current.zoom * (event.deltaY < 0 ? VENUE_MAP_ZOOM_FACTOR : 1 / VENUE_MAP_ZOOM_FACTOR), VENUE_MAP_MIN_ZOOM),
+        VENUE_MAP_MAX_ZOOM,
+      );
 
       setNextViewport(zoomAt(current, point, point, zoom, width, height));
     },
@@ -236,12 +238,12 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
 
     if (event.key === "+" || event.key === "=") {
       event.preventDefault();
-      setNextViewport(zoomAt(current, center, center, Math.min(current.zoom * ZOOM_FACTOR, MAX_ZOOM), width, height));
+      setNextViewport(zoomAt(current, center, center, Math.min(current.zoom * VENUE_MAP_ZOOM_FACTOR, VENUE_MAP_MAX_ZOOM), width, height));
     }
 
     if (event.key === "-" || event.key === "_") {
       event.preventDefault();
-      setNextViewport(zoomAt(current, center, center, Math.max(current.zoom / ZOOM_FACTOR, MIN_ZOOM), width, height));
+      setNextViewport(zoomAt(current, center, center, Math.max(current.zoom / VENUE_MAP_ZOOM_FACTOR, VENUE_MAP_MIN_ZOOM), width, height));
     }
 
     if (event.key === "0") {
@@ -269,10 +271,10 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     viewBox,
     zoom: viewport.zoom,
     isDragging,
-    canZoomIn: viewport.zoom < MAX_ZOOM,
-    canZoomOut: viewport.zoom > MIN_ZOOM,
-    zoomIn: () => changeZoom(ZOOM_FACTOR),
-    zoomOut: () => changeZoom(1 / ZOOM_FACTOR),
+    canZoomIn: viewport.zoom < VENUE_MAP_MAX_ZOOM,
+    canZoomOut: viewport.zoom > VENUE_MAP_MIN_ZOOM,
+    zoomIn: () => changeZoom(VENUE_MAP_ZOOM_FACTOR),
+    zoomOut: () => changeZoom(1 / VENUE_MAP_ZOOM_FACTOR),
     consumeSeatClick,
     handleKeyDown,
     handlePointerDown,
