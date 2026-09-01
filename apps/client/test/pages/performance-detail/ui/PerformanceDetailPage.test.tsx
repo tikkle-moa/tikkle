@@ -14,16 +14,32 @@ vi.mock("@pages/performance-detail/model/use-performance-detail", () => ({
   usePerformanceDetail: mockUsePerformanceDetail,
 }));
 
+const venue = {
+  id: 1,
+  name: "올림픽공원 KSPO DOME",
+  address: "서울특별시 송파구 올림픽로 424",
+  description: "가상 공연장 좌석 배치도입니다.",
+  width: 100,
+  height: 100,
+  stagePositionX: 50,
+  stagePositionY: 10,
+  stageWidth: 72,
+  stageHeight: 13,
+  createdAt: "2026-08-25T12:00:00",
+};
+
 const pageState = {
   performance: {
     id: 1,
     concertId: 10,
+    venueId: 1,
     name: "Tikkle Live",
     startsAt: "2026-09-01T19:00:00",
     bookingOpensAt: "2026-08-28T14:00:00",
     createdAt: "2026-08-25T12:00:00",
     status: "UPCOMING",
   },
+  venue,
   seats: [],
   isError: false,
   isParamValid: true,
@@ -52,7 +68,8 @@ describe("PerformanceDetailPage", () => {
     expect(screen.getByText(formatDateTime(pageState.performance.startsAt))).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "콘서트 상세로 돌아가기" })).toHaveAttribute("href", "/concerts/10");
     expect(screen.getByRole("heading", { name: "좌석 배치 정보" })).toBeInTheDocument();
-    expect(screen.getByText("좌석 상태와 선택 기능은 추후 적용 예정입니다.")).toBeInTheDocument();
+    expect(screen.getByText("올림픽공원 KSPO DOME · 전체 0석")).toBeInTheDocument();
+    expect(screen.getByText("Option + 스크롤 또는 두 손가락으로 확대할 수 있습니다. 확대 후 드래그하여 이동하세요.")).toBeInTheDocument();
   });
 
   it("예매 오픈 일시가 없으면 예매 오픈 정보를 표시하지 않는다", () => {
