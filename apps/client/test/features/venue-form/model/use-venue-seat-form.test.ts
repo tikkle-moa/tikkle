@@ -28,8 +28,8 @@ const initialSeats: CreateVenueSeatRequest[] = [
 const useTestVenueSeatForm = () => {
   const [currentVenue, setVenue] = useState(venue);
   const [venueSeats, setVenueSeats] = useState(initialSeats);
-  const [errors, setErrors] = useState<VenueFormErrors>({ venueSeats: "좌석 오류" });
-  const form = useVenueSeatForm({ venue: currentVenue, venueSeats, errors, setVenue, setVenueSeats, setErrors });
+  const [errors] = useState<VenueFormErrors>({ venueSeats: "좌석 오류" });
+  const form = useVenueSeatForm({ venue: currentVenue, venueSeats, errors, setVenue, setVenueSeats });
   return { currentVenue, venueSeats, errors, ...form };
 };
 
@@ -45,15 +45,15 @@ describe("useVenueSeatForm", () => {
     const useErrorSeatForm = () => {
       const [currentVenue, setVenue] = useState(venue);
       const [venueSeats, setVenueSeats] = useState(initialSeats);
-      const [errors, setErrors] = useState<VenueFormErrors>({ "seat.0.sectionName": "오류", "seat.2.price": "오류", name: "오류" });
-      return useVenueSeatForm({ venue: currentVenue, venueSeats, errors, setVenue, setVenueSeats, setErrors });
+      const [errors] = useState<VenueFormErrors>({ "seat.0.sectionName": "오류", "seat.1.price": "", "seat.2.price": "오류", name: "오류" });
+      return useVenueSeatForm({ venue: currentVenue, venueSeats, errors, setVenue, setVenueSeats });
     };
     const { result } = renderHook(useErrorSeatForm);
 
     expect(result.current.errorSeatIndices).toEqual(new Set([0, 2]));
   });
 
-  it("선택된 여러 좌석을 모두 삭제하고 선택 및 오류를 초기화한다", () => {
+  it("선택된 여러 좌석을 모두 삭제하고 선택을 초기화한다", () => {
     const { result } = renderHook(useTestVenueSeatForm);
 
     act(() => result.current.setSelectedSeatIndices([0, 2]));
@@ -61,7 +61,6 @@ describe("useVenueSeatForm", () => {
 
     expect(result.current.venueSeats).toEqual([initialSeats[1]]);
     expect(result.current.selectedSeatIndices).toEqual([]);
-    expect(result.current.errors).toEqual({});
     expect(result.current.canUndo).toBe(true);
   });
 
@@ -77,14 +76,12 @@ describe("useVenueSeatForm", () => {
     expect(result.current.canUndo).toBe(false);
   });
 
-  it("좌석 필드를 수정하고 해당 오류를 해제한다", () => {
+  it("좌석 필드를 수정한다", () => {
     const { result } = renderHook(useTestVenueSeatForm);
 
     act(() => result.current.updateVenueSeat(1, "price", 30_000));
 
     expect(result.current.venueSeats[1].price).toBe(30_000);
-    expect(result.current.errors["seat.1.price"]).toBe("");
-    expect(result.current.errors.venueSeats).toBe("");
   });
 
   it("좌석 추가 시 랜덤 좌표에 추가하고 새 좌석을 선택한다", () => {

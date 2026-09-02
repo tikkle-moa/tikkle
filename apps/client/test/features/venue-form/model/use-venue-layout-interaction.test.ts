@@ -60,7 +60,6 @@ const renderInteraction = (currentVenue = venue) => {
     isSubmitting: false,
     setVenue: vi.fn(),
     setVenueSeats: vi.fn(),
-    setErrors: vi.fn(),
     setSelectedSeatIndices,
     onLayoutChangeStart: vi.fn(),
   };
@@ -218,7 +217,6 @@ describe("useVenueLayoutInteraction", () => {
       isSubmitting: false,
       setVenue: vi.fn(),
       setVenueSeats: vi.fn(),
-      setErrors: vi.fn(),
       setSelectedSeatIndices: vi.fn(),
       onLayoutChangeStart: vi.fn(),
     };
@@ -237,7 +235,6 @@ describe("useVenueLayoutInteraction", () => {
   it("무대와 좌석을 공연장 범위 안에서 이동한다", () => {
     let currentVenue = venue;
     let currentSeats = venueSeats;
-    let currentErrors = {};
     const props = {
       venue,
       venueSeats,
@@ -248,9 +245,6 @@ describe("useVenueLayoutInteraction", () => {
       }),
       setVenueSeats: vi.fn((update) => {
         currentSeats = typeof update === "function" ? update(currentSeats) : update;
-      }),
-      setErrors: vi.fn((update) => {
-        currentErrors = typeof update === "function" ? update(currentErrors) : update;
       }),
       setSelectedSeatIndices: vi.fn(),
       onLayoutChangeStart: vi.fn(),
@@ -267,7 +261,6 @@ describe("useVenueLayoutInteraction", () => {
     act(() => result.current.handlePointerMove(createFullPointerEvent({ clientX: 30, clientY: 40 }) as never));
     expect(currentSeats[0]).toMatchObject({ positionX: 30, positionY: 40 });
     expect(currentSeats[2]).toMatchObject({ positionX: 70, positionY: 40 });
-    expect(currentErrors).toHaveProperty("seat.0.positionX", "");
   });
 
   it("선택 영역 드래그와 Alt 선택 전환 및 제출 중 입력 무시를 처리한다", () => {
@@ -299,7 +292,6 @@ describe("useVenueLayoutInteraction", () => {
       isSubmitting: false,
       setVenue: vi.fn(),
       setVenueSeats: vi.fn(),
-      setErrors: vi.fn(),
       setSelectedSeatIndices: vi.fn((update) => {
         if (typeof update === "function") update([0]);
       }),

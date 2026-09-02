@@ -24,15 +24,23 @@ const initialValues: CreateVenueDetailRequest = {
 const submitEvent = { preventDefault: vi.fn() } as unknown as SubmitEvent<HTMLFormElement>;
 
 describe("useVenueForm", () => {
-  it("초기값을 복사하고 필드 수정 시 오류를 해제한다", () => {
-    const { result } = renderHook(() => useVenueForm({ initialValues, submitState: { status: "idle" }, onSubmit: vi.fn() }));
+  it("초기값을 복사하고 필드 수정 시 오류를 해제한다", async () => {
+    const invalidInitialValues = {
+      ...initialValues,
+      venue: { ...initialValues.venue, name: " " },
+    };
+    const { result } = renderHook(() => useVenueForm({ initialValues: invalidInitialValues, submitState: { status: "idle" }, onSubmit: vi.fn() }));
 
-    expect(result.current.venue).toEqual(initialValues.venue);
+    expect(result.current.venue).toEqual(invalidInitialValues.venue);
     expect(result.current.venueSeats).toEqual(initialValues.venueSeats);
-    act(() => result.current.setErrors({ name: "오류" }));
+
+    await act(() => result.current.handleSubmit(submitEvent));
+
     expect(result.current.errorCount).toBe(1);
     expect(result.current.errorSections).toEqual(["기본 정보"]);
+
     act(() => result.current.updateVenue("name", "새 공연장"));
+
     expect(result.current.venue.name).toBe("새 공연장");
     expect(result.current.errors.name).toBe("");
     expect(result.current.errorCount).toBe(0);
