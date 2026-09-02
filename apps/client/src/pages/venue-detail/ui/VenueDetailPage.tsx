@@ -7,13 +7,12 @@ import { VenueMap } from "@features/venue-map";
 import VenueDetailSkeleton from "./VenueDetailSkeleton";
 
 import { useVenueDetail } from "../model/use-venue-detail";
-import { VENUE_DETAIL_MESSAGES } from "../model/venue-detail.constants";
 
 const VenueDetailPage = () => {
   const { isParamValid, venue, venueSeats, isPending, isError } = useVenueDetail();
 
   if (!isParamValid) {
-    return <DetailMessage {...VENUE_DETAIL_MESSAGES.invalid} />;
+    return <DetailMessage title="잘못된 공연장입니다." description="올바르지 않은 공연장 ID입니다." />;
   }
 
   if (isPending) {
@@ -21,7 +20,7 @@ const VenueDetailPage = () => {
   }
 
   if (isError || !venue) {
-    return <DetailMessage {...VENUE_DETAIL_MESSAGES.error} />;
+    return <DetailMessage title="공연장 정보를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
   return (

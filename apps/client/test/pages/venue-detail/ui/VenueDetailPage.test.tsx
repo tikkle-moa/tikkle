@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
 import { VenueDetailPage } from "@pages/venue-detail";
-import { VENUE_DETAIL_MESSAGES } from "@pages/venue-detail/model/venue-detail.constants";
 
 const { mockUseVenueDetail } = vi.hoisted(() => ({
   mockUseVenueDetail: vi.fn(),
@@ -94,8 +93,8 @@ describe("VenueDetailPage", () => {
 
     render(<VenueDetailPage />);
 
-    expect(screen.getByRole("heading", { name: VENUE_DETAIL_MESSAGES.invalid.title })).toBeInTheDocument();
-    expect(screen.getByText(VENUE_DETAIL_MESSAGES.invalid.description)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "잘못된 공연장입니다." })).toBeInTheDocument();
+    expect(screen.getByText("올바르지 않은 공연장 ID입니다.")).toBeInTheDocument();
   });
 
   it("로딩 상태에서 skeleton을 표시한다", () => {
@@ -123,7 +122,7 @@ describe("VenueDetailPage", () => {
 
     render(<VenueDetailPage />);
 
-    expect(screen.getByRole("heading", { name: VENUE_DETAIL_MESSAGES.error.title })).toBeInTheDocument();
-    expect(screen.getByText(VENUE_DETAIL_MESSAGES.error.description)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "공연장 정보를 불러오지 못했습니다." })).toBeInTheDocument();
+    expect(screen.getByText("잠시 후 다시 시도해 주세요.")).toBeInTheDocument();
   });
 });

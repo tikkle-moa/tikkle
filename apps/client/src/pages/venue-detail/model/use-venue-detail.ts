@@ -2,9 +2,7 @@ import { useParams } from "react-router";
 
 import { useVenueDetail as useVenueDetailQuery } from "@entities/venue";
 
-import type { VenueDetailPageState } from "./venue-detail.types";
-
-export const useVenueDetail = (): VenueDetailPageState => {
+export const useVenueDetail = () => {
   const { venueId } = useParams();
   const id = Number(venueId);
   const isParamValid = Number.isInteger(id) && id > 0;
