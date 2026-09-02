@@ -42,10 +42,23 @@ const VenueDetailPage = () => {
             {venue.name}
           </h1>
 
-          <p className="mt-3 flex items-start gap-1.5 text-sm text-violet-100">
+          <a
+            href={`https://map.naver.com/p/search/${encodeURIComponent(venue.address)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${venue.address} 네이버 지도로 보기, 새 탭`}
+            className="group relative mt-3 inline-flex items-start gap-1.5 text-sm text-violet-100 transition-colors hover:text-white hover:underline focus-visible:text-white focus-visible:underline"
+          >
             <MapPinned className="mt-0.5 size-4 shrink-0" aria-hidden />
             {venue.address}
-          </p>
+
+            <span
+              role="tooltip"
+              className="pointer-events-none absolute -top-9 left-0 hidden -translate-y-1 rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg transition-all group-hover:block group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:block group-focus-visible:translate-y-0 group-focus-visible:opacity-100 sm:block"
+            >
+              네이버 지도로 보기
+            </span>
+          </a>
 
           {venue.description && <p className="mt-4 max-w-3xl text-sm leading-6 text-violet-100">{venue.description}</p>}
         </div>
