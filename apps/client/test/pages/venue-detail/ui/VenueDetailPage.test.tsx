@@ -68,6 +68,19 @@ describe("VenueDetailPage", () => {
     expect(screen.getByTestId("venue-map")).toHaveTextContent("올림픽공원 KSPO DOME · 1석");
   });
 
+  it("공연장 주소를 네이버 지도 검색 링크로 제공한다", () => {
+    render(<VenueDetailPage />);
+
+    const mapLink = screen.getByRole("link", {
+      name: `${venue.address} 네이버 지도로 보기, 새 탭`,
+    });
+
+    expect(mapLink).toHaveAttribute("href", `https://map.naver.com/p/search/${encodeURIComponent(venue.address)}`);
+    expect(mapLink).toHaveAttribute("target", "_blank");
+    expect(mapLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("tooltip", { name: "네이버 지도로 보기" })).toBeInTheDocument();
+  });
+
   it("공연장 설명이 없으면 설명 영역을 표시하지 않는다", () => {
     mockUseVenueDetail.mockReturnValue({
       isParamValid: true,
