@@ -4,6 +4,7 @@ import com.example.server.venue.entity.Venue
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
+import jakarta.validation.constraints.Digits
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.PositiveOrZero
@@ -39,26 +40,32 @@ data class UpdateVenueRequest(
 
   @field:DecimalMin(value = "0", message = "장소 폭이 허용 범위를 벗어났습니다.")
   @field:DecimalMax(value = "999999.99", message = "장소 폭이 허용 범위를 벗어났습니다.")
+  @field:Digits(integer = 6, fraction = 2, message = "장소 폭은 정수 6자리, 소수점 2자리 이하로 입력해 주세요.")
   val width: JsonNullable<BigDecimal> = JsonNullable.undefined(),
 
   @field:DecimalMin(value = "0", message = "장소 높이가 허용 범위를 벗어났습니다.")
   @field:DecimalMax(value = "999999.99", message = "장소 높이가 허용 범위를 벗어났습니다.")
+  @field:Digits(integer = 6, fraction = 2, message = "장소 높이는 정수 6자리, 소수점 2자리 이하로 입력해 주세요.")
   val height: JsonNullable<BigDecimal> = JsonNullable.undefined(),
 
   @field:DecimalMin(value = "0", message = "무대 X 좌표가 허용 범위를 벗어났습니다.")
   @field:DecimalMax(value = "999999.99", message = "무대 X 좌표가 허용 범위를 벗어났습니다.")
+  @field:Digits(integer = 6, fraction = 2, message = "무대 X 좌표는 정수 6자리, 소수점 2자리 이하로 입력해 주세요.")
   val stagePositionX: JsonNullable<BigDecimal> = JsonNullable.undefined(),
 
   @field:DecimalMin(value = "0", message = "무대 Y 좌표가 허용 범위를 벗어났습니다.")
   @field:DecimalMax(value = "999999.99", message = "무대 Y 좌표가 허용 범위를 벗어났습니다.")
+  @field:Digits(integer = 6, fraction = 2, message = "무대 Y 좌표는 정수 6자리, 소수점 2자리 이하로 입력해 주세요.")
   val stagePositionY: JsonNullable<BigDecimal> = JsonNullable.undefined(),
 
   @field:DecimalMin(value = "0", message = "무대 가로가 허용 범위를 벗어났습니다.")
   @field:DecimalMax(value = "999.99", message = "무대 가로가 허용 범위를 벗어났습니다.")
+  @field:Digits(integer = 6, fraction = 2, message = "무대 가로는 정수 6자리, 소수점 2자리 이하로 입력해 주세요.")
   val stageWidth: JsonNullable<BigDecimal> = JsonNullable.undefined(),
 
   @field:DecimalMin(value = "0", message = "무대 세로가 허용 범위를 벗어났습니다.")
   @field:DecimalMax(value = "999.99", message = "무대 세로가 허용 범위를 벗어났습니다.")
+  @field:Digits(integer = 6, fraction = 2, message = "무대 세로는 정수 6자리, 소수점 2자리 이하로 입력해 주세요.")
   val stageHeight: JsonNullable<BigDecimal> = JsonNullable.undefined(),
 ) {
   fun applyTo(venue: Venue) {
@@ -94,9 +101,11 @@ data class UpdateVenueSeatRequest(
 
   @field:DecimalMin(value = "0", message = "X 좌표가 허용 범위를 벗어났습니다.")
   @field:DecimalMax(value = "999999.99", message = "X 좌표가 허용 범위를 벗어났습니다.")
+  @field:Digits(integer = 6, fraction = 2, message = "X 좌표는 정수 6자리, 소수점 2자리 이하로 입력해 주세요.")
   val positionX: BigDecimal,
 
   @field:DecimalMin(value = "0", message = "Y 좌표가 허용 범위를 벗어났습니다.")
   @field:DecimalMax(value = "999999.99", message = "Y 좌표가 허용 범위를 벗어났습니다.")
+  @field:Digits(integer = 6, fraction = 2, message = "Y 좌표는 정수 6자리, 소수점 2자리 이하로 입력해 주세요.")
   val positionY: BigDecimal,
 )

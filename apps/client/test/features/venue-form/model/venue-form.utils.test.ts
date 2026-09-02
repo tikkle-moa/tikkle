@@ -51,6 +51,20 @@ describe("venue form utils", () => {
     expect(errors["seat.1.seatNumber"]).toBe("같은 구역에 중복된 좌석 번호가 있습니다.");
   });
 
+  it("소수 둘째 자리 기준으로 같은 좌석 좌표를 검증한다", () => {
+    const duplicatedPositionSeat = {
+      ...seats[1],
+      sectionName: "B",
+      positionX: 20.004,
+      positionY: 30.004,
+    };
+
+    const errors = validateVenueForm(venue, [seats[0], duplicatedPositionSeat]);
+
+    expect(errors["seat.1.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.");
+    expect(errors["seat.1.seatNumber"]).toBeUndefined();
+  });
+
   it("제출 요청의 문자열 앞뒤 공백을 제거한다", () => {
     expect(
       toCreateVenueRequest({ ...venue, name: " 공연장 ", address: " 서울시 ", description: " 설명 " }, [

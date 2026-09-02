@@ -155,6 +155,28 @@ class VenueServiceTest {
       then(venueRepository).shouldHaveNoInteractions()
       then(venueSeatRepository).shouldHaveNoInteractions()
     }
+
+    @Test
+    fun `같은 좌표의 좌석이 중복되면 생성하지 않는다`() {
+      val request = createRequest()
+      val duplicatedPositionSeat = request.venueSeats.single().copy(
+        sectionName = "B구역",
+        seatNumber = 2,
+        seatLabel = "B구역 2번",
+        positionX = BigDecimal("10.0"),
+        positionY = BigDecimal("20.0"),
+      )
+      val duplicatedRequest = request.copy(venueSeats = request.venueSeats + duplicatedPositionSeat)
+
+      val exception = assertThrows<CustomException> {
+        venueService.createVenueDetails(duplicatedRequest)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
+      assertThat(exception.message).contains("같은 좌표의 좌석이 중복되었습니다.")
+      then(venueRepository).shouldHaveNoInteractions()
+      then(venueSeatRepository).shouldHaveNoInteractions()
+    }
   }
 
   @Nested
@@ -165,7 +187,12 @@ class VenueServiceTest {
       val venue = venue(1L)
       val existingSeat = venueSeat(10L, venue)
       val updatedSeatRequest = updateSeatRequest(id = 10L, seatLabel = "수정 좌석")
-      val newSeatRequest = updateSeatRequest(id = null, seatNumber = 2, seatLabel = "신규 좌석")
+      val newSeatRequest = updateSeatRequest(
+        id = null,
+        seatNumber = 2,
+        seatLabel = "신규 좌석",
+        positionX = BigDecimal("30.00"),
+      )
       val request = UpdateVenueDetailRequest(
         venue = UpdateVenueRequest(name = JsonNullable.of("수정 공연장")),
         venueSeats = listOf(updatedSeatRequest, newSeatRequest),
@@ -264,6 +291,33 @@ class VenueServiceTest {
       val exception = assertThrows<CustomException> { venueService.updateVenueDetails(1L, request) }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
+    }
+
+    @Test
+    fun `변경 결과 좌석 좌표가 중복되면 BAD_REQUEST 예외가 발생한다`() {
+      val venue = venue(1L)
+      val unchangedSeat = venueSeat(10L, venue)
+      given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
+      given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L))
+        .willReturn(listOf(unchangedSeat))
+      val request = UpdateVenueDetailRequest(
+        venueSeats = listOf(
+          updateSeatRequest(
+            id = null,
+            seatNumber = 2,
+            positionX = BigDecimal("10.0"),
+            positionY = BigDecimal("20.0"),
+          ),
+        ),
+      )
+
+      val exception = assertThrows<CustomException> { venueService.updateVenueDetails(1L, request) }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
+      assertThat(exception.message).contains("같은 좌표의 좌석이 중복되었습니다.")
+      then(venueSeatRepository).should().findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L)
+      then(venueSeatRepository).shouldHaveNoMoreInteractions()
+      then(venueRepository).shouldHaveNoMoreInteractions()
     }
 
     @Test
@@ -388,13 +442,19 @@ class VenueServiceTest {
     ),
   )
 
-  private fun updateSeatRequest(id: Long?, seatNumber: Int = 1, seatLabel: String = "A구역 1번"): UpdateVenueSeatRequest = UpdateVenueSeatRequest(
+  private fun updateSeatRequest(
+    id: Long?,
+    seatNumber: Int = 1,
+    seatLabel: String = "A구역 1번",
+    positionX: BigDecimal = BigDecimal("10.00"),
+    positionY: BigDecimal = BigDecimal("20.00"),
+  ): UpdateVenueSeatRequest = UpdateVenueSeatRequest(
     id = id,
     sectionName = "A구역",
     seatNumber = seatNumber,
     seatLabel = seatLabel,
     price = 50_000,
-    positionX = BigDecimal("10.00"),
-    positionY = BigDecimal("20.00"),
+    positionX = positionX,
+    positionY = positionY,
   )
 }

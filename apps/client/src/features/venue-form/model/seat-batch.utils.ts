@@ -1,11 +1,19 @@
+import { toRound } from "@shared/lib/number.utils";
+
 import type { CreateVenueSeatRequest } from "@entities/venue";
 
 import type { SeatBatchValues } from "./seat-batch.types";
 import { VENUE_FORM_LIMITS } from "./venue-form.constants";
 
+const getVenueSeatKey = (sectionName: string, seatNumber: number) => `${sectionName.trim()}\u0000${seatNumber}`;
+const getVenueSeatPositionKey = (positionX: number, positionY: number) => `${toRound(positionX, 2)}\u0000${toRound(positionY, 2)}`;
+
 export const validateSeatBatch = (values: SeatBatchValues, existingVenueSeats: CreateVenueSeatRequest[], venueWidth: number, venueHeight: number) => {
-  if (!values.sectionName.trim()) return "구역명을 입력해 주세요.";
-  if (values.sectionName.trim().length > VENUE_FORM_LIMITS.venueSeatSection) return "구역명은 50자 이하로 입력해 주세요.";
+  const sectionName = values.sectionName.trim();
+  const seatCount = values.rows * values.columns;
+
+  if (!sectionName) return "구역명을 입력해 주세요.";
+  if (sectionName.length > VENUE_FORM_LIMITS.venueSeatSection) return "구역명은 50자 이하로 입력해 주세요.";
 
   if (!Number.isInteger(values.rows) || values.rows < 1) return "행은 1 이상의 정수여야 합니다.";
   if (!Number.isInteger(values.columns) || values.columns < 1) return "열은 1 이상의 정수여야 합니다.";
@@ -20,12 +28,21 @@ export const validateSeatBatch = (values: SeatBatchValues, existingVenueSeats: C
   const lastY = values.startY + (values.rows - 1) * values.gapY;
   if (values.startX < 0 || values.startY < 0 || lastX > venueWidth || lastY > venueHeight) return "생성될 좌석이 공연장 범위를 벗어납니다.";
 
-  const existingVenueSeatKeys = new Set(existingVenueSeats.map((seat) => `${seat.sectionName.trim()}\u0000${seat.seatNumber}`));
-  const hasDuplicateVenueSeat = Array.from(
-    { length: values.rows * values.columns },
-    (_, index) => `${values.sectionName.trim()}\u0000${values.startSeatNumber + index}`,
-  ).some((venueSeatKey) => existingVenueSeatKeys.has(venueSeatKey));
-  if (hasDuplicateVenueSeat) return "같은 구역에 중복된 좌석 번호가 있습니다.";
+  const existingSeatKeys = new Set(existingVenueSeats.map(({ sectionName, seatNumber }) => getVenueSeatKey(sectionName, seatNumber)));
+  const existingPositionKeys = new Set(existingVenueSeats.map(({ positionX, positionY }) => getVenueSeatPositionKey(positionX, positionY)));
+  for (let index = 0; index < seatCount; index += 1) {
+    const seatKey = getVenueSeatKey(sectionName, values.startSeatNumber + index);
+    if (existingSeatKeys.has(seatKey)) return "같은 구역에 중복된 좌석 번호가 있습니다.";
+
+    const row = Math.floor(index / values.columns);
+    const column = index % values.columns;
+
+    const positionX = values.startX + column * values.gapX;
+    const positionY = values.startY + row * values.gapY;
+
+    const positionKey = getVenueSeatPositionKey(positionX, positionY);
+    if (existingPositionKeys.has(positionKey)) return "같은 위치에 중복된 좌석이 있습니다.";
+  }
 
   return null;
 };
@@ -40,8 +57,8 @@ export const createSeatBatch = (values: SeatBatchValues): CreateVenueSeatRequest
       seatNumber,
       seatLabel: `${values.sectionName.trim()} ${seatNumber}번`,
       price: values.price,
-      positionX: values.startX + column * values.gapX,
-      positionY: values.startY + row * values.gapY,
+      positionX: toRound(values.startX + column * values.gapX, 2),
+      positionY: toRound(values.startY + row * values.gapY, 2),
     };
   });
 

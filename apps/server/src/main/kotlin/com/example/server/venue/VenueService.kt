@@ -56,6 +56,11 @@ class VenueService(
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
     }
 
+    val seatPositions = request.venueSeats.map { it.positionX.setScale(2) to it.positionY.setScale(2) }
+    if (seatPositions.size != seatPositions.distinct().size) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "같은 좌표의 좌석이 중복되었습니다.")
+    }
+
     val savedVenue = venueRepository.save(
       Venue(
         name = request.venue.name,
@@ -113,14 +118,22 @@ class VenueService(
       throw CustomException(ErrorCode.NOT_FOUND, "변경할 좌석을 찾을 수 없습니다.")
     }
 
-    val seatKeys = request.venueSeats?.map { it.sectionName to it.seatNumber } ?: emptyList()
-    val changedSeatIds = (requestedIds + deletedSelectedIds).toSet()
-    val unchangedSeatKeys = currentVenueSeats
-      .filterNot { it.id in changedSeatIds }
-      .map { it.sectionName to it.seatNumber }
-    val resultingSeatKeys = unchangedSeatKeys + seatKeys
-    if (resultingSeatKeys.size != resultingSeatKeys.distinct().size) {
+    val requestedSeats = request.venueSeats.orEmpty()
+    val changedSeatIds = requestedIds + deletedSelectedIds
+    val unchangedSeats = currentVenueSeats.filterNot { it.id in changedSeatIds }
+
+    val unchangedSeatKeys = unchangedSeats.map { it.sectionName.trim() to it.seatNumber }
+    val requestedSeatKeys = requestedSeats.map { it.sectionName.trim() to it.seatNumber }
+    val resultingSeatKeys = unchangedSeatKeys + requestedSeatKeys
+    if (resultingSeatKeys.size != resultingSeatKeys.toSet().size) {
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
+    }
+
+    val unchangedSeatPositions = unchangedSeats.map { it.positionX.setScale(2) to it.positionY.setScale(2) }
+    val requestedSeatPositions = requestedSeats.map { it.positionX.setScale(2) to it.positionY.setScale(2) }
+    val resultingSeatPositions = unchangedSeatPositions + requestedSeatPositions
+    if (resultingSeatPositions.size != resultingSeatPositions.toSet().size) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "같은 좌표의 좌석이 중복되었습니다.")
     }
 
     if (request.venue != null) {

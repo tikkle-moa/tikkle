@@ -62,6 +62,7 @@ export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: CreateV
   if (venueSeats.length === 0) errors.venueSeats = "좌석을 하나 이상 추가해 주세요.";
 
   const seatKeys = new Set<string>();
+  const seatPositions = new Set<string>();
   venueSeats.forEach((seat, index) => {
     const prefix = `seat.${index}`;
     if (!seat.sectionName.trim()) errors[`${prefix}.sectionName`] = "구역명을 입력해 주세요.";
@@ -85,6 +86,10 @@ export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: CreateV
     const key = `${seat.sectionName.trim()}\u0000${seat.seatNumber}`;
     if (seatKeys.has(key)) errors[`${prefix}.seatNumber`] = "같은 구역에 중복된 좌석 번호가 있습니다.";
     seatKeys.add(key);
+
+    const positionKey = `${seat.positionX.toFixed(2)}\u0000${seat.positionY.toFixed(2)}`;
+    if (seatPositions.has(positionKey)) errors[`${prefix}.positionX`] = "같은 좌표에 중복된 좌석이 있습니다.";
+    seatPositions.add(positionKey);
   });
   return errors;
 };
