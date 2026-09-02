@@ -1,4 +1,4 @@
-import { type SubmitEvent, useEffect, useState } from "react";
+import { type SubmitEvent, useEffect, useRef, useState } from "react";
 
 import type { SubmitState } from "@shared/model/form.types";
 
@@ -19,6 +19,7 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
   const [venueSeats, setVenueSeats] = useState<CreateVenueSeatRequest[]>([]);
 
   const [errors, setErrors] = useState<VenueFormErrors>({});
+  const previousVenueSeatsRef = useRef(venueSeats);
 
   const isSubmitting = submitState.status === "submitting";
 
@@ -33,6 +34,13 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
 
     initializeForm();
   }, [initialValues]);
+
+  useEffect(() => {
+    if (previousVenueSeatsRef.current === venueSeats) return;
+
+    previousVenueSeatsRef.current = venueSeats;
+    setErrors(validateVenueForm(venue, venueSeats));
+  }, [venue, venueSeats]);
 
   const updateVenue = <K extends keyof CreateVenueRequest>(field: K, value: CreateVenueRequest[K]) => {
     setVenue((current) => ({ ...current, [field]: value }));

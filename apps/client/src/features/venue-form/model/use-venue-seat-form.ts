@@ -20,7 +20,8 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenue
   const [canUndo, setCanUndo] = useState(false);
 
   const errorSeatIndices = new Set(
-    Object.keys(errors).flatMap((key) => {
+    Object.entries(errors).flatMap(([key, value]) => {
+      if (!value) return [];
       const match = key.match(/^seat\.(\d+)\./);
       return match ? [Number(match[1])] : [];
     }),

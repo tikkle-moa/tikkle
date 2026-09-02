@@ -61,4 +61,23 @@ describe("useVenueForm", () => {
     await act(() => result.current.handleSubmit(submitEvent));
     expect(onSubmit).toHaveBeenCalledWith(initialValues);
   });
+
+  it("좌석 에디터가 변경될 때마다 폼 오류를 다시 계산한다", () => {
+    const { result } = renderHook(() => useVenueForm({ initialValues, submitState: { status: "idle" }, onSubmit: vi.fn() }));
+    const duplicatedPositionSeat = {
+      ...initialValues.venueSeats[0],
+      sectionName: "B",
+      seatNumber: 2,
+      positionX: 20.004,
+      positionY: 30.004,
+    };
+
+    act(() => result.current.setVenueSeats((current) => [...current, duplicatedPositionSeat]));
+
+    expect(result.current.errors["seat.1.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.");
+
+    act(() => result.current.setVenueSeats((current) => current.slice(0, 1)));
+
+    expect(result.current.errors).toEqual({});
+  });
 });
