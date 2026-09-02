@@ -6,7 +6,6 @@ import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue
 
 import { useVenueLayoutInteraction } from "../model/use-venue-layout-interaction";
 import { useVenueLayoutSelection } from "../model/use-venue-layout-selection";
-import type { VenueFormErrors } from "../model/venue-form.types";
 import { VENUE_LAYOUT_MIN_ZOOM, VENUE_LAYOUT_ZOOM_FACTOR, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "../model/venue-layout.constants";
 import { getLayoutClassName, getSectionColor } from "../model/venue-layout.utils";
 
@@ -17,7 +16,6 @@ interface VenueLayoutEditorProps {
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
-  setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
   setSelectedSeatIndices: Dispatch<SetStateAction<number[]>>;
   onLayoutChangeStart: () => void;
 }
@@ -29,7 +27,6 @@ const VenueLayoutEditor = ({
   isSubmitting,
   setVenue,
   setVenueSeats,
-  setErrors,
   setSelectedSeatIndices,
   onLayoutChangeStart,
 }: VenueLayoutEditorProps) => {
@@ -62,7 +59,6 @@ const VenueLayoutEditor = ({
     setSelectedSeatIndices,
     setVenue,
     setVenueSeats,
-    setErrors,
     onLayoutChangeStart,
   });
 

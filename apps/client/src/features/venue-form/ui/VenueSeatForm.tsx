@@ -22,10 +22,9 @@ interface VenueSeatFormProps {
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
-  setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
 }
 
-const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setVenueSeats, setErrors }: VenueSeatFormProps) => {
+const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setVenueSeats }: VenueSeatFormProps) => {
   const {
     selectedSeatIndices,
     errorSeatIndices,
@@ -37,7 +36,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
     handleAddSeats,
     handleRemoveSelectedSeats,
     updateVenueSeat,
-  } = useVenueSeatForm({ venue, venueSeats, errors, setVenue, setVenueSeats, setErrors });
+  } = useVenueSeatForm({ venue, venueSeats, errors, setVenue, setVenueSeats });
 
   return (
     <section className="space-y-6 p-4 sm:p-6">
@@ -79,7 +78,6 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
           isSubmitting={isSubmitting}
           setVenue={setVenue}
           setVenueSeats={setVenueSeats}
-          setErrors={setErrors}
           setSelectedSeatIndices={setSelectedSeatIndices}
           onLayoutChangeStart={saveLayoutSnapshot}
         />

@@ -2,7 +2,6 @@ import { type Dispatch, type KeyboardEvent, type PointerEvent, type SetStateActi
 
 import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
-import type { VenueFormErrors } from "./venue-form.types";
 import {
   DOUBLE_CLICK_DELAY_MS,
   VENUE_LAYOUT_MIN_VISIBLE_SIZE,
@@ -19,7 +18,6 @@ interface UseVenueLayoutInteractionProps {
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
-  setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
   setSelectedSeatIndices: Dispatch<SetStateAction<number[]>>;
   onLayoutChangeStart: () => void;
 }
@@ -31,7 +29,6 @@ export const useVenueLayoutInteraction = ({
   isSubmitting,
   setVenue,
   setVenueSeats,
-  setErrors,
   setSelectedSeatIndices,
   onLayoutChangeStart,
 }: UseVenueLayoutInteractionProps) => {
@@ -185,7 +182,6 @@ export const useVenueLayoutInteraction = ({
         stagePositionX: Math.min(Math.max(dragState.originX + deltaX, halfWidth), safeWidth - halfWidth),
         stagePositionY: Math.min(Math.max(dragState.originY + deltaY, halfHeight), safeHeight - halfHeight),
       }));
-      setErrors((current) => ({ ...current, stagePositionX: "", stagePositionY: "" }));
       return;
     }
 
@@ -204,14 +200,6 @@ export const useVenueLayoutInteraction = ({
       ]),
     );
     setVenueSeats((current) => current.map((seat, index) => ({ ...seat, ...positionMap.get(index) })));
-    setErrors((current) => {
-      const next = { ...current };
-      dragState.origins.forEach(({ index }) => {
-        next[`seat.${index}.positionX`] = "";
-        next[`seat.${index}.positionY`] = "";
-      });
-      return next;
-    });
   };
 
   const startBackgroundDrag = (event: PointerEvent<SVGRectElement>) => {

@@ -71,7 +71,6 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
     updateVenue,
     setVenue,
     setVenueSeats,
-    setErrors,
     handleSubmit,
   };
 };

@@ -11,10 +11,9 @@ interface UseVenueSeatFormProps {
   errors: VenueFormErrors;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
-  setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
 }
 
-export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
+export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenueSeats }: UseVenueSeatFormProps) => {
   const [selectedSeatIndices, setSelectedSeatIndices] = useState<number[]>([]);
   const historyRef = useRef<CreateVenueDetailRequest[]>([]);
   const [canUndo, setCanUndo] = useState(false);
@@ -38,10 +37,9 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenue
     historyRef.current = historyRef.current.slice(0, -1);
     setVenue(snapshot.venue);
     setVenueSeats(snapshot.venueSeats);
-    setErrors({});
     setCanUndo(historyRef.current.length > 0);
     setSelectedSeatIndices([]);
-  }, [setErrors, setVenue, setVenueSeats]);
+  }, [setVenue, setVenueSeats]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -72,13 +70,11 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenue
     const selectedSet = new Set(selectedSeatIndices);
     setVenueSeats((current) => current.filter((_, seatIndex) => !selectedSet.has(seatIndex)));
     setSelectedSeatIndices([]);
-    setErrors({});
   };
 
   const updateVenueSeat = <K extends keyof CreateVenueSeatRequest>(index: number, field: K, value: CreateVenueSeatRequest[K]) => {
     saveLayoutSnapshot();
     setVenueSeats((current) => current.map((seat, seatIndex) => (seatIndex === index ? { ...seat, [field]: value } : seat)));
-    setErrors((current) => ({ ...current, [`seat.${index}.${field}`]: "", venueSeats: "" }));
   };
 
   return {
