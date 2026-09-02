@@ -365,6 +365,8 @@ export interface components {
       id: number;
       /** Format: int64 */
       concertId: number;
+      /** Format: int64 */
+      venueId: number;
       name: string;
       /** Format: date-time */
       startsAt: string;

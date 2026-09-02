@@ -33,6 +33,7 @@ describe("toPerformanceFormValues", () => {
       toPerformanceFormValues({
         id: 1,
         concertId: 7,
+        venueId: 1,
         name: "8월 29일 저녁 공연",
         startsAt: "2026-08-29T20:14:00",
         bookingOpensAt: null,

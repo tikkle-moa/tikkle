@@ -1,0 +1,2 @@
+export const SECTION_COLOR_LIGHTNESS = 52;
+export const SECTION_COLOR_SATURATION = 68;
