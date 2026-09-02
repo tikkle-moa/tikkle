@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { VENUE_MAP_DRAG_THRESHOLD, VENUE_MAP_MAX_ZOOM, VENUE_MAP_MIN_ZOOM, VENUE_MAP_ZOOM_FACTOR } from "./venue-map-viewport.constants";
 import type { Gesture, PanGesture, PinchGesture, Point, UseVenueMapViewportParams, Viewport } from "./venue-map-viewport.types";
@@ -195,26 +195,6 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     };
   }, [handleAltWheel]);
 
-  const handleKeyDown = (event: KeyboardEvent<SVGSVGElement>) => {
-    const current = getCurrentViewport();
-    const center = { x: 0.5, y: 0.5 };
-
-    if (event.key === "+" || event.key === "=") {
-      event.preventDefault();
-      setNextViewport(zoomAt(current, center, center, Math.min(current.zoom * VENUE_MAP_ZOOM_FACTOR, VENUE_MAP_MAX_ZOOM), width, height));
-    }
-
-    if (event.key === "-" || event.key === "_") {
-      event.preventDefault();
-      setNextViewport(zoomAt(current, center, center, Math.max(current.zoom / VENUE_MAP_ZOOM_FACTOR, VENUE_MAP_MIN_ZOOM), width, height));
-    }
-
-    if (event.key === "0") {
-      event.preventDefault();
-      setNextViewport(createInitialViewport({ width, height }));
-    }
-  };
-
   const consumeSeatClick = () => {
     const shouldIgnore = ignoreSeatClickRef.current;
     ignoreSeatClickRef.current = false;
@@ -239,7 +219,6 @@ export const useVenueMapViewport = ({ width, height }: UseVenueMapViewportParams
     zoomIn: () => changeZoom(VENUE_MAP_ZOOM_FACTOR),
     zoomOut: () => changeZoom(1 / VENUE_MAP_ZOOM_FACTOR),
     consumeSeatClick,
-    handleKeyDown,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,

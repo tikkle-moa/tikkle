@@ -1,4 +1,4 @@
-import type { KeyboardEvent, PointerEvent } from "react";
+import type { PointerEvent } from "react";
 
 import { act, renderHook } from "@testing-library/react";
 
@@ -32,15 +32,6 @@ const createPointerEvent = (pointerId: number, clientX: number, clientY: number,
     currentTarget: mapElement,
     target: options.target ?? mapElement,
   }) as PointerEvent<SVGSVGElement>;
-
-const createKeyboardEvent = (key: string) => {
-  const preventDefault = vi.fn();
-
-  return {
-    event: { key, preventDefault } as unknown as KeyboardEvent<SVGSVGElement>,
-    preventDefault,
-  };
-};
 
 describe("useVenueMapViewport", () => {
   beforeEach(() => {
@@ -84,52 +75,6 @@ describe("useVenueMapViewport", () => {
 
     expect(result.current.zoom).toBe(1);
     expect(result.current.canZoomOut).toBe(false);
-  });
-
-  it("키보드로 확대, 축소, 초기화한다", () => {
-    const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
-    const plus = createKeyboardEvent("+");
-    const underscore = createKeyboardEvent("_");
-    const equal = createKeyboardEvent("=");
-    const minus = createKeyboardEvent("-");
-    const reset = createKeyboardEvent("0");
-
-    act(() => {
-      result.current.handleKeyDown(plus.event);
-    });
-
-    expect(plus.preventDefault).toHaveBeenCalledTimes(1);
-    expect(result.current.zoom).toBe(1.2);
-
-    act(() => {
-      result.current.handleKeyDown(underscore.event);
-    });
-
-    expect(underscore.preventDefault).toHaveBeenCalledTimes(1);
-    expect(result.current.zoom).toBe(1);
-
-    act(() => {
-      result.current.handleKeyDown(equal.event);
-    });
-
-    expect(equal.preventDefault).toHaveBeenCalledTimes(1);
-    expect(result.current.zoom).toBe(1.2);
-
-    act(() => {
-      result.current.handleKeyDown(minus.event);
-    });
-
-    expect(minus.preventDefault).toHaveBeenCalledTimes(1);
-    expect(result.current.zoom).toBe(1);
-
-    act(() => {
-      result.current.handleKeyDown(equal.event);
-      result.current.handleKeyDown(reset.event);
-    });
-
-    expect(reset.preventDefault).toHaveBeenCalledTimes(1);
-    expect(result.current.zoom).toBe(1);
-    expect(result.current.viewBox).toBe("0 0 100 100");
   });
 
   it("좌석을 누르면 지도 포인터 캡처를 시작하지 않는다", () => {

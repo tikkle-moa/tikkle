@@ -27,7 +27,6 @@ const VenueMap = ({ venue, venueSeats }: VenueMapProps) => {
     zoomIn,
     zoomOut,
     consumeSeatClick,
-    handleKeyDown,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -65,8 +64,6 @@ const VenueMap = ({ venue, venueSeats }: VenueMapProps) => {
                 zoom > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : ""
               }`}
               viewBox={viewBox}
-              tabIndex={0}
-              onKeyDown={handleKeyDown}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -117,6 +114,7 @@ const VenueMap = ({ venue, venueSeats }: VenueMapProps) => {
                       fill="transparent"
                       pointerEvents="all"
                       role="button"
+                      className="outline-none"
                       tabIndex={getSeatTabIndex(seat)}
                       data-seat-id={seat.id}
                       aria-label={`${seat.seatLabel}, ${seat.price.toLocaleString()}원`}
