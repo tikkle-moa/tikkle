@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 
-import type { CreateVenueSeatRequest } from "@entities/venue";
-
-import { VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "./venue-layout.constants";
+import { type CreateVenueSeatRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 interface UseVenueLayoutSelectionProps {
   venueSeats: CreateVenueSeatRequest[];

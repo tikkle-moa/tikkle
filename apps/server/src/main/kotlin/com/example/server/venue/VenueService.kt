@@ -25,6 +25,11 @@ class VenueService(
   private val venueSeatRepository: VenueSeatRepository,
   private val concertRepository: ConcertRepository,
 ) {
+  private companion object {
+    const val SEAT_WIDTH = "4.50"
+    const val SEAT_HEIGHT = "3.50"
+  }
+
   @Transactional(readOnly = true)
   fun getAllVenues(): List<VenueResponse> {
     val venues = venueRepository.findAll()
@@ -56,10 +61,8 @@ class VenueService(
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
     }
 
-    val seatPositions = request.venueSeats.map { it.positionX.setScale(2) to it.positionY.setScale(2) }
-    if (seatPositions.size != seatPositions.distinct().size) {
-      throw CustomException(ErrorCode.BAD_REQUEST, "같은 좌표의 좌석이 중복되었습니다.")
-    }
+    val seatPositions = request.venueSeats.map { it.positionX to it.positionY }
+    validateSeatCollisions(seatPositions)
 
     val savedVenue = venueRepository.save(
       Venue(
@@ -129,12 +132,10 @@ class VenueService(
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
     }
 
-    val unchangedSeatPositions = unchangedSeats.map { it.positionX.setScale(2) to it.positionY.setScale(2) }
-    val requestedSeatPositions = requestedSeats.map { it.positionX.setScale(2) to it.positionY.setScale(2) }
+    val unchangedSeatPositions = unchangedSeats.map { it.positionX to it.positionY }
+    val requestedSeatPositions = requestedSeats.map { it.positionX to it.positionY }
     val resultingSeatPositions = unchangedSeatPositions + requestedSeatPositions
-    if (resultingSeatPositions.size != resultingSeatPositions.toSet().size) {
-      throw CustomException(ErrorCode.BAD_REQUEST, "같은 좌표의 좌석이 중복되었습니다.")
-    }
+    validateSeatCollisions(resultingSeatPositions)
 
     if (request.venue != null) {
       val stagePositionX = request.venue.stagePositionX.orElse(venue.stagePositionX)
@@ -213,6 +214,22 @@ class VenueService(
 
     if (leftTopX < BigDecimal.ZERO || leftTopY < BigDecimal.ZERO || rightBottomX > venueWidth || rightBottomY > venueHeight) {
       throw CustomException(ErrorCode.BAD_REQUEST, "무대가 장소의 범위를 벗어났습니다.")
+    }
+  }
+
+  private fun validateSeatCollisions(seatPositions: List<Pair<BigDecimal, BigDecimal>>) {
+    val seatWidth = BigDecimal(SEAT_WIDTH)
+    val seatHeight = BigDecimal(SEAT_HEIGHT)
+
+    seatPositions.forEachIndexed { firstIndex, (firstX, firstY) ->
+      for (secondIndex in firstIndex + 1 until seatPositions.size) {
+        val (secondX, secondY) = seatPositions[secondIndex]
+        val deltaX = firstX.subtract(secondX).abs()
+        val deltaY = firstY.subtract(secondY).abs()
+        if (deltaX < seatWidth && deltaY < seatHeight) {
+          throw CustomException(ErrorCode.BAD_REQUEST, "좌석 영역이 중복되었습니다.")
+        }
+      }
     }
   }
 }

@@ -1,9 +1,8 @@
 import { renderHook } from "@testing-library/react";
 
-import type { CreateVenueSeatRequest } from "@entities/venue";
+import { type CreateVenueSeatRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 import { useVenueLayoutSelection } from "@features/venue-form/model/use-venue-layout-selection";
-import { VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@features/venue-form/model/venue-layout.constants";
 
 const venueSeats: CreateVenueSeatRequest[] = [
   { sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 10_000, positionX: 20, positionY: 30 },

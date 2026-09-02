@@ -48,10 +48,14 @@ describe("seat batch utils", () => {
     expect(validateSeatBatch(values, existingVenueSeats, 100, 100)).toBe("같은 구역에 중복된 좌석 번호가 있습니다.");
   });
 
-  it("기존 좌석과 소수 둘째 자리 기준으로 같은 위치가 포함되면 생성하지 않는다", () => {
-    const existingVenueSeats = [{ sectionName: "B구역", seatNumber: 1, seatLabel: "B 1번", price: 50_000, positionX: 30.004, positionY: 35.004 }];
+  it("기존 좌석과 렌더링 영역이 겹치면 생성하지 않는다", () => {
+    const existingVenueSeats = [{ sectionName: "B구역", seatNumber: 1, seatLabel: "B 1번", price: 50_000, positionX: 34.49, positionY: 38.49 }];
 
-    expect(validateSeatBatch(values, existingVenueSeats, 100, 100)).toBe("같은 위치에 중복된 좌석이 있습니다.");
+    expect(validateSeatBatch(values, existingVenueSeats, 100, 100)).toBe("생성될 좌석 영역이 다른 좌석과 겹칩니다.");
+  });
+
+  it("일괄 생성될 좌석끼리 렌더링 영역이 겹치면 생성하지 않는다", () => {
+    expect(validateSeatBatch({ ...values, gapX: 4 }, [], 100, 100)).toBe("생성될 좌석 영역이 다른 좌석과 겹칩니다.");
   });
 
   it("기존 좌석과 좌석 번호 및 위치가 겹치지 않으면 검증을 통과한다", () => {

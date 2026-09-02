@@ -66,6 +66,7 @@ const props = {
   venue,
   venueSeats,
   selectedSeatIndices: [] as number[],
+  errorSeatIndices: new Set([1]),
   isSubmitting: false,
   setVenue: vi.fn(),
   setVenueSeats: vi.fn(),

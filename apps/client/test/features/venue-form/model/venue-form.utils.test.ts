@@ -51,18 +51,29 @@ describe("venue form utils", () => {
     expect(errors["seat.1.seatNumber"]).toBe("같은 구역에 중복된 좌석 번호가 있습니다.");
   });
 
-  it("소수 둘째 자리 기준으로 같은 좌석 좌표를 검증한다", () => {
-    const duplicatedPositionSeat = {
+  it("렌더링 영역이 겹치는 좌석을 모두 검증한다", () => {
+    const overlappingSeat = {
       ...seats[1],
       sectionName: "B",
-      positionX: 20.004,
-      positionY: 30.004,
+      positionX: 24.49,
+      positionY: 33.49,
     };
 
-    const errors = validateVenueForm(venue, [seats[0], duplicatedPositionSeat]);
+    const errors = validateVenueForm(venue, [seats[0], overlappingSeat]);
 
-    expect(errors["seat.1.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.");
+    expect(errors["seat.0.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: A2");
+    expect(errors["seat.1.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: A1");
     expect(errors["seat.1.seatNumber"]).toBeUndefined();
+  });
+
+  it("좌석 표시가 없으면 구역명과 목록 순서로 충돌 좌석을 안내한다", () => {
+    const errors = validateVenueForm(venue, [
+      { ...seats[0], seatLabel: "" },
+      { ...seats[1], sectionName: "", seatLabel: "", positionX: 24, positionY: 33 },
+    ]);
+
+    expect(errors["seat.0.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: 좌석 2");
+    expect(errors["seat.1.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: 좌석 1");
   });
 
   it("제출 요청의 문자열 앞뒤 공백을 제거한다", () => {

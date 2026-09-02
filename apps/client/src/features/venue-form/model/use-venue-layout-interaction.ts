@@ -34,6 +34,7 @@ export const useVenueLayoutInteraction = ({
 }: UseVenueLayoutInteractionProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const lastSeatPointerDownRef = useRef<{ index: number; time: number } | null>(null);
+  const panPointerRef = useRef<{ clientX: number; clientY: number; distance: number } | null>(null);
   const [dragState, setDragState] = useState<VenueLayoutDragState | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -145,16 +146,24 @@ export const useVenueLayoutInteraction = ({
   const handlePointerMove = (event: PointerEvent<SVGSVGElement>) => {
     if (!dragState || isSubmitting) return;
     if (dragState.type === "pan") {
+      const pointer = panPointerRef.current;
+      if (!pointer) return;
+
       const bounds = event.currentTarget.getBoundingClientRect();
-      const deltaX = ((event.clientX - dragState.clientX) / bounds.width) * viewWidth;
-      const deltaY = ((event.clientY - dragState.clientY) / bounds.height) * viewHeight;
-      setPan({
-        x: Math.min(Math.max(dragState.originX - deltaX, 0), safeWidth - viewWidth),
-        y: Math.min(Math.max(dragState.originY - deltaY, 0), safeHeight - viewHeight),
-      });
-      if (!dragState.moved && Math.hypot(event.clientX - dragState.clientX, event.clientY - dragState.clientY) > 3) {
-        setDragState({ ...dragState, moved: true });
-      }
+      const pixelsPerUnit = Math.min(bounds.width / viewWidth, bounds.height / viewHeight);
+      const clientDeltaX = event.clientX - pointer.clientX;
+      const clientDeltaY = event.clientY - pointer.clientY;
+      const deltaX = clientDeltaX / pixelsPerUnit;
+      const deltaY = clientDeltaY / pixelsPerUnit;
+      setPan((current) => ({
+        x: Math.min(Math.max(current.x - deltaX, 0), safeWidth - viewWidth),
+        y: Math.min(Math.max(current.y - deltaY, 0), safeHeight - viewHeight),
+      }));
+
+      pointer.clientX = event.clientX;
+      pointer.clientY = event.clientY;
+      pointer.distance += Math.hypot(clientDeltaX, clientDeltaY);
+      if (!dragState.moved && pointer.distance > 3) setDragState({ ...dragState, moved: true });
       return;
     }
 
@@ -206,7 +215,8 @@ export const useVenueLayoutInteraction = ({
     if (isSubmitting) return;
     capturePointer(event);
     if (!event.altKey || event.button === 1) {
-      setDragState({ type: "pan", clientX: event.clientX, clientY: event.clientY, originX: pan.x, originY: pan.y, moved: false });
+      panPointerRef.current = { clientX: event.clientX, clientY: event.clientY, distance: 0 };
+      setDragState({ type: "pan", moved: false });
       return;
     }
     const point = getCoordinates(event);
@@ -286,6 +296,7 @@ export const useVenueLayoutInteraction = ({
 
   const finishDrag = () => {
     if (dragState?.type === "pan" && !dragState.moved) setSelectedSeatIndices([]);
+    panPointerRef.current = null;
     setDragState(null);
   };
 

@@ -22,9 +22,10 @@ interface VenueSeatFormProps {
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
+  setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
 }
 
-const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setVenueSeats }: VenueSeatFormProps) => {
+const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setVenueSeats, setErrors }: VenueSeatFormProps) => {
   const {
     selectedSeatIndices,
     errorSeatIndices,
@@ -36,7 +37,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
     handleAddSeats,
     handleRemoveSelectedSeats,
     updateVenueSeat,
-  } = useVenueSeatForm({ venue, venueSeats, errors, setVenue, setVenueSeats });
+  } = useVenueSeatForm({ venue, venueSeats, errors, setVenue, setVenueSeats, setErrors });
 
   return (
     <section className="space-y-6 p-4 sm:p-6">
@@ -75,6 +76,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
           venue={venue}
           venueSeats={venueSeats}
           selectedSeatIndices={selectedSeatIndices}
+          errorSeatIndices={errorSeatIndices}
           isSubmitting={isSubmitting}
           setVenue={setVenue}
           setVenueSeats={setVenueSeats}
@@ -209,7 +211,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
                 }
                 type="button"
               >
-                {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />} {seat.seatLabel || `좌석 ${index + 1}`}
+                {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />} {seat.seatLabel.trim() || `좌석 ${index + 1}`}
               </button>
             );
           })}

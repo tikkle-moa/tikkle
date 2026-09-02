@@ -1,4 +1,4 @@
-import { type SubmitEvent, useEffect, useRef, useState } from "react";
+import { type SubmitEvent, useEffect, useState } from "react";
 
 import type { SubmitState } from "@shared/model/form.types";
 
@@ -6,7 +6,7 @@ import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatReque
 
 import { EMPTY_VENUE_FORM_VALUES } from "./venue-form.constants";
 import type { VenueFormErrors } from "./venue-form.types";
-import { getErrorSections, toCreateVenueRequest, validateVenueForm } from "./venue-form.utils";
+import { getErrorSections, replaceVenueSeatCollisionErrors, toCreateVenueRequest, validateVenueForm } from "./venue-form.utils";
 
 interface UseVenueFormProps {
   initialValues?: CreateVenueDetailRequest;
@@ -17,10 +17,7 @@ interface UseVenueFormProps {
 export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueFormProps) => {
   const [venue, setVenue] = useState<CreateVenueRequest>(EMPTY_VENUE_FORM_VALUES);
   const [venueSeats, setVenueSeats] = useState<CreateVenueSeatRequest[]>([]);
-
   const [errors, setErrors] = useState<VenueFormErrors>({});
-  const previousVenueSeatsRef = useRef(venueSeats);
-
   const isSubmitting = submitState.status === "submitting";
 
   useEffect(() => {
@@ -36,15 +33,21 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
   }, [initialValues]);
 
   useEffect(() => {
-    if (previousVenueSeatsRef.current === venueSeats) return;
+    const updateCollisionErrors = () => {
+      setErrors((current) => {
+        const next = replaceVenueSeatCollisionErrors(current, venueSeats);
+        const nextEntries = Object.entries(next);
+        const isSame = nextEntries.length === Object.keys(current).length && nextEntries.every(([key, message]) => current[key] === message);
+        return isSame ? current : next;
+      });
+    };
 
-    previousVenueSeatsRef.current = venueSeats;
-    setErrors(validateVenueForm(venue, venueSeats));
-  }, [venue, venueSeats]);
+    updateCollisionErrors();
+  }, [venueSeats]);
 
   const updateVenue = <K extends keyof CreateVenueRequest>(field: K, value: CreateVenueRequest[K]) => {
     setVenue((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: "" }));
+    setErrors(({ [field]: _, ...next }) => next);
   };
 
   const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
@@ -71,6 +74,7 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
     updateVenue,
     setVenue,
     setVenueSeats,
+    setErrors,
     handleSubmit,
   };
 };

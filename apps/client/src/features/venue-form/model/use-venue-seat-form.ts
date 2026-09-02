@@ -11,9 +11,10 @@ interface UseVenueSeatFormProps {
   errors: VenueFormErrors;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
+  setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
 }
 
-export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenueSeats }: UseVenueSeatFormProps) => {
+export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
   const [selectedSeatIndices, setSelectedSeatIndices] = useState<number[]>([]);
   const historyRef = useRef<CreateVenueDetailRequest[]>([]);
   const [canUndo, setCanUndo] = useState(false);
@@ -75,6 +76,7 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenue
   const updateVenueSeat = <K extends keyof CreateVenueSeatRequest>(index: number, field: K, value: CreateVenueSeatRequest[K]) => {
     saveLayoutSnapshot();
     setVenueSeats((current) => current.map((seat, seatIndex) => (seatIndex === index ? { ...seat, [field]: value } : seat)));
+    setErrors(({ [`seat.${index}.${field}`]: _, ...next }) => next);
   };
 
   return {

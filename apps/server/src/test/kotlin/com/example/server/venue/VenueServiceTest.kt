@@ -157,14 +157,14 @@ class VenueServiceTest {
     }
 
     @Test
-    fun `같은 좌표의 좌석이 중복되면 생성하지 않는다`() {
+    fun `좌석 렌더링 영역이 겹치면 생성하지 않는다`() {
       val request = createRequest()
       val duplicatedPositionSeat = request.venueSeats.single().copy(
         sectionName = "B구역",
         seatNumber = 2,
         seatLabel = "B구역 2번",
-        positionX = BigDecimal("10.0"),
-        positionY = BigDecimal("20.0"),
+        positionX = BigDecimal("14.49"),
+        positionY = BigDecimal("23.49"),
       )
       val duplicatedRequest = request.copy(venueSeats = request.venueSeats + duplicatedPositionSeat)
 
@@ -173,9 +173,38 @@ class VenueServiceTest {
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
-      assertThat(exception.message).contains("같은 좌표의 좌석이 중복되었습니다.")
+      assertThat(exception.message).contains("좌석 영역이 중복되었습니다.")
       then(venueRepository).shouldHaveNoInteractions()
       then(venueSeatRepository).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `좌석 영역의 경계만 맞닿으면 생성할 수 있다`() {
+      val request = createRequest()
+      val firstSeat = request.venueSeats.single()
+      val seats = listOf(
+        firstSeat,
+        firstSeat.copy(
+          sectionName = "B구역",
+          seatNumber = 2,
+          seatLabel = "B구역 2번",
+          positionX = firstSeat.positionX.add(BigDecimal("4.50")),
+        ),
+        firstSeat.copy(
+          sectionName = "C구역",
+          seatNumber = 3,
+          seatLabel = "C구역 3번",
+          positionY = firstSeat.positionY.add(BigDecimal("3.50")),
+        ),
+      )
+      given(venueRepository.save(any(Venue::class.java))).willAnswer { invocation ->
+        invocation.getArgument<Venue>(0).apply { id = 1L }
+      }
+
+      val result = venueService.createVenueDetails(request.copy(venueSeats = seats))
+
+      assertThat(result.venueSeats).hasSize(3)
+      then(venueSeatRepository).should().saveAll(any<List<VenueSeat>>())
     }
   }
 
@@ -294,7 +323,7 @@ class VenueServiceTest {
     }
 
     @Test
-    fun `변경 결과 좌석 좌표가 중복되면 BAD_REQUEST 예외가 발생한다`() {
+    fun `변경 결과 좌석 렌더링 영역이 겹치면 BAD_REQUEST 예외가 발생한다`() {
       val venue = venue(1L)
       val unchangedSeat = venueSeat(10L, venue)
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
@@ -305,8 +334,8 @@ class VenueServiceTest {
           updateSeatRequest(
             id = null,
             seatNumber = 2,
-            positionX = BigDecimal("10.0"),
-            positionY = BigDecimal("20.0"),
+            positionX = BigDecimal("14.49"),
+            positionY = BigDecimal("23.49"),
           ),
         ),
       )
@@ -314,7 +343,7 @@ class VenueServiceTest {
       val exception = assertThrows<CustomException> { venueService.updateVenueDetails(1L, request) }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
-      assertThat(exception.message).contains("같은 좌표의 좌석이 중복되었습니다.")
+      assertThat(exception.message).contains("좌석 영역이 중복되었습니다.")
       then(venueSeatRepository).should().findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L)
       then(venueSeatRepository).shouldHaveNoMoreInteractions()
       then(venueRepository).shouldHaveNoMoreInteractions()

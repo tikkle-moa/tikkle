@@ -2,17 +2,26 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { Maximize2, Minus, Move, Plus } from "lucide-react";
 
-import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import {
+  type CreateVenueRequest,
+  type CreateVenueSeatRequest,
+  VENUE_SEAT_HEIGHT,
+  VENUE_SEAT_RADIUS,
+  VENUE_SEAT_WIDTH,
+  getVenueStageCornerRadius,
+  getVenueStageTitleFontSize,
+} from "@entities/venue";
 
 import { useVenueLayoutInteraction } from "../model/use-venue-layout-interaction";
 import { useVenueLayoutSelection } from "../model/use-venue-layout-selection";
-import { VENUE_LAYOUT_MIN_ZOOM, VENUE_LAYOUT_ZOOM_FACTOR, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "../model/venue-layout.constants";
+import { VENUE_LAYOUT_MIN_ZOOM, VENUE_LAYOUT_ZOOM_FACTOR } from "../model/venue-layout.constants";
 import { getLayoutClassName, getSectionColor } from "../model/venue-layout.utils";
 
 interface VenueLayoutEditorProps {
   venue: CreateVenueRequest;
   venueSeats: CreateVenueSeatRequest[];
   selectedSeatIndices: number[];
+  errorSeatIndices: Set<number>;
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
@@ -24,6 +33,7 @@ const VenueLayoutEditor = ({
   venue,
   venueSeats,
   selectedSeatIndices,
+  errorSeatIndices,
   isSubmitting,
   setVenue,
   setVenueSeats,
@@ -116,7 +126,7 @@ const VenueLayoutEditor = ({
         >
           <defs>
             <pattern id="venue-grid" width="10" height="10" patternUnits="userSpaceOnUse">
-              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#334155" strokeWidth={0.35 / zoom} />
+              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#334155" strokeWidth={0.35} />
             </pattern>
           </defs>
           <rect
@@ -124,7 +134,7 @@ const VenueLayoutEditor = ({
             height={Math.max(venue.height, 1)}
             fill="url(#venue-grid)"
             stroke="#475569"
-            strokeWidth={0.6 / zoom}
+            strokeWidth={0.6}
             onPointerDown={startBackgroundDrag}
           />
           {selectedBounds && (
@@ -135,8 +145,8 @@ const VenueLayoutEditor = ({
               height={selectedBounds.bottom - selectedBounds.top}
               fill="#ffffff01"
               stroke="#fef3c766"
-              strokeDasharray={`${1.5 / zoom} ${1.5 / zoom}`}
-              strokeWidth={0.45 / zoom}
+              strokeDasharray="1.5 1.5"
+              strokeWidth={0.45}
               onPointerDown={startSelectedAreaDrag}
             />
           )}
@@ -146,17 +156,17 @@ const VenueLayoutEditor = ({
               y={venue.stagePositionY - venue.stageHeight / 2}
               width={venue.stageWidth}
               height={venue.stageHeight}
-              rx={Math.min(venue.stageHeight / 4, 2)}
+              rx={getVenueStageCornerRadius(venue.stageWidth, venue.stageHeight)}
               fill="#7c3aed"
               stroke="#c4b5fd"
-              strokeWidth={0.7 / zoom}
+              strokeWidth={0.7}
             />
             <text
               x={venue.stagePositionX}
               y={venue.stagePositionY}
               dominantBaseline="middle"
               fill="white"
-              fontSize={Math.max(Math.min(venue.stageHeight * 0.45, Math.max(venue.width, 1) / 30), 2.5)}
+              fontSize={getVenueStageTitleFontSize(venue.stageWidth, venue.stageHeight)}
               fontWeight="700"
               pointerEvents="none"
               textAnchor="middle"
@@ -165,9 +175,9 @@ const VenueLayoutEditor = ({
             </text>
           </g>
           {venueSeats
-            .map((seat, index) => ({ seat, index, selected: selectedSet.has(index) }))
-            .sort((a, b) => Number(a.selected) - Number(b.selected))
-            .map(({ seat, index, selected }) => {
+            .map((seat, index) => ({ seat, index, selected: selectedSet.has(index), hasError: errorSeatIndices.has(index) }))
+            .sort((a, b) => Number(a.selected || a.hasError) - Number(b.selected || b.hasError))
+            .map(({ seat, index, selected, hasError }) => {
               return (
                 <g
                   className={isSubmitting ? "" : "cursor-grab active:cursor-grabbing"}
@@ -179,10 +189,10 @@ const VenueLayoutEditor = ({
                     y={seat.positionY - VENUE_SEAT_HEIGHT / 2}
                     width={VENUE_SEAT_WIDTH}
                     height={VENUE_SEAT_HEIGHT}
-                    rx={VENUE_SEAT_WIDTH * 0.22}
+                    rx={VENUE_SEAT_RADIUS}
                     fill={getSectionColor(seat.sectionName)}
-                    stroke={selected ? "#fef3c7" : "#e2e8f0"}
-                    strokeWidth={(selected ? 0.6 : 0.3) / zoom}
+                    stroke={hasError ? "#f87171" : selected ? "#fef3c7" : "#e2e8f0"}
+                    strokeWidth={hasError || selected ? 0.6 : 0.3}
                   />
                   <title>
                     {seat.seatLabel || `좌석 ${index + 1}`} ({seat.positionX}, {seat.positionY})
@@ -199,8 +209,8 @@ const VenueLayoutEditor = ({
               fill="#8b5cf633"
               pointerEvents="none"
               stroke="#a78bfa"
-              strokeDasharray={`${2 / zoom} ${1.5 / zoom}`}
-              strokeWidth={0.7 / zoom}
+              strokeDasharray="2 1.5"
+              strokeWidth={0.7}
             />
           )}
         </svg>

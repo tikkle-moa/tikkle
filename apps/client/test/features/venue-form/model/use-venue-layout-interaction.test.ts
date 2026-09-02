@@ -209,6 +209,42 @@ describe("useVenueLayoutInteraction", () => {
     expect(result.current.dragState).toMatchObject({ type: "pan", moved: false });
   });
 
+  it("화면 이동이 경계에 닿은 뒤 반대 방향 드래그에 즉시 반응한다", () => {
+    const { result } = renderInteraction();
+    act(() => result.current.applyZoom(2));
+    act(() => result.current.startBackgroundDrag(createFullPointerEvent({ clientX: 50, clientY: 50 }) as never));
+
+    act(() => result.current.handlePointerMove(createFullPointerEvent({ clientX: 150, clientY: 50 }) as never));
+    expect(result.current.pan.x).toBe(0);
+
+    act(() => result.current.handlePointerMove(createFullPointerEvent({ clientX: 149, clientY: 50 }) as never));
+    expect(result.current.pan.x).toBeGreaterThan(0);
+  });
+
+  it("SVG와 공연장 비율이 달라도 실제 렌더링 배율로 화면을 이동한다", () => {
+    const { result } = renderInteraction();
+    const currentTarget = { getBoundingClientRect: () => ({ width: 160, height: 100 }) };
+    act(() => result.current.applyZoom(2));
+    act(() => result.current.startBackgroundDrag(createFullPointerEvent({ clientX: 50, clientY: 50 }) as never));
+
+    act(() => result.current.handlePointerMove(createFullPointerEvent({ clientX: 30, clientY: 50, currentTarget }) as never));
+
+    expect(result.current.pan.x).toBe(35);
+  });
+
+  it("화면 이동 종료 직후 늦게 도착한 포인터 이동을 무시한다", () => {
+    const { result } = renderInteraction();
+    act(() => result.current.startBackgroundDrag(createFullPointerEvent() as never));
+
+    act(() => {
+      const handlePointerMove = result.current.handlePointerMove;
+      result.current.finishDrag();
+      handlePointerMove(createFullPointerEvent({ clientX: 30 }) as never);
+    });
+
+    expect(result.current.dragState).toBeNull();
+  });
+
   it("Alt 드래그 영역 안 좌석을 선택하고 Shift 선택에 기존 좌석을 합친다", () => {
     const props = {
       venue,

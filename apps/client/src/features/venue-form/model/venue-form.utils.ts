@@ -4,6 +4,12 @@ import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatReque
 
 import { BASIC_ERROR_KEYS, LAYOUT_ERROR_KEYS, VENUE_FORM_LIMITS } from "./venue-form.constants";
 import type { VenueFormErrors } from "./venue-form.types";
+import { getVenueSeatCollisionMap } from "./venue-seat-collision.utils";
+
+const getVenueSeatCollisionError = (venueSeats: CreateVenueSeatRequest[], collidingIndices: Set<number>) => {
+  const seatNames = [...collidingIndices].map((index) => venueSeats[index].seatLabel.trim() || `좌석 ${index + 1}`);
+  return `같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: ${seatNames.join(", ")}`;
+};
 
 const validateStagePosition = (
   venueWidth: number,
@@ -62,7 +68,6 @@ export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: CreateV
   if (venueSeats.length === 0) errors.venueSeats = "좌석을 하나 이상 추가해 주세요.";
 
   const seatKeys = new Set<string>();
-  const seatPositions = new Set<string>();
   venueSeats.forEach((seat, index) => {
     const prefix = `seat.${index}`;
     if (!seat.sectionName.trim()) errors[`${prefix}.sectionName`] = "구역명을 입력해 주세요.";
@@ -86,12 +91,29 @@ export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: CreateV
     const key = `${seat.sectionName.trim()}\u0000${seat.seatNumber}`;
     if (seatKeys.has(key)) errors[`${prefix}.seatNumber`] = "같은 구역에 중복된 좌석 번호가 있습니다.";
     seatKeys.add(key);
-
-    const positionKey = `${seat.positionX.toFixed(2)}\u0000${seat.positionY.toFixed(2)}`;
-    if (seatPositions.has(positionKey)) errors[`${prefix}.positionX`] = "같은 좌표에 중복된 좌석이 있습니다.";
-    seatPositions.add(positionKey);
   });
+
+  getVenueSeatCollisionMap(venueSeats).forEach((collidingIndices, index) => {
+    const collisionError = getVenueSeatCollisionError(venueSeats, collidingIndices);
+    errors[`seat.${index}.positionX`] = collisionError;
+    errors[`seat.${index}.positionY`] = collisionError;
+  });
+
   return errors;
+};
+
+export const replaceVenueSeatCollisionErrors = (errors: VenueFormErrors, venueSeats: CreateVenueSeatRequest[]): VenueFormErrors => {
+  const nextErrors = Object.fromEntries(
+    Object.entries(errors).filter(([key]) => !key.startsWith("seat.") || (!key.endsWith(".positionX") && !key.endsWith(".positionY"))),
+  ) as VenueFormErrors;
+
+  getVenueSeatCollisionMap(venueSeats).forEach((collidingIndices, index) => {
+    const collisionError = getVenueSeatCollisionError(venueSeats, collidingIndices);
+    nextErrors[`seat.${index}.positionX`] = collisionError;
+    nextErrors[`seat.${index}.positionY`] = collisionError;
+  });
+
+  return nextErrors;
 };
 
 export const toCreateVenueRequest = (venue: CreateVenueRequest, venueSeats: CreateVenueSeatRequest[]): CreateVenueDetailRequest => ({

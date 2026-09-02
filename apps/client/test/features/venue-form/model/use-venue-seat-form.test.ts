@@ -28,8 +28,8 @@ const initialSeats: CreateVenueSeatRequest[] = [
 const useTestVenueSeatForm = () => {
   const [currentVenue, setVenue] = useState(venue);
   const [venueSeats, setVenueSeats] = useState(initialSeats);
-  const [errors] = useState<VenueFormErrors>({ venueSeats: "좌석 오류" });
-  const form = useVenueSeatForm({ venue: currentVenue, venueSeats, errors, setVenue, setVenueSeats });
+  const [errors, setErrors] = useState<VenueFormErrors>({ venueSeats: "좌석 오류" });
+  const form = useVenueSeatForm({ venue: currentVenue, venueSeats, errors, setVenue, setVenueSeats, setErrors });
   return { currentVenue, venueSeats, errors, ...form };
 };
 
@@ -45,8 +45,13 @@ describe("useVenueSeatForm", () => {
     const useErrorSeatForm = () => {
       const [currentVenue, setVenue] = useState(venue);
       const [venueSeats, setVenueSeats] = useState(initialSeats);
-      const [errors] = useState<VenueFormErrors>({ "seat.0.sectionName": "오류", "seat.1.price": "", "seat.2.price": "오류", name: "오류" });
-      return useVenueSeatForm({ venue: currentVenue, venueSeats, errors, setVenue, setVenueSeats });
+      const [errors, setErrors] = useState<VenueFormErrors>({
+        "seat.0.sectionName": "오류",
+        "seat.1.price": "",
+        "seat.2.price": "오류",
+        name: "오류",
+      });
+      return useVenueSeatForm({ venue: currentVenue, venueSeats, errors, setVenue, setVenueSeats, setErrors });
     };
     const { result } = renderHook(useErrorSeatForm);
 
