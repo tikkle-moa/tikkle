@@ -4,31 +4,36 @@ import { E2E_SEED_PERFORMANCES } from "../config/e2e-seed-data.config";
 
 test.describe("공연 회차 상세", () => {
   test("정상 회차에 접근하면 공연 정보와 좌석 배치를 표시한다", async ({ page }) => {
-    const responsePromise = page.waitForResponse(
+    const performanceResponsePromise = page.waitForResponse(
       (response) => response.url().endsWith(`/api/performances/${E2E_SEED_PERFORMANCES.upcoming.id}`) && response.request().method() === "GET",
+    );
+    const venueResponsePromise = page.waitForResponse(
+      (response) => /\/api\/venues\/\d+$/.test(new URL(response.url()).pathname) && response.request().method() === "GET",
     );
 
     await page.goto(`/performances/${E2E_SEED_PERFORMANCES.upcoming.id}`);
-    const response = await responsePromise;
 
-    expect(response.status()).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      success: true,
-      data: {
-        id: E2E_SEED_PERFORMANCES.upcoming.id,
-        concertId: E2E_SEED_PERFORMANCES.upcoming.concertId,
-        name: E2E_SEED_PERFORMANCES.upcoming.name,
-        status: "UPCOMING",
-      },
-    });
-    await expect(page.getByRole("heading", { name: E2E_SEED_PERFORMANCES.upcoming.name })).toBeVisible();
-    await expect(page.getByText("오픈 예정", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "콘서트 상세로 돌아가기" })).toHaveAttribute(
-      "href",
-      `/concerts/${E2E_SEED_PERFORMANCES.upcoming.concertId}`,
-    );
-    await expect(page.getByRole("heading", { name: "좌석 배치 정보" })).toBeVisible();
-    await expect(page.getByText(`${E2E_SEED_PERFORMANCES.upcoming.name} · 전체 0석`)).toBeVisible();
+    const [performanceResponse, venueResponse] = await Promise.all([performanceResponsePromise, venueResponsePromise]);
+    const performanceBody = await performanceResponse.json();
+    const venueBody = await venueResponse.json();
+    const { venue, venueSeats } = venueBody.data;
+    const seatSize = Math.min(venue.width, venue.height) * 0.012;
+
+    expect(new URL(venueResponse.url()).pathname).toBe(`/api/venues/${performanceBody.data.venueId}`);
+    expect(venueSeats).toHaveLength(4);
+
+    for (const seat of venueSeats) {
+      const seatButton = page.getByRole("button", {
+        name: `${seat.seatLabel}, ${seat.price.toLocaleString()}원`,
+      });
+      const visibleSeat = seatButton.locator("xpath=..").locator("rect").first();
+
+      await expect(visibleSeat).toHaveAttribute("x", String(seat.positionX - seatSize / 2));
+      await expect(visibleSeat).toHaveAttribute("y", String(seat.positionY - seatSize / 2));
+
+      await seatButton.click();
+      await expect(page.getByText(`${seat.seatLabel} · ${seat.sectionName} · ${seat.price.toLocaleString()}원`)).toBeVisible();
+    }
   });
 
   test("종료된 회차에 접근하면 상세 대신 종료 안내를 표시한다", async ({ page }) => {
