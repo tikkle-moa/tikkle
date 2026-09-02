@@ -1,7 +1,15 @@
+export const E2E_SEED_VENUES = {
+  normal: {
+    id: 900000,
+    name: "E2E 테스트 공연장",
+  },
+} as const;
+
 export const E2E_SEED_CONCERTS = {
   normal: {
     id: 900000,
     title: "E2E 정상 콘서트",
+    venueId: E2E_SEED_VENUES.normal.id,
   },
   withoutPerformance: {
     id: 900001,
@@ -13,6 +21,7 @@ export const E2E_SEED_PERFORMANCES = {
   upcoming: {
     id: 900000,
     concertId: E2E_SEED_CONCERTS.normal.id,
+    venueId: E2E_SEED_CONCERTS.normal.venueId,
     name: "E2E 정상 콘서트 1회차",
   },
   ended: {

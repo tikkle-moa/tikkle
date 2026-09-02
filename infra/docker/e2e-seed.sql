@@ -54,6 +54,58 @@ SET
     );
 
 INSERT INTO
+    venue_seats (
+        venue_id,
+        section_name,
+        seat_number,
+        seat_label,
+        price,
+        position_x,
+        position_y,
+        created_at
+    )
+VALUES (
+        @e2e_venue_id,
+        'A구역',
+        1,
+        'A구역 1열 1번',
+        150000,
+        20.00,
+        25.00,
+        NOW()
+    ),
+    (
+        @e2e_venue_id,
+        'A구역',
+        2,
+        'A구역 1열 2번',
+        150000,
+        34.00,
+        25.00,
+        NOW()
+    ),
+    (
+        @e2e_venue_id,
+        'B구역',
+        1,
+        'B구역 1열 1번',
+        110000,
+        42.00,
+        62.00,
+        NOW()
+    ),
+    (
+        @e2e_venue_id,
+        'B구역',
+        2,
+        'B구역 1열 2번',
+        110000,
+        76.00,
+        74.00,
+        NOW()
+    );
+
+INSERT INTO
     concerts (
         id,
         venue_id,
