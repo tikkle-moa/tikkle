@@ -164,30 +164,32 @@ const VenueLayoutEditor = ({
               STAGE
             </text>
           </g>
-          {venueSeats.map((seat, index) => {
-            const selected = selectedSet.has(index);
-            return (
-              <g
-                className={isSubmitting ? "" : "cursor-grab active:cursor-grabbing"}
-                key={`${seat.sectionName}-${seat.seatNumber}-${index}`}
-                onPointerDown={(event) => startSeatDrag(event, index)}
-              >
-                <rect
-                  x={seat.positionX - VENUE_SEAT_WIDTH / 2}
-                  y={seat.positionY - VENUE_SEAT_HEIGHT / 2}
-                  width={VENUE_SEAT_WIDTH}
-                  height={VENUE_SEAT_HEIGHT}
-                  rx={VENUE_SEAT_WIDTH * 0.22}
-                  fill={getSectionColor(seat.sectionName)}
-                  stroke={selected ? "#fef3c7" : "#e2e8f0"}
-                  strokeWidth={(selected ? 0.6 : 0.3) / zoom}
-                />
-                <title>
-                  {seat.seatLabel || `좌석 ${index + 1}`} ({seat.positionX}, {seat.positionY})
-                </title>
-              </g>
-            );
-          })}
+          {venueSeats
+            .map((seat, index) => ({ seat, index, selected: selectedSet.has(index) }))
+            .sort((a, b) => Number(a.selected) - Number(b.selected))
+            .map(({ seat, index, selected }) => {
+              return (
+                <g
+                  className={isSubmitting ? "" : "cursor-grab active:cursor-grabbing"}
+                  key={`${seat.sectionName}-${seat.seatNumber}-${index}`}
+                  onPointerDown={(event) => startSeatDrag(event, index)}
+                >
+                  <rect
+                    x={seat.positionX - VENUE_SEAT_WIDTH / 2}
+                    y={seat.positionY - VENUE_SEAT_HEIGHT / 2}
+                    width={VENUE_SEAT_WIDTH}
+                    height={VENUE_SEAT_HEIGHT}
+                    rx={VENUE_SEAT_WIDTH * 0.22}
+                    fill={getSectionColor(seat.sectionName)}
+                    stroke={selected ? "#fef3c7" : "#e2e8f0"}
+                    strokeWidth={(selected ? 0.6 : 0.3) / zoom}
+                  />
+                  <title>
+                    {seat.seatLabel || `좌석 ${index + 1}`} ({seat.positionX}, {seat.positionY})
+                  </title>
+                </g>
+              );
+            })}
           {dragState?.type === "select" && (
             <rect
               x={Math.min(dragState.startX, dragState.currentX)}
