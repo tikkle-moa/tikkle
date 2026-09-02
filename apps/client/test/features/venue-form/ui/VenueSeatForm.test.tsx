@@ -44,7 +44,7 @@ const initialSeats: CreateVenueSeatRequest[] = [
 const TestForm = ({ initialErrors = {}, isSubmitting = false }: { initialErrors?: VenueFormErrors; isSubmitting?: boolean }) => {
   const [currentVenue, setVenue] = useState(venue);
   const [venueSeats, setVenueSeats] = useState(initialSeats);
-  const [errors, setErrors] = useState(initialErrors);
+  const [errors] = useState(initialErrors);
   return (
     <VenueSeatForm
       venue={currentVenue}
@@ -53,7 +53,6 @@ const TestForm = ({ initialErrors = {}, isSubmitting = false }: { initialErrors?
       isSubmitting={isSubmitting}
       setVenue={setVenue}
       setVenueSeats={setVenueSeats}
-      setErrors={setErrors}
     />
   );
 };
