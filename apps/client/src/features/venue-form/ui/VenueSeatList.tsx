@@ -1,6 +1,6 @@
 import { type Dispatch, type SetStateAction, memo } from "react";
 
-import { CircleAlert } from "lucide-react";
+import { Check, CircleAlert } from "lucide-react";
 
 import { useVenueSeatList } from "../model/use-venue-seat-list";
 import type { VenueFormSeat } from "../model/venue-form.types";
@@ -43,8 +43,10 @@ const VenueSeatList = ({ venueSeats, selectedSeatClientIdSet, errorSeatClientIds
             className={`flex min-w-0 items-center justify-center gap-2 truncate rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${getVenueSeatClassName(hasError, isSelected)}`}
             data-seat-client-id={clientId}
             title={seatLabel.trim() || `좌석 ${clientId}`}
+            aria-pressed={isSelected}
           >
             {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />}
+            {!hasError && isSelected && <Check className="size-3.5 shrink-0" aria-hidden />}
             <span className="truncate">{seatLabel.trim() || `좌석 ${clientId}`}</span>
           </button>
         ))}

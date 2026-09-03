@@ -73,7 +73,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
 
       {submitState.status === "error" && (
         <p
-          className="m-4 flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 sm:mx-6"
+          className="m-4 flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium whitespace-pre-wrap text-red-700 sm:mx-6"
           role="alert"
         >
           <AlertCircle className="size-4 shrink-0" aria-hidden /> {submitState.error}

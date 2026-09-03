@@ -174,6 +174,7 @@ export const createVenueSeat = (venueWidth: number, venueHeight: number, clientI
 };
 
 export const getVenueSeatClassName = (hasError: boolean, isSelected: boolean) => {
+  if (hasError && isSelected) return "border-red-400 bg-red-50 text-red-700 ring-2 ring-violet-300";
   if (hasError) return "border-red-300 bg-red-50 text-red-700";
   if (isSelected) return "border-violet-300 bg-violet-100 text-violet-700";
   return "border-slate-200 bg-white text-slate-600 hover:border-violet-200";

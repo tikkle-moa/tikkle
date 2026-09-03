@@ -16,23 +16,20 @@ export const useVenueSeatList = ({ venueSeats, selectedSeatClientIdSet, errorSea
   const [scrollTop, setScrollTop] = useState(0);
 
   const orderedSeats = useMemo(() => {
-    const selectedSeats: VenueSeatListItem[] = [];
     const errorSeats: VenueSeatListItem[] = [];
     const restSeats: VenueSeatListItem[] = [];
 
     venueSeats.forEach((seat) => {
       const isSelected = selectedSeatClientIdSet.has(seat.clientId);
       const hasError = errorSeatClientIds.has(seat.clientId);
-      if (isSelected) {
-        selectedSeats.push({ ...seat, isSelected, hasError });
-      } else if (hasError) {
+      if (hasError) {
         errorSeats.push({ ...seat, isSelected, hasError });
       } else {
         restSeats.push({ ...seat, isSelected, hasError });
       }
     });
 
-    return [...selectedSeats, ...errorSeats, ...restSeats];
+    return [...errorSeats, ...restSeats];
   }, [venueSeats, errorSeatClientIds, selectedSeatClientIdSet]);
 
   const rowCount = Math.ceil(orderedSeats.length / ITEMS_PER_ROW);
