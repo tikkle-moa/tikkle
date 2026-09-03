@@ -11,11 +11,12 @@ interface UseVenueSeatFormProps {
   venueSeats: VenueFormSeat[];
   errors: VenueFormErrors;
   venueSeatClientIdRef: RefObject<number>;
+  setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<VenueFormSeat[]>>;
   setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
 }
 
-export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
+export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, setVenue, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
   const [selectedSeatClientIds, setSelectedSeatClientIds] = useState<number[]>([]);
   const historyRef = useRef<VenueSeatHistoryEntry[]>([]);
   const collisionMapRef = useRef<Map<number, Set<number>>>(new Map());
@@ -42,12 +43,13 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdR
     historyRef.current = [
       ...historyRef.current.slice(-49),
       {
+        venue: { ...venue },
         venueSeats: [...venueSeats],
         collisionMap: new Map([...collisionMapRef.current].map(([clientId, collidingClientIds]) => [clientId, new Set(collidingClientIds)])),
       },
     ];
     setCanUndo(true);
-  }, [venueSeats]);
+  }, [venue, venueSeats]);
 
   const recomputeSeatCollisions = useCallback(
     (nextVenueSeats: VenueFormSeat[]) => {
@@ -67,6 +69,7 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdR
     const snapshot = historyRef.current.at(-1);
     if (!snapshot) return;
     historyRef.current = historyRef.current.slice(0, -1);
+    setVenue(snapshot.venue);
     setVenueSeats(snapshot.venueSeats);
     setErrors((current) => {
       collisionMapRef.current = snapshot.collisionMap;
@@ -77,7 +80,34 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdR
     });
     setCanUndo(historyRef.current.length > 0);
     setSelectedSeatClientIds([]);
-  }, [setErrors, setVenueSeats]);
+  }, [setErrors, setVenue, setVenueSeats]);
+
+  const previousLayoutRef = useRef({
+    width: venue.width,
+    height: venue.height,
+    stagePositionX: venue.stagePositionX,
+    stagePositionY: venue.stagePositionY,
+    stageWidth: venue.stageWidth,
+    stageHeight: venue.stageHeight,
+  });
+
+  useEffect(() => {
+    const nextLayout = {
+      width: venue.width,
+      height: venue.height,
+      stagePositionX: venue.stagePositionX,
+      stagePositionY: venue.stagePositionY,
+      stageWidth: venue.stageWidth,
+      stageHeight: venue.stageHeight,
+    };
+    const layoutChanged = Object.keys(nextLayout).some(
+      (key) => nextLayout[key as keyof typeof nextLayout] !== previousLayoutRef.current[key as keyof typeof nextLayout],
+    );
+    if (!layoutChanged) return;
+
+    previousLayoutRef.current = nextLayout;
+    recomputeSeatCollisions(venueSeats);
+  }, [recomputeSeatCollisions, venue, venueSeats]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {

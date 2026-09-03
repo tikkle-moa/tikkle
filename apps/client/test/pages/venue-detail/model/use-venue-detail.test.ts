@@ -52,6 +52,7 @@ const venueSeats = [
 describe("useVenueDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     mockUseParams.mockReturnValue({ venueId: "1" });
     mockUseSessionStore.mockImplementation((selector) => selector({ user: { role: "ADMIN" } }));
     mockUseVenueDetail.mockReturnValue({ data: { venue, venueSeats }, isPending: false, isError: false });
@@ -86,10 +87,30 @@ describe("useVenueDetail", () => {
     const { result } = renderHook(() => useVenueDetail());
     await act(result.current.handleDelete);
 
+    expect(window.confirm).toHaveBeenCalledWith('"올림픽공원 KSPO DOME" 공연장을 삭제할까요?');
     expect(mockDelete).toHaveBeenCalledWith("/api/venues/{id}", { params: { path: { id: 1 } } });
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["venues"] });
     expect(mockToastSuccess).toHaveBeenCalledWith("공연장이 삭제되었습니다.");
     expect(mockNavigate).toHaveBeenCalledWith("/venues");
+  });
+
+  it("삭제 확인을 취소하면 요청하지 않는다", async () => {
+    vi.mocked(window.confirm).mockReturnValue(false);
+    const { result } = renderHook(() => useVenueDetail());
+
+    await act(result.current.handleDelete);
+
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it("공연장 정보가 없을 때 삭제를 요청하면 기본 확인 문구를 사용한다", async () => {
+    mockUseVenueDetail.mockReturnValue({ data: undefined, isPending: false, isError: true });
+    vi.mocked(window.confirm).mockReturnValue(false);
+    const { result } = renderHook(() => useVenueDetail());
+
+    await act(result.current.handleDelete);
+
+    expect(window.confirm).toHaveBeenCalledWith('"공연장" 공연장을 삭제할까요?');
   });
 
   it.each([

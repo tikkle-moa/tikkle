@@ -56,7 +56,7 @@ class VenueService(
     val stageHeight = request.venue.stageHeight
 
     validateStagePosition(request.venue.width, request.venue.height, stagePositionX, stagePositionY, stageWidth, stageHeight)
-    val seatKeys = request.venueSeats.map { it.sectionName to it.seatNumber }
+    val seatKeys = request.venueSeats.map { it.sectionName.trim() to it.seatNumber }
     if (seatKeys.size != seatKeys.distinct().size) {
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
     }
@@ -89,7 +89,7 @@ class VenueService(
     val venueSeats = request.venueSeats.map { seatRequest ->
       VenueSeat(
         venue = savedVenue,
-        sectionName = seatRequest.sectionName,
+        sectionName = seatRequest.sectionName.trim(),
         seatNumber = seatRequest.seatNumber,
         seatLabel = seatRequest.seatLabel,
         price = seatRequest.price,
@@ -167,7 +167,7 @@ class VenueService(
     val venueSeats = requestedSeats.map { seatRequest ->
       seatRequest.id.orElse(null)?.let { id ->
         currentVenueSeatById.getValue(id).apply {
-          sectionName = seatRequest.sectionName
+          sectionName = seatRequest.sectionName.trim()
           seatNumber = seatRequest.seatNumber
           seatLabel = seatRequest.seatLabel
           price = seatRequest.price
@@ -176,7 +176,7 @@ class VenueService(
         }
       } ?: VenueSeat(
         venue = venue,
-        sectionName = seatRequest.sectionName,
+        sectionName = seatRequest.sectionName.trim(),
         seatNumber = seatRequest.seatNumber,
         seatLabel = seatRequest.seatLabel,
         price = seatRequest.price,

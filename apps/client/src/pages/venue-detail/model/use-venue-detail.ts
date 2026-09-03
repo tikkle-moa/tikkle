@@ -22,6 +22,8 @@ export const useVenueDetail = () => {
   const navigate = useNavigate();
 
   const handleDelete = async () => {
+    if (!window.confirm(`"${venue?.name ?? "공연장"}" 공연장을 삭제할까요?`)) return;
+
     try {
       const { data, error, response } = await apiClient.DELETE("/api/venues/{id}", { params: { path: { id } } });
 

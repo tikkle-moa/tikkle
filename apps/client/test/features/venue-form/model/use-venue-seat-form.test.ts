@@ -26,12 +26,20 @@ const initialSeats: VenueFormSeat[] = [
 ];
 
 const useTestVenueSeatForm = () => {
-  const [currentVenue] = useState(venue);
+  const [currentVenue, setCurrentVenue] = useState(venue);
   const [venueSeats, setVenueSeats] = useState(initialSeats);
   const [errors, setErrors] = useState<VenueFormErrors>({ venueSeats: "좌석 오류" });
   const venueSeatClientIdRef = useRef(4);
-  const form = useVenueSeatForm({ venue: currentVenue, venueSeats, errors, venueSeatClientIdRef, setVenueSeats, setErrors });
-  return { currentVenue, venueSeats, errors, ...form };
+  const form = useVenueSeatForm({
+    venue: currentVenue,
+    venueSeats,
+    errors,
+    venueSeatClientIdRef,
+    setVenue: setCurrentVenue,
+    setVenueSeats,
+    setErrors,
+  });
+  return { currentVenue, venueSeats, errors, setCurrentVenue, ...form };
 };
 
 describe("useVenueSeatForm", () => {
@@ -44,7 +52,7 @@ describe("useVenueSeatForm", () => {
 
   it("좌석 오류 키에서 오류가 있는 좌석 인덱스만 추출한다", () => {
     const useErrorSeatForm = () => {
-      const [currentVenue] = useState(venue);
+      const [currentVenue, setCurrentVenue] = useState(venue);
       const [venueSeats, setVenueSeats] = useState(initialSeats);
       const venueSeatClientIdRef = useRef(4);
       const [errors, setErrors] = useState<VenueFormErrors>({
@@ -53,7 +61,15 @@ describe("useVenueSeatForm", () => {
         "seat.3.price": "오류",
         name: "오류",
       });
-      return useVenueSeatForm({ venue: currentVenue, venueSeats, errors, venueSeatClientIdRef, setVenueSeats, setErrors });
+      return useVenueSeatForm({
+        venue: currentVenue,
+        venueSeats,
+        errors,
+        venueSeatClientIdRef,
+        setVenue: setCurrentVenue,
+        setVenueSeats,
+        setErrors,
+      });
     };
     const { result } = renderHook(useErrorSeatForm);
 
@@ -136,6 +152,29 @@ describe("useVenueSeatForm", () => {
     result.current.collisionMapRef.current.get(1)?.add(3);
     act(() => result.current.handleUndo());
     expect(result.current.collisionMapRef.current).toEqual(new Map([[1, new Set([2])]]));
+  });
+
+  it("무대가 좌석과 겹치도록 변경되면 충돌 오류를 즉시 갱신한다", () => {
+    const { result } = renderHook(useTestVenueSeatForm);
+
+    act(() => result.current.setCurrentVenue((current) => ({ ...current, stagePositionY: 30 })));
+
+    expect(result.current.errorSeatClientIds).toEqual(new Set([2, 3]));
+    expect(result.current.collisionMapRef.current.get(2)).toEqual(new Set([-1]));
+  });
+
+  it("무대 위치 변경을 실행 취소하면 공연장과 충돌 상태를 함께 복원한다", () => {
+    const { result } = renderHook(useTestVenueSeatForm);
+
+    act(() => result.current.saveLayoutSnapshot());
+    act(() => result.current.setCurrentVenue((current) => ({ ...current, stagePositionY: 30 })));
+    expect(result.current.errorSeatClientIds).toEqual(new Set([2, 3]));
+
+    act(() => result.current.handleUndo());
+
+    expect(result.current.currentVenue.stagePositionY).toBe(10);
+    expect(result.current.errorSeatClientIds).toEqual(new Set());
+    expect(result.current.collisionMapRef.current.size).toBe(0);
   });
 
   it("좌석 추가 시 랜덤 좌표에 추가하고 새 좌석을 선택한다", () => {

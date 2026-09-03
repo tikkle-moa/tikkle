@@ -157,6 +157,41 @@ class VenueServiceTest {
     }
 
     @Test
+    fun `구역명의 앞뒤 공백을 제거해 중복을 검사한다`() {
+      val request = createRequest()
+      val duplicatedSeat = request.venueSeats.single().copy(
+        sectionName = " A구역 ",
+        seatLabel = "중복 좌석",
+        positionX = BigDecimal("20.00"),
+      )
+
+      val exception = assertThrows<CustomException> {
+        venueService.createVenueDetails(request.copy(venueSeats = request.venueSeats + duplicatedSeat))
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
+      assertThat(exception.message).contains("같은 구역의 좌석 번호가 중복되었습니다.")
+    }
+
+    @Test
+    fun `좌석 구역명의 앞뒤 공백을 제거해 저장한다`() {
+      val request = createRequest().copy(
+        venueSeats = listOf(createRequest().venueSeats.single().copy(sectionName = " A구역 ")),
+      )
+      given(venueRepository.save(any(Venue::class.java))).willAnswer { invocation ->
+        invocation.getArgument<Venue>(0).apply { id = 1L }
+      }
+      var savedSeats: List<VenueSeat> = emptyList()
+      given(venueSeatRepository.saveAll(any<List<VenueSeat>>())).willAnswer { invocation ->
+        invocation.getArgument<List<VenueSeat>>(0).also { savedSeats = it }
+      }
+
+      venueService.createVenueDetails(request)
+
+      assertThat(savedSeats.single().sectionName).isEqualTo("A구역")
+    }
+
+    @Test
     fun `좌석 렌더링 영역이 겹치면 생성하지 않는다`() {
       val request = createRequest()
       val duplicatedPositionSeat = request.venueSeats.single().copy(
@@ -272,7 +307,7 @@ class VenueServiceTest {
     fun `공연장 정보와 좌석 추가 수정 삭제를 반영한다`() {
       val venue = venue(1L)
       val existingSeat = venueSeat(10L, venue)
-      val updatedSeatRequest = updateSeatRequest(id = 10L, seatLabel = "수정 좌석")
+      val updatedSeatRequest = updateSeatRequest(id = 10L, sectionName = " A구역 ", seatLabel = "수정 좌석")
       val newSeatRequest = updateSeatRequest(
         id = null,
         seatNumber = 2,
@@ -290,6 +325,7 @@ class VenueServiceTest {
       val result = venueService.updateVenueDetails(1L, request)
 
       assertThat(venue.name).isEqualTo("수정 공연장")
+      assertThat(existingSeat.sectionName).isEqualTo("A구역")
       assertThat(existingSeat.seatLabel).isEqualTo("수정 좌석")
       assertThat(result.venue.name).isEqualTo("수정 공연장")
       then(venueSeatRepository).should().saveAll(any<List<VenueSeat>>())
@@ -560,13 +596,14 @@ class VenueServiceTest {
 
   private fun updateSeatRequest(
     id: Long?,
+    sectionName: String = "A구역",
     seatNumber: Int = 1,
     seatLabel: String = "A구역 1번",
     positionX: BigDecimal = BigDecimal("10.00"),
     positionY: BigDecimal = BigDecimal("30.00"),
   ): UpdateVenueSeatRequest = UpdateVenueSeatRequest(
     id = id.toJsonNullable(),
-    sectionName = "A구역",
+    sectionName = sectionName,
     seatNumber = seatNumber,
     seatLabel = seatLabel,
     price = 50_000,

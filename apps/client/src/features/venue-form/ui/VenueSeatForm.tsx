@@ -41,7 +41,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
     handleAddSeats,
     handleRemoveSelectedSeats,
     updateVenueSeat,
-  } = useVenueSeatForm({ venue, venueSeats, errors, venueSeatClientIdRef, setVenueSeats, setErrors });
+  } = useVenueSeatForm({ venue, venueSeats, errors, venueSeatClientIdRef, setVenue, setVenueSeats, setErrors });
 
   return (
     <section className="space-y-6 p-4 sm:p-6">
