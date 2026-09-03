@@ -77,6 +77,11 @@ export const useVenueLayoutInteraction = ({
     Math.min(baseViewWidth / VENUE_LAYOUT_MIN_VISIBLE_SIZE, baseViewHeight / VENUE_LAYOUT_MIN_VISIBLE_SIZE),
   );
 
+  const panBoundsRef = useRef({ safeWidth, safeHeight, viewWidth, viewHeight });
+  useEffect(() => {
+    panBoundsRef.current = { safeWidth, safeHeight, viewWidth, viewHeight };
+  }, [safeWidth, safeHeight, viewWidth, viewHeight]);
+
   const applyZoom = useCallback(
     (nextZoom: number) => {
       const resolvedZoom = Math.min(Math.max(nextZoom, VENUE_LAYOUT_MIN_ZOOM), maxZoom);
@@ -194,9 +199,15 @@ export const useVenueLayoutInteraction = ({
     pendingPanDeltaRef.current = { x: 0, y: 0 };
     if (delta.x === 0 && delta.y === 0) return;
 
+    const {
+      safeWidth: latestSafeWidth,
+      safeHeight: latestSafeHeight,
+      viewWidth: latestViewWidth,
+      viewHeight: latestViewHeight,
+    } = panBoundsRef.current;
     setPan((current) => ({
-      x: Math.min(Math.max(current.x - delta.x, 0), safeWidth - viewWidth),
-      y: Math.min(Math.max(current.y - delta.y, 0), safeHeight - viewHeight),
+      x: Math.min(Math.max(current.x - delta.x, 0), latestSafeWidth - latestViewWidth),
+      y: Math.min(Math.max(current.y - delta.y, 0), latestSafeHeight - latestViewHeight),
     }));
   };
 

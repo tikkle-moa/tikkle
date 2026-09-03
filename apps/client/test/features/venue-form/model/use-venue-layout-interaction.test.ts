@@ -544,6 +544,38 @@ describe("useVenueLayoutInteraction", () => {
     expect(errorUpdater?.({})).toEqual({});
   });
 
+  it("선택 좌석 묶음의 가로 폭만 viewport보다 크면 X축은 공연장 경계로, Y축은 viewport로 각각 제한한다", () => {
+    const mixedAxisSeats = [
+      { ...venueSeats[0], clientId: 30, positionX: 2.25, positionY: 50 },
+      { ...venueSeats[1], clientId: 31, positionX: 97.75, positionY: 50.5 },
+    ];
+    const props = {
+      venue,
+      venueSeats: mixedAxisSeats,
+      selectedSeatClientIdSet: new Set([30, 31]),
+      collisionMapRef: { current: new Map<number, Set<number>>() },
+      isSubmitting: false,
+      setVenue: vi.fn(),
+      setVenueSeats: vi.fn(),
+      setErrors: vi.fn(),
+      setSelectedSeatClientIds: vi.fn(),
+      onLayoutChangeStart: vi.fn(),
+    };
+    const { result } = renderHook(() => useVenueLayoutInteraction(props));
+    attachCoordinateSvg(result as ReturnType<typeof renderInteraction>["result"]);
+    act(() => result.current.applyZoom(2));
+    act(() =>
+      startSeatDrag(result as ReturnType<typeof renderInteraction>["result"], createFullPointerEvent({ clientX: 2.25, clientY: 50 }) as never, 30),
+    );
+    act(() => result.current.handlePointerMove(createFullPointerEvent({ clientX: -1_000, clientY: -1_000 }) as never));
+
+    const [nextVenueSeats] = props.setVenueSeats.mock.calls.at(-1) ?? [];
+    expect(nextVenueSeats).toEqual([
+      { ...mixedAxisSeats[0], positionX: 2.25, positionY: 8 },
+      { ...mixedAxisSeats[1], positionX: 97.75, positionY: 8.5 },
+    ]);
+  });
+
   it("변화 없는 화면 이동과 종료된 선택 프레임을 안전하게 무시하고 정리한다", () => {
     const frames: FrameRequestCallback[] = [];
     const cancelAnimationFrame = vi.fn();

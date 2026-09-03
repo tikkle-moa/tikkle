@@ -280,7 +280,7 @@ class VenueService(
         }
       }
 
-      seatGrid[gridX to gridY] = mutableListOf(seatX to seatY)
+      seatGrid.getOrPut(gridX to gridY) { mutableListOf() }.add(seatX to seatY)
     }
   }
 }
