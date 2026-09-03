@@ -30,6 +30,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
   const {
     selectedSeatClientIds,
     errorSeatClientIds,
+    collisionMapRef,
     canUndo,
     setSelectedSeatClientIds,
     saveLayoutSnapshot,
@@ -79,6 +80,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
           venueSeats={venueSeats}
           selectedSeatClientIds={selectedSeatClientIds}
           errorSeatClientIds={errorSeatClientIds}
+          collisionMapRef={collisionMapRef}
           isSubmitting={isSubmitting}
           setVenue={setVenue}
           setVenueSeats={setVenueSeats}

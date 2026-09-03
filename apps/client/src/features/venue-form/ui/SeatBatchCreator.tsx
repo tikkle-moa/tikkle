@@ -4,7 +4,7 @@ import { Grid3X3, WandSparkles } from "lucide-react";
 
 import { toRound } from "@shared/lib/number.utils";
 
-import type { CreateVenueRequest } from "@entities/venue";
+import { type CreateVenueRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 import VenueFormNumberInput from "./VenueFormNumberInput";
 import VenueFormTextInput from "./VenueFormTextInput";
@@ -102,6 +102,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           id="batch-gap-x"
           label="가로 간격"
           value={values.gapX}
+          min={VENUE_SEAT_WIDTH}
           required
           disabled={isSubmitting}
           onChange={(value) => updateValue("gapX", toRound(value, 2))}
@@ -110,6 +111,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           id="batch-gap-y"
           label="세로 간격"
           value={values.gapY}
+          min={VENUE_SEAT_HEIGHT}
           required
           disabled={isSubmitting}
           onChange={(value) => updateValue("gapY", toRound(value, 2))}

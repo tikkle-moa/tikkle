@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction } from "react";
+import { type Dispatch, type RefObject, type SetStateAction } from "react";
 
 import { Maximize2, Minus, Move, Plus } from "lucide-react";
 
@@ -17,6 +17,7 @@ interface VenueLayoutEditorProps {
   venueSeats: VenueFormSeat[];
   selectedSeatClientIds: number[];
   errorSeatClientIds: Set<number>;
+  collisionMapRef: RefObject<Map<number, Set<number>>>;
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<VenueFormSeat[]>>;
@@ -30,6 +31,7 @@ const VenueLayoutEditor = ({
   venueSeats,
   selectedSeatClientIds,
   errorSeatClientIds,
+  collisionMapRef,
   isSubmitting,
   setVenue,
   setVenueSeats,
@@ -49,9 +51,9 @@ const VenueLayoutEditor = ({
     applyZoom,
     resetView,
     handleKeyDown,
+    handlePointerDown,
     handlePointerMove,
     startStageDrag,
-    startSeatDrag,
     startSelectedAreaDrag,
     startBackgroundDrag,
     finishDrag,
@@ -59,6 +61,7 @@ const VenueLayoutEditor = ({
     venue,
     venueSeats,
     selectedSeatClientIdSet,
+    collisionMapRef,
     isSubmitting,
     setVenue,
     setVenueSeats,
@@ -174,7 +177,7 @@ const VenueLayoutEditor = ({
             selectedSeatClientIdSet={selectedSeatClientIdSet}
             errorSeatClientIds={errorSeatClientIds}
             isSubmitting={isSubmitting}
-            startSeatDrag={startSeatDrag}
+            onPointerDown={handlePointerDown}
           />
           {dragState?.type === "select" && (
             <rect

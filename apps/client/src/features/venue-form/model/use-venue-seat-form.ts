@@ -3,7 +3,8 @@ import { type Dispatch, type RefObject, type SetStateAction, useCallback, useEff
 import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
 import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
-import { createVenueSeat } from "./venue-form.utils";
+import { createVenueSeat, replaceVenueSeatCollisionErrors } from "./venue-form.utils";
+import { getVenueSeatCollisionMap } from "./venue-seat-collision.utils";
 
 interface UseVenueSeatFormProps {
   venue: CreateVenueRequest;
@@ -17,6 +18,7 @@ interface UseVenueSeatFormProps {
 export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
   const [selectedSeatClientIds, setSelectedSeatClientIds] = useState<number[]>([]);
   const historyRef = useRef<VenueFormSeat[][]>([]);
+  const collisionMapRef = useRef<Map<number, Set<number>>>(new Map());
   const [canUndo, setCanUndo] = useState(false);
 
   const errorSeatClientIds = useMemo(
@@ -41,9 +43,17 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdR
     if (!snapshot) return;
     historyRef.current = historyRef.current.slice(0, -1);
     setVenueSeats(snapshot);
+    setErrors((current) => {
+      const collisionMap = getVenueSeatCollisionMap(venue, snapshot);
+      collisionMapRef.current = collisionMap;
+      const next = replaceVenueSeatCollisionErrors(current, snapshot, collisionMap);
+      const nextEntries = Object.entries(next);
+      const isSame = nextEntries.length === Object.keys(current).length && nextEntries.every(([key, message]) => current[key] === message);
+      return isSame ? current : next;
+    });
     setCanUndo(historyRef.current.length > 0);
     setSelectedSeatClientIds([]);
-  }, [setVenueSeats]);
+  }, [setErrors, setVenueSeats, venue]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -86,6 +96,7 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdR
   return {
     selectedSeatClientIds,
     errorSeatClientIds,
+    collisionMapRef,
     canUndo,
     setSelectedSeatClientIds,
     saveLayoutSnapshot,
