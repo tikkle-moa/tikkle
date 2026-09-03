@@ -155,15 +155,22 @@ export const toCreateVenueRequest = (venue: CreateVenueRequest, venueSeats: Venu
   })),
 });
 
-export const createVenueSeat = (venueWidth: number, venueHeight: number, clientId: number): VenueFormSeat => ({
-  clientId,
-  sectionName: "",
-  seatNumber: 1,
-  seatLabel: "",
-  price: 0,
-  positionX: Math.round(Math.random() * venueWidth * 100) / 100,
-  positionY: Math.round(Math.random() * venueHeight * 100) / 100,
-});
+export const createVenueSeat = (venueWidth: number, venueHeight: number, clientId: number): VenueFormSeat => {
+  const minX = VENUE_SEAT_WIDTH / 2;
+  const minY = VENUE_SEAT_HEIGHT / 2;
+  const maxX = Math.max(minX, venueWidth - VENUE_SEAT_WIDTH / 2);
+  const maxY = Math.max(minY, venueHeight - VENUE_SEAT_HEIGHT / 2);
+
+  return {
+    clientId,
+    sectionName: "",
+    seatNumber: 1,
+    seatLabel: "",
+    price: 0,
+    positionX: Math.round((minX + Math.random() * (maxX - minX)) * 100) / 100,
+    positionY: Math.round((minY + Math.random() * (maxY - minY)) * 100) / 100,
+  };
+};
 
 export const getVenueSeatClassName = (hasError: boolean, isSelected: boolean) => {
   if (hasError) return "border-red-300 bg-red-50 text-red-700";

@@ -172,9 +172,26 @@ describe("venue form utils", () => {
       seatNumber: 1,
       seatLabel: "",
       price: 0,
-      positionX: 25.25,
-      positionY: 60.75,
+      positionX: 26.38,
+      positionY: 59.88,
     });
+  });
+
+  it("생성된 좌석의 랜덤 좌표는 항상 유효 좌표 범위 안에 머문다", () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(1);
+    const minSeat = createVenueSeat(100, 80, 1);
+    expect(minSeat.positionX).toBeGreaterThanOrEqual(2.25);
+    expect(minSeat.positionY).toBeLessThanOrEqual(78.25);
+
+    vi.spyOn(Math, "random").mockReturnValueOnce(1).mockReturnValueOnce(0);
+    const maxSeat = createVenueSeat(100, 80, 2);
+    expect(maxSeat.positionX).toBeLessThanOrEqual(97.75);
+    expect(maxSeat.positionY).toBeGreaterThanOrEqual(1.75);
+  });
+
+  it("공연장이 좌석보다 작아도 좌표 범위가 뒤집히지 않는다", () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0.5).mockReturnValueOnce(0.5);
+    expect(createVenueSeat(1, 1, 3)).toMatchObject({ positionX: 2.25, positionY: 1.75 });
   });
 
   it("오류 키를 기본 정보, 레이아웃, 좌석 및 기타 영역으로 중복 없이 분류한다", () => {

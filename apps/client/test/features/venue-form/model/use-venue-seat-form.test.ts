@@ -89,7 +89,7 @@ describe("useVenueSeatForm", () => {
 
     act(() => result.current.handleAddSeat());
 
-    expect(result.current.venueSeats.at(-1)).toMatchObject({ positionX: 20, positionY: 30 });
+    expect(result.current.venueSeats.at(-1)).toMatchObject({ positionX: 21.35, positionY: 30.44 });
     expect(result.current.errorSeatClientIds).toEqual(new Set([1, 4]));
     expect(result.current.collisionMapRef.current.get(1)).toEqual(new Set([4]));
   });
@@ -144,7 +144,7 @@ describe("useVenueSeatForm", () => {
 
     act(() => result.current.handleAddSeat());
 
-    expect(result.current.venueSeats.at(-1)).toMatchObject({ positionX: 25, positionY: 60 });
+    expect(result.current.venueSeats.at(-1)).toMatchObject({ positionX: 26.13, positionY: 59.13 });
     expect(result.current.selectedSeatClientIds).toEqual([4]);
   });
 

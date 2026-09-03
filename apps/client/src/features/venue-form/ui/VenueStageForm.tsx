@@ -2,7 +2,7 @@ import { memo } from "react";
 
 import { toRound } from "@shared/lib/number.utils";
 
-import type { CreateVenueRequest } from "@entities/venue";
+import { type CreateVenueRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 import VenueFormNumberInput from "./VenueFormNumberInput";
 
@@ -26,6 +26,7 @@ const VenueStageForm = ({ venue, errors, isSubmitting, updateVenue }: VenueStage
         <VenueFormNumberInput
           id="venue-width"
           label="공연장 가로"
+          min={Math.max(VENUE_SEAT_WIDTH, venue.stageWidth)}
           value={venue.width}
           error={errors.width}
           required
@@ -35,6 +36,7 @@ const VenueStageForm = ({ venue, errors, isSubmitting, updateVenue }: VenueStage
         <VenueFormNumberInput
           id="venue-height"
           label="공연장 세로"
+          min={Math.max(VENUE_SEAT_HEIGHT, venue.stageHeight)}
           value={venue.height}
           error={errors.height}
           required
