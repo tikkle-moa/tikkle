@@ -110,8 +110,9 @@ class VenueService(
     val venue = venueRepository.findById(venueId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "장소를 찾을 수 없습니다.") }
 
-    val requestedIds = request.venueSeats?.mapNotNull { it.id } ?: emptyList()
-    val deletedSelectedIds = request.deletedSeatIds ?: emptyList()
+    val requestedSeats = request.venueSeats.orElse(emptyList())
+    val requestedIds = requestedSeats.mapNotNull { it.id.orElse(null) }
+    val deletedSelectedIds = request.deletedVenueSeatIds.orElse(emptyList())
     if (requestedIds.size != requestedIds.distinct().size) {
       throw CustomException(ErrorCode.BAD_REQUEST, "중복된 좌석 ID가 포함되어 있습니다.")
     }
@@ -129,7 +130,6 @@ class VenueService(
       throw CustomException(ErrorCode.NOT_FOUND, "변경할 좌석을 찾을 수 없습니다.")
     }
 
-    val requestedSeats = request.venueSeats.orEmpty()
     val changedSeatIds = requestedIds + deletedSelectedIds
     val unchangedSeats = currentVenueSeats.filterNot { it.id in changedSeatIds }
 
@@ -140,14 +140,15 @@ class VenueService(
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
     }
 
-    val stagePositionX = request.venue?.stagePositionX?.orElse(venue.stagePositionX) ?: venue.stagePositionX
-    val stagePositionY = request.venue?.stagePositionY?.orElse(venue.stagePositionY) ?: venue.stagePositionY
-    val stageWidth = request.venue?.stageWidth?.orElse(venue.stageWidth) ?: venue.stageWidth
-    val stageHeight = request.venue?.stageHeight?.orElse(venue.stageHeight) ?: venue.stageHeight
-    val venueWidth = request.venue?.width?.orElse(venue.width) ?: venue.width
-    val venueHeight = request.venue?.height?.orElse(venue.height) ?: venue.height
+    val requestedVenue = request.venue.orElse(null)
+    val stagePositionX = requestedVenue?.stagePositionX?.orElse(venue.stagePositionX) ?: venue.stagePositionX
+    val stagePositionY = requestedVenue?.stagePositionY?.orElse(venue.stagePositionY) ?: venue.stagePositionY
+    val stageWidth = requestedVenue?.stageWidth?.orElse(venue.stageWidth) ?: venue.stageWidth
+    val stageHeight = requestedVenue?.stageHeight?.orElse(venue.stageHeight) ?: venue.stageHeight
+    val venueWidth = requestedVenue?.width?.orElse(venue.width) ?: venue.width
+    val venueHeight = requestedVenue?.height?.orElse(venue.height) ?: venue.height
 
-    if (request.venue != null) {
+    if (requestedVenue != null) {
       validateStagePosition(venueWidth, venueHeight, stagePositionX, stagePositionY, stageWidth, stageHeight)
     }
 
@@ -163,8 +164,8 @@ class VenueService(
       stageHeight,
     )
 
-    val venueSeats = request.venueSeats?.map { seatRequest ->
-      seatRequest.id?.let { id ->
+    val venueSeats = requestedSeats.map { seatRequest ->
+      seatRequest.id.orElse(null)?.let { id ->
         currentVenueSeatById.getValue(id).apply {
           sectionName = seatRequest.sectionName
           seatNumber = seatRequest.seatNumber
@@ -182,7 +183,7 @@ class VenueService(
         positionX = seatRequest.positionX,
         positionY = seatRequest.positionY,
       )
-    } ?: emptyList()
+    }
 
     val seatsToDelete = deletedSelectedIds.map(currentVenueSeatById::getValue)
     if (seatsToDelete.isNotEmpty()) {
@@ -191,7 +192,7 @@ class VenueService(
     }
     venueSeatRepository.saveAll(venueSeats)
 
-    request.venue?.applyTo(venue)
+    requestedVenue?.applyTo(venue)
     venueRepository.save(venue)
 
     val updatedSeats = venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(venueId)

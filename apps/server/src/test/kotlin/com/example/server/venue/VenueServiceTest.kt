@@ -279,7 +279,7 @@ class VenueServiceTest {
         seatLabel = "신규 좌석",
         positionX = BigDecimal("30.00"),
       )
-      val request = UpdateVenueDetailRequest(
+      val request = updateRequest(
         venue = UpdateVenueRequest(name = JsonNullable.of("수정 공연장")),
         venueSeats = listOf(updatedSeatRequest, newSeatRequest),
       )
@@ -304,7 +304,7 @@ class VenueServiceTest {
       given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L))
         .willReturn(listOf(seat), emptyList())
 
-      venueService.updateVenueDetails(1L, UpdateVenueDetailRequest(deletedSeatIds = listOf(10L)))
+      venueService.updateVenueDetails(1L, updateRequest(deletedVenueSeatIds = listOf(10L)))
 
       then(venueSeatRepository).should().deleteAll(listOf(seat))
       then(venueSeatRepository).should().flush()
@@ -314,7 +314,7 @@ class VenueServiceTest {
     fun `수정 좌석 ID가 중복되면 BAD_REQUEST 예외가 발생한다`() {
       val venue = venue(1L)
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
-      val request = UpdateVenueDetailRequest(
+      val request = updateRequest(
         venueSeats = listOf(updateSeatRequest(10L), updateSeatRequest(10L, seatNumber = 2)),
       )
 
@@ -331,7 +331,7 @@ class VenueServiceTest {
       val exception = assertThrows<CustomException> {
         venueService.updateVenueDetails(
           1L,
-          UpdateVenueDetailRequest(deletedSeatIds = listOf(10L, 10L)),
+          updateRequest(deletedVenueSeatIds = listOf(10L, 10L)),
         )
       }
 
@@ -342,9 +342,9 @@ class VenueServiceTest {
     fun `같은 좌석을 수정하고 삭제하면 BAD_REQUEST 예외가 발생한다`() {
       val venue = venue(1L)
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
-      val request = UpdateVenueDetailRequest(
+      val request = updateRequest(
         venueSeats = listOf(updateSeatRequest(10L)),
-        deletedSeatIds = listOf(10L),
+        deletedVenueSeatIds = listOf(10L),
       )
 
       val exception = assertThrows<CustomException> { venueService.updateVenueDetails(1L, request) }
@@ -359,7 +359,7 @@ class VenueServiceTest {
       given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(emptyList())
 
       val exception = assertThrows<CustomException> {
-        venueService.updateVenueDetails(1L, UpdateVenueDetailRequest(venueSeats = listOf(updateSeatRequest(10L))))
+        venueService.updateVenueDetails(1L, updateRequest(venueSeats = listOf(updateSeatRequest(10L))))
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -372,7 +372,7 @@ class VenueServiceTest {
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
       given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L))
         .willReturn(listOf(unchangedSeat))
-      val request = UpdateVenueDetailRequest(venueSeats = listOf(updateSeatRequest(id = null, seatNumber = 1)))
+      val request = updateRequest(venueSeats = listOf(updateSeatRequest(id = null, seatNumber = 1)))
 
       val exception = assertThrows<CustomException> { venueService.updateVenueDetails(1L, request) }
 
@@ -386,7 +386,7 @@ class VenueServiceTest {
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
       given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L))
         .willReturn(listOf(unchangedSeat))
-      val request = UpdateVenueDetailRequest(
+      val request = updateRequest(
         venueSeats = listOf(
           updateSeatRequest(
             id = null,
@@ -411,7 +411,7 @@ class VenueServiceTest {
       val venue = venue(1L)
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
       given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(emptyList())
-      val request = UpdateVenueDetailRequest(
+      val request = updateRequest(
         venueSeats = listOf(updateSeatRequest(id = null, positionX = BigDecimal("2.24"))),
       )
 
@@ -426,7 +426,7 @@ class VenueServiceTest {
       val venue = venue(1L)
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
       given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(emptyList())
-      val request = UpdateVenueDetailRequest(
+      val request = updateRequest(
         venueSeats = listOf(updateSeatRequest(id = null, positionX = BigDecimal("20.00"), positionY = BigDecimal("5.00"))),
       )
 
@@ -441,7 +441,7 @@ class VenueServiceTest {
       given(venueRepository.findById(99L)).willReturn(Optional.empty())
 
       val exception = assertThrows<CustomException> {
-        venueService.updateVenueDetails(99L, UpdateVenueDetailRequest())
+        venueService.updateVenueDetails(99L, updateRequest())
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -452,7 +452,7 @@ class VenueServiceTest {
       val venue = venue(1L)
       given(venueRepository.findById(1L)).willReturn(Optional.of(venue))
       given(venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(1L)).willReturn(emptyList())
-      val request = UpdateVenueDetailRequest(
+      val request = updateRequest(
         venue = UpdateVenueRequest(stagePositionX = JsonNullable.of(BigDecimal("90.00"))),
       )
 
@@ -565,7 +565,7 @@ class VenueServiceTest {
     positionX: BigDecimal = BigDecimal("10.00"),
     positionY: BigDecimal = BigDecimal("30.00"),
   ): UpdateVenueSeatRequest = UpdateVenueSeatRequest(
-    id = id,
+    id = id.toJsonNullable(),
     sectionName = "A구역",
     seatNumber = seatNumber,
     seatLabel = seatLabel,
@@ -573,4 +573,17 @@ class VenueServiceTest {
     positionX = positionX,
     positionY = positionY,
   )
+
+  private fun updateRequest(
+    venue: UpdateVenueRequest? = null,
+    venueSeats: List<UpdateVenueSeatRequest>? = null,
+    deletedVenueSeatIds: List<Long>? = null,
+  ): UpdateVenueDetailRequest = UpdateVenueDetailRequest(
+    venue = venue.toJsonNullable(),
+    venueSeats = venueSeats.toJsonNullable(),
+    deletedVenueSeatIds = deletedVenueSeatIds.toJsonNullable(),
+  )
+
+  // null이면 값이 존재하지 않는 상태(undefined)로, 그 외에는 값이 존재하는 상태로 변환한다.
+  private fun <T> T?.toJsonNullable(): JsonNullable<T> = if (this == null) JsonNullable.undefined() else JsonNullable.of(this)
 }

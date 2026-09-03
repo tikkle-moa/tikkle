@@ -14,16 +14,18 @@ import java.math.BigDecimal
 
 data class UpdateVenueDetailRequest(
   @field:Valid
-  val venue: UpdateVenueRequest? = null,
+  val venue: JsonNullable<UpdateVenueRequest> = JsonNullable.undefined(),
 
   @field:Valid
-  val venueSeats: List<UpdateVenueSeatRequest>? = null,
+  val venueSeats: JsonNullable<List<UpdateVenueSeatRequest>> = JsonNullable.undefined(),
 
   @field:Valid
-  val deletedSeatIds: List<
-    @Positive(message = "좌석 ID는 양수여야 합니다.")
-    Long,
-    >? = null,
+  val deletedVenueSeatIds: JsonNullable<
+    List<
+      @Positive(message = "좌석 ID는 양수여야 합니다.")
+      Long,
+      >,
+    > = JsonNullable.undefined(),
 )
 
 data class UpdateVenueRequest(
@@ -83,7 +85,7 @@ data class UpdateVenueRequest(
 
 data class UpdateVenueSeatRequest(
   @field:Positive(message = "좌석 ID는 양수여야 합니다.")
-  val id: Long? = null,
+  val id: JsonNullable<Long> = JsonNullable.undefined(),
 
   @field:NotBlank(message = "구역명은 빈 문자열이 될 수 없습니다.")
   @field:Size(max = 50, message = "구역명은 최대 50자까지 입력할 수 있습니다.")
