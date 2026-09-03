@@ -32,7 +32,7 @@ describe("useVenueForm", () => {
     const { result } = renderHook(() => useVenueForm({ initialValues: invalidInitialValues, submitState: { status: "idle" }, onSubmit: vi.fn() }));
 
     expect(result.current.venue).toEqual(invalidInitialValues.venue);
-    expect(result.current.venueSeats).toEqual(initialValues.venueSeats);
+    expect(result.current.venueSeats).toEqual([{ clientId: 1, ...initialValues.venueSeats[0] }]);
 
     await act(() => result.current.handleSubmit(submitEvent));
 
@@ -73,9 +73,10 @@ describe("useVenueForm", () => {
     expect(onSubmit).toHaveBeenCalledWith(initialValues);
   });
 
-  it("빈 좌석의 필수 오류는 숨기고 충돌 오류만 좌석 이동에 따라 갱신한다", () => {
+  it("좌석 목록을 변경할 때 제출 검증 오류를 미리 노출하지 않는다", () => {
     const { result } = renderHook(() => useVenueForm({ initialValues, submitState: { status: "idle" }, onSubmit: vi.fn() }));
     const emptySeat = {
+      clientId: 2,
       sectionName: "A구역",
       seatNumber: 1,
       seatLabel: "A구역 1번",
@@ -87,24 +88,10 @@ describe("useVenueForm", () => {
     act(() => result.current.setVenueSeats((current) => [...current, emptySeat]));
     expect(result.current.errors).toEqual({});
 
-    act(() =>
-      result.current.setVenueSeats((current) => current.map((seat, index) => (index === 1 ? { ...seat, positionX: 24, positionY: 33 } : seat))),
-    );
-
-    expect(result.current.errors["seat.0.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: A구역 1번");
-    expect(result.current.errors["seat.1.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: A1");
-
-    act(() => result.current.setVenueSeats((current) => current.map((seat, index) => (index === 1 ? { ...seat, seatLabel: "변경 좌석" } : seat))));
-    expect(result.current.errors["seat.0.positionX"]).toBe("같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: 변경 좌석");
-
-    act(() =>
-      result.current.setVenueSeats((current) => current.map((seat, index) => (index === 1 ? { ...seat, positionX: 50, positionY: 50 } : seat))),
-    );
-
     expect(result.current.errors).toEqual({});
   });
 
-  it("제출 시 저장된 충돌 오류도 좌석 이동으로 충돌이 해소되면 제거한다", async () => {
+  it("제출 시 충돌한 좌석의 clientId를 사용해 오류를 저장한다", async () => {
     const overlappingInitialValues = {
       ...initialValues,
       venueSeats: [
@@ -117,12 +104,7 @@ describe("useVenueForm", () => {
     );
 
     await act(() => result.current.handleSubmit(submitEvent));
-    expect(result.current.errors["seat.0.positionX"]).toBeTruthy();
-
-    act(() =>
-      result.current.setVenueSeats((current) => current.map((seat, index) => (index === 1 ? { ...seat, positionX: 50, positionY: 50 } : seat))),
-    );
-
-    expect(result.current.errors).toEqual({});
+    expect(result.current.errors["seat.1.positionX"]).toBeTruthy();
+    expect(result.current.errors["seat.2.positionX"]).toBeTruthy();
   });
 });

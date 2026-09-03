@@ -1,25 +1,25 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueRequest } from "@entities/venue";
 
-import type { VenueFormErrors } from "@features/venue-form/model/venue-form.types";
+import type { VenueFormErrors, VenueFormSeat } from "@features/venue-form/model/venue-form.types";
 import VenueSeatForm from "@features/venue-form/ui/VenueSeatForm";
 
 vi.mock("@features/venue-form/ui/VenueLayoutEditor", () => ({
-  default: ({ setSelectedSeatIndices }: { setSelectedSeatIndices: (indices: number[]) => void }) => (
+  default: ({ setSelectedSeatClientIds }: { setSelectedSeatClientIds: (clientIds: number[]) => void }) => (
     <div>
-      <button onClick={() => setSelectedSeatIndices([])}>선택 해제</button>
-      <button onClick={() => setSelectedSeatIndices([0])}>하나 선택</button>
-      <button onClick={() => setSelectedSeatIndices([0, 1])}>여러 개 선택</button>
+      <button onClick={() => setSelectedSeatClientIds([])}>선택 해제</button>
+      <button onClick={() => setSelectedSeatClientIds([1])}>하나 선택</button>
+      <button onClick={() => setSelectedSeatClientIds([1, 2])}>여러 개 선택</button>
     </div>
   ),
 }));
 
 vi.mock("@features/venue-form/ui/SeatBatchCreator", () => ({
-  default: ({ onAddSeats }: { onAddSeats: (seats: CreateVenueSeatRequest[]) => void }) => (
-    <button onClick={() => onAddSeats([{ sectionName: "C", seatNumber: 1, seatLabel: "C1", price: 1, positionX: 1, positionY: 1 }])}>
+  default: ({ onAddSeats }: { onAddSeats: (seats: VenueFormSeat[]) => void }) => (
+    <button onClick={() => onAddSeats([{ clientId: 4, sectionName: "C", seatNumber: 1, seatLabel: "C1", price: 1, positionX: 3, positionY: 2 }])}>
       일괄 추가
     </button>
   ),
@@ -36,20 +36,22 @@ const venue: CreateVenueRequest = {
   stageWidth: 40,
   stageHeight: 10,
 };
-const initialSeats: CreateVenueSeatRequest[] = [
-  { sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 10, positionX: 20, positionY: 30 },
-  { sectionName: "B", seatNumber: 1, seatLabel: "", price: 20, positionX: 40, positionY: 30 },
+const initialSeats: VenueFormSeat[] = [
+  { clientId: 1, sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 10, positionX: 20, positionY: 30 },
+  { clientId: 2, sectionName: "B", seatNumber: 1, seatLabel: "", price: 20, positionX: 40, positionY: 30 },
 ];
 
 const TestForm = ({ initialErrors = {}, isSubmitting = false }: { initialErrors?: VenueFormErrors; isSubmitting?: boolean }) => {
   const [currentVenue, setVenue] = useState(venue);
   const [venueSeats, setVenueSeats] = useState(initialSeats);
   const [errors, setErrors] = useState(initialErrors);
+  const venueSeatClientIdRef = useRef(3);
   return (
     <VenueSeatForm
       venue={currentVenue}
       venueSeats={venueSeats}
       errors={errors}
+      venueSeatClientIdRef={venueSeatClientIdRef}
       setErrors={setErrors}
       isSubmitting={isSubmitting}
       setVenue={setVenue}
@@ -60,7 +62,7 @@ const TestForm = ({ initialErrors = {}, isSubmitting = false }: { initialErrors?
 
 describe("VenueSeatForm", () => {
   it("빈 선택, 단일 선택 편집, 목록 선택과 좌석 추가를 처리한다", () => {
-    render(<TestForm initialErrors={{ venueSeats: "좌석 오류", "seat.0.sectionName": "구역 오류" }} />);
+    render(<TestForm initialErrors={{ venueSeats: "좌석 오류", "seat.1.sectionName": "구역 오류" }} />);
     expect(screen.getByText("편집할 좌석을 선택하세요")).toBeInTheDocument();
     expect(screen.getByText("좌석 오류")).toBeInTheDocument();
 
@@ -106,7 +108,7 @@ describe("VenueSeatForm", () => {
   });
 
   it("오류가 있는 좌석을 목록에서 강조한다", () => {
-    render(<TestForm initialErrors={{ "seat.1.seatLabel": "좌석 표시를 입력해 주세요." }} />);
+    render(<TestForm initialErrors={{ "seat.2.seatLabel": "좌석 표시를 입력해 주세요." }} />);
 
     expect(screen.getByRole("button", { name: "좌석 2" })).toHaveClass("border-red-300", "bg-red-50", "text-red-700");
     expect(screen.getByText("편집할 좌석을 선택하세요")).toBeInTheDocument();

@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueRequest } from "@entities/venue";
 
+import type { VenueFormSeat } from "@features/venue-form/model/venue-form.types";
 import VenueLayoutEditor from "@features/venue-form/ui/VenueLayoutEditor";
 
 const mocks = vi.hoisted(() => ({
@@ -10,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   handleKeyDown: vi.fn(),
   handlePointerMove: vi.fn(),
   startStageDrag: vi.fn(),
-  startSeatDrag: vi.fn(),
+  handlePointerDown: vi.fn(),
   startSelectedAreaDrag: vi.fn(),
   startBackgroundDrag: vi.fn(),
   finishDrag: vi.fn(),
@@ -21,6 +22,8 @@ const mocks = vi.hoisted(() => ({
     pan: { x: 0, y: 0 },
     isAltPressed: false,
     maxZoom: 10,
+    viewWidth: 100,
+    viewHeight: 62.5,
   },
 }));
 
@@ -32,7 +35,7 @@ vi.mock("@features/venue-form/model/use-venue-layout-interaction", () => ({
     handleKeyDown: mocks.handleKeyDown,
     handlePointerMove: mocks.handlePointerMove,
     startStageDrag: mocks.startStageDrag,
-    startSeatDrag: mocks.startSeatDrag,
+    handlePointerDown: mocks.handlePointerDown,
     startSelectedAreaDrag: mocks.startSelectedAreaDrag,
     startBackgroundDrag: mocks.startBackgroundDrag,
     finishDrag: mocks.finishDrag,
@@ -40,9 +43,10 @@ vi.mock("@features/venue-form/model/use-venue-layout-interaction", () => ({
 }));
 
 vi.mock("@features/venue-form/model/use-venue-layout-selection", () => ({
-  useVenueLayoutSelection: ({ selectedSeatIndices }: { selectedSeatIndices: number[] }) => ({
-    selectedSet: new Set(selectedSeatIndices),
-    selectedBounds: selectedSeatIndices.length ? { left: 10, right: 30, top: 20, bottom: 40 } : null,
+  useVenueLayoutSelection: ({ selectedSeatClientIds }: { selectedSeatClientIds: number[] }) => ({
+    sectionNames: ["A", "미지정"],
+    selectedSeatClientIdSet: new Set(selectedSeatClientIds),
+    selectedBounds: selectedSeatClientIds.length ? { left: 10, right: 30, top: 20, bottom: 40 } : null,
   }),
 }));
 
@@ -57,21 +61,22 @@ const venue: CreateVenueRequest = {
   stageWidth: 40,
   stageHeight: 10,
 };
-const venueSeats: CreateVenueSeatRequest[] = [
-  { sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 1, positionX: 20, positionY: 30 },
-  { sectionName: "", seatNumber: 2, seatLabel: "", price: 1, positionX: 40, positionY: 30 },
+const venueSeats: VenueFormSeat[] = [
+  { clientId: 1, sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 1, positionX: 20, positionY: 30 },
+  { clientId: 2, sectionName: "", seatNumber: 2, seatLabel: "", price: 1, positionX: 40, positionY: 30 },
 ];
 
 const props = {
   venue,
   venueSeats,
-  selectedSeatIndices: [] as number[],
-  errorSeatIndices: new Set([1]),
+  selectedSeatClientIds: [] as number[],
+  errorSeatClientIds: new Set([2]),
+  collisionMapRef: { current: new Map<number, Set<number>>() },
   isSubmitting: false,
   setVenue: vi.fn(),
   setVenueSeats: vi.fn(),
   setErrors: vi.fn(),
-  setSelectedSeatIndices: vi.fn(),
+  setSelectedSeatClientIds: vi.fn(),
   onLayoutChangeStart: vi.fn(),
 };
 
@@ -83,7 +88,7 @@ describe("VenueLayoutEditor", () => {
 
   it("무대, 좌석, 범례를 렌더링하고 확대 및 포인터 이벤트를 전달한다", () => {
     mocks.interaction.zoom = 2;
-    const { container } = render(<VenueLayoutEditor {...props} selectedSeatIndices={[0, 1]} />);
+    const { container } = render(<VenueLayoutEditor {...props} selectedSeatClientIds={[1, 2]} />);
     expect(screen.getByText("STAGE")).toBeInTheDocument();
     expect(screen.getByText("2개 함께 이동")).toBeInTheDocument();
     expect(screen.getByText("미지정")).toBeInTheDocument();
@@ -105,7 +110,7 @@ describe("VenueLayoutEditor", () => {
     fireEvent.pointerDown(groups[0]);
     fireEvent.pointerDown(groups[1]);
     expect(mocks.startStageDrag).toHaveBeenCalled();
-    expect(mocks.startSeatDrag).toHaveBeenCalledWith(expect.anything(), 0);
+    expect(mocks.handlePointerDown).toHaveBeenCalled();
   });
 
   it("확대, 선택 드래그, Alt와 제출 중 상태를 표시한다", () => {
@@ -116,7 +121,7 @@ describe("VenueLayoutEditor", () => {
       isAltPressed: true,
       maxZoom: 2,
     });
-    const { container, rerender } = render(<VenueLayoutEditor {...props} selectedSeatIndices={[0]} />);
+    const { container, rerender } = render(<VenueLayoutEditor {...props} selectedSeatClientIds={[1]} />);
     expect(screen.getByText("200%")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "확대" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "화면 초기화" }));
@@ -127,7 +132,7 @@ describe("VenueLayoutEditor", () => {
     expect(mocks.startBackgroundDrag).toHaveBeenCalled();
     expect(mocks.startSelectedAreaDrag).toHaveBeenCalled();
 
-    rerender(<VenueLayoutEditor {...props} isSubmitting selectedSeatIndices={[]} />);
+    rerender(<VenueLayoutEditor {...props} isSubmitting selectedSeatClientIds={[]} />);
     expect(screen.getByRole("button", { name: "축소" })).toBeDisabled();
     expect(screen.getByRole("img")).toHaveClass("cursor-not-allowed");
   });
