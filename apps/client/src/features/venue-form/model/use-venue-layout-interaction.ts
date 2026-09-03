@@ -245,21 +245,32 @@ export const useVenueLayoutInteraction = ({
 
     let deltaX = point.x - dragState.pointerX;
     let deltaY = point.y - dragState.pointerY;
-    if (dragState.type === "stage") {
-      const halfWidth = Math.min(venue.stageWidth / 2, safeWidth / 2);
-      const halfHeight = Math.min(venue.stageHeight / 2, safeHeight / 2);
-      setVenue((current) => ({
-        ...current,
-        stagePositionX: Math.min(Math.max(dragState.originX + deltaX, halfWidth), safeWidth - halfWidth),
-        stagePositionY: Math.min(Math.max(dragState.originY + deltaY, halfHeight), safeHeight - halfHeight),
-      }));
-      return;
-    }
-
     const viewportLeft = pan.x;
     const viewportRight = pan.x + viewWidth;
     const viewportTop = pan.y;
     const viewportBottom = pan.y + viewHeight;
+    if (dragState.type === "stage") {
+      const halfWidth = venue.stageWidth / 2;
+      const halfHeight = venue.stageHeight / 2;
+
+      const minX = viewportLeft + halfWidth;
+      const maxX = viewportRight - halfWidth;
+      const minY = viewportTop + halfHeight;
+      const maxY = viewportBottom - halfHeight;
+      setVenue((current) => ({
+        ...current,
+        stagePositionX:
+          minX <= maxX
+            ? Math.min(Math.max(dragState.originX + deltaX, minX), maxX)
+            : Math.min(Math.max(dragState.originX + deltaX, halfWidth), safeWidth - halfWidth),
+        stagePositionY:
+          minY <= maxY
+            ? Math.min(Math.max(dragState.originY + deltaY, minY), maxY)
+            : Math.min(Math.max(dragState.originY + deltaY, halfHeight), safeHeight - halfHeight),
+      }));
+      return;
+    }
+
     const minDeltaX = Math.max(...dragState.origins.map((seat) => viewportLeft + VENUE_SEAT_WIDTH / 2 - seat.positionX));
     const maxDeltaX = Math.min(...dragState.origins.map((seat) => viewportRight - VENUE_SEAT_WIDTH / 2 - seat.positionX));
     const minDeltaY = Math.max(...dragState.origins.map((seat) => viewportTop + VENUE_SEAT_HEIGHT / 2 - seat.positionY));

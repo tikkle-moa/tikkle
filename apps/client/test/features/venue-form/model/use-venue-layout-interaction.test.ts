@@ -322,6 +322,67 @@ describe("useVenueLayoutInteraction", () => {
     expect(currentSeats[2]).toMatchObject({ positionX: 70, positionY: 40 });
   });
 
+  it("확대 상태에서는 무대를 현재 viewport 안으로 제한한다", () => {
+    let currentVenue = venue;
+    const props = {
+      venue,
+      venueSeats,
+      selectedSeatClientIdSet: new Set<number>(),
+      collisionMapRef: { current: new Map<number, Set<number>>() },
+      isSubmitting: false,
+      setVenue: vi.fn((update) => {
+        currentVenue = typeof update === "function" ? update(currentVenue) : update;
+      }),
+      setVenueSeats: vi.fn(),
+      setErrors: vi.fn(),
+      setSelectedSeatClientIds: vi.fn(),
+      onLayoutChangeStart: vi.fn(),
+    };
+    const { result } = renderHook(() => useVenueLayoutInteraction(props));
+    attachCoordinateSvg(result as ReturnType<typeof renderInteraction>["result"]);
+
+    act(() => result.current.applyZoom(1.25));
+    act(() => result.current.startStageDrag(createFullPointerEvent({ clientX: 50, clientY: 10 }) as never));
+    act(() => result.current.handlePointerMove(createFullPointerEvent({ clientX: 200, clientY: 200 }) as never));
+
+    expect(currentVenue.stagePositionX).toBe(result.current.pan.x + result.current.viewWidth - venue.stageWidth / 2);
+    expect(currentVenue.stagePositionY).toBe(result.current.pan.y + result.current.viewHeight - venue.stageHeight / 2);
+  });
+
+  it("무대가 viewport보다 크면 공연장 전체 경계로 제한한다", () => {
+    const largeStageVenue = {
+      ...venue,
+      stagePositionX: 50,
+      stagePositionY: 50,
+      stageWidth: 90,
+      stageHeight: 70,
+    };
+    let currentVenue = largeStageVenue;
+    const props = {
+      venue: largeStageVenue,
+      venueSeats,
+      selectedSeatClientIdSet: new Set<number>(),
+      collisionMapRef: { current: new Map<number, Set<number>>() },
+      isSubmitting: false,
+      setVenue: vi.fn((update) => {
+        currentVenue = typeof update === "function" ? update(currentVenue) : update;
+      }),
+      setVenueSeats: vi.fn(),
+      setErrors: vi.fn(),
+      setSelectedSeatClientIds: vi.fn(),
+      onLayoutChangeStart: vi.fn(),
+    };
+    const { result } = renderHook(() => useVenueLayoutInteraction(props));
+    attachCoordinateSvg(result as ReturnType<typeof renderInteraction>["result"]);
+
+    act(() => result.current.applyZoom(1.25));
+    act(() => result.current.startStageDrag(createFullPointerEvent({ clientX: 50, clientY: 50 }) as never));
+    act(() => result.current.handlePointerMove(createFullPointerEvent({ clientX: 200, clientY: 200 }) as never));
+
+    expect(currentVenue.stagePositionX).toBe(55);
+    expect(currentVenue.stagePositionY).toBe(65);
+  });
+
   it("선택 영역 드래그와 Alt 선택 전환 및 제출 중 입력 무시를 처리한다", () => {
     const { result, props } = renderInteraction();
     act(() => result.current.startSelectedAreaDrag(createFullPointerEvent() as never));
