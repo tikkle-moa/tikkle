@@ -12,6 +12,7 @@ import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
 import { PerformanceDetailPage } from "@pages/performance-detail";
 import { PerformanceNewPage } from "@pages/performance-new";
 import { SearchPage } from "@pages/search";
+import { VenueDetailPage } from "@pages/venue-detail";
 
 import AdminGuard from "./AdminGuard";
 import AppLayout from "./AppLayout";
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
           { path: ROUTE_PATHS.CONCERT_LIST, element: <ConcertListPage /> },
           { path: ROUTE_PATHS.CONCERT_DETAIL, element: <ConcertDetailPage /> },
           { path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> },
+          { path: ROUTE_PATHS.VENUE_DETAIL, element: <VenueDetailPage /> },
           {
             element: <AdminGuard />,
             children: [
