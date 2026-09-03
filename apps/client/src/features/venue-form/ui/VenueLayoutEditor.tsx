@@ -9,7 +9,7 @@ import VenueSeatLayout from "./VenueSeatLayout";
 import { useVenueLayoutInteraction } from "../model/use-venue-layout-interaction";
 import { useVenueLayoutSelection } from "../model/use-venue-layout-selection";
 import type { VenueFormErrors, VenueFormSeat } from "../model/venue-form.types";
-import { VENUE_LAYOUT_MIN_ZOOM, VENUE_LAYOUT_ZOOM_FACTOR } from "../model/venue-layout.constants";
+import { VENUE_LAYOUT_ASPECT_RATIO, VENUE_LAYOUT_MIN_ZOOM, VENUE_LAYOUT_ZOOM_FACTOR } from "../model/venue-layout.constants";
 import { getLayoutClassName, getSectionColor } from "../model/venue-layout.utils";
 
 interface VenueLayoutEditorProps {
@@ -117,7 +117,8 @@ const VenueLayoutEditor = ({
         <svg
           ref={svgRef}
           aria-label="공연장 좌석 배치 편집기"
-          className={`aspect-16/10 w-full rounded-xl bg-slate-900 outline-none select-none focus:outline-none ${getLayoutClassName(isSubmitting, dragState, isAltPressed)}`}
+          className={`w-full rounded-xl bg-slate-900 outline-none select-none focus:outline-none ${getLayoutClassName(isSubmitting, dragState, isAltPressed)}`}
+          style={{ aspectRatio: VENUE_LAYOUT_ASPECT_RATIO }}
           onPointerMove={handlePointerMove}
           onKeyDown={handleKeyDown}
           onPointerUp={finishDrag}

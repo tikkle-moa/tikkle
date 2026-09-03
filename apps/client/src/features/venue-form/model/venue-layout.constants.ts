@@ -1,5 +1,6 @@
 export const VENUE_SEAT_CHUNK_SIZE = 128;
 
+export const VENUE_LAYOUT_ASPECT_RATIO = 16 / 10;
 export const VENUE_LAYOUT_MIN_ZOOM = 1;
 export const VENUE_LAYOUT_MIN_VISIBLE_SIZE = 50;
 export const VENUE_LAYOUT_ZOOM_FACTOR = 1.5;

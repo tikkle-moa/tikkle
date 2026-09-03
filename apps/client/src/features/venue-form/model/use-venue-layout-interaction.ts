@@ -16,6 +16,7 @@ import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
 import { replaceVenueSeatCollisionErrors } from "./venue-form.utils";
 import {
   DOUBLE_CLICK_DELAY_MS,
+  VENUE_LAYOUT_ASPECT_RATIO,
   VENUE_LAYOUT_MIN_VISIBLE_SIZE,
   VENUE_LAYOUT_MIN_ZOOM,
   VENUE_LAYOUT_WHEEL_ZOOM_FACTOR,
@@ -67,7 +68,6 @@ export const useVenueLayoutInteraction = ({
 
   const safeWidth = Math.max(venue.width, 1);
   const safeHeight = Math.max(venue.height, 1);
-  const VENUE_LAYOUT_ASPECT_RATIO = 16 / 10;
   const baseViewWidth = Math.min(safeWidth, safeHeight * VENUE_LAYOUT_ASPECT_RATIO);
   const baseViewHeight = baseViewWidth / VENUE_LAYOUT_ASPECT_RATIO;
   const viewWidth = baseViewWidth / zoom;
