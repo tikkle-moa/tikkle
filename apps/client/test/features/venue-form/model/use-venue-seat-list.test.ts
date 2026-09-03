@@ -24,7 +24,7 @@ describe("useVenueSeatList", () => {
     expect(result.current.firstVisibleRow).toBeGreaterThan(0);
   });
 
-  it("선택된 좌석을 맨 앞에, 오류 좌석을 다음에 두고 나머지는 원래 순서를 유지한다", () => {
+  it("오류 좌석을 맨 앞에 두고 나머지는 원래 순서를 유지한다", () => {
     const { result } = renderHook(() =>
       useVenueSeatList({
         venueSeats: seats,
@@ -34,7 +34,7 @@ describe("useVenueSeatList", () => {
       }),
     );
 
-    expect(result.current.visibleSeats.slice(0, 4).map((seat) => seat.clientId)).toEqual([5, 10, 20, 30]);
+    expect(result.current.visibleSeats.slice(0, 4).map((seat) => seat.clientId)).toEqual([20, 30, 0, 1]);
   });
 
   it("일반 클릭과 Shift 추가 및 해제를 처리한다", () => {

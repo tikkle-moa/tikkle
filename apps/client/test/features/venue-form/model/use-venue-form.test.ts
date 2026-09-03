@@ -2,12 +2,13 @@ import type { SubmitEvent } from "react";
 
 import { act, renderHook } from "@testing-library/react";
 
-import type { CreateVenueDetailRequest } from "@entities/venue";
+import type { VenueDetailResponse } from "@entities/venue";
 
 import { useVenueForm } from "@features/venue-form/model/use-venue-form";
 
-const initialValues: CreateVenueDetailRequest = {
+const initialValues: VenueDetailResponse = {
   venue: {
+    id: 1,
     name: "공연장",
     address: "서울시",
     description: null,
@@ -17,8 +18,21 @@ const initialValues: CreateVenueDetailRequest = {
     stagePositionY: 10,
     stageWidth: 40,
     stageHeight: 10,
+    createdAt: "2026-09-04T00:00:00Z",
   },
-  venueSeats: [{ sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 10_000, positionX: 20, positionY: 30 }],
+  venueSeats: [
+    {
+      id: 1,
+      venueId: 1,
+      sectionName: "A",
+      seatNumber: 1,
+      seatLabel: "A1",
+      price: 10_000,
+      positionX: 20,
+      positionY: 30,
+      createdAt: "2026-09-04T00:00:00Z",
+    },
+  ],
 };
 
 const submitEvent = { preventDefault: vi.fn() } as unknown as SubmitEvent<HTMLFormElement>;
@@ -31,8 +45,20 @@ describe("useVenueForm", () => {
     };
     const { result } = renderHook(() => useVenueForm({ initialValues: invalidInitialValues, submitState: { status: "idle" }, onSubmit: vi.fn() }));
 
-    expect(result.current.venue).toEqual(invalidInitialValues.venue);
-    expect(result.current.venueSeats).toEqual([{ clientId: 1, ...initialValues.venueSeats[0] }]);
+    expect(result.current.venue).toEqual({
+      name: " ",
+      address: "서울시",
+      description: null,
+      width: 100,
+      height: 100,
+      stagePositionX: 50,
+      stagePositionY: 10,
+      stageWidth: 40,
+      stageHeight: 10,
+    });
+    expect(result.current.venueSeats).toEqual([
+      { clientId: 1, sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 10_000, positionX: 20, positionY: 30 },
+    ]);
 
     await act(() => result.current.handleSubmit(submitEvent));
 
@@ -70,7 +96,9 @@ describe("useVenueForm", () => {
     const onSubmit = vi.fn();
     const { result } = renderHook(() => useVenueForm({ initialValues, submitState: { status: "idle" }, onSubmit }));
     await act(() => result.current.handleSubmit(submitEvent));
-    expect(onSubmit).toHaveBeenCalledWith(initialValues);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "공연장", address: "서울시" }), [
+      expect.objectContaining({ clientId: 1, sectionName: "A", seatNumber: 1 }),
+    ]);
   });
 
   it("좌석 목록을 변경할 때 제출 검증 오류를 미리 노출하지 않는다", () => {
@@ -96,7 +124,7 @@ describe("useVenueForm", () => {
       ...initialValues,
       venueSeats: [
         initialValues.venueSeats[0],
-        { ...initialValues.venueSeats[0], sectionName: "B", seatNumber: 2, seatLabel: "B2", positionX: 24, positionY: 33 },
+        { ...initialValues.venueSeats[0], id: 2, sectionName: "B", seatNumber: 2, seatLabel: "B2", positionX: 24, positionY: 33 },
       ],
     };
     const { result } = renderHook(() =>

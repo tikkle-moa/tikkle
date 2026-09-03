@@ -7,6 +7,7 @@ import {
   getVenueSeatClassName,
   replaceVenueSeatCollisionErrors,
   toCreateVenueRequest,
+  toCreateVenueSeatRequest,
   validateVenueForm,
 } from "@features/venue-form/model/venue-form.utils";
 
@@ -101,20 +102,19 @@ describe("venue form utils", () => {
   });
 
   it("제출 요청의 문자열 앞뒤 공백을 제거한다", () => {
-    expect(
-      toCreateVenueRequest({ ...venue, name: " 공연장 ", address: " 서울시 ", description: " 설명 " }, [
-        { ...seats[0], sectionName: " A ", seatLabel: " A1 " },
-      ]),
-    ).toEqual({
-      venue: { ...venue, name: "공연장", address: "서울시", description: "설명" },
-      venueSeats: [{ sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 50_000, positionX: 20, positionY: 30 }],
+    expect(toCreateVenueRequest({ ...venue, name: " 공연장 ", address: " 서울시 ", description: " 설명 " })).toEqual({
+      ...venue,
+      name: "공연장",
+      address: "서울시",
+      description: "설명",
     });
+    expect(toCreateVenueSeatRequest([{ ...seats[0], sectionName: " A ", seatLabel: " A1 " }])).toEqual([
+      { clientId: 1, sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 50_000, positionX: 20, positionY: 30 },
+    ]);
   });
 
   it("공연장 설명이 null이면 생성 요청에도 null을 유지한다", () => {
-    expect(toCreateVenueRequest({ ...venue, description: null }, [])).toMatchObject({
-      venue: { description: null },
-    });
+    expect(toCreateVenueRequest({ ...venue, description: null })).toMatchObject({ description: null });
   });
 
   it("문자열 최대 길이와 빈 좌석 목록을 검증한다", () => {
@@ -218,7 +218,7 @@ describe("venue form utils", () => {
   });
 
   it("좌석 목록 상태에 맞는 클래스를 반환한다", () => {
-    expect(getVenueSeatClassName(true, true)).toContain("border-red-300");
+    expect(getVenueSeatClassName(true, true)).toContain("border-red-400");
     expect(getVenueSeatClassName(false, true)).toContain("border-violet-300");
     expect(getVenueSeatClassName(false, false)).toContain("border-slate-200");
   });

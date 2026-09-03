@@ -1,13 +1,14 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import type { CreateVenueDetailRequest } from "@entities/venue";
+import type { VenueDetailResponse } from "@entities/venue";
 
 import VenueForm from "@features/venue-form/ui/VenueForm";
 
 vi.mock("@features/venue-form/ui/VenueSeatForm", () => ({ default: () => <div>좌석 폼</div> }));
 
-const initialValues: CreateVenueDetailRequest = {
+const initialValues: VenueDetailResponse = {
   venue: {
+    id: 1,
     name: "공연장",
     address: "서울시",
     description: "설명",
@@ -17,8 +18,21 @@ const initialValues: CreateVenueDetailRequest = {
     stagePositionY: 10,
     stageWidth: 40,
     stageHeight: 10,
+    createdAt: "2026-09-04T00:00:00Z",
   },
-  venueSeats: [{ sectionName: "A", seatNumber: 1, seatLabel: "A1", price: 10_000, positionX: 20, positionY: 30 }],
+  venueSeats: [
+    {
+      id: 1,
+      venueId: 1,
+      sectionName: "A",
+      seatNumber: 1,
+      seatLabel: "A1",
+      price: 10_000,
+      positionX: 20,
+      positionY: 30,
+      createdAt: "2026-09-04T00:00:00Z",
+    },
+  ],
 };
 
 describe("VenueForm", () => {
@@ -38,9 +52,7 @@ describe("VenueForm", () => {
     fireEvent.change(screen.getByLabelText(/무대 가로/), { target: { value: "42" } });
     fireEvent.change(screen.getByLabelText(/무대 세로/), { target: { value: "12" } });
     fireEvent.click(screen.getByRole("button", { name: "공연장 등록" }));
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ venue: expect.objectContaining({ name: "새 공연장", description: "새 설명", width: 120 }) }),
-    );
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "새 공연장", description: "새 설명", width: 120 }), expect.any(Array));
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(onCancel).toHaveBeenCalledOnce();
   });
