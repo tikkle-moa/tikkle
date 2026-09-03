@@ -5,7 +5,7 @@ import { CircleAlert } from "lucide-react";
 import { useVenueSeatList } from "../model/use-venue-seat-list";
 import type { VenueFormSeat } from "../model/venue-form.types";
 import { getVenueSeatClassName } from "../model/venue-form.utils";
-import { ITEMS_PER_ROW, ROW_HEIGHT, VIEWPORT_HEIGHT } from "../model/venue-seat-list.constants";
+import { ITEMS_PER_ROW, ROW_HEIGHT } from "../model/venue-seat-list.constants";
 
 interface VenueSeatListProps {
   venueSeats: VenueFormSeat[];
@@ -19,7 +19,7 @@ const VenueSeatList = ({ venueSeats, selectedSeatClientIdSet, errorSeatClientIds
 
   return (
     <div
-      className={`max-h-[${VIEWPORT_HEIGHT}px] scrollbar-thin overflow-y-auto rounded-xl border border-slate-200 bg-slate-50`}
+      className={`max-h-64 scrollbar-thin overflow-y-auto rounded-xl border border-slate-200 bg-slate-50`}
       onClick={handleClick}
       onScroll={handleScroll}
     >
