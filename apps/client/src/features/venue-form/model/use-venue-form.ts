@@ -2,16 +2,16 @@ import { type SubmitEvent, useEffect, useRef, useState } from "react";
 
 import type { SubmitState } from "@shared/model/form.types";
 
-import type { CreateVenueDetailRequest, CreateVenueRequest } from "@entities/venue";
+import type { CreateVenueRequest, VenueDetailResponse } from "@entities/venue";
 
 import { EMPTY_VENUE_FORM_VALUES } from "./venue-form.constants";
 import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
-import { getErrorSections, toCreateVenueRequest, validateVenueForm } from "./venue-form.utils";
+import { getErrorSections, toCreateVenueRequest, toCreateVenueSeatRequest, validateVenueForm } from "./venue-form.utils";
 
 interface UseVenueFormProps {
-  initialValues?: CreateVenueDetailRequest;
+  initialValues?: VenueDetailResponse;
   submitState: SubmitState;
-  onSubmit: (values: CreateVenueDetailRequest) => void | Promise<void>;
+  onSubmit: (venue: CreateVenueRequest, venueSeats: VenueFormSeat[]) => void | Promise<void>;
 }
 
 export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueFormProps) => {
@@ -26,7 +26,9 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
 
     const initializeForm = () => {
       setVenue({ ...initialValues.venue });
-      setVenueSeats(initialValues.venueSeats.map((seat) => ({ clientId: venueSeatClientIdRef.current++, ...seat })));
+      setVenueSeats(initialValues.venueSeats.map((seat) => ({ clientId: seat.id, ...seat })));
+      const maxClientId = Math.max(0, ...initialValues.venueSeats.map((seat) => seat.id));
+      venueSeatClientIdRef.current = maxClientId + 1;
       setErrors({});
     };
 
@@ -45,7 +47,7 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    await onSubmit(toCreateVenueRequest(venue, venueSeats));
+    await onSubmit(toCreateVenueRequest(venue), toCreateVenueSeatRequest(venueSeats));
   };
 
   const errorKeys = Object.entries(errors).flatMap(([key, message]) => (message ? [key] : []));

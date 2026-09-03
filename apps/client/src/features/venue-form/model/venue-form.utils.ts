@@ -1,6 +1,6 @@
 import { toRound } from "@shared/lib/number.utils";
 
-import { type CreateVenueDetailRequest, type CreateVenueRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
+import { type CreateVenueRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 import { BASIC_ERROR_KEYS, LAYOUT_ERROR_KEYS, VENUE_FORM_LIMITS } from "./venue-form.constants";
 import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
@@ -133,27 +133,28 @@ export const replaceVenueSeatCollisionErrors = (
   return nextErrors;
 };
 
-export const toCreateVenueRequest = (venue: CreateVenueRequest, venueSeats: VenueFormSeat[]): CreateVenueDetailRequest => ({
-  venue: {
-    name: venue.name.trim(),
-    address: venue.address.trim(),
-    description: venue.description === null ? null : venue.description.trim(),
-    width: toRound(venue.width, 2),
-    height: toRound(venue.height, 2),
-    stagePositionX: toRound(venue.stagePositionX, 2),
-    stagePositionY: toRound(venue.stagePositionY, 2),
-    stageWidth: toRound(venue.stageWidth, 2),
-    stageHeight: toRound(venue.stageHeight, 2),
-  },
-  venueSeats: venueSeats.map((seat) => ({
+export const toCreateVenueRequest = (venue: CreateVenueRequest): CreateVenueRequest => ({
+  name: venue.name.trim(),
+  address: venue.address.trim(),
+  description: venue.description?.trim() || null,
+  width: toRound(venue.width, 2),
+  height: toRound(venue.height, 2),
+  stagePositionX: toRound(venue.stagePositionX, 2),
+  stagePositionY: toRound(venue.stagePositionY, 2),
+  stageWidth: toRound(venue.stageWidth, 2),
+  stageHeight: toRound(venue.stageHeight, 2),
+});
+
+export const toCreateVenueSeatRequest = (venueSeats: VenueFormSeat[]): VenueFormSeat[] =>
+  venueSeats.map((seat) => ({
+    clientId: seat.clientId,
     sectionName: seat.sectionName.trim(),
     seatNumber: toRound(seat.seatNumber, 0),
     seatLabel: seat.seatLabel.trim(),
     price: toRound(seat.price, 0),
     positionX: toRound(seat.positionX, 2),
     positionY: toRound(seat.positionY, 2),
-  })),
-});
+  }));
 
 export const createVenueSeat = (venueWidth: number, venueHeight: number, clientId: number): VenueFormSeat => {
   const minX = VENUE_SEAT_WIDTH / 2;

@@ -2,20 +2,20 @@ import { AlertCircle, Building2, CircleAlert, LoaderCircle } from "lucide-react"
 
 import type { SubmitState } from "@shared/model/form.types";
 
-import type { CreateVenueDetailRequest } from "@entities/venue";
+import type { CreateVenueRequest, VenueDetailResponse } from "@entities/venue";
 
 import VenueInfoForm from "./VenueInfoForm";
 import VenueSeatForm from "./VenueSeatForm";
 import VenueStageForm from "./VenueStageForm";
 
 import { useVenueForm } from "../model/use-venue-form";
-import type { VenueFormMode } from "../model/venue-form.types";
+import type { VenueFormMode, VenueFormSeat } from "../model/venue-form.types";
 
 interface VenueFormProps {
   mode: VenueFormMode;
-  initialValues?: CreateVenueDetailRequest;
+  initialValues?: VenueDetailResponse;
   submitState: SubmitState;
-  onSubmit: (values: CreateVenueDetailRequest) => void | Promise<void>;
+  onSubmit: (venue: CreateVenueRequest, venueSeats: VenueFormSeat[]) => void | Promise<void>;
   onCancel?: () => void;
 }
 
