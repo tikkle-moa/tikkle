@@ -15,7 +15,12 @@ interface VenueSeatListProps {
 }
 
 const VenueSeatList = ({ venueSeats, selectedSeatClientIdSet, errorSeatClientIds, setSelectedSeatClientIds }: VenueSeatListProps) => {
-  const { rowCount, firstVisibleRow, visibleSeats, handleClick, handleScroll } = useVenueSeatList({ venueSeats, setSelectedSeatClientIds });
+  const { rowCount, firstVisibleRow, visibleSeats, handleClick, handleScroll } = useVenueSeatList({
+    venueSeats,
+    selectedSeatClientIdSet,
+    errorSeatClientIds,
+    setSelectedSeatClientIds,
+  });
 
   return (
     <div
@@ -24,26 +29,25 @@ const VenueSeatList = ({ venueSeats, selectedSeatClientIdSet, errorSeatClientIds
       onScroll={handleScroll}
     >
       <div
-        className={`grid grid-cols-${ITEMS_PER_ROW} content-start gap-2 px-3`}
-        style={{ height: rowCount * ROW_HEIGHT + 24, paddingTop: firstVisibleRow * ROW_HEIGHT + 12 }}
+        className="grid content-start gap-2 px-3"
+        style={{
+          height: rowCount * ROW_HEIGHT + 24,
+          paddingTop: firstVisibleRow * ROW_HEIGHT + 12,
+          gridTemplateColumns: `repeat(${ITEMS_PER_ROW}, minmax(0, 1fr))`,
+        }}
       >
-        {visibleSeats.map((seat) => {
-          const isSelected = selectedSeatClientIdSet.has(seat.clientId);
-          const hasError = errorSeatClientIds.has(seat.clientId);
-
-          return (
-            <button
-              key={seat.clientId}
-              type="button"
-              className={`flex min-w-0 items-center justify-center gap-2 truncate rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${getVenueSeatClassName(hasError, isSelected)}`}
-              data-seat-client-id={seat.clientId}
-              title={seat.seatLabel.trim() || `좌석 ${seat.clientId}`}
-            >
-              {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />}
-              <span className="truncate">{seat.seatLabel.trim() || `좌석 ${seat.clientId}`}</span>
-            </button>
-          );
-        })}
+        {visibleSeats.map(({ clientId, seatLabel, isSelected, hasError }) => (
+          <button
+            key={clientId}
+            type="button"
+            className={`flex min-w-0 items-center justify-center gap-2 truncate rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${getVenueSeatClassName(hasError, isSelected)}`}
+            data-seat-client-id={clientId}
+            title={seatLabel.trim() || `좌석 ${clientId}`}
+          >
+            {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />}
+            <span className="truncate">{seatLabel.trim() || `좌석 ${clientId}`}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
