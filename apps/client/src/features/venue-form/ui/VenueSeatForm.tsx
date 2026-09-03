@@ -1,10 +1,10 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, RefObject, SetStateAction } from "react";
 
 import { Armchair, CircleAlert, Plus, Trash2, Undo2 } from "lucide-react";
 
 import { toRound } from "@shared/lib/number.utils";
 
-import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueRequest } from "@entities/venue";
 
 import SeatBatchCreator from "./SeatBatchCreator";
 import VenueFormNumberInput from "./VenueFormNumberInput";
@@ -12,32 +12,34 @@ import VenueFormTextInput from "./VenueFormTextInput";
 import VenueLayoutEditor from "./VenueLayoutEditor";
 
 import { useVenueSeatForm } from "../model/use-venue-seat-form";
-import type { VenueFormErrors } from "../model/venue-form.types";
+import type { VenueFormErrors, VenueFormSeat } from "../model/venue-form.types";
 import { getVenueSeatClassName } from "../model/venue-form.utils";
 
 interface VenueSeatFormProps {
   venue: CreateVenueRequest;
-  venueSeats: CreateVenueSeatRequest[];
+  venueSeats: VenueFormSeat[];
   errors: VenueFormErrors;
+  venueSeatClientIdRef: RefObject<number>;
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
-  setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
+  setVenueSeats: Dispatch<SetStateAction<VenueFormSeat[]>>;
   setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
 }
 
-const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setVenueSeats, setErrors }: VenueSeatFormProps) => {
+const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubmitting, setVenue, setVenueSeats, setErrors }: VenueSeatFormProps) => {
   const {
-    selectedSeatIndices,
-    errorSeatIndices,
+    selectedSeatClientIds,
+    errorSeatClientIds,
     canUndo,
-    setSelectedSeatIndices,
+    setSelectedSeatClientIds,
     saveLayoutSnapshot,
     handleUndo,
     handleAddSeat,
     handleAddSeats,
     handleRemoveSelectedSeats,
     updateVenueSeat,
-  } = useVenueSeatForm({ venue, venueSeats, errors, setVenue, setVenueSeats, setErrors });
+  } = useVenueSeatForm({ venue, venueSeats, errors, venueSeatClientIdRef, setVenueSeats, setErrors });
+  const currentSeat = selectedSeatClientIds.length === 1 ? venueSeats.find((seat) => seat.clientId === selectedSeatClientIds[0]) : null;
 
   return (
     <section className="space-y-6 p-4 sm:p-6">
@@ -75,22 +77,23 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
         <VenueLayoutEditor
           venue={venue}
           venueSeats={venueSeats}
-          selectedSeatIndices={selectedSeatIndices}
-          errorSeatIndices={errorSeatIndices}
+          selectedSeatClientIds={selectedSeatClientIds}
+          errorSeatClientIds={errorSeatClientIds}
           isSubmitting={isSubmitting}
           setVenue={setVenue}
           setVenueSeats={setVenueSeats}
-          setSelectedSeatIndices={setSelectedSeatIndices}
+          setErrors={setErrors}
+          setSelectedSeatClientIds={setSelectedSeatClientIds}
           onLayoutChangeStart={saveLayoutSnapshot}
         />
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-          {selectedSeatIndices.length > 1 && (
+          {selectedSeatClientIds.length > 1 && (
             <div className="flex min-h-52 flex-col items-center justify-center text-center">
               <span className="flex size-12 items-center justify-center rounded-full bg-violet-100 text-violet-600">
                 <Armchair className="size-5" aria-hidden />
               </span>
-              <p className="mt-3 text-sm font-bold text-slate-900">좌석 {selectedSeatIndices.length}개 선택됨</p>
+              <p className="mt-3 text-sm font-bold text-slate-900">좌석 {selectedSeatClientIds.length}개 선택됨</p>
               <p className="mt-1 max-w-64 text-xs leading-5 text-slate-500">선택 영역을 드래그하면 좌석을 함께 이동할 수 있습니다.</p>
               <button
                 className="mt-4 flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
@@ -102,12 +105,12 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
               </button>
             </div>
           )}
-          {selectedSeatIndices.length === 1 && (
+          {selectedSeatClientIds.length === 1 && currentSeat && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-slate-900">선택 좌석 편집</p>
-                  <p className="mt-0.5 text-xs text-slate-500">목록 번호 {selectedSeatIndices[0] + 1}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">목록 번호 {selectedSeatClientIds[0] + 1}</p>
                 </div>
                 <button
                   aria-label="선택 좌석 삭제"
@@ -123,66 +126,66 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
                 <VenueFormTextInput
                   id="selected-seat-section"
                   label="구역명"
-                  value={venueSeats[selectedSeatIndices[0]].sectionName}
-                  error={errors[`seat.${selectedSeatIndices[0]}.sectionName`]}
+                  value={currentSeat.sectionName}
+                  error={errors[`seat.${selectedSeatClientIds[0]}.sectionName`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "sectionName", value)}
+                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "sectionName", value)}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-number"
                   label="좌석 번호"
-                  value={venueSeats[selectedSeatIndices[0]].seatNumber}
+                  value={currentSeat.seatNumber}
                   min={1}
                   max={null}
-                  error={errors[`seat.${selectedSeatIndices[0]}.seatNumber`]}
+                  error={errors[`seat.${selectedSeatClientIds[0]}.seatNumber`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "seatNumber", toRound(value))}
+                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "seatNumber", toRound(value))}
                 />
                 <VenueFormTextInput
                   id="selected-seat-label"
                   label="좌석 표시"
-                  value={venueSeats[selectedSeatIndices[0]].seatLabel}
-                  error={errors[`seat.${selectedSeatIndices[0]}.seatLabel`]}
+                  value={currentSeat.seatLabel}
+                  error={errors[`seat.${selectedSeatClientIds[0]}.seatLabel`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "seatLabel", value)}
+                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "seatLabel", value)}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-price"
                   label="가격 (원)"
-                  value={venueSeats[selectedSeatIndices[0]].price}
+                  value={currentSeat.price}
                   max={null}
-                  error={errors[`seat.${selectedSeatIndices[0]}.price`]}
+                  error={errors[`seat.${selectedSeatClientIds[0]}.price`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "price", toRound(value))}
+                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "price", toRound(value))}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-x"
                   label="X 좌표"
-                  value={venueSeats[selectedSeatIndices[0]].positionX}
+                  value={currentSeat.positionX}
                   max={venue.width}
-                  error={errors[`seat.${selectedSeatIndices[0]}.positionX`]}
+                  error={errors[`seat.${selectedSeatClientIds[0]}.positionX`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "positionX", toRound(value, 2))}
+                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "positionX", toRound(value, 2))}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-y"
                   label="Y 좌표"
-                  value={venueSeats[selectedSeatIndices[0]].positionY}
+                  value={currentSeat.positionY}
                   max={venue.height}
-                  error={errors[`seat.${selectedSeatIndices[0]}.positionY`]}
+                  error={errors[`seat.${selectedSeatClientIds[0]}.positionY`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatIndices[0], "positionY", toRound(value, 2))}
+                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "positionY", toRound(value, 2))}
                 />
               </div>
             </div>
           )}
-          {selectedSeatIndices.length === 0 && (
+          {selectedSeatClientIds.length === 0 && (
             <div className="flex min-h-52 flex-col items-center justify-center text-center">
               <span className="flex size-12 items-center justify-center rounded-full bg-slate-200 text-slate-500">
                 <Armchair className="size-5" aria-hidden />
@@ -196,29 +199,38 @@ const VenueSeatForm = ({ venue, venueSeats, errors, isSubmitting, setVenue, setV
 
       {venueSeats.length > 0 && (
         <div className="flex max-h-32 scrollbar-thin flex-wrap gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-          {venueSeats.map((seat, index) => {
-            const hasError = errorSeatIndices.has(index);
-            const isSelected = selectedSeatIndices.includes(index);
+          {venueSeats.map((seat) => {
+            const hasError = errorSeatClientIds.has(seat.clientId);
+            const isSelected = selectedSeatClientIds.includes(seat.clientId);
             return (
               <button
                 className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${getVenueSeatClassName(hasError, isSelected)}`}
-                key={`${seat.sectionName}-${seat.seatNumber}-${index}`}
+                key={seat.clientId}
                 onClick={(event) =>
-                  setSelectedSeatIndices((current) => {
-                    if (!event.shiftKey) return [index];
-                    return current.includes(index) ? current.filter((selectedIndex) => selectedIndex !== index) : [...current, index];
+                  setSelectedSeatClientIds((current) => {
+                    if (!event.shiftKey) return [seat.clientId];
+                    return current.includes(seat.clientId)
+                      ? current.filter((selectedId) => selectedId !== seat.clientId)
+                      : [...current, seat.clientId];
                   })
                 }
                 type="button"
               >
-                {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />} {seat.seatLabel.trim() || `좌석 ${index + 1}`}
+                {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />}{" "}
+                {seat.seatLabel.trim() || `좌석 ${seat.clientId}`} ({seat.clientId})
               </button>
             );
           })}
         </div>
       )}
 
-      <SeatBatchCreator venue={venue} venueSeats={venueSeats} isSubmitting={isSubmitting} onAddSeats={handleAddSeats} />
+      <SeatBatchCreator
+        venue={venue}
+        venueSeats={venueSeats}
+        venueSeatClientIdRef={venueSeatClientIdRef}
+        isSubmitting={isSubmitting}
+        onAddSeats={handleAddSeats}
+      />
     </section>
   );
 };

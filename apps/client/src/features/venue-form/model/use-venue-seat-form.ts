@@ -1,34 +1,38 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
+import { type Dispatch, type RefObject, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
 
-import type { VenueFormErrors } from "./venue-form.types";
+import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
 import { createVenueSeat } from "./venue-form.utils";
 
 interface UseVenueSeatFormProps {
   venue: CreateVenueRequest;
-  venueSeats: CreateVenueSeatRequest[];
+  venueSeats: VenueFormSeat[];
   errors: VenueFormErrors;
-  setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
-  setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
+  venueSeatClientIdRef: RefObject<number>;
+  setVenueSeats: Dispatch<SetStateAction<VenueFormSeat[]>>;
   setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
 }
 
-export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
-  const [selectedSeatIndices, setSelectedSeatIndices] = useState<number[]>([]);
-  const historyRef = useRef<CreateVenueDetailRequest[]>([]);
+export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, setVenueSeats, setErrors }: UseVenueSeatFormProps) => {
+  const [selectedSeatClientIds, setSelectedSeatClientIds] = useState<number[]>([]);
+  const historyRef = useRef<VenueFormSeat[][]>([]);
   const [canUndo, setCanUndo] = useState(false);
 
-  const errorSeatIndices = new Set(
-    Object.entries(errors).flatMap(([key, value]) => {
-      if (!value) return [];
-      const match = key.match(/^seat\.(\d+)\./);
-      return match ? [Number(match[1])] : [];
-    }),
+  const errorSeatClientIds = useMemo(
+    () =>
+      new Set(
+        Object.entries(errors).flatMap(([key, value]) => {
+          if (!value) return [];
+          const match = key.match(/^seat\.(\d+)\./);
+          return match ? [Number(match[1])] : [];
+        }),
+      ),
+    [errors],
   );
 
   const saveLayoutSnapshot = () => {
-    historyRef.current = [...historyRef.current.slice(-49), { venue: { ...venue }, venueSeats: venueSeats.map((seat) => ({ ...seat })) }];
+    historyRef.current = [...historyRef.current.slice(-49), venueSeats.map((seat) => ({ ...seat }))];
     setCanUndo(true);
   };
 
@@ -36,11 +40,10 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenue
     const snapshot = historyRef.current.at(-1);
     if (!snapshot) return;
     historyRef.current = historyRef.current.slice(0, -1);
-    setVenue(snapshot.venue);
-    setVenueSeats(snapshot.venueSeats);
+    setVenueSeats(snapshot);
     setCanUndo(historyRef.current.length > 0);
-    setSelectedSeatIndices([]);
-  }, [setVenue, setVenueSeats]);
+    setSelectedSeatClientIds([]);
+  }, [setVenueSeats]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -56,34 +59,35 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, setVenue, setVenue
 
   const handleAddSeat = () => {
     saveLayoutSnapshot();
-    setVenueSeats((current) => [...current, createVenueSeat(venue.width, venue.height)]);
-    setSelectedSeatIndices([venueSeats.length]);
+    const nextClientId = venueSeatClientIdRef.current++;
+    setVenueSeats((current) => [...current, createVenueSeat(venue.width, venue.height, nextClientId)]);
+    setSelectedSeatClientIds([nextClientId]);
   };
 
-  const handleAddSeats = (seats: CreateVenueSeatRequest[]) => {
+  const handleAddSeats = (seats: VenueFormSeat[]) => {
     saveLayoutSnapshot();
     setVenueSeats((current) => [...current, ...seats]);
   };
 
   const handleRemoveSelectedSeats = () => {
-    if (selectedSeatIndices.length === 0) return;
+    if (selectedSeatClientIds.length === 0) return;
     saveLayoutSnapshot();
-    const selectedSet = new Set(selectedSeatIndices);
-    setVenueSeats((current) => current.filter((_, seatIndex) => !selectedSet.has(seatIndex)));
-    setSelectedSeatIndices([]);
+    const selectedSet = new Set(selectedSeatClientIds);
+    setVenueSeats((current) => current.filter((seat) => !selectedSet.has(seat.clientId)));
+    setSelectedSeatClientIds([]);
   };
 
-  const updateVenueSeat = <K extends keyof CreateVenueSeatRequest>(index: number, field: K, value: CreateVenueSeatRequest[K]) => {
+  const updateVenueSeat = <K extends keyof CreateVenueSeatRequest>(clientId: number, field: K, value: CreateVenueSeatRequest[K]) => {
     saveLayoutSnapshot();
-    setVenueSeats((current) => current.map((seat, seatIndex) => (seatIndex === index ? { ...seat, [field]: value } : seat)));
-    setErrors(({ [`seat.${index}.${field}`]: _, ...next }) => next);
+    setVenueSeats((current) => current.map((seat) => (seat.clientId === clientId ? { ...seat, [field]: value } : seat)));
+    setErrors(({ [`seat.${clientId}.${field}`]: _, ...next }) => next);
   };
 
   return {
-    selectedSeatIndices,
-    errorSeatIndices,
+    selectedSeatClientIds,
+    errorSeatClientIds,
     canUndo,
-    setSelectedSeatIndices,
+    setSelectedSeatClientIds,
     saveLayoutSnapshot,
     handleUndo,
     handleAddSeat,

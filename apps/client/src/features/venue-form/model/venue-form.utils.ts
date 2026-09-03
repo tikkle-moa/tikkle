@@ -1,14 +1,17 @@
 import { toRound } from "@shared/lib/number.utils";
 
-import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueDetailRequest, CreateVenueRequest } from "@entities/venue";
 
 import { BASIC_ERROR_KEYS, LAYOUT_ERROR_KEYS, VENUE_FORM_LIMITS } from "./venue-form.constants";
-import type { VenueFormErrors } from "./venue-form.types";
+import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
 import { getVenueSeatCollisionMap } from "./venue-seat-collision.utils";
 
-const getVenueSeatCollisionError = (venueSeats: CreateVenueSeatRequest[], collidingIndices: Set<number>) => {
-  const seatNames = [...collidingIndices].map((index) => venueSeats[index].seatLabel.trim() || `좌석 ${index + 1}`);
-  return `같은 좌표에 중복된 좌석이 있습니다.\n겹치는 좌석: ${seatNames.join(", ")}`;
+const getVenueSeatCollisionError = (venueSeats: VenueFormSeat[], collidingClientIds: Set<number>) => {
+  const seatNames = [...collidingClientIds].map((clientId) => {
+    if (clientId === -1) return "무대";
+    return venueSeats.find((seat) => seat.clientId === clientId)?.seatLabel.trim() || `좌석 ${clientId}`;
+  });
+  return `같은 좌표에 중복된 영역이 있습니다.\n겹치는 영역: ${seatNames.join(", ")}`;
 };
 
 const validateStagePosition = (
@@ -30,7 +33,7 @@ const validateStagePosition = (
   return true;
 };
 
-export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: CreateVenueSeatRequest[]): VenueFormErrors => {
+export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: VenueFormSeat[]): VenueFormErrors => {
   const errors: VenueFormErrors = {};
 
   if (!venue.name.trim()) errors.name = "공연장 이름을 입력해 주세요.";
@@ -68,8 +71,8 @@ export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: CreateV
   if (venueSeats.length === 0) errors.venueSeats = "좌석을 하나 이상 추가해 주세요.";
 
   const seatKeys = new Set<string>();
-  venueSeats.forEach((seat, index) => {
-    const prefix = `seat.${index}`;
+  venueSeats.forEach((seat) => {
+    const prefix = `seat.${seat.clientId}`;
     if (!seat.sectionName.trim()) errors[`${prefix}.sectionName`] = "구역명을 입력해 주세요.";
     else if (seat.sectionName.trim().length > VENUE_FORM_LIMITS.venueSeatSection)
       errors[`${prefix}.sectionName`] = `구역명은 ${VENUE_FORM_LIMITS.venueSeatSection}자 이내로 입력해 주세요.`;
@@ -93,21 +96,25 @@ export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: CreateV
     seatKeys.add(key);
   });
 
-  getVenueSeatCollisionMap(venueSeats).forEach((collidingIndices, index) => {
-    const collisionError = getVenueSeatCollisionError(venueSeats, collidingIndices);
-    errors[`seat.${index}.positionX`] = collisionError;
-    errors[`seat.${index}.positionY`] = collisionError;
+  getVenueSeatCollisionMap(venue, venueSeats).forEach((collidingClientIds, clientId) => {
+    const collisionError = getVenueSeatCollisionError(venueSeats, collidingClientIds);
+    errors[`seat.${clientId}.positionX`] = collisionError;
+    errors[`seat.${clientId}.positionY`] = collisionError;
   });
 
   return errors;
 };
 
-export const replaceVenueSeatCollisionErrors = (errors: VenueFormErrors, venueSeats: CreateVenueSeatRequest[]): VenueFormErrors => {
+export const replaceVenueSeatCollisionErrors = (
+  errors: VenueFormErrors,
+  venueSeats: VenueFormSeat[],
+  collisionMap: Map<number, Set<number>>,
+): VenueFormErrors => {
   const nextErrors = Object.fromEntries(
     Object.entries(errors).filter(([key]) => !key.startsWith("seat.") || (!key.endsWith(".positionX") && !key.endsWith(".positionY"))),
   ) as VenueFormErrors;
 
-  getVenueSeatCollisionMap(venueSeats).forEach((collidingIndices, index) => {
+  collisionMap.forEach((collidingIndices, index) => {
     const collisionError = getVenueSeatCollisionError(venueSeats, collidingIndices);
     nextErrors[`seat.${index}.positionX`] = collisionError;
     nextErrors[`seat.${index}.positionY`] = collisionError;
@@ -116,7 +123,7 @@ export const replaceVenueSeatCollisionErrors = (errors: VenueFormErrors, venueSe
   return nextErrors;
 };
 
-export const toCreateVenueRequest = (venue: CreateVenueRequest, venueSeats: CreateVenueSeatRequest[]): CreateVenueDetailRequest => ({
+export const toCreateVenueRequest = (venue: CreateVenueRequest, venueSeats: VenueFormSeat[]): CreateVenueDetailRequest => ({
   venue: {
     name: venue.name.trim(),
     address: venue.address.trim(),
@@ -138,9 +145,10 @@ export const toCreateVenueRequest = (venue: CreateVenueRequest, venueSeats: Crea
   })),
 });
 
-export const createVenueSeat = (venueWidth: number, venueHeight: number): CreateVenueSeatRequest => ({
+export const createVenueSeat = (venueWidth: number, venueHeight: number, clientId: number): VenueFormSeat => ({
+  clientId,
   sectionName: "",
-  seatNumber: 0,
+  seatNumber: 1,
   seatLabel: "",
   price: 0,
   positionX: Math.round(Math.random() * venueWidth * 100) / 100,

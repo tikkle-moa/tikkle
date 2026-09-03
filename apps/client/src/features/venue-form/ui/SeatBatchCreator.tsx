@@ -1,23 +1,27 @@
+import type { RefObject } from "react";
+
 import { Grid3X3, WandSparkles } from "lucide-react";
 
 import { toRound } from "@shared/lib/number.utils";
 
-import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueRequest } from "@entities/venue";
 
 import VenueFormNumberInput from "./VenueFormNumberInput";
 import VenueFormTextInput from "./VenueFormTextInput";
 
 import { useSeatBatch } from "../model/use-seat-batch";
+import type { VenueFormSeat } from "../model/venue-form.types";
 
 interface SeatBatchCreatorProps {
   venue: CreateVenueRequest;
-  venueSeats: CreateVenueSeatRequest[];
+  venueSeats: VenueFormSeat[];
+  venueSeatClientIdRef: RefObject<number>;
   isSubmitting: boolean;
-  onAddSeats: (seats: CreateVenueSeatRequest[]) => void;
+  onAddSeats: (seats: VenueFormSeat[]) => void;
 }
 
-const SeatBatchCreator = ({ venue, venueSeats, isSubmitting, onAddSeats }: SeatBatchCreatorProps) => {
-  const { values, error, count, updateValue, handleCreate } = useSeatBatch({ venue, venueSeats, onAddSeats });
+const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmitting, onAddSeats }: SeatBatchCreatorProps) => {
+  const { values, error, count, updateValue, handleCreate } = useSeatBatch({ venue, venueSeats, venueSeatClientIdRef, onAddSeats });
 
   return (
     <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4 sm:p-5">

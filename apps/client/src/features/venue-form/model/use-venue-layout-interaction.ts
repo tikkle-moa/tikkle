@@ -1,7 +1,9 @@
 import { type Dispatch, type KeyboardEvent, type PointerEvent, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 
-import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueRequest } from "@entities/venue";
 
+import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
+import { replaceVenueSeatCollisionErrors } from "./venue-form.utils";
 import {
   DOUBLE_CLICK_DELAY_MS,
   VENUE_LAYOUT_MIN_VISIBLE_SIZE,
@@ -10,37 +12,42 @@ import {
   VENUE_LAYOUT_ZOOM_FACTOR,
 } from "./venue-layout.constants";
 import type { VenueLayoutDragState } from "./venue-layout.types";
+import { getVenueSeatCollisionMap } from "./venue-seat-collision.utils";
 
 interface UseVenueLayoutInteractionProps {
   venue: CreateVenueRequest;
-  venueSeats: CreateVenueSeatRequest[];
-  selectedSeatIndices: number[];
+  venueSeats: VenueFormSeat[];
+  selectedSeatClientIds: number[];
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
-  setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
-  setSelectedSeatIndices: Dispatch<SetStateAction<number[]>>;
+  setVenueSeats: Dispatch<SetStateAction<VenueFormSeat[]>>;
+  setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
+  setSelectedSeatClientIds: Dispatch<SetStateAction<number[]>>;
   onLayoutChangeStart: () => void;
 }
 
 export const useVenueLayoutInteraction = ({
   venue,
   venueSeats,
-  selectedSeatIndices,
+  selectedSeatClientIds,
   isSubmitting,
   setVenue,
   setVenueSeats,
-  setSelectedSeatIndices,
+  setErrors,
+  setSelectedSeatClientIds,
   onLayoutChangeStart,
 }: UseVenueLayoutInteractionProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const lastSeatPointerDownRef = useRef<{ index: number; time: number } | null>(null);
+  const lastSeatPointerDownRef = useRef<{ clientId: number; time: number } | null>(null);
   const panPointerRef = useRef<{ clientX: number; clientY: number; distance: number } | null>(null);
+  const collisionMapRef = useRef<Map<number, Set<number>>>(new Map());
+
   const [dragState, setDragState] = useState<VenueLayoutDragState | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isAltPressed, setIsAltPressed] = useState(false);
 
-  const selectedSet = new Set(selectedSeatIndices);
+  const selectedSet = new Set(selectedSeatClientIds);
   const safeWidth = Math.max(venue.width, 1);
   const safeHeight = Math.max(venue.height, 1);
   const viewWidth = safeWidth / zoom;
@@ -132,7 +139,7 @@ export const useVenueLayoutInteraction = ({
       event.preventDefault();
       resetView();
     } else if (event.key === "Escape") {
-      setSelectedSeatIndices([]);
+      setSelectedSeatClientIds([]);
     }
   };
 
@@ -173,10 +180,10 @@ export const useVenueLayoutInteraction = ({
       const right = Math.max(dragState.startX, point.x);
       const top = Math.min(dragState.startY, point.y);
       const bottom = Math.max(dragState.startY, point.y);
-      const enclosed = venueSeats.flatMap((seat, index) =>
-        seat.positionX >= left && seat.positionX <= right && seat.positionY >= top && seat.positionY <= bottom ? [index] : [],
+      const enclosed = venueSeats.flatMap((seat) =>
+        seat.positionX >= left && seat.positionX <= right && seat.positionY >= top && seat.positionY <= bottom ? [seat.clientId] : [],
       );
-      setSelectedSeatIndices(dragState.additive ? [...new Set([...dragState.baseIndices, ...enclosed])] : enclosed);
+      setSelectedSeatClientIds(dragState.additive ? [...new Set([...dragState.baseClientIds, ...enclosed])] : enclosed);
       setDragState({ ...dragState, currentX: point.x, currentY: point.y });
       return;
     }
@@ -203,12 +210,25 @@ export const useVenueLayoutInteraction = ({
       Math.min(...dragState.origins.map((seat) => safeHeight - seat.positionY)),
     );
     const positionMap = new Map(
-      dragState.origins.map(({ index, positionX, positionY }) => [
-        index,
+      dragState.origins.map(({ clientId, positionX, positionY }) => [
+        clientId,
         { positionX: Math.round((positionX + deltaX) * 100) / 100, positionY: Math.round((positionY + deltaY) * 100) / 100 },
       ]),
     );
-    setVenueSeats((current) => current.map((seat, index) => ({ ...seat, ...positionMap.get(index) })));
+    const nextVenueSeats = venueSeats.map((seat) => ({ ...seat, ...positionMap.get(seat.clientId) }));
+
+    setVenueSeats(nextVenueSeats);
+    setErrors((current) => {
+      const collisionMap = getVenueSeatCollisionMap(venue, venueSeats, {
+        currentCollisionMap: collisionMapRef.current,
+        targetClientIds: [...positionMap.keys()],
+      });
+      collisionMapRef.current = collisionMap;
+      const next = replaceVenueSeatCollisionErrors(current, nextVenueSeats, collisionMap);
+      const nextEntries = Object.entries(next);
+      const isSame = nextEntries.length === Object.keys(current).length && nextEntries.every(([key, message]) => current[key] === message);
+      return isSame ? current : next;
+    });
   };
 
   const startBackgroundDrag = (event: PointerEvent<SVGRectElement>) => {
@@ -220,7 +240,7 @@ export const useVenueLayoutInteraction = ({
       return;
     }
     const point = getCoordinates(event);
-    if (!event.shiftKey) setSelectedSeatIndices([]);
+    if (!event.shiftKey) setSelectedSeatClientIds([]);
     setDragState({
       type: "select",
       startX: point.x,
@@ -228,7 +248,7 @@ export const useVenueLayoutInteraction = ({
       currentX: point.x,
       currentY: point.y,
       additive: event.shiftKey,
-      baseIndices: event.shiftKey ? selectedSeatIndices : [],
+      baseClientIds: event.shiftKey ? selectedSeatClientIds : [],
     });
   };
 
@@ -240,45 +260,45 @@ export const useVenueLayoutInteraction = ({
     setDragState({ type: "stage", pointerX: point.x, pointerY: point.y, originX: venue.stagePositionX, originY: venue.stagePositionY });
   };
 
-  const startSeatDrag = (event: PointerEvent<SVGElement>, index: number) => {
+  const startSeatDrag = (event: PointerEvent<SVGElement>, clientId: number) => {
     if (isSubmitting) return;
     const previousPointerDown = lastSeatPointerDownRef.current;
-    const isDoubleClick = previousPointerDown?.index === index && event.timeStamp - previousPointerDown.time <= DOUBLE_CLICK_DELAY_MS;
-    lastSeatPointerDownRef.current = isDoubleClick ? null : { index, time: event.timeStamp };
+    const isDoubleClick = previousPointerDown?.clientId === clientId && event.timeStamp - previousPointerDown.time <= DOUBLE_CLICK_DELAY_MS;
+    lastSeatPointerDownRef.current = isDoubleClick ? null : { clientId, time: event.timeStamp };
 
     if (isDoubleClick) {
       event.preventDefault();
       event.stopPropagation();
       setDragState(null);
-      const sectionName = venueSeats[index]?.sectionName;
+      const sectionName = venueSeats.find((seat) => seat.clientId === clientId)?.sectionName;
       if (sectionName === undefined) return;
-      setSelectedSeatIndices(venueSeats.flatMap((seat, i) => (seat.sectionName === sectionName ? [i] : [])));
+      setSelectedSeatClientIds(venueSeats.flatMap((seat) => (seat.sectionName === sectionName ? [seat.clientId] : [])));
       return;
     }
     capturePointer(event);
     const additive = event.shiftKey;
-    const movingIndices = selectedSet.has(index) ? selectedSeatIndices : additive ? [...selectedSeatIndices, index] : [index];
+    const movingClientIds = selectedSet.has(clientId) ? selectedSeatClientIds : additive ? [...selectedSeatClientIds, clientId] : [clientId];
     onLayoutChangeStart();
-    if (!selectedSet.has(index))
-      setSelectedSeatIndices((current) => {
-        if (!additive) return [index];
-        return current.includes(index) ? current.filter((selectedIndex) => selectedIndex !== index) : [...current, index];
+    if (!selectedSet.has(clientId))
+      setSelectedSeatClientIds((current) => {
+        if (!additive) return [clientId];
+        return current.includes(clientId) ? current.filter((selectedClientId) => selectedClientId !== clientId) : [...current, clientId];
       });
     const point = getCoordinates(event);
     setDragState({
       type: "seats",
       pointerX: point.x,
       pointerY: point.y,
-      origins: [...new Set(movingIndices)].map((seatIndex) => ({
-        index: seatIndex,
-        positionX: venueSeats[seatIndex].positionX,
-        positionY: venueSeats[seatIndex].positionY,
+      origins: [...new Set(movingClientIds)].map((clientId) => ({
+        clientId,
+        positionX: venueSeats.find((seat) => seat.clientId === clientId)!.positionX,
+        positionY: venueSeats.find((seat) => seat.clientId === clientId)!.positionY,
       })),
     });
   };
 
   const startSelectedAreaDrag = (event: PointerEvent<SVGRectElement>) => {
-    if (isSubmitting || selectedSeatIndices.length === 0) return;
+    if (isSubmitting || selectedSeatClientIds.length === 0) return;
     if (event.altKey) {
       startBackgroundDrag(event);
       return;
@@ -290,12 +310,16 @@ export const useVenueLayoutInteraction = ({
       type: "seats",
       pointerX: point.x,
       pointerY: point.y,
-      origins: selectedSeatIndices.map((index) => ({ index, positionX: venueSeats[index].positionX, positionY: venueSeats[index].positionY })),
+      origins: selectedSeatClientIds.map((clientId) => ({
+        clientId,
+        positionX: venueSeats.find((seat) => seat.clientId === clientId)!.positionX,
+        positionY: venueSeats.find((seat) => seat.clientId === clientId)!.positionY,
+      })),
     });
   };
 
   const finishDrag = () => {
-    if (dragState?.type === "pan" && !dragState.moved) setSelectedSeatIndices([]);
+    if (dragState?.type === "pan" && !dragState.moved) setSelectedSeatClientIds([]);
     panPointerRef.current = null;
     setDragState(null);
   };

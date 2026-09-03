@@ -1,14 +1,24 @@
+import type { RefObject } from "react";
+
 import { toRound } from "@shared/lib/number.utils";
 
-import type { CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueRequest } from "@entities/venue";
 
 import type { SeatBatchValues } from "./seat-batch.types";
 import { VENUE_FORM_LIMITS } from "./venue-form.constants";
+import type { VenueFormSeat } from "./venue-form.types";
+import type { BoundingBox } from "./venue-seat-collision.types";
 import { doVenueSeatsOverlap } from "./venue-seat-collision.utils";
 
 const getVenueSeatKey = (sectionName: string, seatNumber: number) => `${sectionName.trim()}\u0000${seatNumber}`;
 
-export const validateSeatBatch = (values: SeatBatchValues, existingVenueSeats: CreateVenueSeatRequest[], venueWidth: number, venueHeight: number) => {
+export const validateSeatBatch = (
+  values: SeatBatchValues,
+  existingVenue: CreateVenueRequest,
+  existingVenueSeats: VenueFormSeat[],
+  venueWidth: number,
+  venueHeight: number,
+) => {
   if (!values.sectionName.trim()) return "구역명을 입력해 주세요.";
   if (values.sectionName.trim().length > VENUE_FORM_LIMITS.venueSeatSection) return "구역명은 50자 이하로 입력해 주세요.";
 
@@ -25,8 +35,14 @@ export const validateSeatBatch = (values: SeatBatchValues, existingVenueSeats: C
   const lastY = values.startY + (values.rows - 1) * values.gapY;
   if (values.startX < 0 || values.startY < 0 || lastX > venueWidth || lastY > venueHeight) return "생성될 좌석이 공연장 범위를 벗어납니다.";
 
+  const venueStageBoundingBox: BoundingBox = {
+    positionX: existingVenue.stagePositionX,
+    positionY: existingVenue.stagePositionY,
+    width: existingVenue.stageWidth,
+    height: existingVenue.stageHeight,
+  };
   const existingSeatKeys = new Set(existingVenueSeats.map(({ sectionName, seatNumber }) => getVenueSeatKey(sectionName, seatNumber)));
-  const generatedSeats = createSeatBatch(values);
+  const generatedSeats = createSeatBatch(values, { current: -1 });
   const comparedSeats = [...existingVenueSeats];
   for (const generatedSeat of generatedSeats) {
     const seatKey = getVenueSeatKey(generatedSeat.sectionName, generatedSeat.seatNumber);
@@ -34,17 +50,20 @@ export const validateSeatBatch = (values: SeatBatchValues, existingVenueSeats: C
 
     if (comparedSeats.some((seat) => doVenueSeatsOverlap(seat, generatedSeat))) return "생성될 좌석 영역이 다른 좌석과 겹칩니다.";
     comparedSeats.push(generatedSeat);
+
+    if (doVenueSeatsOverlap(generatedSeat, venueStageBoundingBox)) return "생성될 좌석 영역이 무대와 겹칩니다.";
   }
 
   return null;
 };
 
-export const createSeatBatch = (values: SeatBatchValues): CreateVenueSeatRequest[] => {
+export const createSeatBatch = (values: SeatBatchValues, venueSeatClientIdRef: RefObject<number>): VenueFormSeat[] => {
   const venueSeats = Array.from({ length: values.rows * values.columns }, (_, index) => {
     const row = Math.floor(index / values.columns);
     const column = index % values.columns;
     const seatNumber = values.startSeatNumber + index;
     return {
+      clientId: venueSeatClientIdRef.current++,
       sectionName: values.sectionName.trim(),
       seatNumber,
       seatLabel: `${values.sectionName.trim()} ${seatNumber}번`,

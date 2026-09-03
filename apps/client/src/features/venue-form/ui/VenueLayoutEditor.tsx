@@ -4,7 +4,6 @@ import { Maximize2, Minus, Move, Plus } from "lucide-react";
 
 import {
   type CreateVenueRequest,
-  type CreateVenueSeatRequest,
   VENUE_SEAT_HEIGHT,
   VENUE_SEAT_RADIUS,
   VENUE_SEAT_WIDTH,
@@ -14,35 +13,38 @@ import {
 
 import { useVenueLayoutInteraction } from "../model/use-venue-layout-interaction";
 import { useVenueLayoutSelection } from "../model/use-venue-layout-selection";
+import type { VenueFormErrors, VenueFormSeat } from "../model/venue-form.types";
 import { VENUE_LAYOUT_MIN_ZOOM, VENUE_LAYOUT_ZOOM_FACTOR } from "../model/venue-layout.constants";
 import { getLayoutClassName, getSectionColor } from "../model/venue-layout.utils";
 
 interface VenueLayoutEditorProps {
   venue: CreateVenueRequest;
-  venueSeats: CreateVenueSeatRequest[];
-  selectedSeatIndices: number[];
-  errorSeatIndices: Set<number>;
+  venueSeats: VenueFormSeat[];
+  selectedSeatClientIds: number[];
+  errorSeatClientIds: Set<number>;
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
-  setVenueSeats: Dispatch<SetStateAction<CreateVenueSeatRequest[]>>;
-  setSelectedSeatIndices: Dispatch<SetStateAction<number[]>>;
+  setVenueSeats: Dispatch<SetStateAction<VenueFormSeat[]>>;
+  setErrors: Dispatch<SetStateAction<VenueFormErrors>>;
+  setSelectedSeatClientIds: Dispatch<SetStateAction<number[]>>;
   onLayoutChangeStart: () => void;
 }
 
 const VenueLayoutEditor = ({
   venue,
   venueSeats,
-  selectedSeatIndices,
-  errorSeatIndices,
+  selectedSeatClientIds,
+  errorSeatClientIds,
   isSubmitting,
   setVenue,
   setVenueSeats,
-  setSelectedSeatIndices,
+  setErrors,
+  setSelectedSeatClientIds,
   onLayoutChangeStart,
 }: VenueLayoutEditorProps) => {
   const { selectedSet, selectedBounds } = useVenueLayoutSelection({
     venueSeats,
-    selectedSeatIndices,
+    selectedSeatClientIds,
   });
 
   const {
@@ -64,11 +66,12 @@ const VenueLayoutEditor = ({
   } = useVenueLayoutInteraction({
     venue,
     venueSeats,
-    selectedSeatIndices,
+    selectedSeatClientIds,
     isSubmitting,
-    setSelectedSeatIndices,
     setVenue,
     setVenueSeats,
+    setErrors,
+    setSelectedSeatClientIds,
     onLayoutChangeStart,
   });
 
@@ -114,7 +117,7 @@ const VenueLayoutEditor = ({
         <svg
           ref={svgRef}
           aria-label="공연장 좌석 배치 편집기"
-          className={`aspect-16/10 w-full rounded-xl bg-slate-900 outline-none select-none focus:outline-none ${getLayoutClassName(isSubmitting, dragState, isAltPressed)}`}
+          className={`aspect-square w-full rounded-xl bg-slate-900 outline-none select-none focus:outline-none lg:aspect-16/10 ${getLayoutClassName(isSubmitting, dragState, isAltPressed)}`}
           onPointerMove={handlePointerMove}
           onKeyDown={handleKeyDown}
           onPointerUp={finishDrag}
@@ -175,14 +178,14 @@ const VenueLayoutEditor = ({
             </text>
           </g>
           {venueSeats
-            .map((seat, index) => ({ seat, index, selected: selectedSet.has(index), hasError: errorSeatIndices.has(index) }))
+            .map((seat) => ({ seat, selected: selectedSet.has(seat.clientId), hasError: errorSeatClientIds.has(seat.clientId) }))
             .sort((a, b) => Number(a.selected || a.hasError) - Number(b.selected || b.hasError))
-            .map(({ seat, index, selected, hasError }) => {
+            .map(({ seat, selected, hasError }) => {
               return (
                 <g
                   className={isSubmitting ? "" : "cursor-grab active:cursor-grabbing"}
-                  key={`${seat.sectionName}-${seat.seatNumber}-${index}`}
-                  onPointerDown={(event) => startSeatDrag(event, index)}
+                  key={`${seat.sectionName}-${seat.seatNumber}-${seat.clientId}`}
+                  onPointerDown={(event) => startSeatDrag(event, seat.clientId)}
                 >
                   <rect
                     x={seat.positionX - VENUE_SEAT_WIDTH / 2}
@@ -195,7 +198,7 @@ const VenueLayoutEditor = ({
                     strokeWidth={hasError || selected ? 0.6 : 0.3}
                   />
                   <title>
-                    {seat.seatLabel || `좌석 ${index + 1}`} ({seat.positionX}, {seat.positionY})
+                    {seat.seatLabel || `좌석 ${seat.clientId}`} ({seat.positionX}, {seat.positionY})
                   </title>
                 </g>
               );
@@ -226,7 +229,7 @@ const VenueLayoutEditor = ({
         <span className="flex items-center gap-1.5">
           <i className="h-2.5 w-3 rounded-xs border-2 border-amber-100" /> 선택 좌석
         </span>
-        {selectedSeatIndices.length > 1 && <span className="font-semibold text-amber-400">{selectedSeatIndices.length}개 함께 이동</span>}
+        {selectedSeatClientIds.length > 1 && <span className="font-semibold text-amber-400">{selectedSeatClientIds.length}개 함께 이동</span>}
         <span className="ml-auto flex items-center gap-1">
           <Move className="size-3.5" /> {venueSeats.length.toLocaleString()}석 · 드래그 이동 · Alt/Option + 휠 확대
         </span>

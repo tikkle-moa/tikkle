@@ -23,12 +23,20 @@ interface VenueFormProps {
 }
 
 const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: VenueFormProps) => {
-  const { venue, venueSeats, errors, errorCount, errorSections, isSubmitting, updateVenue, setVenue, setVenueSeats, setErrors, handleSubmit } =
-    useVenueForm({
-      initialValues,
-      submitState,
-      onSubmit,
-    });
+  const {
+    venue,
+    venueSeats,
+    errors,
+    errorCount,
+    errorSections,
+    venueSeatClientIdRef,
+    isSubmitting,
+    updateVenue,
+    setVenue,
+    setVenueSeats,
+    setErrors,
+    handleSubmit,
+  } = useVenueForm({ initialValues, submitState, onSubmit });
 
   return (
     <form className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" noValidate onSubmit={handleSubmit}>
@@ -201,6 +209,7 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
         venue={venue}
         venueSeats={venueSeats}
         errors={errors}
+        venueSeatClientIdRef={venueSeatClientIdRef}
         isSubmitting={isSubmitting}
         setVenue={setVenue}
         setVenueSeats={setVenueSeats}

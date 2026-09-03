@@ -1,12 +1,12 @@
-import { type SubmitEvent, useEffect, useState } from "react";
+import { type SubmitEvent, useEffect, useRef, useState } from "react";
 
 import type { SubmitState } from "@shared/model/form.types";
 
-import type { CreateVenueDetailRequest, CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue";
+import type { CreateVenueDetailRequest, CreateVenueRequest } from "@entities/venue";
 
 import { EMPTY_VENUE_FORM_VALUES } from "./venue-form.constants";
-import type { VenueFormErrors } from "./venue-form.types";
-import { getErrorSections, replaceVenueSeatCollisionErrors, toCreateVenueRequest, validateVenueForm } from "./venue-form.utils";
+import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
+import { getErrorSections, toCreateVenueRequest, validateVenueForm } from "./venue-form.utils";
 
 interface UseVenueFormProps {
   initialValues?: CreateVenueDetailRequest;
@@ -16,8 +16,9 @@ interface UseVenueFormProps {
 
 export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueFormProps) => {
   const [venue, setVenue] = useState<CreateVenueRequest>(EMPTY_VENUE_FORM_VALUES);
-  const [venueSeats, setVenueSeats] = useState<CreateVenueSeatRequest[]>([]);
+  const [venueSeats, setVenueSeats] = useState<VenueFormSeat[]>([]);
   const [errors, setErrors] = useState<VenueFormErrors>({});
+  const venueSeatClientIdRef = useRef(1);
   const isSubmitting = submitState.status === "submitting";
 
   useEffect(() => {
@@ -25,25 +26,25 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
 
     const initializeForm = () => {
       setVenue({ ...initialValues.venue });
-      setVenueSeats(initialValues.venueSeats.map((seat) => ({ ...seat })));
+      setVenueSeats(initialValues.venueSeats.map((seat) => ({ clientId: venueSeatClientIdRef.current++, ...seat })));
       setErrors({});
     };
 
     initializeForm();
   }, [initialValues]);
 
-  useEffect(() => {
-    const updateCollisionErrors = () => {
-      setErrors((current) => {
-        const next = replaceVenueSeatCollisionErrors(current, venueSeats);
-        const nextEntries = Object.entries(next);
-        const isSame = nextEntries.length === Object.keys(current).length && nextEntries.every(([key, message]) => current[key] === message);
-        return isSame ? current : next;
-      });
-    };
+  // useEffect(() => {
+  //   const updateCollisionErrors = () => {
+  //     setErrors((current) => {
+  //       const next = replaceVenueSeatCollisionErrors(current, venueSeats);
+  //       const nextEntries = Object.entries(next);
+  //       const isSame = nextEntries.length === Object.keys(current).length && nextEntries.every(([key, message]) => current[key] === message);
+  //       return isSame ? current : next;
+  //     });
+  //   };
 
-    updateCollisionErrors();
-  }, [venueSeats]);
+  //   updateCollisionErrors();
+  // }, [venueSeats]);
 
   const updateVenue = <K extends keyof CreateVenueRequest>(field: K, value: CreateVenueRequest[K]) => {
     setVenue((current) => ({ ...current, [field]: value }));
@@ -70,6 +71,7 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
     errors,
     errorCount,
     errorSections,
+    venueSeatClientIdRef,
     isSubmitting,
     updateVenue,
     setVenue,
