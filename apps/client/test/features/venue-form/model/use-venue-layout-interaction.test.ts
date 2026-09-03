@@ -634,4 +634,22 @@ describe("useVenueLayoutInteraction", () => {
       "Seat with clientId 999 not found",
     );
   });
+
+  it("선택 영역 드래그 시작 시 선택 집합에 존재하지 않는 좌석 ID가 있으면 오류를 반환한다", () => {
+    const props = {
+      venue,
+      venueSeats,
+      selectedSeatClientIdSet: new Set([999]),
+      collisionMapRef: { current: new Map<number, Set<number>>() },
+      isSubmitting: false,
+      setVenue: vi.fn(),
+      setVenueSeats: vi.fn(),
+      setErrors: vi.fn(),
+      setSelectedSeatClientIds: vi.fn(),
+      onLayoutChangeStart: vi.fn(),
+    };
+    const { result } = renderHook(() => useVenueLayoutInteraction(props));
+    attachCoordinateSvg(result as ReturnType<typeof renderInteraction>["result"]);
+    expect(() => act(() => result.current.startSelectedAreaDrag(createFullPointerEvent() as never))).toThrow("Seat with clientId 999 not found");
+  });
 });

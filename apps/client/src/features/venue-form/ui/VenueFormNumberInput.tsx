@@ -52,7 +52,7 @@ const VenueFormNumberInput = ({ id, label, value, min = 0, max = 999_999.99, err
       />
 
       {error && (
-        <p id={errorId} className="mt-1.5 text-xs font-medium text-red-600">
+        <p id={errorId} className="mt-1.5 text-xs font-medium whitespace-pre-wrap text-red-600">
           {error}
         </p>
       )}

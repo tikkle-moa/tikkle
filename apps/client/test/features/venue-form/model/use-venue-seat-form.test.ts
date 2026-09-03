@@ -83,6 +83,38 @@ describe("useVenueSeatForm", () => {
     expect(result.current.canUndo).toBe(false);
   });
 
+  it("좌석 추가 시 기존 좌석과 겹치면 충돌 오류가 즉시 계산된다", () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0.2).mockReturnValueOnce(0.375);
+    const { result } = renderHook(useTestVenueSeatForm);
+
+    act(() => result.current.handleAddSeat());
+
+    expect(result.current.venueSeats.at(-1)).toMatchObject({ positionX: 20, positionY: 30 });
+    expect(result.current.errorSeatClientIds).toEqual(new Set([1, 4]));
+    expect(result.current.collisionMapRef.current.get(1)).toEqual(new Set([4]));
+  });
+
+  it("좌표를 직접 수정해 다른 좌석과 겹치면 충돌 오류가 즉시 계산된다", () => {
+    const { result } = renderHook(useTestVenueSeatForm);
+
+    act(() => result.current.updateVenueSeat(2, "positionX", 20));
+
+    expect(result.current.errorSeatClientIds).toEqual(new Set([1, 2]));
+    expect(result.current.collisionMapRef.current.get(2)).toEqual(new Set([1]));
+  });
+
+  it("충돌 중이던 좌석을 삭제하면 남은 좌석의 충돌 오류가 즉시 해제된다", () => {
+    const { result } = renderHook(useTestVenueSeatForm);
+    act(() => result.current.updateVenueSeat(2, "positionX", 20));
+    expect(result.current.errorSeatClientIds).toEqual(new Set([1, 2]));
+
+    act(() => result.current.setSelectedSeatClientIds([2]));
+    act(() => result.current.handleRemoveSelectedSeats());
+
+    expect(result.current.errorSeatClientIds).toEqual(new Set());
+    expect(result.current.collisionMapRef.current.size).toBe(0);
+  });
+
   it("좌석 필드를 수정한다", () => {
     const { result } = renderHook(useTestVenueSeatForm);
 

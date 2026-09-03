@@ -4,6 +4,7 @@ import type { CreateVenueRequest, CreateVenueSeatRequest } from "@entities/venue
 
 import type { VenueFormErrors, VenueFormSeat, VenueSeatHistoryEntry } from "./venue-form.types";
 import { createVenueSeat, replaceVenueSeatCollisionErrors } from "./venue-form.utils";
+import { getVenueSeatCollisionMap } from "./venue-seat-collision.utils";
 
 interface UseVenueSeatFormProps {
   venue: CreateVenueRequest;
@@ -48,6 +49,20 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdR
     setCanUndo(true);
   }, [venueSeats]);
 
+  const recomputeSeatCollisions = useCallback(
+    (nextVenueSeats: VenueFormSeat[]) => {
+      const collisionMap = getVenueSeatCollisionMap(venue, nextVenueSeats);
+      collisionMapRef.current = collisionMap;
+      setErrors((current) => {
+        const next = replaceVenueSeatCollisionErrors(current, nextVenueSeats, collisionMap);
+        const nextEntries = Object.entries(next);
+        const isSame = nextEntries.length === Object.keys(current).length && nextEntries.every(([key, message]) => current[key] === message);
+        return isSame ? current : next;
+      });
+    },
+    [venue, setErrors],
+  );
+
   const handleUndo = useCallback(() => {
     const snapshot = historyRef.current.at(-1);
     if (!snapshot) return;
@@ -79,27 +94,38 @@ export const useVenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdR
   const handleAddSeat = () => {
     saveLayoutSnapshot();
     const nextClientId = venueSeatClientIdRef.current++;
-    setVenueSeats((current) => [...current, createVenueSeat(venue.width, venue.height, nextClientId)]);
+    const nextVenueSeats = [...venueSeats, createVenueSeat(venue.width, venue.height, nextClientId)];
+    setVenueSeats(nextVenueSeats);
+    recomputeSeatCollisions(nextVenueSeats);
     setSelectedSeatClientIds([nextClientId]);
   };
 
   const handleAddSeats = (seats: VenueFormSeat[]) => {
     saveLayoutSnapshot();
-    setVenueSeats((current) => [...current, ...seats]);
+    const nextVenueSeats = [...venueSeats, ...seats];
+    setVenueSeats(nextVenueSeats);
+    recomputeSeatCollisions(nextVenueSeats);
   };
 
   const handleRemoveSelectedSeats = () => {
     if (selectedSeatClientIds.length === 0) return;
     saveLayoutSnapshot();
     const selectedSet = new Set(selectedSeatClientIds);
-    setVenueSeats((current) => current.filter((seat) => !selectedSet.has(seat.clientId)));
+    const nextVenueSeats = venueSeats.filter((seat) => !selectedSet.has(seat.clientId));
+    setVenueSeats(nextVenueSeats);
+    recomputeSeatCollisions(nextVenueSeats);
     setSelectedSeatClientIds([]);
   };
 
   const updateVenueSeat = <K extends keyof CreateVenueSeatRequest>(clientId: number, field: K, value: CreateVenueSeatRequest[K]) => {
     saveLayoutSnapshot();
-    setVenueSeats((current) => current.map((seat) => (seat.clientId === clientId ? { ...seat, [field]: value } : seat)));
-    setErrors(({ [`seat.${clientId}.${field}`]: _, ...next }) => next);
+    const nextVenueSeats = venueSeats.map((seat) => (seat.clientId === clientId ? { ...seat, [field]: value } : seat));
+    setVenueSeats(nextVenueSeats);
+    if (field === "positionX" || field === "positionY") {
+      recomputeSeatCollisions(nextVenueSeats);
+    } else {
+      setErrors(({ [`seat.${clientId}.${field}`]: _, ...next }) => next);
+    }
   };
 
   return {

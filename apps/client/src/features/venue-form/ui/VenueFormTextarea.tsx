@@ -56,7 +56,7 @@ const VenueFormTextarea = ({ id, label, value, maxLength, error, placeholder, re
       />
 
       {error && (
-        <p id={errorId} className="mt-1.5 text-xs font-medium text-red-600">
+        <p id={errorId} className="mt-1.5 text-xs font-medium whitespace-pre-wrap text-red-600">
           {error}
         </p>
       )}

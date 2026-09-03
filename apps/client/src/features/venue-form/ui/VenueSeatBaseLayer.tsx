@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 import VenueSeatChunk from "./VenueSeatChunk";
 
@@ -11,14 +11,22 @@ interface VenueSeatBaseLayerProps {
 }
 
 const VenueSeatBaseLayer = ({ venueSeats, isSubmitting }: VenueSeatBaseLayerProps) => {
+  const seatsByChunkKey = useMemo(() => {
+    const chunks = new Map<number, VenueFormSeat[]>();
+    venueSeats.forEach((seat) => {
+      const chunkKey = Math.floor(seat.clientId / VENUE_SEAT_CHUNK_SIZE);
+      const chunkSeats = chunks.get(chunkKey);
+      if (chunkSeats) chunkSeats.push(seat);
+      else chunks.set(chunkKey, [seat]);
+    });
+    return chunks;
+  }, [venueSeats]);
+
   return (
     <>
-      {Array.from({ length: Math.ceil(venueSeats.length / VENUE_SEAT_CHUNK_SIZE) }, (_, chunkIndex) => {
-        const startIndex = chunkIndex * VENUE_SEAT_CHUNK_SIZE;
-        return (
-          <VenueSeatChunk key={chunkIndex} seats={venueSeats.slice(startIndex, startIndex + VENUE_SEAT_CHUNK_SIZE)} isSubmitting={isSubmitting} />
-        );
-      })}
+      {[...seatsByChunkKey].map(([chunkKey, seats]) => (
+        <VenueSeatChunk key={chunkKey} seats={seats} isSubmitting={isSubmitting} />
+      ))}
     </>
   );
 };

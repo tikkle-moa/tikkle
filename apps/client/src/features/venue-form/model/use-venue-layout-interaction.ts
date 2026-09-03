@@ -415,15 +415,16 @@ export const useVenueLayoutInteraction = ({
     capturePointer(event);
     onLayoutChangeStart();
     const point = getCoordinates(event);
+    const seatMap = new Map(venueSeats.map((seat) => [seat.clientId, seat]));
     setDragState({
       type: "seats",
       pointerX: point.x,
       pointerY: point.y,
-      origins: [...selectedSeatClientIdSet].map((clientId) => ({
-        clientId,
-        positionX: venueSeats.find((seat) => seat.clientId === clientId)!.positionX,
-        positionY: venueSeats.find((seat) => seat.clientId === clientId)!.positionY,
-      })),
+      origins: [...selectedSeatClientIdSet].map((clientId) => {
+        const seat = seatMap.get(clientId);
+        if (!seat) throw new Error(`Seat with clientId ${clientId} not found`);
+        return { clientId, positionX: seat.positionX, positionY: seat.positionY };
+      }),
     });
   };
 
