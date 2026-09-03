@@ -1,15 +1,10 @@
-import type { Dispatch, SetStateAction } from "react";
+import { type Dispatch, type SetStateAction } from "react";
 
 import { Maximize2, Minus, Move, Plus } from "lucide-react";
 
-import {
-  type CreateVenueRequest,
-  VENUE_SEAT_HEIGHT,
-  VENUE_SEAT_RADIUS,
-  VENUE_SEAT_WIDTH,
-  getVenueStageCornerRadius,
-  getVenueStageTitleFontSize,
-} from "@entities/venue";
+import { type CreateVenueRequest, getVenueStageCornerRadius, getVenueStageTitleFontSize } from "@entities/venue";
+
+import VenueSeatLayout from "./VenueSeatLayout";
 
 import { useVenueLayoutInteraction } from "../model/use-venue-layout-interaction";
 import { useVenueLayoutSelection } from "../model/use-venue-layout-selection";
@@ -42,10 +37,7 @@ const VenueLayoutEditor = ({
   setSelectedSeatClientIds,
   onLayoutChangeStart,
 }: VenueLayoutEditorProps) => {
-  const { selectedSet, selectedBounds } = useVenueLayoutSelection({
-    venueSeats,
-    selectedSeatClientIds,
-  });
+  const { sectionNames, selectedSeatClientIdSet, selectedBounds } = useVenueLayoutSelection({ venueSeats, selectedSeatClientIds });
 
   const {
     svgRef,
@@ -66,7 +58,7 @@ const VenueLayoutEditor = ({
   } = useVenueLayoutInteraction({
     venue,
     venueSeats,
-    selectedSeatClientIds,
+    selectedSeatClientIdSet,
     isSubmitting,
     setVenue,
     setVenueSeats,
@@ -177,32 +169,13 @@ const VenueLayoutEditor = ({
               STAGE
             </text>
           </g>
-          {venueSeats
-            .map((seat) => ({ seat, selected: selectedSet.has(seat.clientId), hasError: errorSeatClientIds.has(seat.clientId) }))
-            .sort((a, b) => Number(a.selected || a.hasError) - Number(b.selected || b.hasError))
-            .map(({ seat, selected, hasError }) => {
-              return (
-                <g
-                  className={isSubmitting ? "" : "cursor-grab active:cursor-grabbing"}
-                  key={`${seat.sectionName}-${seat.seatNumber}-${seat.clientId}`}
-                  onPointerDown={(event) => startSeatDrag(event, seat.clientId)}
-                >
-                  <rect
-                    x={seat.positionX - VENUE_SEAT_WIDTH / 2}
-                    y={seat.positionY - VENUE_SEAT_HEIGHT / 2}
-                    width={VENUE_SEAT_WIDTH}
-                    height={VENUE_SEAT_HEIGHT}
-                    rx={VENUE_SEAT_RADIUS}
-                    fill={getSectionColor(seat.sectionName)}
-                    stroke={hasError ? "#f87171" : selected ? "#fef3c7" : "#e2e8f0"}
-                    strokeWidth={hasError || selected ? 0.6 : 0.3}
-                  />
-                  <title>
-                    {seat.seatLabel || `좌석 ${seat.clientId}`} ({seat.positionX}, {seat.positionY})
-                  </title>
-                </g>
-              );
-            })}
+          <VenueSeatLayout
+            venueSeats={venueSeats}
+            selectedSeatClientIdSet={selectedSeatClientIdSet}
+            errorSeatClientIds={errorSeatClientIds}
+            isSubmitting={isSubmitting}
+            startSeatDrag={startSeatDrag}
+          />
           {dragState?.type === "select" && (
             <rect
               x={Math.min(dragState.startX, dragState.currentX)}
@@ -219,17 +192,15 @@ const VenueLayoutEditor = ({
         </svg>
       </div>
       <div className="flex flex-wrap items-center gap-4 px-4 pb-4 text-xs text-slate-400">
-        {Array.from(new Set(venueSeats.map((seat) => seat.sectionName || "미지정")))
-          .slice(0, 5)
-          .map((sectionName) => (
-            <span className="flex items-center gap-1.5" key={sectionName}>
-              <i className="h-2.5 w-3 rounded-xs" style={{ backgroundColor: getSectionColor(sectionName) }} /> {sectionName}
-            </span>
-          ))}
+        {sectionNames.map((sectionName) => (
+          <span className="flex items-center gap-1.5" key={sectionName}>
+            <i className="h-2.5 w-3 rounded-xs" style={{ backgroundColor: getSectionColor(sectionName) }} /> {sectionName}
+          </span>
+        ))}
         <span className="flex items-center gap-1.5">
           <i className="h-2.5 w-3 rounded-xs border-2 border-amber-100" /> 선택 좌석
         </span>
-        {selectedSeatClientIds.length > 1 && <span className="font-semibold text-amber-400">{selectedSeatClientIds.length}개 함께 이동</span>}
+        {selectedSeatClientIdSet.size > 1 && <span className="font-semibold text-amber-400">{selectedSeatClientIdSet.size}개 함께 이동</span>}
         <span className="ml-auto flex items-center gap-1">
           <Move className="size-3.5" /> {venueSeats.length.toLocaleString()}석 · 드래그 이동 · Alt/Option + 휠 확대
         </span>

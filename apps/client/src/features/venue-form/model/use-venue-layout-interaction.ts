@@ -17,7 +17,7 @@ import { getVenueSeatCollisionMap } from "./venue-seat-collision.utils";
 interface UseVenueLayoutInteractionProps {
   venue: CreateVenueRequest;
   venueSeats: VenueFormSeat[];
-  selectedSeatClientIds: number[];
+  selectedSeatClientIdSet: Set<number>;
   isSubmitting: boolean;
   setVenue: Dispatch<SetStateAction<CreateVenueRequest>>;
   setVenueSeats: Dispatch<SetStateAction<VenueFormSeat[]>>;
@@ -29,7 +29,7 @@ interface UseVenueLayoutInteractionProps {
 export const useVenueLayoutInteraction = ({
   venue,
   venueSeats,
-  selectedSeatClientIds,
+  selectedSeatClientIdSet,
   isSubmitting,
   setVenue,
   setVenueSeats,
@@ -41,13 +41,16 @@ export const useVenueLayoutInteraction = ({
   const lastSeatPointerDownRef = useRef<{ clientId: number; time: number } | null>(null);
   const panPointerRef = useRef<{ clientX: number; clientY: number; distance: number } | null>(null);
   const collisionMapRef = useRef<Map<number, Set<number>>>(new Map());
+  const panFrameRef = useRef<number | null>(null);
+  const pendingPanDeltaRef = useRef({ x: 0, y: 0 });
+  const wheelFrameRef = useRef<number | null>(null);
+  const pendingWheelStepsRef = useRef(0);
 
   const [dragState, setDragState] = useState<VenueLayoutDragState | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isAltPressed, setIsAltPressed] = useState(false);
 
-  const selectedSet = new Set(selectedSeatClientIds);
   const safeWidth = Math.max(venue.width, 1);
   const safeHeight = Math.max(venue.height, 1);
   const viewWidth = safeWidth / zoom;
@@ -121,11 +124,26 @@ export const useVenueLayoutInteraction = ({
       if (isSubmitting || !event.altKey) return;
       event.preventDefault();
       event.stopPropagation();
-      applyZoom(event.deltaY < 0 ? zoom * VENUE_LAYOUT_WHEEL_ZOOM_FACTOR : zoom / VENUE_LAYOUT_WHEEL_ZOOM_FACTOR);
+      pendingWheelStepsRef.current += event.deltaY < 0 ? 1 : -1;
+      if (wheelFrameRef.current !== null) return;
+
+      wheelFrameRef.current = requestAnimationFrame(() => {
+        wheelFrameRef.current = null;
+        const wheelSteps = pendingWheelStepsRef.current;
+        pendingWheelStepsRef.current = 0;
+        applyZoom(zoom * VENUE_LAYOUT_WHEEL_ZOOM_FACTOR ** wheelSteps);
+      });
     };
     svg.addEventListener("wheel", handleWheel, { passive: false });
     return () => svg.removeEventListener("wheel", handleWheel);
   }, [applyZoom, isSubmitting, zoom]);
+
+  useEffect(() => {
+    return () => {
+      if (panFrameRef.current !== null) cancelAnimationFrame(panFrameRef.current);
+      if (wheelFrameRef.current !== null) cancelAnimationFrame(wheelFrameRef.current);
+    };
+  }, []);
 
   const handleKeyDown = (event: KeyboardEvent<SVGSVGElement>) => {
     const modifier = event.metaKey || event.ctrlKey;
@@ -150,6 +168,17 @@ export const useVenueLayoutInteraction = ({
     svgRef.current?.setPointerCapture(event.pointerId);
   };
 
+  const flushPan = () => {
+    const delta = pendingPanDeltaRef.current;
+    pendingPanDeltaRef.current = { x: 0, y: 0 };
+    if (delta.x === 0 && delta.y === 0) return;
+
+    setPan((current) => ({
+      x: Math.min(Math.max(current.x - delta.x, 0), safeWidth - viewWidth),
+      y: Math.min(Math.max(current.y - delta.y, 0), safeHeight - viewHeight),
+    }));
+  };
+
   const handlePointerMove = (event: PointerEvent<SVGSVGElement>) => {
     if (!dragState || isSubmitting) return;
     if (dragState.type === "pan") {
@@ -162,10 +191,14 @@ export const useVenueLayoutInteraction = ({
       const clientDeltaY = event.clientY - pointer.clientY;
       const deltaX = clientDeltaX / pixelsPerUnit;
       const deltaY = clientDeltaY / pixelsPerUnit;
-      setPan((current) => ({
-        x: Math.min(Math.max(current.x - deltaX, 0), safeWidth - viewWidth),
-        y: Math.min(Math.max(current.y - deltaY, 0), safeHeight - viewHeight),
-      }));
+      pendingPanDeltaRef.current.x += deltaX;
+      pendingPanDeltaRef.current.y += deltaY;
+      if (panFrameRef.current === null) {
+        panFrameRef.current = requestAnimationFrame(() => {
+          panFrameRef.current = null;
+          flushPan();
+        });
+      }
 
       pointer.clientX = event.clientX;
       pointer.clientY = event.clientY;
@@ -219,7 +252,7 @@ export const useVenueLayoutInteraction = ({
 
     setVenueSeats(nextVenueSeats);
     setErrors((current) => {
-      const collisionMap = getVenueSeatCollisionMap(venue, venueSeats, {
+      const collisionMap = getVenueSeatCollisionMap(venue, nextVenueSeats, {
         currentCollisionMap: collisionMapRef.current,
         targetClientIds: [...positionMap.keys()],
       });
@@ -248,7 +281,7 @@ export const useVenueLayoutInteraction = ({
       currentX: point.x,
       currentY: point.y,
       additive: event.shiftKey,
-      baseClientIds: event.shiftKey ? selectedSeatClientIds : [],
+      baseClientIds: event.shiftKey ? [...selectedSeatClientIdSet] : [],
     });
   };
 
@@ -260,45 +293,52 @@ export const useVenueLayoutInteraction = ({
     setDragState({ type: "stage", pointerX: point.x, pointerY: point.y, originX: venue.stagePositionX, originY: venue.stagePositionY });
   };
 
-  const startSeatDrag = (event: PointerEvent<SVGElement>, clientId: number) => {
-    if (isSubmitting) return;
-    const previousPointerDown = lastSeatPointerDownRef.current;
-    const isDoubleClick = previousPointerDown?.clientId === clientId && event.timeStamp - previousPointerDown.time <= DOUBLE_CLICK_DELAY_MS;
-    lastSeatPointerDownRef.current = isDoubleClick ? null : { clientId, time: event.timeStamp };
+  const startSeatDrag = useCallback(
+    (event: PointerEvent<SVGElement>, clientId: number) => {
+      if (isSubmitting) return;
+      const previousPointerDown = lastSeatPointerDownRef.current;
+      const isDoubleClick = previousPointerDown?.clientId === clientId && event.timeStamp - previousPointerDown.time <= DOUBLE_CLICK_DELAY_MS;
+      lastSeatPointerDownRef.current = isDoubleClick ? null : { clientId, time: event.timeStamp };
 
-    if (isDoubleClick) {
-      event.preventDefault();
-      event.stopPropagation();
-      setDragState(null);
-      const sectionName = venueSeats.find((seat) => seat.clientId === clientId)?.sectionName;
-      if (sectionName === undefined) return;
-      setSelectedSeatClientIds(venueSeats.flatMap((seat) => (seat.sectionName === sectionName ? [seat.clientId] : [])));
-      return;
-    }
-    capturePointer(event);
-    const additive = event.shiftKey;
-    const movingClientIds = selectedSet.has(clientId) ? selectedSeatClientIds : additive ? [...selectedSeatClientIds, clientId] : [clientId];
-    onLayoutChangeStart();
-    if (!selectedSet.has(clientId))
-      setSelectedSeatClientIds((current) => {
-        if (!additive) return [clientId];
-        return current.includes(clientId) ? current.filter((selectedClientId) => selectedClientId !== clientId) : [...current, clientId];
+      if (isDoubleClick) {
+        event.preventDefault();
+        event.stopPropagation();
+        setDragState(null);
+        const sectionName = venueSeats.find((seat) => seat.clientId === clientId)?.sectionName;
+        if (sectionName === undefined) return;
+        setSelectedSeatClientIds(venueSeats.flatMap((seat) => (seat.sectionName === sectionName ? [seat.clientId] : [])));
+        return;
+      }
+      capturePointer(event);
+      const additive = event.shiftKey;
+      const movingClientIds = selectedSeatClientIdSet.has(clientId)
+        ? [...selectedSeatClientIdSet]
+        : additive
+          ? [...selectedSeatClientIdSet, clientId]
+          : [clientId];
+      onLayoutChangeStart();
+      if (!selectedSeatClientIdSet.has(clientId))
+        setSelectedSeatClientIds((current) => {
+          if (!additive) return [clientId];
+          return current.includes(clientId) ? current.filter((selectedClientId) => selectedClientId !== clientId) : [...current, clientId];
+        });
+      const point = getCoordinates(event);
+      setDragState({
+        type: "seats",
+        pointerX: point.x,
+        pointerY: point.y,
+        origins: [...new Set(movingClientIds)].map((clientId) => ({
+          clientId,
+          positionX: venueSeats.find((seat) => seat.clientId === clientId)!.positionX,
+          positionY: venueSeats.find((seat) => seat.clientId === clientId)!.positionY,
+        })),
       });
-    const point = getCoordinates(event);
-    setDragState({
-      type: "seats",
-      pointerX: point.x,
-      pointerY: point.y,
-      origins: [...new Set(movingClientIds)].map((clientId) => ({
-        clientId,
-        positionX: venueSeats.find((seat) => seat.clientId === clientId)!.positionX,
-        positionY: venueSeats.find((seat) => seat.clientId === clientId)!.positionY,
-      })),
-    });
-  };
+    },
+    [getCoordinates, isSubmitting, onLayoutChangeStart, selectedSeatClientIdSet, setSelectedSeatClientIds, venueSeats],
+  );
 
   const startSelectedAreaDrag = (event: PointerEvent<SVGRectElement>) => {
-    if (isSubmitting || selectedSeatClientIds.length === 0) return;
+    if (isSubmitting || selectedSeatClientIdSet.size === 0) return;
     if (event.altKey) {
       startBackgroundDrag(event);
       return;
@@ -310,7 +350,7 @@ export const useVenueLayoutInteraction = ({
       type: "seats",
       pointerX: point.x,
       pointerY: point.y,
-      origins: selectedSeatClientIds.map((clientId) => ({
+      origins: [...selectedSeatClientIdSet].map((clientId) => ({
         clientId,
         positionX: venueSeats.find((seat) => seat.clientId === clientId)!.positionX,
         positionY: venueSeats.find((seat) => seat.clientId === clientId)!.positionY,
@@ -319,6 +359,11 @@ export const useVenueLayoutInteraction = ({
   };
 
   const finishDrag = () => {
+    if (panFrameRef.current !== null) {
+      cancelAnimationFrame(panFrameRef.current);
+      panFrameRef.current = null;
+      flushPan();
+    }
     if (dragState?.type === "pan" && !dragState.moved) setSelectedSeatClientIds([]);
     panPointerRef.current = null;
     setDragState(null);

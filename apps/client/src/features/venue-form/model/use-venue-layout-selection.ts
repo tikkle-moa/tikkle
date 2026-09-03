@@ -10,10 +10,12 @@ interface UseVenueLayoutSelectionProps {
 }
 
 export const useVenueLayoutSelection = ({ venueSeats, selectedSeatClientIds }: UseVenueLayoutSelectionProps) => {
-  const selectedSet = useMemo(() => new Set(selectedSeatClientIds), [selectedSeatClientIds]);
+  const sectionNames = useMemo(() => Array.from(new Set(venueSeats.map((seat) => seat.sectionName || "미지정"))).slice(0, 5), [venueSeats]);
+
+  const selectedSeatClientIdSet = useMemo(() => new Set(selectedSeatClientIds), [selectedSeatClientIds]);
 
   const selectedBounds = useMemo(() => {
-    const selectedSeats = venueSeats.filter((seat) => selectedSet.has(seat.clientId));
+    const selectedSeats = venueSeats.filter((seat) => selectedSeatClientIdSet.has(seat.clientId));
     if (selectedSeats.length === 0) return null;
 
     return {
@@ -22,10 +24,11 @@ export const useVenueLayoutSelection = ({ venueSeats, selectedSeatClientIds }: U
       top: Math.min(...selectedSeats.map((seat) => seat.positionY)) - VENUE_SEAT_HEIGHT / 2,
       bottom: Math.max(...selectedSeats.map((seat) => seat.positionY)) + VENUE_SEAT_HEIGHT / 2,
     };
-  }, [venueSeats, selectedSet]);
+  }, [venueSeats, selectedSeatClientIdSet]);
 
   return {
-    selectedSet,
+    sectionNames,
+    selectedSeatClientIdSet,
     selectedBounds,
   };
 };
