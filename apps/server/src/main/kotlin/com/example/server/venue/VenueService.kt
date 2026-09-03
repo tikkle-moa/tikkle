@@ -62,7 +62,15 @@ class VenueService(
     }
 
     val seatPositions = request.venueSeats.map { it.positionX to it.positionY }
-    validateSeatCollisions(seatPositions)
+    validateSeatLayout(
+      seatPositions,
+      request.venue.width,
+      request.venue.height,
+      stagePositionX,
+      stagePositionY,
+      stageWidth,
+      stageHeight,
+    )
 
     val savedVenue = venueRepository.save(
       Venue(
@@ -132,21 +140,28 @@ class VenueService(
       throw CustomException(ErrorCode.BAD_REQUEST, "같은 구역의 좌석 번호가 중복되었습니다.")
     }
 
-    val unchangedSeatPositions = unchangedSeats.map { it.positionX to it.positionY }
-    val requestedSeatPositions = requestedSeats.map { it.positionX to it.positionY }
-    val resultingSeatPositions = unchangedSeatPositions + requestedSeatPositions
-    validateSeatCollisions(resultingSeatPositions)
+    val stagePositionX = request.venue?.stagePositionX?.orElse(venue.stagePositionX) ?: venue.stagePositionX
+    val stagePositionY = request.venue?.stagePositionY?.orElse(venue.stagePositionY) ?: venue.stagePositionY
+    val stageWidth = request.venue?.stageWidth?.orElse(venue.stageWidth) ?: venue.stageWidth
+    val stageHeight = request.venue?.stageHeight?.orElse(venue.stageHeight) ?: venue.stageHeight
+    val venueWidth = request.venue?.width?.orElse(venue.width) ?: venue.width
+    val venueHeight = request.venue?.height?.orElse(venue.height) ?: venue.height
 
     if (request.venue != null) {
-      val stagePositionX = request.venue.stagePositionX.orElse(venue.stagePositionX)
-      val stagePositionY = request.venue.stagePositionY.orElse(venue.stagePositionY)
-      val stageWidth = request.venue.stageWidth.orElse(venue.stageWidth)
-      val stageHeight = request.venue.stageHeight.orElse(venue.stageHeight)
-      val venueWidth = request.venue.width.orElse(venue.width)
-      val venueHeight = request.venue.height.orElse(venue.height)
-
       validateStagePosition(venueWidth, venueHeight, stagePositionX, stagePositionY, stageWidth, stageHeight)
     }
+
+    val unchangedSeatPositions = unchangedSeats.map { it.positionX to it.positionY }
+    val requestedSeatPositions = requestedSeats.map { it.positionX to it.positionY }
+    validateSeatLayout(
+      unchangedSeatPositions + requestedSeatPositions,
+      venueWidth,
+      venueHeight,
+      stagePositionX,
+      stagePositionY,
+      stageWidth,
+      stageHeight,
+    )
 
     val venueSeats = request.venueSeats?.map { seatRequest ->
       seatRequest.id?.let { id ->
@@ -207,29 +222,65 @@ class VenueService(
     stageWidth: BigDecimal,
     stageHeight: BigDecimal,
   ) {
-    val leftTopX = stagePositionX.subtract(stageWidth.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
-    val leftTopY = stagePositionY.subtract(stageHeight.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
-    val rightBottomX = stagePositionX.add(stageWidth.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
-    val rightBottomY = stagePositionY.add(stageHeight.divide(BigDecimal(2), 2, RoundingMode.HALF_UP))
+    val halfStageWidth = stageWidth.divide(BigDecimal(2))
+    val halfStageHeight = stageHeight.divide(BigDecimal(2))
+    val leftTopX = stagePositionX.subtract(halfStageWidth)
+    val leftTopY = stagePositionY.subtract(halfStageHeight)
+    val rightBottomX = stagePositionX.add(halfStageWidth)
+    val rightBottomY = stagePositionY.add(halfStageHeight)
 
     if (leftTopX < BigDecimal.ZERO || leftTopY < BigDecimal.ZERO || rightBottomX > venueWidth || rightBottomY > venueHeight) {
       throw CustomException(ErrorCode.BAD_REQUEST, "무대가 장소의 범위를 벗어났습니다.")
     }
   }
 
-  private fun validateSeatCollisions(seatPositions: List<Pair<BigDecimal, BigDecimal>>) {
+  private fun validateSeatLayout(
+    seatPositions: List<Pair<BigDecimal, BigDecimal>>,
+    venueWidth: BigDecimal,
+    venueHeight: BigDecimal,
+    stagePositionX: BigDecimal,
+    stagePositionY: BigDecimal,
+    stageWidth: BigDecimal,
+    stageHeight: BigDecimal,
+  ) {
     val seatWidth = BigDecimal(SEAT_WIDTH)
     val seatHeight = BigDecimal(SEAT_HEIGHT)
+    val halfSeatWidth = seatWidth.divide(BigDecimal(2))
+    val halfSeatHeight = seatHeight.divide(BigDecimal(2))
+    val halfStageWidth = stageWidth.divide(BigDecimal(2))
+    val halfStageHeight = stageHeight.divide(BigDecimal(2))
+    val seatGrid = mutableMapOf<Pair<Int, Int>, MutableList<Pair<BigDecimal, BigDecimal>>>()
 
-    seatPositions.forEachIndexed { firstIndex, (firstX, firstY) ->
-      for (secondIndex in firstIndex + 1 until seatPositions.size) {
-        val (secondX, secondY) = seatPositions[secondIndex]
-        val deltaX = firstX.subtract(secondX).abs()
-        val deltaY = firstY.subtract(secondY).abs()
-        if (deltaX < seatWidth && deltaY < seatHeight) {
-          throw CustomException(ErrorCode.BAD_REQUEST, "좌석 영역이 중복되었습니다.")
+    seatPositions.forEach { (seatX, seatY) ->
+      if (
+        seatX - halfSeatWidth < BigDecimal.ZERO ||
+        seatY - halfSeatHeight < BigDecimal.ZERO ||
+        seatX + halfSeatWidth > venueWidth ||
+        seatY + halfSeatHeight > venueHeight
+      ) {
+        throw CustomException(ErrorCode.BAD_REQUEST, "좌석 영역이 장소의 범위를 벗어났습니다.")
+      }
+
+      if (
+        seatX.subtract(stagePositionX).abs() < halfSeatWidth + halfStageWidth &&
+        seatY.subtract(stagePositionY).abs() < halfSeatHeight + halfStageHeight
+      ) {
+        throw CustomException(ErrorCode.BAD_REQUEST, "좌석 영역이 무대와 겹칩니다.")
+      }
+
+      val gridX = seatX.divide(seatWidth, 0, RoundingMode.FLOOR).toInt()
+      val gridY = seatY.divide(seatHeight, 0, RoundingMode.FLOOR).toInt()
+      for (offsetX in -1..1) {
+        for (offsetY in -1..1) {
+          seatGrid[gridX + offsetX to gridY + offsetY]?.forEach { (nearbyX, nearbyY) ->
+            if (seatX.subtract(nearbyX).abs() < seatWidth && seatY.subtract(nearbyY).abs() < seatHeight) {
+              throw CustomException(ErrorCode.BAD_REQUEST, "좌석 영역이 중복되었습니다.")
+            }
+          }
         }
       }
+
+      seatGrid[gridX to gridY] = mutableListOf(seatX to seatY)
     }
   }
 }
