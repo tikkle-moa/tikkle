@@ -190,7 +190,7 @@ export const useVenueLayoutInteraction = ({
   const capturePointer = (event: PointerEvent<SVGElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    svgRef.current?.focus();
+    svgRef.current?.focus({ preventScroll: true });
     svgRef.current?.setPointerCapture(event.pointerId);
   };
 

@@ -504,6 +504,7 @@ describe("useVenueLayoutInteraction", () => {
     attachCoordinateSvg(result);
     act(() => result.current.startBackgroundDrag(createFullPointerEvent({ clientX: 20, clientY: 30 }) as never));
     expect(props.onLayoutChangeStart).toHaveBeenCalledOnce();
+    expect(result.current.svgRef.current?.focus).toHaveBeenCalledWith({ preventScroll: true });
 
     const noSeatTarget = createFullPointerEvent();
     Object.defineProperty(noSeatTarget, "target", { value: { closest: () => null } });
