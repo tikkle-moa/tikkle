@@ -13,6 +13,7 @@ import { PerformanceDetailPage } from "@pages/performance-detail";
 import { PerformanceNewPage } from "@pages/performance-new";
 import { SearchPage } from "@pages/search";
 import { VenueDetailPage } from "@pages/venue-detail";
+import { VenueEditPage } from "@pages/venue-edit";
 import { VenueListPage } from "@pages/venue-list";
 import { VenueNewPage } from "@pages/venue-new";
 
@@ -42,15 +43,13 @@ export const router = createBrowserRouter([
           { path: ROUTE_PATHS.CONCERT_LIST, element: <ConcertListPage /> },
           { path: ROUTE_PATHS.CONCERT_DETAIL, element: <ConcertDetailPage /> },
           { path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> },
+          { path: ROUTE_PATHS.VENUE_LIST, element: <VenueListPage /> },
           { path: ROUTE_PATHS.VENUE_DETAIL, element: <VenueDetailPage /> },
-          {
-            element: <AuthGuard />,
-            children: [{ path: ROUTE_PATHS.VENUE_LIST, element: <VenueListPage /> }],
-          },
           {
             element: <AdminGuard />,
             children: [
               { path: ROUTE_PATHS.VENUE_NEW, element: <VenueNewPage /> },
+              { path: ROUTE_PATHS.VENUE_EDIT, element: <VenueEditPage /> },
               { path: ROUTE_PATHS.CONCERT_NEW, element: <ConcertNewPage /> },
               { path: ROUTE_PATHS.CONCERT_EDIT, element: <ConcertEditPage /> },
               { path: ROUTE_PATHS.PERFORMANCE_NEW, element: <PerformanceNewPage /> },
