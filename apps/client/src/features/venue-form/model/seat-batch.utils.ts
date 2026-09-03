@@ -33,7 +33,13 @@ export const validateSeatBatch = (
 
   const lastX = values.startX + (values.columns - 1) * values.gapX;
   const lastY = values.startY + (values.rows - 1) * values.gapY;
-  if (values.startX < 0 || values.startY < 0 || lastX > venueWidth || lastY > venueHeight) return "생성될 좌석이 공연장 범위를 벗어납니다.";
+  if (
+    values.startX < VENUE_SEAT_WIDTH / 2 ||
+    values.startY < VENUE_SEAT_HEIGHT / 2 ||
+    lastX > venueWidth - VENUE_SEAT_WIDTH / 2 ||
+    lastY > venueHeight - VENUE_SEAT_HEIGHT / 2
+  )
+    return "생성될 좌석이 공연장 범위를 벗어납니다.";
 
   const venueStageBoundingBox: BoundingBox = {
     positionX: existingVenue.stagePositionX,

@@ -4,7 +4,7 @@ import { Armchair, Plus, Trash2, Undo2 } from "lucide-react";
 
 import { toRound } from "@shared/lib/number.utils";
 
-import type { CreateVenueRequest } from "@entities/venue";
+import { type CreateVenueRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 import SeatBatchCreator from "./SeatBatchCreator";
 import VenueFormNumberInput from "./VenueFormNumberInput";
@@ -169,7 +169,8 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
                   id="selected-seat-x"
                   label="X 좌표"
                   value={currentSeat.positionX}
-                  max={venue.width}
+                  min={VENUE_SEAT_WIDTH / 2}
+                  max={venue.width - VENUE_SEAT_WIDTH / 2}
                   error={errors[`seat.${currentSeat.clientId}.positionX`]}
                   required
                   disabled={isSubmitting}
@@ -179,7 +180,8 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
                   id="selected-seat-y"
                   label="Y 좌표"
                   value={currentSeat.positionY}
-                  max={venue.height}
+                  min={VENUE_SEAT_HEIGHT / 2}
+                  max={venue.height - VENUE_SEAT_HEIGHT / 2}
                   error={errors[`seat.${currentSeat.clientId}.positionY`]}
                   required
                   disabled={isSubmitting}

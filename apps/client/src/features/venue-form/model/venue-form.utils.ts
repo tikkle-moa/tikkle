@@ -1,6 +1,6 @@
 import { toRound } from "@shared/lib/number.utils";
 
-import type { CreateVenueDetailRequest, CreateVenueRequest } from "@entities/venue";
+import { type CreateVenueDetailRequest, type CreateVenueRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 import { BASIC_ERROR_KEYS, LAYOUT_ERROR_KEYS, VENUE_FORM_LIMITS } from "./venue-form.constants";
 import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
@@ -85,11 +85,19 @@ export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: VenueFo
 
     if (!Number.isInteger(seat.price) || seat.price < 0) errors[`${prefix}.price`] = "좌석 가격은 0 이상의 정수를 입력해 주세요.";
 
-    if (!Number.isFinite(seat.positionX) || seat.positionX < 0 || seat.positionX > (errors.width ? 999_999.99 : venue.width))
-      errors[`${prefix}.positionX`] = "X 좌표는 0 이상 공연장 가로 길이 이하의 숫자를 입력해 주세요.";
+    if (
+      !Number.isFinite(seat.positionX) ||
+      seat.positionX < VENUE_SEAT_WIDTH / 2 ||
+      seat.positionX > (errors.width ? 999_999.99 : venue.width - VENUE_SEAT_WIDTH / 2)
+    )
+      errors[`${prefix}.positionX`] = `X 좌표는 ${VENUE_SEAT_WIDTH / 2} 이상 ${venue.width - VENUE_SEAT_WIDTH / 2} 이하의 숫자를 입력해 주세요.`;
 
-    if (!Number.isFinite(seat.positionY) || seat.positionY < 0 || seat.positionY > (errors.height ? 999_999.99 : venue.height))
-      errors[`${prefix}.positionY`] = "Y 좌표는 0 이상 공연장 세로 길이 이하의 숫자를 입력해 주세요.";
+    if (
+      !Number.isFinite(seat.positionY) ||
+      seat.positionY < VENUE_SEAT_HEIGHT / 2 ||
+      seat.positionY > (errors.height ? 999_999.99 : venue.height - VENUE_SEAT_HEIGHT / 2)
+    )
+      errors[`${prefix}.positionY`] = `Y 좌표는 ${VENUE_SEAT_HEIGHT / 2} 이상 ${venue.height - VENUE_SEAT_HEIGHT / 2} 이하의 숫자를 입력해 주세요.`;
 
     const key = `${seat.sectionName.trim()}\u0000${seat.seatNumber}`;
     if (seatKeys.has(key)) errors[`${prefix}.seatNumber`] = "같은 구역에 중복된 좌석 번호가 있습니다.";

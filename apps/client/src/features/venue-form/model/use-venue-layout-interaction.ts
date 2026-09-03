@@ -251,12 +251,12 @@ export const useVenueLayoutInteraction = ({
     }
 
     deltaX = Math.min(
-      Math.max(deltaX, Math.max(...dragState.origins.map((seat) => -seat.positionX))),
-      Math.min(...dragState.origins.map((seat) => safeWidth - seat.positionX)),
+      Math.max(deltaX, Math.max(...dragState.origins.map((seat) => VENUE_SEAT_WIDTH / 2 - seat.positionX))),
+      Math.min(...dragState.origins.map((seat) => safeWidth - VENUE_SEAT_WIDTH / 2 - seat.positionX)),
     );
     deltaY = Math.min(
-      Math.max(deltaY, Math.max(...dragState.origins.map((seat) => -seat.positionY))),
-      Math.min(...dragState.origins.map((seat) => safeHeight - seat.positionY)),
+      Math.max(deltaY, Math.max(...dragState.origins.map((seat) => VENUE_SEAT_HEIGHT / 2 - seat.positionY))),
+      Math.min(...dragState.origins.map((seat) => safeHeight - VENUE_SEAT_HEIGHT / 2 - seat.positionY)),
     );
     const positionMap = new Map(
       dragState.origins.map(({ clientId, positionX, positionY }) => [
