@@ -59,7 +59,7 @@ export const useVenueLayoutInteraction = ({
   const pendingSelectionPointRef = useRef<{ x: number; y: number } | null>(null);
   const wheelFrameRef = useRef<number | null>(null);
   const pendingWheelStepsRef = useRef(0);
-  const startSeatDragRef = useRef<(event: PointerEvent<SVGElement>, clientId: number) => void>(() => undefined);
+  const startSeatDragRef = useRef<((event: PointerEvent<SVGElement>, clientId: number) => void) | null>(null);
 
   const [dragState, setDragState] = useState<VenueLayoutDragState | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -312,7 +312,7 @@ export const useVenueLayoutInteraction = ({
         (seat) => Math.abs(seat.positionX - point.x) <= VENUE_SEAT_WIDTH / 2 && Math.abs(seat.positionY - point.y) <= VENUE_SEAT_HEIGHT / 2,
       );
       if (targetSeat) {
-        startSeatDragRef.current(event, targetSeat.clientId);
+        startSeatDragRef.current?.(event, targetSeat.clientId);
         return;
       }
     }
@@ -457,7 +457,7 @@ export const useVenueLayoutInteraction = ({
     const clientId = Number(seatElement.dataset.seatClientId);
     if (!Number.isFinite(clientId)) return;
 
-    startSeatDragRef.current(event, clientId);
+    startSeatDragRef.current?.(event, clientId);
   }, []);
 
   return {
