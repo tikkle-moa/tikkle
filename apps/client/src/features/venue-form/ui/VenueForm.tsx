@@ -1,17 +1,14 @@
 import { AlertCircle, Building2, CircleAlert, LoaderCircle } from "lucide-react";
 
-import { toRound } from "@shared/lib/number.utils";
 import type { SubmitState } from "@shared/model/form.types";
 
 import type { CreateVenueDetailRequest } from "@entities/venue";
 
-import VenueFormNumberInput from "./VenueFormNumberInput";
-import VenueFormTextInput from "./VenueFormTextInput";
-import VenueFormTextarea from "./VenueFormTextarea";
+import VenueInfoForm from "./VenueInfoForm";
 import VenueSeatForm from "./VenueSeatForm";
+import VenueStageForm from "./VenueStageForm";
 
 import { useVenueForm } from "../model/use-venue-form";
-import { VENUE_FORM_LIMITS } from "../model/venue-form.constants";
 import type { VenueFormMode } from "../model/venue-form.types";
 
 interface VenueFormProps {
@@ -97,113 +94,9 @@ const VenueForm = ({ mode, initialValues, submitState, onSubmit, onCancel }: Ven
         </div>
       )}
 
-      <section className="space-y-6 border-b border-slate-200 p-4 sm:p-6">
-        <h3 className="text-sm font-bold text-slate-900">기본 정보</h3>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <VenueFormTextInput
-            id="venue-name"
-            label="공연장 이름"
-            value={venue.name}
-            maxLength={VENUE_FORM_LIMITS.venueName}
-            error={errors.name}
-            placeholder="예: 티끌 아트홀"
-            required
-            disabled={isSubmitting}
-            onChange={(value) => updateVenue("name", value)}
-          />
-          <VenueFormTextInput
-            id="venue-address"
-            label="주소"
-            value={venue.address}
-            maxLength={VENUE_FORM_LIMITS.venueAddress}
-            error={errors.address}
-            placeholder="예: 서울특별시 송파구 올림픽로 000"
-            required
-            disabled={isSubmitting}
-            onChange={(value) => updateVenue("address", value)}
-          />
-        </div>
+      <VenueInfoForm venue={venue} errors={errors} isSubmitting={isSubmitting} updateVenue={updateVenue} />
 
-        <VenueFormTextarea
-          id="venue-description"
-          label="공연장 설명"
-          value={venue.description}
-          maxLength={VENUE_FORM_LIMITS.venueDescription}
-          error={errors.description}
-          placeholder="공연장의 특징이나 이용 안내를 입력하세요."
-          disabled={isSubmitting}
-          onChange={(value) => updateVenue("description", value === "" ? null : value)}
-        />
-      </section>
-
-      <section className="space-y-6 border-b border-slate-200 bg-slate-50/60 p-4 sm:p-6">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900">공연장 및 무대 크기</h3>
-          <p className="mt-1 text-xs text-slate-500">모든 크기와 좌표는 동일한 단위로 입력해 주세요. 좌측 상단이 (0, 0)입니다.</p>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <VenueFormNumberInput
-            id="venue-width"
-            label="공연장 가로"
-            value={venue.width}
-            error={errors.width}
-            required
-            disabled={isSubmitting}
-            onChange={(value) => updateVenue("width", toRound(value, 2))}
-          />
-          <VenueFormNumberInput
-            id="venue-height"
-            label="공연장 세로"
-            value={venue.height}
-            error={errors.height}
-            required
-            disabled={isSubmitting}
-            onChange={(value) => updateVenue("height", toRound(value, 2))}
-          />
-          <VenueFormNumberInput
-            id="venue-stage-x"
-            label="무대 X 좌표"
-            value={venue.stagePositionX}
-            min={venue.stageWidth / 2}
-            max={venue.width - venue.stageWidth / 2}
-            error={errors.stagePositionX}
-            required
-            disabled={isSubmitting}
-            onChange={(value) => updateVenue("stagePositionX", toRound(value, 2))}
-          />
-          <VenueFormNumberInput
-            id="venue-stage-y"
-            label="무대 Y 좌표"
-            value={venue.stagePositionY}
-            min={venue.stageHeight / 2}
-            max={venue.height - venue.stageHeight / 2}
-            error={errors.stagePositionY}
-            required
-            disabled={isSubmitting}
-            onChange={(value) => updateVenue("stagePositionY", toRound(value, 2))}
-          />
-          <VenueFormNumberInput
-            id="venue-stage-width"
-            label="무대 가로"
-            value={venue.stageWidth}
-            max={Math.max(0, Math.min(999.99, venue.stagePositionX * 2, (venue.width - venue.stagePositionX) * 2))}
-            error={errors.stageWidth}
-            required
-            disabled={isSubmitting}
-            onChange={(value) => updateVenue("stageWidth", toRound(value, 2))}
-          />
-          <VenueFormNumberInput
-            id="venue-stage-height"
-            label="무대 세로"
-            value={venue.stageHeight}
-            max={Math.max(0, Math.min(999.99, venue.stagePositionY * 2, (venue.height - venue.stagePositionY) * 2))}
-            error={errors.stageHeight}
-            required
-            disabled={isSubmitting}
-            onChange={(value) => updateVenue("stageHeight", toRound(value, 2))}
-          />
-        </div>
-      </section>
+      <VenueStageForm venue={venue} errors={errors} isSubmitting={isSubmitting} updateVenue={updateVenue} />
 
       <VenueSeatForm
         venue={venue}

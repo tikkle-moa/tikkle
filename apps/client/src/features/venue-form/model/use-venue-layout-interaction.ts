@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 
-import type { CreateVenueRequest } from "@entities/venue";
+import { type CreateVenueRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
 import { replaceVenueSeatCollisionErrors } from "./venue-form.utils";
@@ -58,6 +58,7 @@ export const useVenueLayoutInteraction = ({
   const pendingSelectionPointRef = useRef<{ x: number; y: number } | null>(null);
   const wheelFrameRef = useRef<number | null>(null);
   const pendingWheelStepsRef = useRef(0);
+  const startSeatDragRef = useRef<(event: PointerEvent<SVGElement>, clientId: number) => void>(() => undefined);
 
   const [dragState, setDragState] = useState<VenueLayoutDragState | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -270,19 +271,12 @@ export const useVenueLayoutInteraction = ({
 
     setVenueSeats(nextVenueSeats);
     setErrors((current) => {
-      const startedAt = performance.now();
       const collisionMap = getVenueSeatCollisionMap(venue, nextVenueSeats, {
         currentCollisionMap: collisionMapRef.current,
         targetClientIds: [...positionMap.keys()],
       });
-      const collisionAt = performance.now();
       collisionMapRef.current = collisionMap;
       const next = replaceVenueSeatCollisionErrors(current, nextVenueSeats, collisionMap);
-
-      console.table({
-        collision: collisionAt - startedAt,
-        errors: performance.now() - collisionAt,
-      });
       const nextEntries = Object.entries(next);
       const isSame = nextEntries.length === Object.keys(current).length && nextEntries.every(([key, message]) => current[key] === message);
       return isSame ? current : next;
@@ -291,6 +285,16 @@ export const useVenueLayoutInteraction = ({
 
   const startBackgroundDrag = (event: PointerEvent<SVGRectElement>) => {
     if (isSubmitting) return;
+    if (!event.altKey && event.button !== 1) {
+      const point = getCoordinates(event);
+      const targetSeat = venueSeats.findLast(
+        (seat) => Math.abs(seat.positionX - point.x) <= VENUE_SEAT_WIDTH / 2 && Math.abs(seat.positionY - point.y) <= VENUE_SEAT_HEIGHT / 2,
+      );
+      if (targetSeat) {
+        startSeatDragRef.current(event, targetSeat.clientId);
+        return;
+      }
+    }
     capturePointer(event);
     if (!event.altKey || event.button === 1) {
       panPointerRef.current = { clientX: event.clientX, clientY: event.clientY, distance: 0 };
@@ -366,6 +370,10 @@ export const useVenueLayoutInteraction = ({
     [getCoordinates, isSubmitting, onLayoutChangeStart, selectedSeatClientIdSet, setSelectedSeatClientIds, venueSeats],
   );
 
+  useEffect(() => {
+    startSeatDragRef.current = startSeatDrag;
+  }, [startSeatDrag]);
+
   const startSelectedAreaDrag = (event: PointerEvent<SVGRectElement>) => {
     if (isSubmitting || selectedSeatClientIdSet.size === 0) return;
     if (event.altKey) {
@@ -421,18 +429,15 @@ export const useVenueLayoutInteraction = ({
     setDragState(null);
   };
 
-  const handlePointerDown = useCallback(
-    (event: PointerEvent<SVGGElement>) => {
-      const seatElement = (event.target as Element).closest<SVGGElement>("[data-seat-client-id]");
-      if (!seatElement) return;
+  const handlePointerDown = useCallback((event: PointerEvent<SVGGElement>) => {
+    const seatElement = (event.target as Element).closest<SVGGElement>("[data-seat-client-id]");
+    if (!seatElement) return;
 
-      const clientId = Number(seatElement.dataset.seatClientId);
-      if (!Number.isFinite(clientId)) return;
+    const clientId = Number(seatElement.dataset.seatClientId);
+    if (!Number.isFinite(clientId)) return;
 
-      startSeatDrag(event, clientId);
-    },
-    [startSeatDrag],
-  );
+    startSeatDragRef.current(event, clientId);
+  }, []);
 
   return {
     svgRef,

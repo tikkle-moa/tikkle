@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import {
   VENUE_FORM_FIELD_ERROR_CLASS_NAME,
   VENUE_FORM_FIELD_STATE_CLASS_NAME,
@@ -59,4 +61,4 @@ const VenueFormTextInput = ({ id, label, value, maxLength, error, placeholder, r
   );
 };
 
-export default VenueFormTextInput;
+export default memo(VenueFormTextInput);

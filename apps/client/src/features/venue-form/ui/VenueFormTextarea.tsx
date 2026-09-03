@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { useResizeTextarea } from "@shared/model/use-resize-textarea";
 
 import {
@@ -62,4 +64,4 @@ const VenueFormTextarea = ({ id, label, value, maxLength, error, placeholder, re
   );
 };
 
-export default VenueFormTextarea;
+export default memo(VenueFormTextarea);

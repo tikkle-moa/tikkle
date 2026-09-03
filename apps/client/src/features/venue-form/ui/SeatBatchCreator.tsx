@@ -2,8 +2,6 @@ import type { RefObject } from "react";
 
 import { Grid3X3, WandSparkles } from "lucide-react";
 
-import { toRound } from "@shared/lib/number.utils";
-
 import { type CreateVenueRequest, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "@entities/venue";
 
 import VenueFormNumberInput from "./VenueFormNumberInput";
@@ -21,7 +19,7 @@ interface SeatBatchCreatorProps {
 }
 
 const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmitting, onAddSeats }: SeatBatchCreatorProps) => {
-  const { values, error, count, updateValue, handleCreate } = useSeatBatch({ venue, venueSeats, venueSeatClientIdRef, onAddSeats });
+  const { values, error, count, changeHandlers, handleCreate } = useSeatBatch({ venue, venueSeats, venueSeatClientIdRef, onAddSeats });
 
   return (
     <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4 sm:p-5">
@@ -41,7 +39,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           value={values.sectionName}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("sectionName", value)}
+          onChange={changeHandlers.sectionName}
         />
         <VenueFormNumberInput
           id="batch-rows"
@@ -50,7 +48,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           min={1}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("rows", toRound(value))}
+          onChange={changeHandlers.rows}
         />
         <VenueFormNumberInput
           id="batch-columns"
@@ -59,7 +57,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           min={1}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("columns", toRound(value))}
+          onChange={changeHandlers.columns}
         />
         <VenueFormNumberInput
           id="batch-start-number"
@@ -69,7 +67,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           max={null}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("startSeatNumber", toRound(value))}
+          onChange={changeHandlers.startSeatNumber}
         />
         <VenueFormNumberInput
           id="batch-price"
@@ -78,7 +76,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           max={null}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("price", toRound(value))}
+          onChange={changeHandlers.price}
         />
         <VenueFormNumberInput
           id="batch-start-x"
@@ -87,7 +85,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           max={venue.width}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("startX", toRound(value, 2))}
+          onChange={changeHandlers.startX}
         />
         <VenueFormNumberInput
           id="batch-start-y"
@@ -96,7 +94,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           max={venue.height}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("startY", toRound(value, 2))}
+          onChange={changeHandlers.startY}
         />
         <VenueFormNumberInput
           id="batch-gap-x"
@@ -105,7 +103,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           min={VENUE_SEAT_WIDTH}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("gapX", toRound(value, 2))}
+          onChange={changeHandlers.gapX}
         />
         <VenueFormNumberInput
           id="batch-gap-y"
@@ -114,7 +112,7 @@ const SeatBatchCreator = ({ venue, venueSeats, venueSeatClientIdRef, isSubmittin
           min={VENUE_SEAT_HEIGHT}
           required
           disabled={isSubmitting}
-          onChange={(value) => updateValue("gapY", toRound(value, 2))}
+          onChange={changeHandlers.gapY}
         />
       </div>
       {error && (

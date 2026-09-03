@@ -33,19 +33,6 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
     initializeForm();
   }, [initialValues]);
 
-  // useEffect(() => {
-  //   const updateCollisionErrors = () => {
-  //     setErrors((current) => {
-  //       const next = replaceVenueSeatCollisionErrors(current, venueSeats);
-  //       const nextEntries = Object.entries(next);
-  //       const isSame = nextEntries.length === Object.keys(current).length && nextEntries.every(([key, message]) => current[key] === message);
-  //       return isSame ? current : next;
-  //     });
-  //   };
-
-  //   updateCollisionErrors();
-  // }, [venueSeats]);
-
   const updateVenue = <K extends keyof CreateVenueRequest>(field: K, value: CreateVenueRequest[K]) => {
     setVenue((current) => ({ ...current, [field]: value }));
     setErrors(({ [field]: _, ...next }) => next);

@@ -6,10 +6,10 @@ import { BASIC_ERROR_KEYS, LAYOUT_ERROR_KEYS, VENUE_FORM_LIMITS } from "./venue-
 import type { VenueFormErrors, VenueFormSeat } from "./venue-form.types";
 import { getVenueSeatCollisionMap } from "./venue-seat-collision.utils";
 
-const getVenueSeatCollisionError = (venueSeats: VenueFormSeat[], collidingClientIds: Set<number>) => {
+const getVenueSeatCollisionError = (seatByClientId: Map<number, VenueFormSeat>, collidingClientIds: Set<number>) => {
   const seatNames = [...collidingClientIds].map((clientId) => {
     if (clientId === -1) return "무대";
-    return venueSeats.find((seat) => seat.clientId === clientId)?.seatLabel.trim() || `좌석 ${clientId}`;
+    return seatByClientId.get(clientId)?.seatLabel.trim() || `좌석 ${clientId}`;
   });
   return `같은 좌표에 중복된 영역이 있습니다.\n겹치는 영역: ${seatNames.join(", ")}`;
 };
@@ -96,8 +96,9 @@ export const validateVenueForm = (venue: CreateVenueRequest, venueSeats: VenueFo
     seatKeys.add(key);
   });
 
+  const seatByClientId = new Map(venueSeats.map((seat) => [seat.clientId, seat]));
   getVenueSeatCollisionMap(venue, venueSeats).forEach((collidingClientIds, clientId) => {
-    const collisionError = getVenueSeatCollisionError(venueSeats, collidingClientIds);
+    const collisionError = getVenueSeatCollisionError(seatByClientId, collidingClientIds);
     errors[`seat.${clientId}.positionX`] = collisionError;
     errors[`seat.${clientId}.positionY`] = collisionError;
   });
@@ -113,9 +114,10 @@ export const replaceVenueSeatCollisionErrors = (
   const nextErrors = Object.fromEntries(
     Object.entries(errors).filter(([key]) => !key.startsWith("seat.") || (!key.endsWith(".positionX") && !key.endsWith(".positionY"))),
   ) as VenueFormErrors;
+  const seatByClientId = new Map(venueSeats.map((seat) => [seat.clientId, seat]));
 
   collisionMap.forEach((collidingIndices, index) => {
-    const collisionError = getVenueSeatCollisionError(venueSeats, collidingIndices);
+    const collisionError = getVenueSeatCollisionError(seatByClientId, collidingIndices);
     nextErrors[`seat.${index}.positionX`] = collisionError;
     nextErrors[`seat.${index}.positionY`] = collisionError;
   });

@@ -1,6 +1,6 @@
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import { type Dispatch, type RefObject, type SetStateAction } from "react";
 
-import { Armchair, CircleAlert, Plus, Trash2, Undo2 } from "lucide-react";
+import { Armchair, Plus, Trash2, Undo2 } from "lucide-react";
 
 import { toRound } from "@shared/lib/number.utils";
 
@@ -10,10 +10,10 @@ import SeatBatchCreator from "./SeatBatchCreator";
 import VenueFormNumberInput from "./VenueFormNumberInput";
 import VenueFormTextInput from "./VenueFormTextInput";
 import VenueLayoutEditor from "./VenueLayoutEditor";
+import VenueSeatList from "./VenueSeatList";
 
 import { useVenueSeatForm } from "../model/use-venue-seat-form";
 import type { VenueFormErrors, VenueFormSeat } from "../model/venue-form.types";
-import { getVenueSeatClassName } from "../model/venue-form.utils";
 
 interface VenueSeatFormProps {
   venue: CreateVenueRequest;
@@ -28,7 +28,9 @@ interface VenueSeatFormProps {
 
 const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubmitting, setVenue, setVenueSeats, setErrors }: VenueSeatFormProps) => {
   const {
+    currentSeat,
     selectedSeatClientIds,
+    selectedSeatClientIdSet,
     errorSeatClientIds,
     collisionMapRef,
     canUndo,
@@ -40,7 +42,6 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
     handleRemoveSelectedSeats,
     updateVenueSeat,
   } = useVenueSeatForm({ venue, venueSeats, errors, venueSeatClientIdRef, setVenueSeats, setErrors });
-  const currentSeat = selectedSeatClientIds.length === 1 ? venueSeats.find((seat) => seat.clientId === selectedSeatClientIds[0]) : null;
 
   return (
     <section className="space-y-6 p-4 sm:p-6">
@@ -112,7 +113,7 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-slate-900">선택 좌석 편집</p>
-                  <p className="mt-0.5 text-xs text-slate-500">목록 번호 {selectedSeatClientIds[0] + 1}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">목록 번호 {currentSeat.clientId + 1}</p>
                 </div>
                 <button
                   aria-label="선택 좌석 삭제"
@@ -129,10 +130,10 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
                   id="selected-seat-section"
                   label="구역명"
                   value={currentSeat.sectionName}
-                  error={errors[`seat.${selectedSeatClientIds[0]}.sectionName`]}
+                  error={errors[`seat.${currentSeat.clientId}.sectionName`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "sectionName", value)}
+                  onChange={(value) => updateVenueSeat(currentSeat.clientId, "sectionName", value)}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-number"
@@ -140,49 +141,49 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
                   value={currentSeat.seatNumber}
                   min={1}
                   max={null}
-                  error={errors[`seat.${selectedSeatClientIds[0]}.seatNumber`]}
+                  error={errors[`seat.${currentSeat.clientId}.seatNumber`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "seatNumber", toRound(value))}
+                  onChange={(value) => updateVenueSeat(currentSeat.clientId, "seatNumber", toRound(value))}
                 />
                 <VenueFormTextInput
                   id="selected-seat-label"
                   label="좌석 표시"
                   value={currentSeat.seatLabel}
-                  error={errors[`seat.${selectedSeatClientIds[0]}.seatLabel`]}
+                  error={errors[`seat.${currentSeat.clientId}.seatLabel`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "seatLabel", value)}
+                  onChange={(value) => updateVenueSeat(currentSeat.clientId, "seatLabel", value)}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-price"
                   label="가격 (원)"
                   value={currentSeat.price}
                   max={null}
-                  error={errors[`seat.${selectedSeatClientIds[0]}.price`]}
+                  error={errors[`seat.${currentSeat.clientId}.price`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "price", toRound(value))}
+                  onChange={(value) => updateVenueSeat(currentSeat.clientId, "price", toRound(value))}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-x"
                   label="X 좌표"
                   value={currentSeat.positionX}
                   max={venue.width}
-                  error={errors[`seat.${selectedSeatClientIds[0]}.positionX`]}
+                  error={errors[`seat.${currentSeat.clientId}.positionX`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "positionX", toRound(value, 2))}
+                  onChange={(value) => updateVenueSeat(currentSeat.clientId, "positionX", toRound(value, 2))}
                 />
                 <VenueFormNumberInput
                   id="selected-seat-y"
                   label="Y 좌표"
                   value={currentSeat.positionY}
                   max={venue.height}
-                  error={errors[`seat.${selectedSeatClientIds[0]}.positionY`]}
+                  error={errors[`seat.${currentSeat.clientId}.positionY`]}
                   required
                   disabled={isSubmitting}
-                  onChange={(value) => updateVenueSeat(selectedSeatClientIds[0], "positionY", toRound(value, 2))}
+                  onChange={(value) => updateVenueSeat(currentSeat.clientId, "positionY", toRound(value, 2))}
                 />
               </div>
             </div>
@@ -200,30 +201,12 @@ const VenueSeatForm = ({ venue, venueSeats, errors, venueSeatClientIdRef, isSubm
       </div>
 
       {venueSeats.length > 0 && (
-        <div className="flex max-h-32 scrollbar-thin flex-wrap gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-          {venueSeats.map((seat) => {
-            const hasError = errorSeatClientIds.has(seat.clientId);
-            const isSelected = selectedSeatClientIds.includes(seat.clientId);
-            return (
-              <button
-                className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${getVenueSeatClassName(hasError, isSelected)}`}
-                key={seat.clientId}
-                onClick={(event) =>
-                  setSelectedSeatClientIds((current) => {
-                    if (!event.shiftKey) return [seat.clientId];
-                    return current.includes(seat.clientId)
-                      ? current.filter((selectedId) => selectedId !== seat.clientId)
-                      : [...current, seat.clientId];
-                  })
-                }
-                type="button"
-              >
-                {hasError && <CircleAlert className="size-3.5 shrink-0 text-red-500" aria-hidden />}{" "}
-                {seat.seatLabel.trim() || `좌석 ${seat.clientId}`} ({seat.clientId})
-              </button>
-            );
-          })}
-        </div>
+        <VenueSeatList
+          venueSeats={venueSeats}
+          selectedSeatClientIdSet={selectedSeatClientIdSet}
+          errorSeatClientIds={errorSeatClientIds}
+          setSelectedSeatClientIds={setSelectedSeatClientIds}
+        />
       )}
 
       <SeatBatchCreator

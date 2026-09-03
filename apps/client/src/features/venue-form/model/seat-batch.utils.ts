@@ -8,7 +8,7 @@ import type { SeatBatchValues } from "./seat-batch.types";
 import { VENUE_FORM_LIMITS } from "./venue-form.constants";
 import type { VenueFormSeat } from "./venue-form.types";
 import type { BoundingBox } from "./venue-seat-collision.types";
-import { doVenueSeatsOverlap } from "./venue-seat-collision.utils";
+import { createVenueSeatGrid, doVenueSeatsOverlap, getNearbyVenueSeats } from "./venue-seat-collision.utils";
 
 const getVenueSeatKey = (sectionName: string, seatNumber: number) => `${sectionName.trim()}\u0000${seatNumber}`;
 
@@ -42,14 +42,21 @@ export const validateSeatBatch = (
     height: existingVenue.stageHeight,
   };
   const existingSeatKeys = new Set(existingVenueSeats.map(({ sectionName, seatNumber }) => getVenueSeatKey(sectionName, seatNumber)));
-  const generatedSeats = createSeatBatch(values, { current: -1 });
-  for (const generatedSeat of generatedSeats) {
-    const seatKey = getVenueSeatKey(generatedSeat.sectionName, generatedSeat.seatNumber);
+  const existingSeatGrid = createVenueSeatGrid(existingVenueSeats);
+  const sectionName = values.sectionName.trim();
+
+  for (let index = 0; index < values.rows * values.columns; index += 1) {
+    const generatedSeatBoundingBox: BoundingBox = {
+      positionX: toRound(values.startX + (index % values.columns) * values.gapX, 2),
+      positionY: toRound(values.startY + Math.floor(index / values.columns) * values.gapY, 2),
+    };
+    const seatKey = getVenueSeatKey(sectionName, values.startSeatNumber + index);
     if (existingSeatKeys.has(seatKey)) return "같은 구역에 중복된 좌석 번호가 있습니다.";
 
-    if (existingVenueSeats.some((seat) => doVenueSeatsOverlap(seat, generatedSeat))) return "생성될 좌석 영역이 다른 좌석과 겹칩니다.";
+    if (getNearbyVenueSeats(generatedSeatBoundingBox, existingSeatGrid, (nearbySeat) => doVenueSeatsOverlap(nearbySeat, generatedSeatBoundingBox)))
+      return "생성될 좌석 영역이 다른 좌석과 겹칩니다.";
 
-    if (doVenueSeatsOverlap(generatedSeat, venueStageBoundingBox)) return "생성될 좌석 영역이 무대와 겹칩니다.";
+    if (doVenueSeatsOverlap(generatedSeatBoundingBox, venueStageBoundingBox)) return "생성될 좌석 영역이 무대와 겹칩니다.";
   }
 
   return null;

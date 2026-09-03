@@ -1,5 +1,7 @@
-import { type RefObject, useState } from "react";
+import { type RefObject, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+
+import { toRound } from "@shared/lib/number.utils";
 
 import type { CreateVenueRequest } from "@entities/venue";
 
@@ -25,14 +27,35 @@ export const useSeatBatch = ({ venue, venueSeats, venueSeatClientIdRef, onAddSea
     setError(null);
   };
 
+  const changeHandlers = useMemo(
+    () => ({
+      sectionName: (value: string) => updateValue("sectionName", value),
+      rows: (value: number) => updateValue("rows", toRound(value)),
+      columns: (value: number) => updateValue("columns", toRound(value)),
+      startSeatNumber: (value: number) => updateValue("startSeatNumber", toRound(value)),
+      price: (value: number) => updateValue("price", toRound(value)),
+      startX: (value: number) => updateValue("startX", toRound(value, 2)),
+      startY: (value: number) => updateValue("startY", toRound(value, 2)),
+      gapX: (value: number) => updateValue("gapX", toRound(value, 2)),
+      gapY: (value: number) => updateValue("gapY", toRound(value, 2)),
+    }),
+    [],
+  );
+
   const handleCreate = () => {
     const nextError = validateSeatBatch(values, venue, venueSeats, venue.width, venue.height);
     setError(nextError);
     if (nextError) return;
     onAddSeats(createSeatBatch(values, venueSeatClientIdRef));
     setValues((current) => ({ ...current, startSeatNumber: current.startSeatNumber + count }));
-    toast.success(`좌석이 성공적으로 생성되었습니다. ${venueSeatClientIdRef.current}`);
+    toast.success("좌석이 성공적으로 생성되었습니다.");
   };
 
-  return { values, error, count, updateValue, handleCreate };
+  return {
+    values,
+    error,
+    count,
+    changeHandlers,
+    handleCreate,
+  };
 };

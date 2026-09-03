@@ -1,5 +1,6 @@
-import { type PointerEvent, memo } from "react";
+import { type PointerEvent, memo, useMemo } from "react";
 
+import VenueSeatBaseLayer from "./VenueSeatBaseLayer";
 import VenueSeatItem from "./VenueSeatItem";
 
 import type { VenueFormSeat } from "../model/venue-form.types";
@@ -13,29 +14,27 @@ interface VenueSeatLayoutProps {
 }
 
 const VenueSeatLayout = ({ venueSeats, selectedSeatClientIdSet, errorSeatClientIds, isSubmitting, onPointerDown }: VenueSeatLayoutProps) => {
-  const regularSeats: VenueFormSeat[] = [];
-  const errorSeats: VenueFormSeat[] = [];
-  const selectedSeats: VenueFormSeat[] = [];
-
-  venueSeats.forEach((seat) => {
-    if (selectedSeatClientIdSet.has(seat.clientId)) {
-      selectedSeats.push(seat);
-    } else if (errorSeatClientIds.has(seat.clientId)) {
-      errorSeats.push(seat);
-    } else {
-      regularSeats.push(seat);
-    }
-  });
-
-  const orderedSeats = [...regularSeats, ...errorSeats, ...selectedSeats];
+  const seatByClientId = useMemo(() => new Map(venueSeats.map((seat) => [seat.clientId, seat])), [venueSeats]);
+  const emphasizedClientIds = useMemo(
+    () => [...errorSeatClientIds].filter((clientId) => !selectedSeatClientIdSet.has(clientId)).concat([...selectedSeatClientIdSet]),
+    [errorSeatClientIds, selectedSeatClientIdSet],
+  );
 
   return (
     <g onPointerDown={onPointerDown}>
-      {orderedSeats.map((seat) => {
-        const selected = selectedSeatClientIdSet.has(seat.clientId);
-        const hasError = errorSeatClientIds.has(seat.clientId);
-
-        return <VenueSeatItem key={seat.clientId} seat={seat} selected={selected} hasError={hasError} isSubmitting={isSubmitting} />;
+      <VenueSeatBaseLayer venueSeats={venueSeats} isSubmitting={isSubmitting} />
+      {emphasizedClientIds.map((clientId) => {
+        const seat = seatByClientId.get(clientId);
+        if (!seat) return null;
+        return (
+          <VenueSeatItem
+            key={clientId}
+            seat={seat}
+            selected={selectedSeatClientIdSet.has(clientId)}
+            hasError={errorSeatClientIds.has(clientId)}
+            isSubmitting={isSubmitting}
+          />
+        );
       })}
     </g>
   );
