@@ -39,9 +39,14 @@ const VenueLayoutEditor = ({
   setSelectedSeatClientIds,
   onLayoutChangeStart,
 }: VenueLayoutEditorProps) => {
-  const { sectionNames, selectedSeatClientIdSet, selectedBounds } = useVenueLayoutSelection({ venueSeats, selectedSeatClientIds });
+  const { sectionNames, selectedSeatClientIdSet, selectedBounds } = useVenueLayoutSelection({
+    venueSeats,
+    selectedSeatClientIds,
+  });
 
   const {
+    viewWidth,
+    viewHeight,
     svgRef,
     dragState,
     zoom,
@@ -112,7 +117,7 @@ const VenueLayoutEditor = ({
         <svg
           ref={svgRef}
           aria-label="공연장 좌석 배치 편집기"
-          className={`aspect-square w-full rounded-xl bg-slate-900 outline-none select-none focus:outline-none lg:aspect-16/10 ${getLayoutClassName(isSubmitting, dragState, isAltPressed)}`}
+          className={`aspect-16/10 w-full rounded-xl bg-slate-900 outline-none select-none focus:outline-none ${getLayoutClassName(isSubmitting, dragState, isAltPressed)}`}
           onPointerMove={handlePointerMove}
           onKeyDown={handleKeyDown}
           onPointerUp={finishDrag}
@@ -120,7 +125,7 @@ const VenueLayoutEditor = ({
           preserveAspectRatio="xMidYMid meet"
           role="img"
           tabIndex={0}
-          viewBox={`${pan.x} ${pan.y} ${Math.max(venue.width, 1) / zoom} ${Math.max(venue.height, 1) / zoom}`}
+          viewBox={`${pan.x} ${pan.y} ${viewWidth} ${viewHeight}`}
         >
           <defs>
             <pattern id="venue-grid" width="10" height="10" patternUnits="userSpaceOnUse">

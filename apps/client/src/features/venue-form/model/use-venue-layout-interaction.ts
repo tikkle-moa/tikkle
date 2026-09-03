@@ -67,9 +67,15 @@ export const useVenueLayoutInteraction = ({
 
   const safeWidth = Math.max(venue.width, 1);
   const safeHeight = Math.max(venue.height, 1);
-  const viewWidth = safeWidth / zoom;
-  const viewHeight = safeHeight / zoom;
-  const maxZoom = Math.max(VENUE_LAYOUT_MIN_ZOOM, safeWidth / VENUE_LAYOUT_MIN_VISIBLE_SIZE, safeHeight / VENUE_LAYOUT_MIN_VISIBLE_SIZE);
+  const VENUE_LAYOUT_ASPECT_RATIO = 16 / 10;
+  const baseViewWidth = Math.min(safeWidth, safeHeight * VENUE_LAYOUT_ASPECT_RATIO);
+  const baseViewHeight = baseViewWidth / VENUE_LAYOUT_ASPECT_RATIO;
+  const viewWidth = baseViewWidth / zoom;
+  const viewHeight = baseViewHeight / zoom;
+  const maxZoom = Math.max(
+    VENUE_LAYOUT_MIN_ZOOM,
+    Math.min(baseViewWidth / VENUE_LAYOUT_MIN_VISIBLE_SIZE, baseViewHeight / VENUE_LAYOUT_MIN_VISIBLE_SIZE),
+  );
 
   const applyZoom = useCallback(
     (nextZoom: number) => {
@@ -77,15 +83,15 @@ export const useVenueLayoutInteraction = ({
 
       const centerX = pan.x + viewWidth / 2;
       const centerY = pan.y + viewHeight / 2;
-      const nextWidth = safeWidth / resolvedZoom;
-      const nextHeight = safeHeight / resolvedZoom;
+      const nextWidth = baseViewWidth / resolvedZoom;
+      const nextHeight = baseViewHeight / resolvedZoom;
       setZoom(resolvedZoom);
       setPan({
         x: Math.min(Math.max(centerX - nextWidth / 2, 0), safeWidth - nextWidth),
         y: Math.min(Math.max(centerY - nextHeight / 2, 0), safeHeight - nextHeight),
       });
     },
-    [maxZoom, pan.x, pan.y, safeHeight, safeWidth, viewHeight, viewWidth],
+    [baseViewHeight, baseViewWidth, maxZoom, pan.x, pan.y, safeHeight, safeWidth, viewHeight, viewWidth],
   );
 
   const resetView = useCallback(() => {
@@ -250,14 +256,29 @@ export const useVenueLayoutInteraction = ({
       return;
     }
 
-    deltaX = Math.min(
-      Math.max(deltaX, Math.max(...dragState.origins.map((seat) => VENUE_SEAT_WIDTH / 2 - seat.positionX))),
-      Math.min(...dragState.origins.map((seat) => safeWidth - VENUE_SEAT_WIDTH / 2 - seat.positionX)),
-    );
-    deltaY = Math.min(
-      Math.max(deltaY, Math.max(...dragState.origins.map((seat) => VENUE_SEAT_HEIGHT / 2 - seat.positionY))),
-      Math.min(...dragState.origins.map((seat) => safeHeight - VENUE_SEAT_HEIGHT / 2 - seat.positionY)),
-    );
+    const viewportLeft = pan.x;
+    const viewportRight = pan.x + viewWidth;
+    const viewportTop = pan.y;
+    const viewportBottom = pan.y + viewHeight;
+    const minDeltaX = Math.max(...dragState.origins.map((seat) => viewportLeft + VENUE_SEAT_WIDTH / 2 - seat.positionX));
+    const maxDeltaX = Math.min(...dragState.origins.map((seat) => viewportRight - VENUE_SEAT_WIDTH / 2 - seat.positionX));
+    const minDeltaY = Math.max(...dragState.origins.map((seat) => viewportTop + VENUE_SEAT_HEIGHT / 2 - seat.positionY));
+    const maxDeltaY = Math.min(...dragState.origins.map((seat) => viewportBottom - VENUE_SEAT_HEIGHT / 2 - seat.positionY));
+
+    if (minDeltaX <= maxDeltaX) {
+      deltaX = Math.min(Math.max(deltaX, minDeltaX), maxDeltaX);
+    } else {
+      const venueMinDeltaX = Math.max(...dragState.origins.map((seat) => VENUE_SEAT_WIDTH / 2 - seat.positionX));
+      const venueMaxDeltaX = Math.min(...dragState.origins.map((seat) => safeWidth - VENUE_SEAT_WIDTH / 2 - seat.positionX));
+      deltaX = Math.min(Math.max(deltaX, venueMinDeltaX), venueMaxDeltaX);
+    }
+    if (minDeltaY <= maxDeltaY) {
+      deltaY = Math.min(Math.max(deltaY, minDeltaY), maxDeltaY);
+    } else {
+      const venueMinDeltaY = Math.max(...dragState.origins.map((seat) => VENUE_SEAT_HEIGHT / 2 - seat.positionY));
+      const venueMaxDeltaY = Math.min(...dragState.origins.map((seat) => safeHeight - VENUE_SEAT_HEIGHT / 2 - seat.positionY));
+      deltaY = Math.min(Math.max(deltaY, venueMinDeltaY), venueMaxDeltaY);
+    }
     const positionMap = new Map(
       dragState.origins.map(({ clientId, positionX, positionY }) => [
         clientId,
@@ -440,6 +461,8 @@ export const useVenueLayoutInteraction = ({
   }, []);
 
   return {
+    viewWidth,
+    viewHeight,
     svgRef,
     dragState,
     zoom,
