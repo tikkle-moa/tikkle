@@ -6,7 +6,7 @@ export const VENUE_FORM_LIMITS = {
   venueDescription: 10_000,
   venueSeatSection: 50,
   venueSeatLabel: 50,
-  venueSeatBatchSize: 1000000,
+  venueSeatBatchSize: 500,
 } as const;
 
 export const EMPTY_VENUE_FORM_VALUES: CreateVenueRequest = {
