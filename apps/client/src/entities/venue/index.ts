@@ -8,4 +8,7 @@ export type {
   VenueSeatResponse,
   CreateVenueDetailRequest,
   CreateVenueSeatRequest,
+  UpdateVenueDetailRequest,
+  UpdateVenueRequest,
+  UpdateVenueSeatRequest,
 } from "./model/venue.types";
