@@ -25,8 +25,9 @@ export const useVenueForm = ({ initialValues, submitState, onSubmit }: UseVenueF
     if (!initialValues) return;
 
     const initializeForm = () => {
-      setVenue({ ...initialValues.venue });
-      setVenueSeats(initialValues.venueSeats.map((seat) => ({ clientId: seat.id, ...seat })));
+      const { id: _venueId, createdAt: _venueCreatedAt, ...venueValues } = initialValues.venue;
+      setVenue(venueValues);
+      setVenueSeats(initialValues.venueSeats.map(({ id, venueId: _venueId, createdAt: _createdAt, ...seat }) => ({ clientId: id, ...seat })));
       const maxClientId = Math.max(0, ...initialValues.venueSeats.map((seat) => seat.id));
       venueSeatClientIdRef.current = maxClientId + 1;
       setErrors({});

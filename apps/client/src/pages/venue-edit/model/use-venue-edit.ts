@@ -39,7 +39,7 @@ export const useVenueEdit = () => {
       try {
         const { data, error, response } = await apiClient.GET(`/api/venues/{id}`, { params: { path: { id } } });
         if (cancelled) return;
-        if (!response.ok || error) {
+        if (!response.ok || error || !data) {
           setLoadState({ status: "error", error: "공연장 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." });
           return;
         }
@@ -59,7 +59,7 @@ export const useVenueEdit = () => {
 
   const handleSubmit = async (venue: CreateVenueRequest, venueSeats: VenueFormSeat[]) => {
     if (loadState.status !== "success") {
-      setSubmitState({ status: "error", error: "콘서트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." });
+      setSubmitState({ status: "error", error: "공연장 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." });
       return;
     }
     const updateVenueRequest = toUpdateVenueRequest(venue, venueSeats, loadState.data);
@@ -74,10 +74,7 @@ export const useVenueEdit = () => {
       const { data, error, response } = await apiClient.PATCH("/api/venues/{id}", { params: { path: { id } }, body: updateVenueRequest });
 
       if (!response.ok || error || !data) {
-        setSubmitState({
-          status: "error",
-          error: `공연장 수정에 실패했습니다. 입력 정보를 확인해 주세요.\n${JSON.stringify(updateVenueRequest, null, 2)}`,
-        });
+        setSubmitState({ status: "error", error: "공연장 수정에 실패했습니다. 입력 정보를 확인해 주세요." });
         return;
       }
 
