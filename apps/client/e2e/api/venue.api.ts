@@ -20,6 +20,8 @@ interface E2EVenueSeat {
   createdAt: string;
 }
 
+export type E2ECreateVenueSeat = Omit<E2EVenueSeat, "id" | "venueId" | "createdAt">;
+
 interface E2EVenueDetail {
   venue: E2EVenue & {
     address: string;
@@ -46,7 +48,22 @@ export const getDefaultVenue = async (page: Page): Promise<E2EVenue> => {
   return body.data[0];
 };
 
-export const createVenue = async (page: Page, namePrefix = "E2E 수정 대상"): Promise<E2EVenueDetail> => {
+const DEFAULT_VENUE_SEATS: E2ECreateVenueSeat[] = [
+  {
+    sectionName: "기존구역",
+    seatNumber: 1,
+    seatLabel: "기존구역 1번",
+    price: 50_000,
+    positionX: 20,
+    positionY: 30,
+  },
+];
+
+export const createVenue = async (
+  page: Page,
+  namePrefix = "E2E 수정 대상",
+  venueSeats: E2ECreateVenueSeat[] = DEFAULT_VENUE_SEATS,
+): Promise<E2EVenueDetail> => {
   const request = {
     venue: {
       name: `${namePrefix} ${randomUUID()}`,
@@ -59,16 +76,7 @@ export const createVenue = async (page: Page, namePrefix = "E2E 수정 대상"):
       stageWidth: 40,
       stageHeight: 10,
     },
-    venueSeats: [
-      {
-        sectionName: "기존구역",
-        seatNumber: 1,
-        seatLabel: "기존구역 1번",
-        price: 50_000,
-        positionX: 20,
-        positionY: 30,
-      },
-    ],
+    venueSeats,
   };
   const response = await page.request.post("/api/venues", {
     headers: createApiAuthHeaders("ADMIN"),

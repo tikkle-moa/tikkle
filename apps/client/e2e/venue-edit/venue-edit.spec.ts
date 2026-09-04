@@ -4,6 +4,8 @@ import { authenticatePage, setApiRole } from "../api/auth.api";
 import { createVenue, deleteVenue } from "../api/venue.api";
 import { E2E_SEED_VENUES } from "../config/e2e-seed-data.config";
 
+const VENUE_SEAT_CHUNK_SIZE = 128;
+
 const getLayoutPoint = async (page: Page, x: number, y: number) => {
   const editor = page.getByRole("img", { name: "공연장 좌석 배치 편집기" });
   return editor.evaluate(
@@ -20,6 +22,18 @@ const getLayoutPoint = async (page: Page, x: number, y: number) => {
     },
     { x, y },
   );
+};
+
+const dragBetweenLayoutPoints = async (page: Page, start: { x: number; y: number }, end: { x: number; y: number }) => {
+  const editor = page.getByRole("img", { name: "공연장 좌석 배치 편집기" });
+  await editor.scrollIntoViewIfNeeded();
+  const startPoint = await getLayoutPoint(page, start.x, start.y);
+  const endPoint = await getLayoutPoint(page, end.x, end.y);
+
+  await page.mouse.move(startPoint.x, startPoint.y);
+  await page.mouse.down();
+  await page.mouse.move(endPoint.x, endPoint.y, { steps: 5 });
+  await page.mouse.up();
 };
 
 const selectSeatFromList = async (page: Page, seatLabel: string) => {
@@ -249,7 +263,7 @@ test.describe("공연장 수정 페이지 입력 오류", () => {
   });
 });
 
-test.describe("공연장 수정 페이지 API 권한 오류", () => {
+test.describe("공연장 수정 페이지 API 오류", () => {
   test("화면 진입 후 서버 권한이 사라지면 403 응답과 입력값을 처리한다", async ({ page }) => {
     await authenticatePage(page, "ADMIN");
     const detail = await createVenue(page, "E2E 수정 권한 거부");
@@ -268,6 +282,63 @@ test.describe("공연장 수정 페이지 API 권한 오류", () => {
 
       expect(response.status()).toBe(403);
       await expect(page.getByRole("alert")).toHaveText(/공연장 수정에 실패했습니다\./);
+      await expect(page.getByLabel("공연장 이름")).toHaveValue(changedName);
+      await expect(page).toHaveURL(`/venues/${detail.venue.id}/edit`);
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
+  });
+
+  test("서버가 500을 반환하면 오류를 표시하고 입력값을 유지한다", async ({ page }) => {
+    await authenticatePage(page, "ADMIN");
+    const detail = await createVenue(page, "E2E 수정 서버 오류");
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      const changedName = `${detail.venue.name} 서버 오류`;
+      await page.getByLabel("공연장 이름").fill(changedName);
+      await page.route(`**/api/venues/${detail.venue.id}`, (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ success: false, error: { code: "INTERNAL_SERVER_ERROR", message: "서버 오류" } }),
+        }),
+      );
+
+      const responsePromise = page.waitForResponse(
+        (response) => response.url().endsWith(`/api/venues/${detail.venue.id}`) && response.request().method() === "PATCH",
+      );
+      await page.getByRole("button", { name: "공연장 수정", exact: true }).click();
+      const response = await responsePromise;
+
+      expect(response.status()).toBe(500);
+      expect(response.request().postDataJSON()).toEqual({ venue: { name: changedName } });
+      await expect(page.getByRole("alert")).toHaveText(/공연장 수정에 실패했습니다\./);
+      await expect(page.getByLabel("공연장 이름")).toHaveValue(changedName);
+      await expect(page).toHaveURL(`/venues/${detail.venue.id}/edit`);
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
+  });
+
+  test("네트워크 오류가 발생하면 오류를 표시하고 입력값을 유지한다", async ({ page }) => {
+    await authenticatePage(page, "ADMIN");
+    const detail = await createVenue(page, "E2E 수정 네트워크 오류");
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      const changedName = `${detail.venue.name} 네트워크 오류`;
+      await page.getByLabel("공연장 이름").fill(changedName);
+      await page.route(`**/api/venues/${detail.venue.id}`, (route) => route.abort("failed"));
+
+      const requestPromise = page.waitForRequest(
+        (request) => request.url().endsWith(`/api/venues/${detail.venue.id}`) && request.method() === "PATCH",
+      );
+      await page.getByRole("button", { name: "공연장 수정", exact: true }).click();
+      const request = await requestPromise;
+
+      expect(request.postDataJSON()).toEqual({ venue: { name: changedName } });
+      await expect(page.getByRole("alert")).toHaveText("공연장 수정 중 오류가 발생했습니다.");
       await expect(page.getByLabel("공연장 이름")).toHaveValue(changedName);
       await expect(page).toHaveURL(`/venues/${detail.venue.id}/edit`);
     } finally {
@@ -294,13 +365,24 @@ test.describe("공연장 수정 페이지 대규모 좌석 배치", () => {
     await expect(page.getByText(/1,500석 · 드래그 이동/)).toBeVisible();
 
     const editor = page.getByRole("img", { name: "공연장 좌석 배치 편집기" });
-    const seatPaths = editor.locator('g[pointer-events="none"] path');
-    const renderedSeatCount = await seatPaths.evaluateAll((paths) =>
-      paths.reduce((count, path) => count + ((path.getAttribute("d") ?? "").match(/M/g)?.length ?? 0), 0),
+    const expectedChunkSeatCounts = [
+      ...detailBody.data.venueSeats.reduce((counts: Map<number, number>, seat: { id: number }) => {
+        const chunkKey = Math.floor(seat.id / VENUE_SEAT_CHUNK_SIZE);
+        counts.set(chunkKey, (counts.get(chunkKey) ?? 0) + 1);
+        return counts;
+      }, new Map<number, number>()),
+    ].map(([, seatCount]) => seatCount);
+    const seatChunks = editor.locator('g[pointer-events="none"]');
+    const renderedChunkSeatCounts = await seatChunks.evaluateAll((chunks) =>
+      chunks.map((chunk) =>
+        [...chunk.querySelectorAll("path")].reduce((seatCount, path) => seatCount + ((path.getAttribute("d") ?? "").match(/M/g)?.length ?? 0), 0),
+      ),
     );
 
-    expect(renderedSeatCount).toBe(venue.seatCount);
-    expect(await seatPaths.count()).toBeLessThan(venue.seatCount);
+    expect(expectedChunkSeatCounts.every((seatCount) => seatCount <= VENUE_SEAT_CHUNK_SIZE)).toBe(true);
+    await expect(seatChunks).toHaveCount(expectedChunkSeatCounts.length);
+    expect(renderedChunkSeatCounts).toEqual(expectedChunkSeatCounts);
+    expect(renderedChunkSeatCounts.reduce((total, seatCount) => total + seatCount, 0)).toBe(venue.seatCount);
 
     const visibleSeatButtons = page.locator("button[data-seat-client-id]");
     await expect(visibleSeatButtons.first()).toBeVisible();
@@ -336,6 +418,105 @@ test.describe("공연장 수정 페이지 좌석 배치 상호작용", () => {
       await page.getByRole("button", { name: "확대" }).click();
       await page.getByRole("button", { name: "화면 초기화" }).click();
       await expect(page.getByText("100%", { exact: true })).toBeVisible();
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
+  });
+
+  test("무대를 드래그한 위치가 저장되고 재조회된다", async ({ page }) => {
+    const detail = await createVenue(page, "E2E 무대 이동");
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      await dragBetweenLayoutPoints(
+        page,
+        { x: detail.venue.stagePositionX, y: detail.venue.stagePositionY },
+        { x: detail.venue.stagePositionX + 10, y: detail.venue.stagePositionY + 10 },
+      );
+
+      const changedStagePositionX = Number(await page.getByLabel("무대 X 좌표").inputValue());
+      const changedStagePositionY = Number(await page.getByLabel("무대 Y 좌표").inputValue());
+      expect(changedStagePositionX).toBeCloseTo(detail.venue.stagePositionX + 10, 1);
+      expect(changedStagePositionY).toBeCloseTo(detail.venue.stagePositionY + 10, 1);
+
+      const responsePromise = page.waitForResponse(
+        (response) => response.url().endsWith(`/api/venues/${detail.venue.id}`) && response.request().method() === "PATCH",
+      );
+      await page.getByRole("button", { name: "공연장 수정", exact: true }).click();
+      const response = await responsePromise;
+      const request = response.request().postDataJSON();
+
+      expect(response.status()).toBe(200);
+      expect(request).toEqual({
+        venue: { stagePositionX: expect.any(Number), stagePositionY: expect.any(Number) },
+      });
+      expect(request.venue.stagePositionX).toBeCloseTo(changedStagePositionX, 2);
+      expect(request.venue.stagePositionY).toBeCloseTo(changedStagePositionY, 2);
+
+      const getResponse = await page.request.get(`/api/venues/${detail.venue.id}`);
+      expect(getResponse.status()).toBe(200);
+      await expect(getResponse.json()).resolves.toMatchObject({
+        success: true,
+        data: { venue: { stagePositionX: request.venue.stagePositionX, stagePositionY: request.venue.stagePositionY } },
+      });
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
+  });
+
+  test("다중 선택한 기존 좌석을 함께 이동한 위치가 저장되고 재조회된다", async ({ page }) => {
+    const detail = await createVenue(page, "E2E 다중 좌석 이동", [
+      { sectionName: "이동구역", seatNumber: 1, seatLabel: "이동구역 1번", price: 50_000, positionX: 20, positionY: 30 },
+      { sectionName: "이동구역", seatNumber: 2, seatLabel: "이동구역 2번", price: 50_000, positionX: 30, positionY: 30 },
+      { sectionName: "이동구역", seatNumber: 3, seatLabel: "이동구역 3번", price: 50_000, positionX: 40, positionY: 30 },
+    ]);
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      const firstSeat = detail.venueSeats[0];
+      const clientId = await selectSeatFromList(page, firstSeat.seatLabel);
+      await page.locator(`g[data-seat-client-id="${clientId}"]`).dblclick();
+      await expect(page.getByText("좌석 3개 선택됨", { exact: true })).toBeVisible();
+
+      await dragBetweenLayoutPoints(
+        page,
+        { x: firstSeat.positionX, y: firstSeat.positionY },
+        { x: firstSeat.positionX + 10, y: firstSeat.positionY + 10 },
+      );
+
+      const responsePromise = page.waitForResponse(
+        (response) => response.url().endsWith(`/api/venues/${detail.venue.id}`) && response.request().method() === "PATCH",
+      );
+      await page.getByRole("button", { name: "공연장 수정", exact: true }).click();
+      const response = await responsePromise;
+      const request = response.request().postDataJSON();
+
+      expect(response.status()).toBe(200);
+      expect(request).not.toHaveProperty("venue");
+      expect(request.venueSeats).toHaveLength(detail.venueSeats.length);
+
+      const movedSeats = detail.venueSeats.map((seat) => {
+        const movedSeat = request.venueSeats.find((candidate: { id?: number }) => candidate.id === seat.id);
+        expect(movedSeat).toBeDefined();
+        return movedSeat as { id: number; positionX: number; positionY: number };
+      });
+      const deltaX = movedSeats[0].positionX - detail.venueSeats[0].positionX;
+      const deltaY = movedSeats[0].positionY - detail.venueSeats[0].positionY;
+      expect(deltaX).toBeCloseTo(10, 1);
+      expect(deltaY).toBeCloseTo(10, 1);
+      movedSeats.forEach((movedSeat, index) => {
+        expect(movedSeat.positionX - detail.venueSeats[index].positionX).toBeCloseTo(deltaX, 2);
+        expect(movedSeat.positionY - detail.venueSeats[index].positionY).toBeCloseTo(deltaY, 2);
+      });
+
+      const getResponse = await page.request.get(`/api/venues/${detail.venue.id}`);
+      const getBody = await getResponse.json();
+      expect(getResponse.status()).toBe(200);
+      movedSeats.forEach((movedSeat) => {
+        expect(getBody.data.venueSeats).toEqual(
+          expect.arrayContaining([expect.objectContaining({ id: movedSeat.id, positionX: movedSeat.positionX, positionY: movedSeat.positionY })]),
+        );
+      });
     } finally {
       await deleteVenue(page, detail.venue.id);
     }
@@ -408,6 +589,10 @@ test.describe("공연장 수정 페이지 좌석 배치 상호작용", () => {
   test("좌석을 다른 좌석 위로 드래그하면 충돌 오류를 표시한다", async ({ page }) => {
     const detail = await createVenue(page, "E2E 좌석 충돌");
     const seat = detail.venueSeats[0];
+    let patchCount = 0;
+    page.on("request", (request) => {
+      if (request.url().endsWith(`/api/venues/${detail.venue.id}`) && request.method() === "PATCH") patchCount += 1;
+    });
 
     try {
       await page.goto(`/venues/${detail.venue.id}/edit`);
@@ -426,6 +611,18 @@ test.describe("공연장 수정 페이지 좌석 배치 상호작용", () => {
       await page.mouse.up();
 
       await expect(page.getByText(/같은 좌표에 중복된 영역이 있습니다\./).first()).toBeVisible();
+      await page.getByRole("button", { name: "공연장 수정", exact: true }).click();
+      await expect(page.getByText(/같은 좌표에 중복된 영역이 있습니다\./).first()).toBeVisible();
+      expect(patchCount).toBe(0);
+
+      const getResponse = await page.request.get(`/api/venues/${detail.venue.id}`);
+      expect(getResponse.status()).toBe(200);
+      await expect(getResponse.json()).resolves.toMatchObject({
+        success: true,
+        data: {
+          venueSeats: [expect.objectContaining({ id: seat.id, positionX: seat.positionX, positionY: seat.positionY })],
+        },
+      });
     } finally {
       await deleteVenue(page, detail.venue.id);
     }

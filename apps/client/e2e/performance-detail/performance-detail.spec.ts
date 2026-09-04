@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "../../src/entities/venue";
+import { VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "../../src/entities/venue/model/venue.constants";
 import { E2E_SEED_PERFORMANCES, E2E_SEED_VENUES } from "../config/e2e-seed-data.config";
 
 test.describe("공연 회차 상세", () => {
