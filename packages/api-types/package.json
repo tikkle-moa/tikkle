@@ -7,9 +7,12 @@
   },
   "types": "./src/index.ts",
   "scripts": {
-    "generate": "openapi-typescript --redocly ./redocly.yaml && prettier --write src"
+    "generate:openapi": "openapi-typescript --redocly ./redocly.yaml && prettier --write src/generated.ts",
+    "generate": "pnpm generate:openapi",
+    "validate:asyncapi": "asyncapi validate asyncapi.yaml"
   },
   "devDependencies": {
+    "@asyncapi/cli": "^6.0.2",
     "openapi-typescript": "^7.13.0"
   }
 }
