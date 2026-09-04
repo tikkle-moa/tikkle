@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import { Plus } from "lucide-react";
+import { ArrowDownAZ, ArrowUpAZ, Plus } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
@@ -97,9 +97,13 @@ const VenueListPage = () => {
               총 <strong className="font-bold text-slate-900">{filteredVenues.length}</strong>개의 공연장
             </p>
             <div className="flex items-center gap-2">
+              <label htmlFor="venue-sort" className="sr-only">
+                정렬 기준
+              </label>
               <select
+                id="venue-sort"
                 value={sort}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+                className="cursor-pointer rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors outline-none hover:border-violet-300 focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                 onChange={(event) => changeSort(event.target.value as keyof typeof VENUE_LIST_SORT_OPTIONS)}
               >
                 {Object.entries(VENUE_LIST_SORT_OPTIONS).map(([value, label]) => (
@@ -108,17 +112,15 @@ const VenueListPage = () => {
                   </option>
                 ))}
               </select>
-              <select
-                value={sortDirection}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
-                onChange={(event) => changeSortDirection(event.target.value as keyof typeof VENUE_LIST_SORT_DIRECTIONS)}
+              <button
+                type="button"
+                aria-label={VENUE_LIST_SORT_DIRECTIONS[sortDirection === "asc" ? "desc" : "asc"] + "으로 변경"}
+                title={VENUE_LIST_SORT_DIRECTIONS[sortDirection]}
+                onClick={() => changeSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+                className="flex size-9 items-center justify-center rounded-lg border border-violet-200 bg-white text-slate-600 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 focus-visible:ring-2 focus-visible:ring-violet-100 focus-visible:outline-none"
               >
-                {Object.entries(VENUE_LIST_SORT_DIRECTIONS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+                {sortDirection === "asc" ? <ArrowDownAZ className="size-4" aria-hidden /> : <ArrowUpAZ className="size-4" aria-hidden />}
+              </button>
             </div>
           </div>
 
