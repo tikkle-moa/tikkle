@@ -78,7 +78,7 @@ class SecurityConfig(
   private fun configureCommonAuthorization(auth: AuthorizationRegistry) {
     auth
       .requestMatchers("/ws", "/ws/**").authenticated()
-      .requestMatchers("/api/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
+      .requestMatchers("/api/v3/api-docs/**", "/swagger-ui/**", "/api/springwolf/docs", "/actuator/health").permitAll()
   }
 
   private fun configureAuthAuthorization(auth: AuthorizationRegistry) {

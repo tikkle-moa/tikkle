@@ -40,6 +40,20 @@ springdoc:
   swagger-ui:
     enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
 
+springwolf:
+  enabled: ${SPRINGWOLF_ENABLED:true}
+  docket:
+    base-package: com.example.server
+    info:
+      title: Tikkle STOMP API
+      description: Tikkle 콘서트 예매 서비스의 STOMP 메시지 API 문서입니다.
+      version: v1
+    servers:
+      tikkle-stomp:
+        protocol: stomp
+        host: ${ASYNCAPI_STOMP_HOST:localhost:8080}
+        pathname: /ws
+
 app:
   production: ${APP_PRODUCTION:false}
   base-url: ${SERVER_BASE_URL}
