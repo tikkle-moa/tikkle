@@ -1,20 +1,8 @@
 import type { Middleware } from "openapi-fetch";
 
-import { getCookie } from "@shared/lib/cookie.utils";
+import { refreshAccessToken } from "./refresh-token";
 
 let refreshPromise: Promise<boolean> | null = null;
-
-const refreshToken = async (): Promise<boolean> => {
-  const csrfToken = getCookie("XSRF-TOKEN");
-
-  const response = await fetch("/api/auth/refresh", {
-    method: "POST",
-    credentials: "include",
-    ...(csrfToken && { headers: { "X-XSRF-TOKEN": csrfToken } }),
-  });
-
-  return response.ok;
-};
 
 export const createRefreshTokenMiddleware = (onSessionExpired: () => void): Middleware => ({
   async onResponse({ request, response }) {
@@ -23,7 +11,7 @@ export const createRefreshTokenMiddleware = (onSessionExpired: () => void): Midd
     }
 
     if (!refreshPromise) {
-      refreshPromise = refreshToken().finally(() => {
+      refreshPromise = refreshAccessToken().finally(() => {
         refreshPromise = null;
       });
     }
