@@ -33,7 +33,12 @@ class VenueService(
   @Transactional(readOnly = true)
   fun getAllVenues(): List<VenueResponse> {
     val venues = venueRepository.findAll()
-    return venues.map(VenueResponse::from)
+    val venueSeatCountMap = venueSeatRepository.countGroupByVenueId().associate { it.venueId to it.count }
+    val concertCountMap = concertRepository.countGroupByVenueId().associate { it.venueId to it.count }
+
+    return venues.map { venue ->
+      VenueResponse.from(venue = venue, venueSeatCount = venueSeatCountMap[venue.id] ?: 0L, concertCount = concertCountMap[venue.id] ?: 0L)
+    }
   }
 
   @Transactional(readOnly = true)
@@ -41,9 +46,10 @@ class VenueService(
     val venue = venueRepository.findById(venueId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "장소를 찾을 수 없습니다.") }
     val venueSeats = venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(venueId)
+    val concertCount = concertRepository.countByVenueId(venueId)
 
     return VenueDetailResponse(
-      venue = VenueResponse.from(venue),
+      venue = VenueResponse.from(venue = venue, venueSeatCount = venueSeats.size.toLong(), concertCount = concertCount),
       venueSeats = venueSeats.map(VenueSeatResponse::from),
     )
   }
@@ -100,7 +106,7 @@ class VenueService(
     venueSeatRepository.saveAll(venueSeats)
 
     return VenueDetailResponse(
-      venue = VenueResponse.from(savedVenue),
+      venue = VenueResponse.from(savedVenue, venueSeatCount = venueSeats.size.toLong(), concertCount = 0L),
       venueSeats = venueSeats.map(VenueSeatResponse::from),
     )
   }
@@ -196,8 +202,10 @@ class VenueService(
     venueRepository.save(venue)
 
     val updatedSeats = venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(venueId)
+
+    val concertCount = concertRepository.countByVenueId(venueId)
     return VenueDetailResponse(
-      venue = VenueResponse.from(venue),
+      venue = VenueResponse.from(venue, venueSeatCount = updatedSeats.size.toLong(), concertCount = concertCount),
       venueSeats = updatedSeats.map(VenueSeatResponse::from),
     )
   }
