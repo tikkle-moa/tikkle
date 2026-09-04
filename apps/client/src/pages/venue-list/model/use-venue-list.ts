@@ -1,11 +1,9 @@
 import { useMemo } from "react";
 
 import { USER_ROLE, useSessionStore } from "@entities/session";
-import { useVenues } from "@entities/venue";
+import { getVenueRegion, useVenues } from "@entities/venue";
 
-import type { VenueSort, VenueSortDirection } from "@features/venue-filter";
-
-import { getRegion } from "./venue-list.utils";
+import { type VenueSort, type VenueSortDirection, filterAndSortVenues } from "@features/venue-filter";
 
 interface UseVenueListProps {
   searchKeyword: string;
@@ -20,33 +18,12 @@ export const useVenueList = ({ searchKeyword, selectedRegions, minCapacity, sort
   const { data: allVenues = [], isPending, isError } = useVenues();
 
   const allRegions = useMemo(
-    () => [...new Set(allVenues.map((venue) => getRegion(venue.address)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko")),
+    () => [...new Set(allVenues.map((venue) => getVenueRegion(venue.address)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko")),
     [allVenues],
   );
 
   const filteredVenues = useMemo(() => {
-    const normalizedKeyword = searchKeyword.trim().toLocaleLowerCase("ko");
-
-    return allVenues
-      .filter((venue) => {
-        const matchesKeyword = !normalizedKeyword || `${venue.name} ${venue.address}`.toLocaleLowerCase("ko").includes(normalizedKeyword);
-        const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(getRegion(venue.address));
-        const matchesMinCapacity = minCapacity <= 0 || venue.venueSeatCount >= minCapacity;
-        return matchesKeyword && matchesRegion && matchesMinCapacity;
-      })
-      .toSorted((a, b) => {
-        const dir = sortDirection === "asc" ? 1 : -1;
-        switch (sort) {
-          case "name":
-            return dir * a.name.localeCompare(b.name, "ko");
-          case "capacity":
-            return dir * (a.venueSeatCount - b.venueSeatCount);
-          case "region":
-            return dir * getRegion(a.address).localeCompare(getRegion(b.address), "ko");
-          case "popular":
-            return dir * (a.concertCount - b.concertCount);
-        }
-      });
+    return filterAndSortVenues(allVenues, searchKeyword, selectedRegions, minCapacity, sort, sortDirection);
   }, [allVenues, searchKeyword, selectedRegions, minCapacity, sort, sortDirection]);
 
   return {
