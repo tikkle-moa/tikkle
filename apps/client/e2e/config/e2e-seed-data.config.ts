@@ -1,4 +1,9 @@
 export const E2E_SEED_VENUES = {
+  large: {
+    id: 1,
+    name: "올림픽공원 KSPO DOME",
+    seatCount: 1_500,
+  },
   normal: {
     id: 900000,
     name: "E2E 테스트 공연장",
