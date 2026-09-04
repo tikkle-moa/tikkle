@@ -12,3 +12,5 @@ export type {
   UpdateVenueRequest,
   UpdateVenueSeatRequest,
 } from "./model/venue.types";
+export { default as VenueCard } from "./ui/VenueCard";
+export { default as VenueCardSkeleton } from "./ui/VenueCardSkeleton";
