@@ -4,8 +4,6 @@ import { Toaster } from "react-hot-toast";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-import { useStompConnection } from "@app/model/use-stomp-connection";
-
 import { queryClient } from "../model/query-client";
 
 interface ProvidersProps {
@@ -13,8 +11,6 @@ interface ProvidersProps {
 }
 
 const Providers = ({ children }: ProvidersProps) => {
-  useStompConnection();
-
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster
