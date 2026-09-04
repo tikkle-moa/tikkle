@@ -6,9 +6,11 @@ interface VenueFilterPanelProps {
   allRegions: string[];
   searchValue: string;
   selectedRegions: string[];
+  minCapacity: number;
   activeFilterCount: number;
   onSearchInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onToggleRegion: (region: string) => void;
+  onChangeMinCapacity: (value: number) => void;
   onClearFilters: () => void;
 }
 
@@ -16,9 +18,11 @@ const VenueFilterPanel = ({
   searchValue,
   allRegions,
   selectedRegions,
+  minCapacity,
   activeFilterCount,
   onSearchInputChange,
   onToggleRegion,
+  onChangeMinCapacity,
   onClearFilters,
 }: VenueFilterPanelProps) => {
   return (
@@ -42,12 +46,14 @@ const VenueFilterPanel = ({
         </button>
       </div>
       <VenueFilterControls
-        searchValue={searchValue}
         allRegions={allRegions}
+        searchValue={searchValue}
         selectedRegions={selectedRegions}
+        minCapacity={minCapacity}
+        idPrefix="desktop-venue-filter"
         onSearchInputChange={onSearchInputChange}
         onToggleRegion={onToggleRegion}
-        idPrefix="desktop-venue-filter"
+        onChangeMinCapacity={onChangeMinCapacity}
       />
     </aside>
   );

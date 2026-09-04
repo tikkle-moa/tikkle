@@ -10,12 +10,14 @@ export const useVenueListFilter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchKeyword = searchParams.get(VENUE_LIST_FILTER_KEYS.keyword) ?? "";
   const selectedRegions = searchParams.getAll(VENUE_LIST_FILTER_KEYS.region);
+  const minCapacityParam = Number(searchParams.get(VENUE_LIST_FILTER_KEYS.minCapacity));
   const sortParam = searchParams.get(VENUE_LIST_FILTER_KEYS.sort);
   const sortDirectionParam = searchParams.get(VENUE_LIST_FILTER_KEYS.direction);
+  const minCapacity = Number.isInteger(minCapacityParam) && minCapacityParam >= 0 ? minCapacityParam : 0;
   const sort = isVenueSort(sortParam) ? sortParam : "name";
   const sortDirection = isVenueSortDirection(sortDirectionParam) ? sortDirectionParam : "desc";
 
-  const activeFilterCount = Number(Boolean(searchKeyword)) + selectedRegions.length;
+  const activeFilterCount = Number(Boolean(searchKeyword)) + selectedRegions.length + (minCapacity > 0 ? 1 : 0);
 
   useEffect(() => {
     const syncInputValue = () => {
@@ -56,6 +58,13 @@ export const useVenueListFilter = () => {
     });
   };
 
+  const changeMinCapacity = (value: number) => {
+    updateSearchParams((params) => {
+      if (Number.isInteger(value) && value > 0) params.set(VENUE_LIST_FILTER_KEYS.minCapacity, value.toString());
+      else params.delete(VENUE_LIST_FILTER_KEYS.minCapacity);
+    });
+  };
+
   const changeSort = (value: VenueSort) => {
     updateSearchParams((params) => {
       if (value === "name") params.delete(VENUE_LIST_FILTER_KEYS.sort);
@@ -74,6 +83,7 @@ export const useVenueListFilter = () => {
     updateSearchParams((params) => {
       params.delete(VENUE_LIST_FILTER_KEYS.keyword);
       params.delete(VENUE_LIST_FILTER_KEYS.region);
+      params.delete(VENUE_LIST_FILTER_KEYS.minCapacity);
     });
   };
 
@@ -89,11 +99,13 @@ export const useVenueListFilter = () => {
     searchValue,
     searchKeyword,
     selectedRegions,
+    minCapacity,
     sort,
     sortDirection,
     activeFilterCount,
     handleSearchInputChange,
     toggleRegion,
+    changeMinCapacity,
     changeSort,
     changeSortDirection,
     clearFilters,

@@ -3,12 +3,14 @@ import type { ChangeEvent } from "react";
 import VenueFilterControls from "./VenueFilterControls";
 
 interface MobileVenueFilterPanelProps {
-  searchValue: string;
   allRegions: string[];
+  searchValue: string;
   selectedRegions: string[];
+  minCapacity: number;
   activeFilterCount: number;
   onSearchInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onToggleRegion: (region: string) => void;
+  onChangeMinCapacity: (value: number) => void;
   onClearFilters: () => void;
 }
 
@@ -16,9 +18,11 @@ const MobileVenueFilterPanel = ({
   searchValue,
   allRegions,
   selectedRegions,
+  minCapacity,
   activeFilterCount,
   onSearchInputChange,
   onToggleRegion,
+  onChangeMinCapacity,
   onClearFilters,
 }: MobileVenueFilterPanelProps) => (
   <div id="mobile-venue-filter-panel" className="mb-6 overflow-hidden rounded-xl border border-violet-100 bg-violet-50/70 shadow-sm lg:hidden">
@@ -32,12 +36,14 @@ const MobileVenueFilterPanel = ({
     </div>
     <div className="p-4">
       <VenueFilterControls
-        searchValue={searchValue}
         allRegions={allRegions}
+        searchValue={searchValue}
         selectedRegions={selectedRegions}
+        minCapacity={minCapacity}
+        idPrefix="mobile-venue-filter"
         onSearchInputChange={onSearchInputChange}
         onToggleRegion={onToggleRegion}
-        idPrefix="mobile-venue-filter"
+        onChangeMinCapacity={onChangeMinCapacity}
       />
     </div>
   </div>

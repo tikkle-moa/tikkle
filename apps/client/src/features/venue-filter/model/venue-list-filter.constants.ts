@@ -3,6 +3,7 @@ import type { VenueListFilter, VenueSort, VenueSortDirection } from "./venue-lis
 export const VENUE_LIST_FILTER_KEYS: Record<VenueListFilter, VenueListFilter> = {
   keyword: "keyword",
   region: "region",
+  minCapacity: "minCapacity",
   sort: "sort",
   direction: "direction",
 } as const satisfies Record<VenueListFilter, VenueListFilter>;
