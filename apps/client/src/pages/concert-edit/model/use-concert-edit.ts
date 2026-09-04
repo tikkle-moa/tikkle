@@ -6,10 +6,9 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@shared/api";
 import { ROUTE_PATHS } from "@shared/config/router.config";
+import type { SubmitState } from "@shared/model/form.types";
 
 import { CONCERT_QUERY_KEYS, type CreateConcertRequest } from "@entities/concert";
-
-import type { SubmitState } from "@features/concert-form";
 
 import type { LoadState } from "./concert-edit.types";
 import { toUpdateConcertRequest } from "./concert-edit.utils";

@@ -17,7 +17,7 @@ export const useVenueMapSelection = (venueSeats: VenueSeatResponse[] = []) => {
     return focusableSeatId === seat.id ? 0 : -1;
   };
 
-  const handleSeatKeyDown = (event: KeyboardEvent<SVGRectElement>, seat: VenueSeatResponse) => {
+  const handleSeatKeyDown = (event: KeyboardEvent<SVGElement>, seat: VenueSeatResponse) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       selectSeat(seat);

@@ -68,6 +68,11 @@ class OpenApiPropertyConfig {
 
         return context.resolve(
           AnnotatedType(innerType)
+            .schemaProperty(type.isSchemaProperty)
+            .propertyName(type.propertyName)
+            .parent(type.parent)
+            .components(type.components)
+            .resolveAsRef(type.isResolveAsRef)
             .jsonViewAnnotation(type.jsonViewAnnotation)
             .ctxAnnotations(type.ctxAnnotations),
         )

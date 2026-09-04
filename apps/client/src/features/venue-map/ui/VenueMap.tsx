@@ -2,7 +2,15 @@ import { useMemo } from "react";
 
 import { Info, Minus, Plus } from "lucide-react";
 
-import type { VenueResponse, VenueSeatResponse } from "@entities/venue";
+import {
+  VENUE_SEAT_HEIGHT,
+  VENUE_SEAT_RADIUS,
+  VENUE_SEAT_WIDTH,
+  type VenueResponse,
+  type VenueSeatResponse,
+  getVenueStageCornerRadius,
+  getVenueStageTitleFontSize,
+} from "@entities/venue";
 
 import { useVenueMap } from "../model/use-venue-map";
 import { createSectionColorMap } from "../model/venue-map.utils";
@@ -40,11 +48,6 @@ const VenueMap = ({ venue, venueSeats }: VenueMapProps) => {
   const sectionColors = useMemo(() => createSectionColorMap(venue.id, sections), [venue.id, sections]);
   const stageX = venue.stagePositionX - venue.stageWidth / 2;
   const stageY = venue.stagePositionY - venue.stageHeight / 2;
-  const stageFontSize = Math.min(venue.stageHeight * 0.48, venue.stageWidth / 7);
-  const unit = Math.min(venue.width, venue.height);
-  const seatSize = unit * 0.012;
-  const seatCornerRadius = seatSize * 0.22;
-  const hitSize = seatSize + unit * 0.003;
 
   return (
     <section className="mt-6 w-full">
@@ -74,7 +77,7 @@ const VenueMap = ({ venue, venueSeats }: VenueMapProps) => {
                 y={stageY}
                 width={venue.stageWidth}
                 height={venue.stageHeight}
-                rx={venue.stageHeight / 2}
+                rx={getVenueStageCornerRadius(venue.stageWidth, venue.stageHeight)}
                 className="fill-violet-200 stroke-violet-300"
                 strokeWidth={0.4}
               />
@@ -84,9 +87,8 @@ const VenueMap = ({ venue, venueSeats }: VenueMapProps) => {
                 dominantBaseline="middle"
                 textAnchor="middle"
                 className="fill-violet-700"
-                fontSize={stageFontSize}
+                fontSize={getVenueStageTitleFontSize(venue.stageWidth, venue.stageHeight)}
                 fontWeight={700}
-                letterSpacing={stageFontSize * 0.24}
               >
                 STAGE
               </text>
@@ -95,36 +97,30 @@ const VenueMap = ({ venue, venueSeats }: VenueMapProps) => {
                 const isSelected = selectedSeat?.id === seat.id;
 
                 return (
-                  <g key={seat.id}>
+                  <g
+                    key={seat.id}
+                    className="cursor-pointer outline-none"
+                    role="button"
+                    tabIndex={getSeatTabIndex(seat)}
+                    data-seat-id={seat.id}
+                    aria-label={`${seat.seatLabel}, ${seat.price.toLocaleString()}원`}
+                    aria-pressed={isSelected}
+                    onClick={() => {
+                      if (!consumeSeatClick()) {
+                        selectSeat(seat);
+                      }
+                    }}
+                    onKeyDown={(event) => handleSeatKeyDown(event, seat)}
+                  >
                     <rect
-                      x={seat.positionX - seatSize / 2}
-                      y={seat.positionY - seatSize / 2}
-                      width={seatSize}
-                      height={seatSize}
-                      rx={seatCornerRadius}
+                      x={seat.positionX - VENUE_SEAT_WIDTH / 2}
+                      y={seat.positionY - VENUE_SEAT_HEIGHT / 2}
+                      width={VENUE_SEAT_WIDTH}
+                      height={VENUE_SEAT_HEIGHT}
+                      rx={VENUE_SEAT_RADIUS}
                       fill={sectionColors[seat.sectionName]}
                       stroke={isSelected ? "#312E81" : "transparent"}
-                      strokeWidth={isSelected ? unit * 0.003 : 0}
-                    />
-                    <rect
-                      x={seat.positionX - hitSize / 2}
-                      y={seat.positionY - hitSize / 2}
-                      width={hitSize}
-                      height={hitSize}
-                      fill="transparent"
-                      pointerEvents="all"
-                      role="button"
-                      className="outline-none"
-                      tabIndex={getSeatTabIndex(seat)}
-                      data-seat-id={seat.id}
-                      aria-label={`${seat.seatLabel}, ${seat.price.toLocaleString()}원`}
-                      aria-pressed={isSelected}
-                      onClick={() => {
-                        if (!consumeSeatClick()) {
-                          selectSeat(seat);
-                        }
-                      }}
-                      onKeyDown={(event) => handleSeatKeyDown(event, seat)}
+                      strokeWidth={isSelected ? 0.6 : 0}
                     />
                   </g>
                 );

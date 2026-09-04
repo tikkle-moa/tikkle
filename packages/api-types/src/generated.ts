@@ -300,8 +300,6 @@ export interface components {
       stageHeight: number;
     };
     CreateVenueSeatRequest: {
-      /** Format: int64 */
-      id: number | null;
       sectionName: string;
       /** Format: int32 */
       seatNumber: number;
@@ -418,9 +416,9 @@ export interface components {
       data: null;
     };
     UpdateVenueDetailRequest: {
-      venue: components["schemas"]["UpdateVenueRequest"] | null;
-      venueSeats: components["schemas"]["UpdateVenueSeatRequest"][] | null;
-      deletedSeatIds: number[] | null;
+      venue?: components["schemas"]["UpdateVenueRequest"];
+      venueSeats?: components["schemas"]["UpdateVenueSeatRequest"][];
+      deletedVenueSeatIds?: number[];
     };
     UpdateVenueRequest: {
       name?: string;
@@ -435,7 +433,7 @@ export interface components {
     };
     UpdateVenueSeatRequest: {
       /** Format: int64 */
-      id: number | null;
+      id?: number;
       sectionName: string;
       /** Format: int32 */
       seatNumber: number;
