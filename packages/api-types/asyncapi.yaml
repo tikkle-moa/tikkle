@@ -1,4 +1,4 @@
-asyncapi: 2.6.0
+asyncapi: 3.1.0
 
 id: urn:tikkle:stomp-api
 
@@ -11,15 +11,12 @@ info:
   license:
     name: UNLICENSED
 
-tags:
-  - name: realtime
-    description: STOMP 실시간 메시지 계약
-
 defaultContentType: application/json
 
 servers:
   local:
-    url: ws://localhost:8080/ws
+    host: localhost:8080
+    pathname: /ws
     protocol: ws
     protocolVersion: "1.2"
     description: |
@@ -27,39 +24,57 @@ servers:
       STOMP 1.2 subprotocol(v12.stomp)을 사용합니다.
       access_token HttpOnly 쿠키로 Handshake를 인증합니다.
     security:
-      - accessTokenCookie: []
+      - $ref: "#/components/securitySchemes/accessTokenCookie"
     x-stomp-subprotocol: v12.stomp
 
 channels:
-  /api/{domain}/sync:
+  syncCommand:
+    address: /api/{domain}/sync
+    description: 클라이언트가 도메인 명령을 서버로 전송하는 STOMP SEND destination.
     parameters:
       domain:
         description: 명령을 처리할 도메인 이름.
-        schema:
-          type: string
-          enum: [performance, group]
-    subscribe:
-      operationId: receiveSyncCommand
-      summary: 클라이언트 도메인 명령 수신
-      message:
+        examples:
+          - performance
+          - group
+    messages:
+      command:
         $ref: "#/components/messages/StompCommand"
-      x-stomp-frame: SEND
 
-  /user/queue/{domain}:
+  userSyncResponse:
+    address: /user/queue/{domain}
+    description: 요청자에게만 전송하는 STOMP MESSAGE destination.
     parameters:
       domain:
         description: 명령을 처리한 도메인 이름.
-        schema:
-          type: string
-          enum: [performance, group]
-    publish:
-      operationId: sendUserSyncResponse
-      summary: 요청자 전용 명령 처리 결과 전송
-      message:
-        oneOf:
-          - $ref: "#/components/messages/StompCommandSuccess"
-          - $ref: "#/components/messages/StompCommandFailure"
-      x-stomp-frame: MESSAGE
+        examples:
+          - performance
+          - group
+    messages:
+      commandSuccess:
+        $ref: "#/components/messages/StompCommandSuccess"
+      commandFailure:
+        $ref: "#/components/messages/StompCommandFailure"
+
+operations:
+  receiveSyncCommand:
+    action: receive
+    summary: 클라이언트 도메인 명령 수신
+    channel:
+      $ref: "#/channels/syncCommand"
+    messages:
+      - $ref: "#/channels/syncCommand/messages/command"
+    x-stomp-frame: SEND
+
+  sendUserSyncResponse:
+    action: send
+    summary: 요청자 전용 명령 처리 결과 전송
+    channel:
+      $ref: "#/channels/userSyncResponse"
+    messages:
+      - $ref: "#/channels/userSyncResponse/messages/commandSuccess"
+      - $ref: "#/channels/userSyncResponse/messages/commandFailure"
+    x-stomp-frame: MESSAGE
 
 components:
   securitySchemes:
@@ -69,25 +84,30 @@ components:
       name: access_token
       description: WebSocket Handshake에 포함되는 HttpOnly Access Token 쿠키.
 
+  correlationIds:
+    requestId:
+      description: 요청과 개인 응답을 연결하는 UUID.
+      location: $message.payload#/requestId
+
   messages:
     StompCommand:
-      messageId: stomp.command
-      name: StompCommand
       title: STOMP 도메인 명령
+      correlationId:
+        $ref: "#/components/correlationIds/requestId"
       payload:
         $ref: "#/components/schemas/StompCommandRequest"
 
     StompCommandSuccess:
-      messageId: stomp.command.success
-      name: StompCommandSuccess
       title: STOMP 명령 성공 응답
+      correlationId:
+        $ref: "#/components/correlationIds/requestId"
       payload:
         $ref: "#/components/schemas/StompCommandSuccess"
 
     StompCommandFailure:
-      messageId: stomp.command.failure
-      name: StompCommandFailure
       title: STOMP 명령 실패 응답
+      correlationId:
+        $ref: "#/components/correlationIds/requestId"
       payload:
         $ref: "#/components/schemas/StompCommandFailure"
 
@@ -95,31 +115,22 @@ components:
     StompCommandRequest:
       type: object
       additionalProperties: false
-      required:
-        - requestId
-        - action
-        - data
+      required: [requestId, action, data]
       properties:
         requestId:
           type: string
           format: uuid
-          description: 재연결·재전송 중복 방지 식별자.
         action:
           type: string
           minLength: 1
-          description: 도메인별 명령 이름.
         data:
           type: object
-          description: action별 입력값. 구체 schema는 각 도메인 Story에서 추가한다.
+          description: action별 입력값.
 
     StompCommandSuccess:
       type: object
       additionalProperties: false
-      required:
-        - requestId
-        - action
-        - success
-        - data
+      required: [requestId, action, success, data]
       properties:
         requestId:
           type: string
@@ -131,16 +142,11 @@ components:
           enum: [true]
         data:
           type: object
-          description: action별 성공 결과.
 
     StompCommandFailure:
       type: object
       additionalProperties: false
-      required:
-        - requestId
-        - action
-        - success
-        - error
+      required: [requestId, action, success, error]
       properties:
         requestId:
           type: string
@@ -156,26 +162,17 @@ components:
     StompCommandError:
       type: object
       additionalProperties: false
-      required:
-        - code
-        - message
+      required: [code, message]
       properties:
         code:
           type: string
-          description: 도메인 오류 코드.
         message:
           type: string
-          description: 사용자 표시용 오류 메시지.
 
     StompEvent:
       type: object
       additionalProperties: false
-      required:
-        - eventId
-        - version
-        - occurredAt
-        - type
-        - data
+      required: [eventId, version, occurredAt, type, data]
       properties:
         eventId:
           type: string
@@ -191,4 +188,3 @@ components:
           type: string
         data:
           type: object
-          description: 이벤트별 공개 데이터.
