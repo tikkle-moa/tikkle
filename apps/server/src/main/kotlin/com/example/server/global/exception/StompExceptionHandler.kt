@@ -19,7 +19,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
   @MessageExceptionHandler(CustomException::class)
   fun handleCustomException(
     exception: CustomException,
-    request: StompCommandRequest,
+    request: StompCommandRequest<*>,
     principal: Principal,
     headerAccessor: SimpMessageHeaderAccessor,
   ) {
@@ -40,7 +40,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
   }
 
   @MessageExceptionHandler(Exception::class)
-  fun handleException(exception: Exception, request: StompCommandRequest, principal: Principal, headerAccessor: SimpMessageHeaderAccessor) {
+  fun handleException(exception: Exception, request: StompCommandRequest<*>, principal: Principal, headerAccessor: SimpMessageHeaderAccessor) {
     log.error(
       "Unhandled STOMP exception: requestId=[{}], action=[{}]",
       request.requestId,
@@ -57,7 +57,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
     )
   }
 
-  private fun sendFailure(principal: Principal, destination: String?, request: StompCommandRequest, errorCode: ErrorCode, message: String) {
+  private fun sendFailure(principal: Principal, destination: String?, request: StompCommandRequest<*>, errorCode: ErrorCode, message: String) {
     val domain =
       destination
         ?.let(syncDestinationPattern::matchEntire)

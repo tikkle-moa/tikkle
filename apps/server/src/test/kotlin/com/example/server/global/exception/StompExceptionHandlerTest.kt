@@ -17,9 +17,11 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
-import tools.jackson.databind.JsonNode
 import java.security.Principal
 import java.util.UUID
+
+private data class TestStompCommandRequest(override val requestId: UUID, override val action: String, override val data: Unit = Unit) :
+  StompCommandRequest<Unit>
 
 @ExtendWith(MockitoExtension::class)
 class StompExceptionHandlerTest {
@@ -29,21 +31,18 @@ class StompExceptionHandlerTest {
   @Mock
   lateinit var messagingTemplate: SimpMessagingTemplate
 
-  @Mock
-  lateinit var data: JsonNode
-
   private lateinit var handler: StompExceptionHandler
-  private lateinit var request: StompCommandRequest
+  private lateinit var request: StompCommandRequest<Unit>
   private val principal = Principal { "1" }
 
   @BeforeEach
   fun setUp() {
     handler = StompExceptionHandler(messagingTemplateProvider)
 
-    request = StompCommandRequest(
+    request = TestStompCommandRequest(
       requestId = UUID.fromString("2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a"),
       action = "START_CHECKOUT",
-      data = data,
+      data = Unit,
     )
   }
 

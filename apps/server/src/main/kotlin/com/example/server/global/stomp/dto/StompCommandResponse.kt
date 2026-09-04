@@ -8,7 +8,7 @@ sealed interface StompCommandResponse {
   val success: Boolean
 }
 
-data class StompCommandSuccess<T>(override val requestId: UUID, override val action: String, val data: T) : StompCommandResponse {
+data class StompCommandSuccess<T : Any>(override val requestId: UUID, override val action: String, val data: T) : StompCommandResponse {
   override val success = true
 }
 
