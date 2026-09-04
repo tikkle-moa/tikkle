@@ -10,11 +10,12 @@ import { getRegion } from "./venue-list.utils";
 interface UseVenueListProps {
   searchKeyword: string;
   selectedRegions: string[];
+  minCapacity: number;
   sort: VenueSort;
   sortDirection: VenueSortDirection;
 }
 
-export const useVenueList = ({ searchKeyword, selectedRegions, sort, sortDirection }: UseVenueListProps) => {
+export const useVenueList = ({ searchKeyword, selectedRegions, minCapacity, sort, sortDirection }: UseVenueListProps) => {
   const isAdmin = useSessionStore((state) => state.user?.role === USER_ROLE.ADMIN);
   const { data: allVenues = [], isPending, isError } = useVenues();
 
@@ -30,7 +31,8 @@ export const useVenueList = ({ searchKeyword, selectedRegions, sort, sortDirecti
       .filter((venue) => {
         const matchesKeyword = !normalizedKeyword || `${venue.name} ${venue.address}`.toLocaleLowerCase("ko").includes(normalizedKeyword);
         const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(getRegion(venue.address));
-        return matchesKeyword && matchesRegion;
+        const matchesMinCapacity = minCapacity <= 0 || venue.venueSeatCount >= minCapacity;
+        return matchesKeyword && matchesRegion && matchesMinCapacity;
       })
       .toSorted((a, b) => {
         const dir = sortDirection === "asc" ? 1 : -1;
@@ -45,7 +47,7 @@ export const useVenueList = ({ searchKeyword, selectedRegions, sort, sortDirecti
             return dir * (a.concertCount - b.concertCount);
         }
       });
-  }, [allVenues, searchKeyword, selectedRegions, sort, sortDirection]);
+  }, [allVenues, searchKeyword, selectedRegions, minCapacity, sort, sortDirection]);
 
   return {
     isAdmin,

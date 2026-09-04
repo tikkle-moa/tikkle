@@ -25,16 +25,24 @@ const VenueListPage = () => {
     searchValue,
     searchKeyword,
     selectedRegions,
+    minCapacity,
     sort,
     sortDirection,
     activeFilterCount,
     handleSearchInputChange,
     toggleRegion,
+    changeMinCapacity,
     changeSort,
     changeSortDirection,
     clearFilters,
   } = useVenueListFilter();
-  const { isAdmin, filteredVenues, allRegions, isPending, isError } = useVenueList({ searchKeyword, selectedRegions, sort, sortDirection });
+  const { isAdmin, filteredVenues, allRegions, isPending, isError } = useVenueList({
+    searchKeyword,
+    selectedRegions,
+    minCapacity,
+    sort,
+    sortDirection,
+  });
 
   return (
     <section className="mx-auto w-full max-w-6xl">
@@ -58,12 +66,14 @@ const VenueListPage = () => {
 
       {isMobileFilterOpen && (
         <MobileVenueFilterPanel
-          searchValue={searchValue}
           allRegions={allRegions}
+          searchValue={searchValue}
           selectedRegions={selectedRegions}
+          minCapacity={minCapacity}
           activeFilterCount={activeFilterCount}
           onSearchInputChange={handleSearchInputChange}
           onToggleRegion={toggleRegion}
+          onChangeMinCapacity={changeMinCapacity}
           onClearFilters={clearFilters}
         />
       )}
@@ -73,9 +83,11 @@ const VenueListPage = () => {
           allRegions={allRegions}
           searchValue={searchValue}
           selectedRegions={selectedRegions}
+          minCapacity={minCapacity}
           activeFilterCount={activeFilterCount}
           onSearchInputChange={handleSearchInputChange}
           onToggleRegion={toggleRegion}
+          onChangeMinCapacity={changeMinCapacity}
           onClearFilters={clearFilters}
         />
 
