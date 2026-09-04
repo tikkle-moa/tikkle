@@ -332,6 +332,10 @@ export interface components {
       stageHeight: number;
       /** Format: date-time */
       createdAt: string;
+      /** Format: int64 */
+      venueSeatCount: number;
+      /** Format: int64 */
+      concertCount: number;
     };
     VenueSeatResponse: {
       /** Format: int64 */
