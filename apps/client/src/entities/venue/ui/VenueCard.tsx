@@ -4,10 +4,10 @@ import { Armchair, Building2, CalendarDays, MapPinned, Ruler } from "lucide-reac
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import type { VenueResponse } from "@entities/venue";
+import type { VenueListResponse } from "../model/venue.types";
 
 interface VenueCardProps {
-  venue: VenueResponse;
+  venue: VenueListResponse;
 }
 
 const VenueCard = ({ venue }: VenueCardProps) => {
