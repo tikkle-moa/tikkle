@@ -15,7 +15,7 @@ export const useVenueListFilter = () => {
   const sortDirectionParam = searchParams.get(VENUE_LIST_FILTER_KEYS.direction);
   const minCapacity = Number.isInteger(minCapacityParam) && minCapacityParam >= 0 ? minCapacityParam : 0;
   const sort = isVenueSort(sortParam) ? sortParam : "name";
-  const sortDirection = isVenueSortDirection(sortDirectionParam) ? sortDirectionParam : "desc";
+  const sortDirection = isVenueSortDirection(sortDirectionParam) ? sortDirectionParam : "asc";
 
   const activeFilterCount = Number(Boolean(searchKeyword)) + selectedRegions.length + (minCapacity > 0 ? 1 : 0);
 
@@ -74,7 +74,7 @@ export const useVenueListFilter = () => {
 
   const changeSortDirection = (value: VenueSortDirection) => {
     updateSearchParams((params) => {
-      if (value === "desc") params.delete(VENUE_LIST_FILTER_KEYS.direction);
+      if (value === "asc") params.delete(VENUE_LIST_FILTER_KEYS.direction);
       else params.set(VENUE_LIST_FILTER_KEYS.direction, value);
     });
   };

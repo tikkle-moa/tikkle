@@ -13,7 +13,7 @@ const makeWrapper = (initialEntry = "/venues") =>
 describe("useVenueListFilter", () => {
   it("URL 필터를 복원하고 유효하지 않은 값에는 기본값을 적용한다", () => {
     const { result } = renderHook(() => useVenueListFilter(), {
-      wrapper: makeWrapper("/venues?keyword=홀&region=서울&region=부산&minCapacity=100&sort=capacity&direction=asc"),
+      wrapper: makeWrapper("/venues?keyword=홀&region=서울&region=부산&minCapacity=100&sort=capacity&direction=desc"),
     });
 
     expect(result.current).toMatchObject({
@@ -22,7 +22,7 @@ describe("useVenueListFilter", () => {
       selectedRegions: ["서울", "부산"],
       minCapacity: 100,
       sort: "capacity",
-      sortDirection: "asc",
+      sortDirection: "desc",
       activeFilterCount: 4,
       isMobileFilterOpen: false,
     });
@@ -30,7 +30,7 @@ describe("useVenueListFilter", () => {
     const invalid = renderHook(() => useVenueListFilter(), {
       wrapper: makeWrapper("/venues?minCapacity=-1&sort=nope&direction=nope"),
     });
-    expect(invalid.result.current).toMatchObject({ minCapacity: 0, sort: "name", sortDirection: "desc" });
+    expect(invalid.result.current).toMatchObject({ minCapacity: 0, sort: "name", sortDirection: "asc" });
   });
 
   it("검색어를 추가하고 제거한다", () => {
@@ -72,12 +72,12 @@ describe("useVenueListFilter", () => {
     const { result } = renderHook(() => ({ filter: useVenueListFilter(), location: useLocation() }), { wrapper: makeWrapper() });
 
     act(() => result.current.filter.changeSort("popular"));
-    act(() => result.current.filter.changeSortDirection("asc"));
+    act(() => result.current.filter.changeSortDirection("desc"));
     expect(result.current.location.search).toContain("sort=popular");
-    expect(result.current.location.search).toContain("direction=asc");
+    expect(result.current.location.search).toContain("direction=desc");
 
     act(() => result.current.filter.changeSort("name"));
-    act(() => result.current.filter.changeSortDirection("desc"));
+    act(() => result.current.filter.changeSortDirection("asc"));
     expect(result.current.location.search).toBe("");
   });
 
