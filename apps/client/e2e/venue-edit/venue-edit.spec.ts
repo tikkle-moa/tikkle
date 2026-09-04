@@ -1,8 +1,35 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 import { authenticatePage, setApiRole } from "../api/auth.api";
 import { createVenue, deleteVenue } from "../api/venue.api";
 import { E2E_SEED_VENUES } from "../config/e2e-seed-data.config";
+
+const getLayoutPoint = async (page: Page, x: number, y: number) => {
+  const editor = page.getByRole("img", { name: "공연장 좌석 배치 편집기" });
+  return editor.evaluate(
+    (element, point) => {
+      const svg = element as SVGSVGElement;
+      const screenMatrix = svg.getScreenCTM();
+      if (!screenMatrix) throw new Error("좌석 배치도의 화면 좌표를 계산할 수 없습니다.");
+
+      const svgPoint = svg.createSVGPoint();
+      svgPoint.x = point.x;
+      svgPoint.y = point.y;
+      const screenPoint = svgPoint.matrixTransform(screenMatrix);
+      return { x: screenPoint.x, y: screenPoint.y };
+    },
+    { x, y },
+  );
+};
+
+const selectSeatFromList = async (page: Page, seatLabel: string) => {
+  const seatButton = page.getByRole("button", { name: seatLabel, exact: true });
+  const clientId = await seatButton.getAttribute("data-seat-client-id");
+  if (!clientId) throw new Error(`좌석 ${seatLabel}의 client ID를 찾을 수 없습니다.`);
+
+  await seatButton.click();
+  return clientId;
+};
 
 test.describe("공연장 수정 페이지 정상 처리", () => {
   test.beforeEach(async ({ page }) => {
@@ -286,5 +313,121 @@ test.describe("공연장 수정 페이지 대규모 좌석 배치", () => {
     await expect(lastSeat).toBeVisible();
     await lastSeat.click();
     await expect(lastSeat).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+test.describe("공연장 수정 페이지 좌석 배치 상호작용", () => {
+  test.beforeEach(async ({ page }) => {
+    await authenticatePage(page, "ADMIN");
+  });
+
+  test("확대, 축소 및 화면 초기화 버튼으로 배치도를 제어한다", async ({ page }) => {
+    const detail = await createVenue(page, "E2E 배치도 확대");
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      await expect(page.getByText("100%", { exact: true })).toBeVisible();
+
+      await page.getByRole("button", { name: "확대" }).click();
+      await expect(page.getByText("125%", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "축소" }).click();
+      await expect(page.getByText("100%", { exact: true })).toBeVisible();
+
+      await page.getByRole("button", { name: "확대" }).click();
+      await page.getByRole("button", { name: "화면 초기화" }).click();
+      await expect(page.getByText("100%", { exact: true })).toBeVisible();
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
+  });
+
+  test("같은 구역 좌석을 더블 클릭하면 구역 전체를 선택한다", async ({ page }) => {
+    const detail = await createVenue(page, "E2E 구역 선택");
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      await page.getByRole("button", { name: "15개 좌석 생성" }).click();
+      const clientId = await selectSeatFromList(page, "A구역 1번");
+
+      await page.locator(`g[data-seat-client-id="${clientId}"]`).dblclick();
+      await expect(page.getByText("좌석 15개 선택됨", { exact: true })).toBeVisible();
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
+  });
+
+  test("Alt 드래그로 영역 안의 좌석을 함께 선택한다", async ({ page }) => {
+    const detail = await createVenue(page, "E2E 영역 선택");
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      await page.getByRole("button", { name: "15개 좌석 생성" }).click();
+      await page.getByRole("img", { name: "공연장 좌석 배치 편집기" }).scrollIntoViewIfNeeded();
+      const start = await getLayoutPoint(page, 5, 20);
+      const end = await getLayoutPoint(page, 95, 60);
+
+      await page.keyboard.down("Alt");
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 5 });
+      await page.mouse.up();
+      await page.keyboard.up("Alt");
+
+      await expect(page.getByText("좌석 16개 선택됨", { exact: true })).toBeVisible();
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
+  });
+
+  test("선택 좌석을 드래그하면 좌표가 변경된다", async ({ page }) => {
+    const detail = await createVenue(page, "E2E 좌석 이동");
+    const seat = detail.venueSeats[0];
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      const clientId = await selectSeatFromList(page, seat.seatLabel);
+      const selectedSeat = page.locator(`g[data-seat-client-id="${clientId}"]`);
+      await selectedSeat.scrollIntoViewIfNeeded();
+      const seatBounds = await selectedSeat.boundingBox();
+      if (!seatBounds) throw new Error("이동할 좌석의 화면 위치를 찾을 수 없습니다.");
+      const start = { x: seatBounds.x + seatBounds.width / 2, y: seatBounds.y + seatBounds.height / 2 };
+      const end = { x: start.x + 20, y: start.y + 10 };
+
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 5 });
+      await page.mouse.up();
+
+      await expect(page.getByRole("spinbutton", { name: "X 좌표 *", exact: true })).not.toHaveValue(String(seat.positionX));
+      await expect(page.getByRole("spinbutton", { name: "Y 좌표 *", exact: true })).not.toHaveValue(String(seat.positionY));
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
+  });
+
+  test("좌석을 다른 좌석 위로 드래그하면 충돌 오류를 표시한다", async ({ page }) => {
+    const detail = await createVenue(page, "E2E 좌석 충돌");
+    const seat = detail.venueSeats[0];
+
+    try {
+      await page.goto(`/venues/${detail.venue.id}/edit`);
+      await page.getByRole("button", { name: "15개 좌석 생성" }).click();
+      const clientId = await selectSeatFromList(page, seat.seatLabel);
+      const selectedSeat = page.locator(`g[data-seat-client-id="${clientId}"]`);
+      await selectedSeat.scrollIntoViewIfNeeded();
+      const seatBounds = await selectedSeat.boundingBox();
+      if (!seatBounds) throw new Error("이동할 좌석의 화면 위치를 찾을 수 없습니다.");
+      const target = await getLayoutPoint(page, 30, 35);
+      const start = { x: seatBounds.x + seatBounds.width / 2, y: seatBounds.y + seatBounds.height / 2 };
+
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(target.x, target.y, { steps: 5 });
+      await page.mouse.up();
+
+      await expect(page.getByText(/같은 좌표에 중복된 영역이 있습니다\./).first()).toBeVisible();
+    } finally {
+      await deleteVenue(page, detail.venue.id);
+    }
   });
 });
