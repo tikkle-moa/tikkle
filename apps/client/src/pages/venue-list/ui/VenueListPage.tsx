@@ -51,7 +51,7 @@ const VenueListPage = () => {
           <h1 className="text-lg font-bold text-slate-900 sm:text-xl">공연장 목록</h1>
           <p className="mt-1 text-sm text-slate-500">등록된 공연장과 기본 배치 정보를 확인하세요.</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-col items-center gap-2 sm:flex-row">
           {isAdmin && (
             <Link
               className="bg-brand-primary inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white hover:brightness-95 md:text-sm"
