@@ -25,7 +25,9 @@
     "docker:test:e2e": "node infra/docker/docker-test-e2e.mjs",
     "test:e2e": "pnpm -F client test:e2e",
     "test:e2e:report": "pnpm -F client test:e2e:report",
-    "api:types": "pnpm -F @tikkle/api-types generate"
+    "api:open": "pnpm -F @tikkle/api-types generate:openapi",
+    "api:async": "pnpm -F @tikkle/api-types generate:asyncapi",
+    "api:types": "pnpm api:open && pnpm api:async"
   },
   "packageManager": "pnpm@10.20.0",
   "devDependencies": {
