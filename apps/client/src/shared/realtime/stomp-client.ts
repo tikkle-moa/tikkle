@@ -1,14 +1,14 @@
 import { Client } from "@stomp/stompjs";
 
-const webSocketUrl = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`;
+import { STOMP_BROKER_URL, STOMP_HEARTBEAT_INTERVAL_MS, STOMP_RECONNECT_DELAY_MS } from "./stomp.constants";
 
 export const createStompClient = () =>
   new Client({
-    brokerURL: webSocketUrl,
-    reconnectDelay: 5_000,
-    heartbeatIncoming: 10_000,
-    heartbeatOutgoing: 10_000,
+    brokerURL: STOMP_BROKER_URL,
+    reconnectDelay: STOMP_RECONNECT_DELAY_MS,
+    heartbeatIncoming: STOMP_HEARTBEAT_INTERVAL_MS,
+    heartbeatOutgoing: STOMP_HEARTBEAT_INTERVAL_MS,
     onStompError: (frame) => {
-      console.error("STOMP error:", frame.headers.message);
+      console.error("STOMP broker error:", frame.headers.message);
     },
   });
