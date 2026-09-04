@@ -1,12 +1,16 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 
-import { parse } from "yaml";
-
-const asyncApiUrl = new URL("./asyncapi.yaml", import.meta.url);
+const asyncApiDocumentUrl = "http://localhost:8080/api/springwolf/docs";
 const outputUrl = new URL("./src/stomp.generated.ts", import.meta.url);
 
-const asyncApi = parse(readFileSync(asyncApiUrl, "utf8"));
-const schemas = asyncApi.components.schemas;
+const response = await fetch(asyncApiDocumentUrl);
+
+if (!response.ok) {
+  throw new Error(`Springwolf AsyncAPI 문서를 불러오지 못했습니다: ${response.status} ${response.statusText}`);
+}
+
+const asyncApi = await response.json();
+const schemas = asyncApi.components?.schemas ?? {};
 
 function referenceName(reference) {
   const prefix = "#/components/schemas/";
@@ -86,7 +90,8 @@ function declaration(name, schema) {
 
 const source = [
   "/**",
-  " * This file was generated from asyncapi.yaml.",
+  " * This file was generated from the Springwolf AsyncAPI document.",
+  ` * Source: ${asyncApiDocumentUrl}`,
   " * Do not make direct changes to this file.",
   " */",
   "",

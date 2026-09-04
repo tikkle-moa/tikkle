@@ -10,11 +10,10 @@
     "generate:openapi": "openapi-typescript --redocly ./redocly.yaml && prettier --write src/generated.ts",
     "generate:asyncapi": "node generate-asyncapi-types.mjs && prettier --write src/stomp.generated.ts",
     "generate": "pnpm generate:openapi && pnpm generate:asyncapi",
-    "validate:asyncapi": "asyncapi validate asyncapi.yaml"
+    "validate:asyncapi": "asyncapi validate http://localhost:8080/api/springwolf/docs"
   },
   "devDependencies": {
     "@asyncapi/cli": "^6.0.2",
-    "openapi-typescript": "^7.13.0",
-    "yaml": "^2.9.0"
+    "openapi-typescript": "^7.13.0"
   }
 }
