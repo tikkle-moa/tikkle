@@ -1,5 +1,5 @@
 import { createStompClient } from "@shared/realtime/stomp-client";
-import { STOMP_BROKER_URL, STOMP_HEARTBEAT_INTERVAL_MS, STOMP_RECONNECT_DELAY_MS } from "@shared/realtime/stomp.constants";
+import { STOMP_BROKER_URL, STOMP_HEARTBEAT_INTERVAL_MS } from "@shared/realtime/stomp.constants";
 
 const mockClientConstructor = vi.hoisted(() => vi.fn());
 
@@ -16,7 +16,7 @@ describe("createStompClient", () => {
     vi.restoreAllMocks();
   });
 
-  it("STOMP 연결과 재연결 설정 및 lifecycle 콜백을 전달한다", () => {
+  it("STOMP 연결, heartbeat 및 lifecycle 콜백을 전달한다", () => {
     const onConnect = vi.fn();
     const onWebSocketClose = vi.fn();
 
@@ -28,7 +28,7 @@ describe("createStompClient", () => {
     expect(mockClientConstructor).toHaveBeenCalledWith(
       expect.objectContaining({
         brokerURL: STOMP_BROKER_URL,
-        reconnectDelay: STOMP_RECONNECT_DELAY_MS,
+        reconnectDelay: 0,
         heartbeatIncoming: STOMP_HEARTBEAT_INTERVAL_MS,
         heartbeatOutgoing: STOMP_HEARTBEAT_INTERVAL_MS,
         onConnect,
