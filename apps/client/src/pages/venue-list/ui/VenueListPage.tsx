@@ -147,7 +147,7 @@ const VenueListPage = () => {
           {!isError && !isPending && filteredVenues.length > 0 && (
             <div data-testid="venue-list-grid" className="grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-4">
               {filteredVenues.map((venue) => (
-                <VenueCard venue={venue} />
+                <VenueCard key={venue.id} venue={venue} />
               ))}
             </div>
           )}

@@ -75,6 +75,7 @@ const VenueFilterControls = ({
           최소 수용 인원
         </h3>
         <input
+          aria-labelledby={`${idPrefix}-capacity`}
           type="number"
           value={minCapacity}
           min={0}
