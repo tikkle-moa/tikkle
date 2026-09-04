@@ -3,6 +3,7 @@ package com.example.server.venue
 import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.projection.VenueCountProjection
 import com.example.server.venue.dto.CreateVenueDetailRequest
 import com.example.server.venue.dto.CreateVenueRequest
 import com.example.server.venue.dto.CreateVenueSeatRequest
@@ -50,10 +51,24 @@ class VenueServiceTest {
     @Test
     fun `전체 공연장을 응답으로 변환한다`() {
       given(venueRepository.findAll()).willReturn(listOf(venue(1L), venue(2L)))
+      given(venueSeatRepository.countGroupByVenueId()).willReturn(
+        listOf(object : VenueCountProjection {
+          override val venueId = 1L
+          override val count = 100L
+        }),
+      )
+      given(concertRepository.countGroupByVenueId()).willReturn(
+        listOf(object : VenueCountProjection {
+          override val venueId = 1L
+          override val count = 3L
+        }),
+      )
 
       val result = venueService.getAllVenues()
 
       assertThat(result.map { it.id }).containsExactly(1L, 2L)
+      assertThat(result.map { it.venueSeatCount }).containsExactly(100L, 0L)
+      assertThat(result.map { it.concertCount }).containsExactly(3L, 0L)
       then(venueRepository).should().findAll()
     }
   }

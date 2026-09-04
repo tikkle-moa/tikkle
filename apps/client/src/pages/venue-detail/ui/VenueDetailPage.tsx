@@ -78,6 +78,13 @@ const VenueDetailPage = () => {
           >
             <MapPinned className="mt-0.5 size-4 shrink-0" aria-hidden />
             {venue.address}
+
+            <span
+              role="tooltip"
+              className="pointer-events-none absolute -top-9 left-0 hidden -translate-y-1 rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg transition-all group-hover:block group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:block group-focus-visible:translate-y-0 group-focus-visible:opacity-100 sm:block"
+            >
+              네이버 지도로 보기
+            </span>
           </a>
 
           {venue.description && <p className="mt-4 max-w-3xl text-sm leading-6 text-violet-100">{venue.description}</p>}
