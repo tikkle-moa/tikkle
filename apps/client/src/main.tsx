@@ -15,6 +15,10 @@ apiClient.use(
   }),
 );
 
+useStompStore.getState().setSessionExpiredHandler(() => {
+  useSessionStore.getState().clearSession();
+});
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
