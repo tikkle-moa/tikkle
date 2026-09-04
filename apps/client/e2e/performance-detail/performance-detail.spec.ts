@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "../../src/entities/venue/model/venue.constants";
 import { E2E_SEED_PERFORMANCES, E2E_SEED_VENUES } from "../config/e2e-seed-data.config";
 
 test.describe("공연 회차 상세", () => {
@@ -45,9 +46,7 @@ test.describe("공연 회차 상세", () => {
     const [performanceResponse, venueResponse] = await Promise.all([performanceResponsePromise, venueResponsePromise]);
     const performanceBody = await performanceResponse.json();
     const venueBody = await venueResponse.json();
-    const { venue, venueSeats } = venueBody.data;
-    const seatSize = Math.min(venue.width, venue.height) * 0.012;
-
+    const { venueSeats } = venueBody.data;
     expect(performanceResponse.status()).toBe(200);
     expect(performanceBody.data.venueId).toBe(E2E_SEED_PERFORMANCES.upcoming.venueId);
     expect(venueResponse.status()).toBe(200);
@@ -58,12 +57,12 @@ test.describe("공연 회차 상세", () => {
       const seatButton = page.getByRole("button", {
         name: `${seat.seatLabel}, ${seat.price.toLocaleString()}원`,
       });
-      const visibleSeat = seatButton.locator("xpath=..").locator("rect").first();
+      const visibleSeat = seatButton.locator("rect");
 
-      await expect(visibleSeat).toHaveAttribute("x", String(seat.positionX - seatSize / 2));
-      await expect(visibleSeat).toHaveAttribute("y", String(seat.positionY - seatSize / 2));
+      await expect(visibleSeat).toHaveAttribute("x", String(seat.positionX - VENUE_SEAT_WIDTH / 2));
+      await expect(visibleSeat).toHaveAttribute("y", String(seat.positionY - VENUE_SEAT_HEIGHT / 2));
 
-      await seatButton.click();
+      await seatButton.press("Enter");
       await expect(page.getByText(`${seat.seatLabel} · ${seat.sectionName} · ${seat.price.toLocaleString()}원`)).toBeVisible();
     }
   });
