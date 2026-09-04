@@ -10,7 +10,6 @@ interface ConcertRepository : JpaRepository<Concert, Long> {
   @EntityGraph(attributePaths = ["venue"])
   fun findAllByOrderByCreatedAtDesc(): List<Concert>
   fun existsByVenueId(venueId: Long): Boolean
-  fun countByVenueId(venueId: Long): Long
 
   @Query(
     """

@@ -6,6 +6,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.venue.dto.CreateVenueDetailRequest
 import com.example.server.venue.dto.UpdateVenueDetailRequest
 import com.example.server.venue.dto.VenueDetailResponse
+import com.example.server.venue.dto.VenueListResponse
 import com.example.server.venue.dto.VenueResponse
 import com.example.server.venue.dto.VenueSeatResponse
 import com.example.server.venue.entity.Venue
@@ -31,13 +32,13 @@ class VenueService(
   }
 
   @Transactional(readOnly = true)
-  fun getAllVenues(): List<VenueResponse> {
+  fun getAllVenues(): List<VenueListResponse> {
     val venues = venueRepository.findAll()
     val venueSeatCountMap = venueSeatRepository.countGroupByVenueId().associate { it.venueId to it.count }
     val concertCountMap = concertRepository.countGroupByVenueId().associate { it.venueId to it.count }
 
     return venues.map { venue ->
-      VenueResponse.from(venue = venue, venueSeatCount = venueSeatCountMap[venue.id] ?: 0L, concertCount = concertCountMap[venue.id] ?: 0L)
+      VenueListResponse.from(venue = venue, venueSeatCount = venueSeatCountMap[venue.id] ?: 0L, concertCount = concertCountMap[venue.id] ?: 0L)
     }
   }
 
@@ -46,10 +47,9 @@ class VenueService(
     val venue = venueRepository.findById(venueId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "장소를 찾을 수 없습니다.") }
     val venueSeats = venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(venueId)
-    val concertCount = concertRepository.countByVenueId(venueId)
 
     return VenueDetailResponse(
-      venue = VenueResponse.from(venue = venue, venueSeatCount = venueSeats.size.toLong(), concertCount = concertCount),
+      venue = VenueResponse.from(venue),
       venueSeats = venueSeats.map(VenueSeatResponse::from),
     )
   }
@@ -106,7 +106,7 @@ class VenueService(
     venueSeatRepository.saveAll(venueSeats)
 
     return VenueDetailResponse(
-      venue = VenueResponse.from(savedVenue, venueSeatCount = venueSeats.size.toLong(), concertCount = 0L),
+      venue = VenueResponse.from(savedVenue),
       venueSeats = venueSeats.map(VenueSeatResponse::from),
     )
   }
@@ -202,10 +202,8 @@ class VenueService(
     venueRepository.save(venue)
 
     val updatedSeats = venueSeatRepository.findAllByVenueIdOrderBySectionNameAscSeatNumberAsc(venueId)
-
-    val concertCount = concertRepository.countByVenueId(venueId)
     return VenueDetailResponse(
-      venue = VenueResponse.from(venue, venueSeatCount = updatedSeats.size.toLong(), concertCount = concertCount),
+      venue = VenueResponse.from(venue),
       venueSeats = updatedSeats.map(VenueSeatResponse::from),
     )
   }
