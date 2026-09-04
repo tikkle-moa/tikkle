@@ -1,10 +1,9 @@
 import { type Page, expect, test } from "@playwright/test";
 
+import { VENUE_SEAT_CHUNK_SIZE } from "../../src/features/venue-form/model/venue-layout.constants";
 import { authenticatePage, setApiRole } from "../api/auth.api";
 import { createVenue, deleteVenue } from "../api/venue.api";
 import { E2E_SEED_VENUES } from "../config/e2e-seed-data.config";
-
-const VENUE_SEAT_CHUNK_SIZE = 128;
 
 const getLayoutPoint = async (page: Page, x: number, y: number) => {
   const editor = page.getByRole("img", { name: "공연장 좌석 배치 편집기" });
