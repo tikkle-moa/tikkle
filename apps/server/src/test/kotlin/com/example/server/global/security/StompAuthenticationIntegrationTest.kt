@@ -23,10 +23,12 @@ import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.converter.StringMessageConverter
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.simp.annotation.SendToUser
+import org.springframework.messaging.simp.stomp.ConnectionLostException
 import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompFrameHandler
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.simp.stomp.StompHeaders
+import org.springframework.messaging.simp.stomp.StompSession
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.messaging.support.ExecutorSubscribableChannel
@@ -47,6 +49,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -178,19 +181,55 @@ class StompAuthenticationIntegrationTest {
   }
 
   @Test
-  fun `로그아웃 API 호출 후 기존 연결의 SEND 명령을 거부한다`() {
+  fun `로그아웃하면 같은 인증 세션의 모든 연결을 종료하고 다른 인증 세션은 유지한다`() {
     val refreshToken = jwtTokenProvider.generateRefreshToken(1L)
+    val otherRefreshToken = jwtTokenProvider.generateRefreshToken(1L)
+
+    listOf(refreshToken.tokenId, otherRefreshToken.tokenId).forEach { tokenId ->
+      val key = refreshTokenKey(tokenId)
+
+      stringRedisTemplate.opsForValue().set(
+        key,
+        "1",
+        Duration.ofMinutes(5),
+      )
+      refreshTokenKeys += key
+    }
+
     val accessToken = jwtTokenProvider.generateAccessToken(
       userId = 1L,
       role = UserRole.USER,
       tokenId = refreshToken.tokenId,
     )
+    val otherAccessToken = jwtTokenProvider.generateAccessToken(
+      userId = 1L,
+      role = UserRole.USER,
+      tokenId = otherRefreshToken.tokenId,
+    )
 
-    assertCommandRejectedAfter(
-      accessToken = accessToken,
-      tokenId = refreshToken.tokenId,
-      expectedMessage = "유효하지 않은 인증 세션입니다.",
-    ) {
+    val stompClient = WebSocketStompClient(StandardWebSocketClient()).apply {
+      setMessageConverter(StringMessageConverter())
+    }
+    val connections = mutableListOf<LogoutTestConnection>()
+
+    try {
+      val first = connectForLogoutTest(stompClient, accessToken)
+        .also { connections.add(it) }
+      val second = connectForLogoutTest(stompClient, accessToken)
+        .also { connections.add(it) }
+      val other = connectForLogoutTest(stompClient, otherAccessToken)
+        .also { connections.add(it) }
+
+      // 각각 구독과 명령이 정상적으로 동작하는 것을 먼저 확인한다.
+      subscribeAndVerify(first, refreshToken.tokenId)
+      subscribeAndVerify(second, refreshToken.tokenId)
+      subscribeAndVerify(other, otherRefreshToken.tokenId)
+
+      connections.forEach {
+        assertThat(it.session.isConnected).isTrue()
+        assertThat(it.transportFailure.isDone).isFalse()
+      }
+
       val csrfToken = UUID.randomUUID().toString()
       val request = HttpRequest.newBuilder()
         .uri(URI.create("http://localhost:$port/api/auth/logout"))
@@ -211,10 +250,42 @@ class StompAuthenticationIntegrationTest {
         assertThat(response.statusCode()).isEqualTo(200)
       }
 
+      // 추가 SEND 없이 서버가 두 연결을 종료해야 한다.
+      listOf(first, second).forEach { connection ->
+        assertThat(connection.transportFailure.get(5, TimeUnit.SECONDS))
+          .isInstanceOf(ConnectionLostException::class.java)
+        assertThat(connection.session.isConnected).isFalse()
+      }
+
       assertThat(
         stringRedisTemplate.opsForValue()
           .get(refreshTokenKey(refreshToken.tokenId)),
       ).isNull()
+
+      assertThat(
+        stringRedisTemplate.opsForValue()
+          .get(refreshTokenKey(otherRefreshToken.tokenId)),
+      ).isEqualTo("1")
+
+      // 같은 사용자라도 다른 로그인 세션은 계속 사용할 수 있어야 한다.
+      assertThat(other.session.isConnected).isTrue()
+      assertThat(other.transportFailure.isDone).isFalse()
+
+      other.session.send("/api/test-authentication", "")
+
+      assertThat(other.receivedTokenIds.poll(5, TimeUnit.SECONDS))
+        .isEqualTo(otherRefreshToken.tokenId)
+      assertThat(other.transportFailure.isDone).isFalse()
+    } finally {
+      try {
+        connections.forEach { connection ->
+          if (connection.session.isConnected) {
+            connection.session.disconnect()
+          }
+        }
+      } finally {
+        stompClient.stop()
+      }
     }
   }
 
@@ -313,6 +384,44 @@ class StompAuthenticationIntegrationTest {
       stompClient.stop()
     }
   }
+
+  private data class LogoutTestConnection(
+    val session: StompSession,
+    val receivedTokenIds: LinkedBlockingQueue<String>,
+    val transportFailure: CompletableFuture<Throwable>,
+  )
+
+  private fun connectForLogoutTest(stompClient: WebSocketStompClient, accessToken: String): LogoutTestConnection {
+    val transportFailure = CompletableFuture<Throwable>()
+
+    val session = stompClient.connectAsync(
+      "ws://localhost:$port/ws",
+      handshakeHeaders(accessToken),
+      object : StompSessionHandlerAdapter() {
+        override fun handleTransportError(session: StompSession, exception: Throwable) {
+          transportFailure.complete(exception)
+        }
+      },
+    ).get(5, TimeUnit.SECONDS)
+
+    return LogoutTestConnection(
+      session = session,
+      receivedTokenIds = LinkedBlockingQueue(),
+      transportFailure = transportFailure,
+    )
+  }
+
+  private fun subscribeAndVerify(connection: LogoutTestConnection, expectedTokenId: String) {
+    connection.session.subscribe(
+      "/user/queue/test-authentication",
+      tokenIdFrameHandler(connection.receivedTokenIds),
+    )
+
+    connection.session.send("/api/test-authentication", "")
+
+    assertThat(connection.receivedTokenIds.poll(5, TimeUnit.SECONDS))
+      .isEqualTo(expectedTokenId)
+  }
 }
 
 @TestComponent
@@ -321,7 +430,10 @@ class StompAuthenticationTestController {
   val handledTokenIds = ConcurrentLinkedQueue<String>()
 
   @MessageMapping("/test-authentication")
-  @SendToUser("/queue/test-authentication")
+  @SendToUser(
+    value = ["/queue/test-authentication"],
+    broadcast = false,
+  )
   fun verifyAuthentication(principal: Authentication): String {
     val accessTokenPayload = principal.details as AccessTokenPayload
 
