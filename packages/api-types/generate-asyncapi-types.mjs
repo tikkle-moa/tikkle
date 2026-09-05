@@ -1,7 +1,11 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+
+import { TypeScriptGenerator } from "@asyncapi/modelina";
+import { DiagnosticSeverity, Parser } from "@asyncapi/parser";
 
 const asyncApiDocumentUrl = "http://localhost:8080/api/springwolf/docs";
 const outputUrl = new URL("./src/stomp.generated.ts", import.meta.url);
+const checkOnly = process.argv.includes("--check");
 
 const response = await fetch(asyncApiDocumentUrl);
 
@@ -10,83 +14,25 @@ if (!response.ok) {
 }
 
 const asyncApi = await response.json();
-const schemas = asyncApi.components?.schemas ?? {};
+const parser = new Parser();
+const { diagnostics } = await parser.parse(asyncApi);
+const errors = diagnostics.filter(({ severity }) => severity === DiagnosticSeverity.Error);
 
-function referenceName(reference) {
-  const prefix = "#/components/schemas/";
-
-  if (!reference.startsWith(prefix)) {
-    throw new Error(`지원하지 않는 참조입니다: ${reference}`);
-  }
-
-  return reference.slice(prefix.length);
+if (errors.length > 0) {
+  throw new Error(["Springwolf AsyncAPI 문서 검증에 실패했습니다.", ...errors.map(({ message }) => `- ${message}`)].join("\n"));
 }
 
-function propertyName(name) {
-  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name);
+if (checkOnly) {
+  process.exit(0);
 }
 
-function objectType(schema) {
-  const properties = Object.entries(schema.properties ?? {});
+const generator = new TypeScriptGenerator({
+  modelType: "interface",
+  enumType: "union",
+  mapType: "record",
+});
 
-  if (properties.length === 0) {
-    return "Record<string, unknown>";
-  }
-
-  const required = new Set(schema.required ?? []);
-
-  return `{
-${properties.map(([name, property]) => `  ${propertyName(name)}${required.has(name) ? "" : "?"}: ${toType(property)};`).join("\n")}
-}`;
-}
-
-function toType(schema) {
-  if (schema.$ref) {
-    return referenceName(schema.$ref);
-  }
-
-  if (schema.enum) {
-    return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
-  }
-
-  if (schema.oneOf) {
-    return schema.oneOf.map(toType).join(" | ");
-  }
-
-  if (schema.allOf) {
-    return schema.allOf.map(toType).join(" & ");
-  }
-
-  if (schema.type === "array") {
-    return `Array<${toType(schema.items ?? {})}>`;
-  }
-
-  if (schema.type === "object") {
-    return objectType(schema);
-  }
-
-  if (schema.type === "string") {
-    return "string";
-  }
-
-  if (schema.type === "integer" || schema.type === "number") {
-    return "number";
-  }
-
-  if (schema.type === "boolean") {
-    return "boolean";
-  }
-
-  return "unknown";
-}
-
-function declaration(name, schema) {
-  if (schema.type === "object" && !schema.enum && !schema.oneOf && !schema.allOf) {
-    return `export interface ${name} ${objectType(schema)}`;
-  }
-
-  return `export type ${name} = ${toType(schema)};`;
-}
+const models = await generator.generate(asyncApi);
 
 const source = [
   "/**",
@@ -95,8 +41,8 @@ const source = [
   " * Do not make direct changes to this file.",
   " */",
   "",
-  ...Object.entries(schemas).map(([name, schema]) => declaration(name, schema)),
+  ...models.map(({ result }) => `export ${result}`),
   "",
-].join("\n\n");
+].join("\n");
 
 writeFileSync(outputUrl, source);

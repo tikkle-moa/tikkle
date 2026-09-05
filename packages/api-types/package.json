@@ -10,10 +10,11 @@
     "generate:openapi": "openapi-typescript --redocly ./redocly.yaml && prettier --write src/generated.ts",
     "generate:asyncapi": "node generate-asyncapi-types.mjs && prettier --write src/stomp.generated.ts",
     "generate": "pnpm generate:openapi && pnpm generate:asyncapi",
-    "validate:asyncapi": "asyncapi validate http://localhost:8080/api/springwolf/docs"
+    "validate:asyncapi": "node generate-asyncapi-types.mjs --check && prettier --check src/stomp.generated.ts"
   },
   "devDependencies": {
-    "@asyncapi/cli": "^6.0.2",
+    "@asyncapi/modelina": "5.10.1",
+    "@asyncapi/parser": "3.6.3",
     "openapi-typescript": "^7.13.0"
   }
 }
