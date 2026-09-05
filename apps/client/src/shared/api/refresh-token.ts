@@ -1,6 +1,6 @@
 import { getCookie } from "@shared/lib/cookie.utils";
 
-export type RefreshResult = { type: "success" } | { type: "authentication-failed" } | { type: "retryable-failed" };
+import type { RefreshResult } from "./refresh-token.types";
 
 let refreshPromise: Promise<RefreshResult> | null = null;
 
