@@ -22,16 +22,7 @@ if (errors.length > 0) {
   throw new Error(["Springwolf AsyncAPI 문서 검증에 실패했습니다.", ...errors.map(({ message }) => `- ${message}`)].join("\n"));
 }
 
-if (checkOnly) {
-  process.exit(0);
-}
-
-const generator = new TypeScriptGenerator({
-  modelType: "interface",
-  enumType: "union",
-  mapType: "record",
-});
-
+const generator = new TypeScriptGenerator("tikkle-stomp-types");
 const models = await generator.generate(asyncApi);
 
 const source = [
@@ -44,5 +35,15 @@ const source = [
   ...models.map(({ result }) => `export ${result}`),
   "",
 ].join("\n");
+
+if (checkOnly) {
+  const currentSource = readFileSync(outputUrl, "utf8");
+
+  if (currentSource !== source) {
+    throw new Error("stomp.generated.ts가 Springwolf AsyncAPI 문서와 일치하지 않습니다. pnpm api:async를 실행하세요.");
+  }
+
+  process.exit(0);
+}
 
 writeFileSync(outputUrl, source);
