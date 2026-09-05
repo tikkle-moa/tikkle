@@ -1,6 +1,8 @@
 import { getCookie } from "@shared/lib/cookie.utils";
 
-export const refreshAccessToken = async (): Promise<boolean> => {
+let refreshPromise: Promise<boolean> | null = null;
+
+const requestAccessTokenRefresh = async (): Promise<boolean> => {
   const csrfToken = getCookie("XSRF-TOKEN");
 
   const response = await fetch("/api/auth/refresh", {
@@ -10,4 +12,14 @@ export const refreshAccessToken = async (): Promise<boolean> => {
   });
 
   return response.ok;
+};
+
+export const refreshAccessToken = (): Promise<boolean> => {
+  if (!refreshPromise) {
+    refreshPromise = requestAccessTokenRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+
+  return refreshPromise;
 };
