@@ -5,6 +5,7 @@ import com.example.server.auth.dto.CurrentUserResponse
 import com.example.server.auth.dto.OAuthStateData
 import com.example.server.auth.dto.OAuthUserInfo
 import com.example.server.auth.dto.ReissuedTokenPair
+import com.example.server.auth.refreshTokenKey
 import com.example.server.auth.repository.OAuthAccountRepository
 import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthErrorCode
@@ -24,10 +25,8 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import java.time.Duration
 import java.util.UUID
-
 private const val OAUTH_STATE_TTL_MINUTES = 10L
 private const val OAUTH_STATE_KEY_PREFIX = "oauth:state:"
-private const val REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:"
 
 @Service
 class AuthService(
@@ -118,7 +117,7 @@ class AuthService(
     val refreshToken = issuedRefreshToken.token
 
     stringRedisTemplate.opsForValue().set(
-      "$REFRESH_TOKEN_KEY_PREFIX$tokenId",
+      refreshTokenKey(tokenId),
       user.userId.toString(),
       Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
     )
@@ -135,7 +134,7 @@ class AuthService(
 
     // 2. Redis에서 jti를 읽는 동시에 삭제
     val storedUserId = stringRedisTemplate.opsForValue()
-      .getAndDelete("$REFRESH_TOKEN_KEY_PREFIX${refreshTokenPayload.tokenId}")
+      .getAndDelete(refreshTokenKey(refreshTokenPayload.tokenId))
       ?: throw CustomException(ErrorCode.UNAUTHORIZED)
 
     // 3. Redis에서 읽은 userId와 JWT의 userId 비교
@@ -157,7 +156,7 @@ class AuthService(
 
     // 6. 새로운 Refresh Token을 Redis에 TTL과 함께 저장
     stringRedisTemplate.opsForValue().set(
-      "$REFRESH_TOKEN_KEY_PREFIX${reissuedRefreshToken.tokenId}",
+      refreshTokenKey(reissuedRefreshToken.tokenId),
       user.id.toString(),
       Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
     )
@@ -174,7 +173,7 @@ class AuthService(
       ?: return
 
     stringRedisTemplate.delete(
-      "$REFRESH_TOKEN_KEY_PREFIX${refreshTokenPayload.tokenId}",
+      refreshTokenKey(refreshTokenPayload.tokenId),
     )
   }
 
