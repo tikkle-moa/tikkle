@@ -16,6 +16,7 @@ class WebSocketConfig(
   private val stompAuthenticationChannelInterceptor: StompAuthenticationChannelInterceptor,
 ) : WebSocketMessageBrokerConfigurer {
   override fun registerStompEndpoints(registry: StompEndpointRegistry) {
+    registry.setPreserveReceiveOrder(true)
     registry
       .addEndpoint("/ws")
       .setAllowedOrigins(appProperties.frontendUrl)
