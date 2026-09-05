@@ -8,10 +8,14 @@ export const createRefreshTokenMiddleware = (onSessionExpired: () => void): Midd
       return response;
     }
 
-    const refreshed = await refreshAccessToken().catch(() => false);
+    const refreshResult = await refreshAccessToken();
 
-    if (!refreshed) {
+    if (refreshResult.type === "authentication-failed") {
       onSessionExpired();
+      return response;
+    }
+
+    if (refreshResult.type === "retryable-failed") {
       return response;
     }
 

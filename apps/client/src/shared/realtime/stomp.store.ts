@@ -4,11 +4,12 @@ import { create } from "zustand";
 import { refreshAccessToken } from "@shared/api/refresh-token";
 
 import { createStompClient } from "./stomp-client";
-import { STOMP_RETRY_DELAY_MS } from "./stomp.constants";
+import { STOMP_MAX_RETRY_DELAY_MS, STOMP_RETRY_DELAY_MS } from "./stomp.constants";
 import type { StompConnectionStatus } from "./stomp.types";
 
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let recoveryPromise: Promise<void> | null = null;
+let retryAttempt = 0;
 
 interface StompStore {
   client: Client | null;
@@ -20,6 +21,13 @@ interface StompStore {
   recover: () => Promise<void>;
   setSessionExpiredHandler: (handler: () => void) => void;
 }
+
+const scheduleReconnect = (get: () => StompStore, delay: number) => {
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    get().getClient();
+  }, delay);
+};
 
 export const useStompStore = create<StompStore>((set, get) => ({
   client: null,
@@ -35,6 +43,7 @@ export const useStompStore = create<StompStore>((set, get) => ({
 
     const client = createStompClient({
       onConnect: () => {
+        retryAttempt = 0;
         set({ connectionStatus: "connected" });
       },
       onWebSocketClose: () => {
@@ -57,6 +66,8 @@ export const useStompStore = create<StompStore>((set, get) => ({
   },
 
   disconnect: async () => {
+    retryAttempt = 0;
+
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
@@ -90,13 +101,13 @@ export const useStompStore = create<StompStore>((set, get) => ({
     recoveryPromise = (async () => {
       set({ connectionStatus: "connecting" });
 
-      const refreshed = await refreshAccessToken().catch(() => false);
+      const refreshResult = await refreshAccessToken();
 
       if (get().client !== client) {
         return;
       }
 
-      if (!refreshed) {
+      if (refreshResult.type === "authentication-failed") {
         await get().disconnect();
         get().sessionExpiredHandler?.();
         return;
@@ -109,10 +120,16 @@ export const useStompStore = create<StompStore>((set, get) => ({
 
       await client.deactivate();
 
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        get().getClient();
-      }, STOMP_RETRY_DELAY_MS);
+      if (refreshResult.type === "success") {
+        retryAttempt = 0;
+        scheduleReconnect(get, STOMP_RETRY_DELAY_MS);
+        return;
+      }
+
+      const retryDelay = Math.min(STOMP_RETRY_DELAY_MS * 2 ** retryAttempt, STOMP_MAX_RETRY_DELAY_MS);
+
+      retryAttempt += 1;
+      scheduleReconnect(get, retryDelay);
     })().finally(() => {
       recoveryPromise = null;
     });
