@@ -1318,12 +1318,6 @@ class AuthServiceTest {
       val testAccessToken = "test-access-token"
       val testRefreshTokenId = "test-refresh-token-id"
       val testRefreshToken = "test-refresh-token"
-      given(
-        jwtTokenProvider.generateAccessToken(
-          loginUserResult.userId,
-          loginUserResult.role,
-        ),
-      ).willReturn(testAccessToken)
 
       given(
         jwtTokenProvider.generateRefreshToken(loginUserResult.userId),
@@ -1333,6 +1327,14 @@ class AuthServiceTest {
           token = testRefreshToken,
         ),
       )
+
+      given(
+        jwtTokenProvider.generateAccessToken(
+          loginUserResult.userId,
+          loginUserResult.role,
+          testRefreshTokenId,
+        ),
+      ).willReturn(testAccessToken)
       given(jwtProperties.refreshTokenExpirationDays)
         .willReturn(30L)
       given(stringRedisTemplate.opsForValue())
@@ -1391,10 +1393,16 @@ class AuthServiceTest {
         .willReturn(userId.toString())
       given(userRepository.findById(userId))
         .willReturn(Optional.of(user))
-      given(jwtTokenProvider.generateAccessToken(userId, UserRole.USER))
-        .willReturn("new-access-token")
       given(jwtTokenProvider.generateRefreshToken(userId))
         .willReturn(issuedRefreshToken)
+
+      given(
+        jwtTokenProvider.generateAccessToken(
+          userId,
+          UserRole.USER,
+          issuedRefreshToken.tokenId,
+        ),
+      ).willReturn("new-access-token")
       given(jwtProperties.refreshTokenExpirationDays)
         .willReturn(30L)
 

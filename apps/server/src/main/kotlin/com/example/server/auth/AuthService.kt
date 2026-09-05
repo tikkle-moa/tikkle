@@ -107,8 +107,12 @@ class AuthService(
       ?: return CallbackResult.Failure(OAuthErrorCode.OAUTH_ACCOUNT_CONFLICT)
 
     // 5. 서비스 토큰 발급 (JWT access + refresh)
-    val accessToken = jwtTokenProvider.generateAccessToken(user.userId, user.role)
     val issuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.userId)
+    val accessToken = jwtTokenProvider.generateAccessToken(
+      userId = user.userId,
+      role = user.role,
+      tokenId = issuedRefreshToken.tokenId,
+    )
 
     val tokenId = issuedRefreshToken.tokenId
     val refreshToken = issuedRefreshToken.token
@@ -144,8 +148,12 @@ class AuthService(
       .orElseThrow { CustomException(ErrorCode.UNAUTHORIZED) }
 
     // 5. 새로운 AccessToken과 Refresh Token 발급
-    val reissuedAccessToken = jwtTokenProvider.generateAccessToken(user.id, user.role)
     val reissuedRefreshToken = jwtTokenProvider.generateRefreshToken(user.id)
+    val reissuedAccessToken = jwtTokenProvider.generateAccessToken(
+      userId = user.id,
+      role = user.role,
+      tokenId = reissuedRefreshToken.tokenId,
+    )
 
     // 6. 새로운 Refresh Token을 Redis에 TTL과 함께 저장
     stringRedisTemplate.opsForValue().set(
