@@ -1,5 +1,6 @@
 import type { Client } from "@stomp/stompjs";
 
+import type { RefreshResult } from "@shared/api/refresh-token.types";
 import type { createStompClient } from "@shared/realtime/stomp-client";
 import { STOMP_RETRY_DELAY_MS } from "@shared/realtime/stomp.constants";
 import { useStompStore } from "@shared/realtime/stomp.store";
@@ -33,7 +34,7 @@ describe("useStompStore", () => {
 
     mockCreateStompClient.mockReturnValue(mockClient);
     mockDeactivate.mockResolvedValue(undefined);
-    mockRefreshAccessToken.mockResolvedValue(true);
+    mockRefreshAccessToken.mockResolvedValue({ type: "success" });
 
     useStompStore.setState({
       client: null,
@@ -111,15 +112,14 @@ describe("useStompStore", () => {
     expect(mockActivate).toHaveBeenCalledTimes(2);
   });
 
-  it("토큰 갱신 실패 시 세션 만료 핸들러를 호출하고 재연결하지 않는다", async () => {
+  it("인증 갱신 실패 시 세션 만료 핸들러를 호출하고 재연결하지 않는다", async () => {
     const sessionExpiredHandler = vi.fn();
 
-    mockRefreshAccessToken.mockResolvedValue(false);
+    mockRefreshAccessToken.mockResolvedValue({ type: "authentication-failed" });
     useStompStore.getState().setSessionExpiredHandler(sessionExpiredHandler);
     useStompStore.getState().getClient();
 
     await useStompStore.getState().recover();
-    await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 
     expect(mockDeactivate).toHaveBeenCalledOnce();
     expect(sessionExpiredHandler).toHaveBeenCalledOnce();
@@ -127,25 +127,47 @@ describe("useStompStore", () => {
     expect(useStompStore.getState().connectionStatus).toBe("disconnected");
   });
 
-  it("토큰 갱신 요청 오류도 세션 만료로 처리한다", async () => {
+  it("일시적인 갱신 실패 시 세션을 유지하고 재연결을 예약한다", async () => {
     const sessionExpiredHandler = vi.fn();
 
-    mockRefreshAccessToken.mockRejectedValueOnce(new Error("network error"));
+    mockRefreshAccessToken.mockResolvedValue({ type: "retryable-failed" });
     useStompStore.getState().setSessionExpiredHandler(sessionExpiredHandler);
     useStompStore.getState().getClient();
 
     await useStompStore.getState().recover();
 
-    expect(sessionExpiredHandler).toHaveBeenCalledOnce();
-    expect(useStompStore.getState().client).toBeNull();
+    expect(mockDeactivate).toHaveBeenCalledOnce();
+    expect(sessionExpiredHandler).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
+
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
+    expect(mockActivate).toHaveBeenCalledTimes(2);
+  });
+
+  it("일시적인 갱신 실패가 반복되면 재연결 대기 시간을 증가시킨다", async () => {
+    mockRefreshAccessToken.mockResolvedValue({ type: "retryable-failed" });
+    useStompStore.getState().getClient();
+
+    await useStompStore.getState().recover();
+    await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
+
+    await useStompStore.getState().recover();
+    await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS * 2 - 1);
+
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(3);
   });
 
   it("이미 복구 중이면 토큰 갱신 요청을 중복 실행하지 않는다", async () => {
-    let resolveRefresh!: (value: boolean) => void;
+    let resolveRefresh!: (value: RefreshResult) => void;
 
     mockRefreshAccessToken.mockImplementationOnce(
       () =>
-        new Promise<boolean>((resolve) => {
+        new Promise<RefreshResult>((resolve) => {
           resolveRefresh = resolve;
         }),
     );
@@ -157,7 +179,7 @@ describe("useStompStore", () => {
 
     expect(mockRefreshAccessToken).toHaveBeenCalledOnce();
 
-    resolveRefresh(true);
+    resolveRefresh({ type: "success" });
 
     await Promise.all([firstRecovery, secondRecovery]);
 
@@ -190,11 +212,11 @@ describe("useStompStore", () => {
   });
 
   it("토큰 갱신 중 연결을 해제하면 재연결하지 않는다", async () => {
-    let resolveRefresh!: (value: boolean) => void;
+    let resolveRefresh!: (value: RefreshResult) => void;
 
     mockRefreshAccessToken.mockImplementationOnce(
       () =>
-        new Promise<boolean>((resolve) => {
+        new Promise<RefreshResult>((resolve) => {
           resolveRefresh = resolve;
         }),
     );
@@ -205,7 +227,7 @@ describe("useStompStore", () => {
 
     await useStompStore.getState().disconnect();
 
-    resolveRefresh(true);
+    resolveRefresh({ type: "success" });
     await recovery;
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 
