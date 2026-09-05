@@ -15,6 +15,7 @@ import com.example.server.config.properties.JwtProperties
 import com.example.server.config.properties.OAuthProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.global.security.WebSocketSessionRegistry
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.MediaType
@@ -25,6 +26,7 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import java.time.Duration
 import java.util.UUID
+
 private const val OAUTH_STATE_TTL_MINUTES = 10L
 private const val OAUTH_STATE_KEY_PREFIX = "oauth:state:"
 
@@ -39,6 +41,7 @@ class AuthService(
   private val oauthStateRedisTemplate: RedisTemplate<String, OAuthStateData>,
   private val stringRedisTemplate: StringRedisTemplate,
   private val authTransactionService: AuthTransactionService,
+  private val webSocketSessionRegistry: WebSocketSessionRegistry,
   restClientBuilder: RestClient.Builder,
 ) {
   private val restClient = restClientBuilder.build()
@@ -175,6 +178,8 @@ class AuthService(
     stringRedisTemplate.delete(
       refreshTokenKey(refreshTokenPayload.tokenId),
     )
+
+    webSocketSessionRegistry.closeAll(refreshTokenPayload.tokenId)
   }
 
   fun deleteOAuthState(state: String) {

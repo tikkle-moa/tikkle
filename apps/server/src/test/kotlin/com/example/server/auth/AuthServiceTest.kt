@@ -20,6 +20,7 @@ import com.example.server.config.properties.JwtProperties
 import com.example.server.config.properties.OAuthProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.global.security.WebSocketSessionRegistry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -86,6 +87,9 @@ class AuthServiceTest {
   @Mock
   lateinit var authTransactionService: AuthTransactionService
 
+  @Mock
+  lateinit var webSocketSessionRegistry: WebSocketSessionRegistry
+
   private lateinit var service: AuthService
   private lateinit var mockServer: MockRestServiceServer
 
@@ -146,6 +150,7 @@ class AuthServiceTest {
       stringRedisTemplate = stringRedisTemplate,
       authTransactionService = authTransactionService,
       restClientBuilder = restClientBuilder,
+      webSocketSessionRegistry = webSocketSessionRegistry,
     )
   }
 
