@@ -20,6 +20,7 @@ import com.example.server.config.properties.JwtProperties
 import com.example.server.config.properties.OAuthProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.global.security.WebSocketSessionRegistry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -86,6 +87,9 @@ class AuthServiceTest {
   @Mock
   lateinit var authTransactionService: AuthTransactionService
 
+  @Mock
+  lateinit var webSocketSessionRegistry: WebSocketSessionRegistry
+
   private lateinit var service: AuthService
   private lateinit var mockServer: MockRestServiceServer
 
@@ -146,6 +150,7 @@ class AuthServiceTest {
       stringRedisTemplate = stringRedisTemplate,
       authTransactionService = authTransactionService,
       restClientBuilder = restClientBuilder,
+      webSocketSessionRegistry = webSocketSessionRegistry,
     )
   }
 
@@ -1318,12 +1323,6 @@ class AuthServiceTest {
       val testAccessToken = "test-access-token"
       val testRefreshTokenId = "test-refresh-token-id"
       val testRefreshToken = "test-refresh-token"
-      given(
-        jwtTokenProvider.generateAccessToken(
-          loginUserResult.userId,
-          loginUserResult.role,
-        ),
-      ).willReturn(testAccessToken)
 
       given(
         jwtTokenProvider.generateRefreshToken(loginUserResult.userId),
@@ -1333,6 +1332,14 @@ class AuthServiceTest {
           token = testRefreshToken,
         ),
       )
+
+      given(
+        jwtTokenProvider.generateAccessToken(
+          loginUserResult.userId,
+          loginUserResult.role,
+          testRefreshTokenId,
+        ),
+      ).willReturn(testAccessToken)
       given(jwtProperties.refreshTokenExpirationDays)
         .willReturn(30L)
       given(stringRedisTemplate.opsForValue())
@@ -1391,10 +1398,16 @@ class AuthServiceTest {
         .willReturn(userId.toString())
       given(userRepository.findById(userId))
         .willReturn(Optional.of(user))
-      given(jwtTokenProvider.generateAccessToken(userId, UserRole.USER))
-        .willReturn("new-access-token")
       given(jwtTokenProvider.generateRefreshToken(userId))
         .willReturn(issuedRefreshToken)
+
+      given(
+        jwtTokenProvider.generateAccessToken(
+          userId,
+          UserRole.USER,
+          issuedRefreshToken.tokenId,
+        ),
+      ).willReturn("new-access-token")
       given(jwtProperties.refreshTokenExpirationDays)
         .willReturn(30L)
 

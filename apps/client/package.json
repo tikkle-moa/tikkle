@@ -16,6 +16,7 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.3.0",
     "@tanstack/react-query": "^5.101.4",
     "@tikkle/api-types": "workspace:*",
     "lucide-react": "^1.31.0",

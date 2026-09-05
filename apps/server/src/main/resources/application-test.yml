@@ -18,6 +18,9 @@ springdoc:
   swagger-ui:
     enabled: false
 
+springwolf:
+  enabled: false
+
 app:
   production: false
   base-url: http://localhost:8080
