@@ -5,14 +5,14 @@ import { refreshAccessToken, subscribeAccessTokenRefresh } from "@shared/api/ref
 
 import { createStompClient } from "./stomp-client";
 import { STOMP_MAX_RETRY_DELAY_MS, STOMP_RETRY_DELAY_MS } from "./stomp.constants";
-import type { StompConnectionStatus } from "./stomp.types";
+import type { StompConnectionStatus, StompRecoveryPhase } from "./stomp.types";
 
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let recoveryPromise: Promise<void> | null = null;
 let recoveryGeneration = 0;
 let retryAttempt = 0;
 let lifecycleVersion = 0;
-let reconnectWithoutRefresh = false;
+let recoveryPhase: StompRecoveryPhase = "idle";
 
 interface StompStore {
   client: Client | null;
@@ -70,7 +70,7 @@ export const useStompStore = create<StompStore>((set, get) => {
     recoveryGeneration += 1;
     recoveryPromise = null;
     retryAttempt = 0;
-    reconnectWithoutRefresh = false;
+    recoveryPhase = "idle";
 
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -98,7 +98,7 @@ export const useStompStore = create<StompStore>((set, get) => {
             return;
           }
 
-          reconnectWithoutRefresh = false;
+          recoveryPhase = "idle";
           retryAttempt = 0;
 
           set({ connectionStatus: "connected" });
@@ -109,17 +109,23 @@ export const useStompStore = create<StompStore>((set, get) => {
             return;
           }
 
-          if (reconnectWithoutRefresh) {
-            set({
-              client: null,
-              connectionStatus: "disconnected",
-            });
-
-            scheduleRetry(lifecycleVersion);
+          if (recoveryPhase === "refresh-on-next-failure") {
+            void get().recover();
             return;
           }
 
-          void get().recover();
+          const version = lifecycleVersion;
+
+          if (recoveryPhase === "idle") {
+            recoveryPhase = "refresh-on-next-failure";
+          }
+
+          set({
+            client: null,
+            connectionStatus: "disconnected",
+          });
+
+          scheduleRetry(version);
         },
       });
 
@@ -158,7 +164,8 @@ export const useStompStore = create<StompStore>((set, get) => {
       }
 
       const version = invalidateLifecycle();
-      reconnectWithoutRefresh = true;
+
+      recoveryPhase = "reconnect-only";
 
       set({
         client: null,
@@ -230,6 +237,8 @@ export const useStompStore = create<StompStore>((set, get) => {
           if (version !== lifecycleVersion || get().client !== client) {
             return;
           }
+
+          recoveryPhase = "refresh-on-next-failure";
 
           set({
             client: null,

@@ -43,7 +43,9 @@ export const useStompSubscription = ({ destination, onMessage, headers, enabled 
     );
 
     return () => {
-      subscription.unsubscribe();
+      if (client.connected) {
+        subscription.unsubscribe();
+      }
     };
   }, [client, connectionStatus, destination, enabled, headers]);
 };
