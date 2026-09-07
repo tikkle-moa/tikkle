@@ -2,7 +2,9 @@ package com.example.server.global.security
 
 import com.example.server.auth.JwtTokenProvider
 import com.example.server.auth.dto.AccessTokenPayload
+import com.example.server.auth.entity.User
 import com.example.server.auth.refreshTokenKey
+import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.UserRole
 import com.example.server.config.TestcontainersConfig
 import com.example.server.config.properties.JwtProperties
@@ -76,6 +78,9 @@ class StompAuthenticationIntegrationTest {
   @Autowired
   @Qualifier("clientInboundChannel")
   lateinit var clientInboundChannel: ExecutorSubscribableChannel
+
+  @Autowired
+  lateinit var userRepository: UserRepository
 
   @Autowired
   lateinit var testController: StompAuthenticationTestController
@@ -288,6 +293,102 @@ class StompAuthenticationIntegrationTest {
       }
     }
   }
+
+  @Test
+  fun `HTTP refresh 성공 시 기존 JTI 연결을 종료하고 새 Access Token으로 STOMP 명령을 처리한다`() {
+    val user = userRepository.save(
+      User(
+        email = "stomp-refresh-${System.nanoTime()}@example.com",
+        nickname = "STOMP refresh 테스트",
+      ),
+    )
+
+    val oldRefreshToken = jwtTokenProvider.generateRefreshToken(user.id)
+    val oldRefreshKey = refreshTokenKey(oldRefreshToken.tokenId)
+
+    stringRedisTemplate.opsForValue().set(
+      oldRefreshKey,
+      user.id.toString(),
+      Duration.ofMinutes(5),
+    )
+    refreshTokenKeys += oldRefreshKey
+
+    val oldAccessToken = jwtTokenProvider.generateAccessToken(
+      userId = user.id,
+      role = user.role,
+      tokenId = oldRefreshToken.tokenId,
+    )
+
+    val stompClient = WebSocketStompClient(StandardWebSocketClient()).apply {
+      setMessageConverter(StringMessageConverter())
+    }
+    val connections = mutableListOf<LogoutTestConnection>()
+
+    try {
+      val oldConnection = connectForLogoutTest(stompClient, oldAccessToken)
+        .also { connections += it }
+
+      subscribeAndVerify(oldConnection, oldRefreshToken.tokenId)
+
+      val csrfToken = UUID.randomUUID().toString()
+      val request = HttpRequest.newBuilder()
+        .uri(URI.create("http://localhost:$port/api/auth/refresh"))
+        .header(
+          "Cookie",
+          "refresh_token=${oldRefreshToken.token}; XSRF-TOKEN=$csrfToken",
+        )
+        .header("X-XSRF-TOKEN", csrfToken)
+        .POST(HttpRequest.BodyPublishers.noBody())
+        .build()
+
+      val response = HttpClient.newHttpClient().use { httpClient ->
+        httpClient.send(
+          request,
+          HttpResponse.BodyHandlers.discarding(),
+        )
+      }
+
+      assertThat(response.statusCode()).isEqualTo(200)
+
+      val newAccessToken = cookieValue(response, "access_token")
+      val newRefreshToken = cookieValue(response, "refresh_token")
+      val newRefreshTokenId = jwtTokenProvider
+        .parseRefreshToken(newRefreshToken)!!
+        .tokenId
+
+      refreshTokenKeys += refreshTokenKey(newRefreshTokenId)
+
+      // 이전 JTI로 연결된 WebSocket은 서버가 종료해야 한다.
+      assertThat(oldConnection.transportFailure.get(5, TimeUnit.SECONDS))
+        .isInstanceOf(ConnectionLostException::class.java)
+      assertThat(oldConnection.session.isConnected).isFalse()
+
+      // 새 Access Token으로 다시 연결하면 명령을 처리할 수 있어야 한다.
+      val newConnection = connectForLogoutTest(stompClient, newAccessToken)
+        .also { connections += it }
+
+      subscribeAndVerify(newConnection, newRefreshTokenId)
+
+      assertThat(newConnection.session.isConnected).isTrue()
+      assertThat(newConnection.transportFailure.isDone).isFalse()
+    } finally {
+      connections.forEach { connection ->
+        if (connection.session.isConnected) {
+          connection.session.disconnect()
+        }
+      }
+
+      stompClient.stop()
+      userRepository.delete(user)
+    }
+  }
+
+  private fun cookieValue(response: HttpResponse<*>, name: String): String = response.headers()
+    .allValues("Set-Cookie")
+    .asSequence()
+    .map { it.substringBefore(';') }
+    .first { it.startsWith("$name=") }
+    .substringAfter('=')
 
   private fun handshakeHeaders(accessToken: String) = WebSocketHttpHeaders().apply {
     add("Cookie", "access_token=$accessToken")

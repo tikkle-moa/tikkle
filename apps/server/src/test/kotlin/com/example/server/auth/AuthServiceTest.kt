@@ -1427,6 +1427,10 @@ class AuthServiceTest {
           userId.toString(),
           Duration.ofDays(30),
         )
+
+      then(webSocketSessionRegistry)
+        .should()
+        .closeAll(refreshTokenId)
     }
 
     @Test
@@ -1441,6 +1445,7 @@ class AuthServiceTest {
 
       assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
       then(userRepository).shouldHaveNoInteractions()
+      then(webSocketSessionRegistry).shouldHaveNoInteractions()
     }
 
     @Test
@@ -1455,6 +1460,7 @@ class AuthServiceTest {
 
       assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
       then(userRepository).shouldHaveNoInteractions()
+      then(webSocketSessionRegistry).shouldHaveNoInteractions()
     }
 
     @Test
@@ -1468,6 +1474,7 @@ class AuthServiceTest {
 
       assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
       then(stringRedisTemplate).shouldHaveNoInteractions()
+      then(webSocketSessionRegistry).shouldHaveNoInteractions()
     }
 
     private fun givenValidRefreshToken() {
@@ -1496,6 +1503,7 @@ class AuthServiceTest {
       }
 
       assertEquals(ErrorCode.UNAUTHORIZED, exception.errorCode)
+      then(webSocketSessionRegistry).shouldHaveNoInteractions()
     }
   }
 

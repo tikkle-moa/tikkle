@@ -43,6 +43,31 @@ describe("refreshAccessToken", () => {
     );
   });
 
+  it("refresh listener 예외를 호출자에게 전달하고 다음 refresh를 허용한다", async () => {
+    const listenerError = new Error("STOMP reconnect failed");
+
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const { refreshAccessToken, subscribeAccessTokenRefresh } = await loadRefreshAccessToken();
+
+    const listener = vi.fn().mockRejectedValue(listenerError);
+    const unsubscribe = subscribeAccessTokenRefresh(listener);
+
+    await expect(refreshAccessToken()).rejects.toBe(listenerError);
+
+    expect(listener).toHaveBeenCalledOnce();
+
+    unsubscribe();
+
+    await expect(refreshAccessToken()).resolves.toEqual({
+      type: "success",
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("동시에 호출하면 하나의 refresh 요청과 Promise를 공유한다", async () => {
     let resolveRefresh!: (response: Response) => void;
 

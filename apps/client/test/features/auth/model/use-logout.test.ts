@@ -86,4 +86,19 @@ describe("useLogout", () => {
     expect(useSessionStore.getState().user).toBeNull();
     expect(useSessionStore.getState().justLoggedOut).toBe(true);
   });
+
+  it("STOMP 연결 해제 실패 시에도 오류를 기록하고 세션을 초기화한다", async () => {
+    const disconnectError = new Error("STOMP disconnect failed");
+
+    mockDisconnect.mockRejectedValueOnce(disconnectError);
+
+    const { result } = renderHook(() => useLogout());
+
+    await result.current.handleLogout();
+
+    expect(console.error).toHaveBeenCalledWith("STOMP disconnect error:", disconnectError);
+    expect(useSessionStore.getState().status).toBe("loading");
+    expect(useSessionStore.getState().user).toBeNull();
+    expect(useSessionStore.getState().justLoggedOut).toBe(true);
+  });
 });

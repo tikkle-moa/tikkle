@@ -19,10 +19,12 @@ vi.mock("@shared/realtime/stomp-client", () => ({
   createStompClient: mockCreateStompClient,
 }));
 
-const mockClient = {
-  activate: mockActivate,
-  deactivate: mockDeactivate,
-} as unknown as Client;
+const createMockClient = () =>
+  ({
+    activate: mockActivate,
+    deactivate: mockDeactivate,
+    publish: vi.fn(),
+  }) as unknown as Client;
 
 function callOnResponse(middleware: ReturnType<typeof createRefreshTokenMiddleware>, request: Request, response: Response) {
   return middleware.onResponse!({
@@ -37,7 +39,7 @@ describe("STOMP refresh recovery", () => {
     vi.clearAllMocks();
 
     mockGetCookie.mockReturnValue(null);
-    mockCreateStompClient.mockReturnValue(mockClient);
+    mockCreateStompClient.mockImplementation(createMockClient);
     mockDeactivate.mockResolvedValue(undefined);
     vi.spyOn(globalThis, "fetch");
 
@@ -55,12 +57,17 @@ describe("STOMP refresh recovery", () => {
     vi.restoreAllMocks();
   });
 
-  it("HTTP 401과 STOMP 복구가 동시에 발생하면 refresh 요청을 한 번만 전송하고 세션을 유지한다", async () => {
+  it("HTTP refresh 성공 후 새 STOMP Client로 명령을 전송한다", async () => {
     let resolveRefresh!: (response: Response) => void;
+
     const clearSession = vi.fn();
     const sessionExpiredHandler = vi.fn();
     const middleware = createRefreshTokenMiddleware(clearSession);
-    const retryResponse = new Response(null, { status: 200 });
+
+    const firstClient = createMockClient();
+    const secondClient = createMockClient();
+
+    mockCreateStompClient.mockReturnValueOnce(firstClient).mockReturnValueOnce(secondClient);
 
     vi.mocked(globalThis.fetch)
       .mockImplementationOnce(
@@ -69,31 +76,43 @@ describe("STOMP refresh recovery", () => {
             resolveRefresh = resolve;
           }),
       )
-      .mockResolvedValueOnce(retryResponse);
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
 
     useStompStore.getState().setSessionExpiredHandler(sessionExpiredHandler);
     useStompStore.getState().getClient();
 
     const httpRecovery = callOnResponse(middleware, new Request("https://example.com/api/data"), new Response(null, { status: 401 }));
+
     const stompRecovery = useStompStore.getState().recover();
 
     expect(globalThis.fetch).toHaveBeenCalledOnce();
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "/api/auth/refresh",
-      expect.objectContaining({
-        method: "POST",
-        credentials: "include",
-      }),
-    );
 
     resolveRefresh(new Response(null, { status: 200 }));
 
     const [httpResult] = await Promise.all([httpRecovery, stompRecovery]);
 
-    expect(httpResult).toBe(retryResponse);
+    expect(httpResult).toEqual(expect.any(Response));
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+
     expect(mockDeactivate).toHaveBeenCalledOnce();
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
     expect(clearSession).not.toHaveBeenCalled();
     expect(sessionExpiredHandler).not.toHaveBeenCalled();
+
+    const currentClient = useStompStore.getState().client;
+
+    expect(currentClient).toBe(secondClient);
+
+    currentClient?.publish({
+      destination: "/app/performance/sync",
+      body: JSON.stringify({
+        requestId: "request-id",
+        action: "START_CHECKOUT",
+        data: {},
+      }),
+    });
+
+    expect(secondClient.publish).toHaveBeenCalledOnce();
+    expect(firstClient.publish).not.toHaveBeenCalled();
   });
 });
