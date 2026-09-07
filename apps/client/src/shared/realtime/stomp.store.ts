@@ -12,6 +12,7 @@ let recoveryPromise: Promise<void> | null = null;
 let recoveryGeneration = 0;
 let retryAttempt = 0;
 let lifecycleVersion = 0;
+let reconnectWithoutRefresh = false;
 
 interface StompStore {
   client: Client | null;
@@ -69,6 +70,7 @@ export const useStompStore = create<StompStore>((set, get) => {
     recoveryGeneration += 1;
     recoveryPromise = null;
     retryAttempt = 0;
+    reconnectWithoutRefresh = false;
 
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -92,12 +94,28 @@ export const useStompStore = create<StompStore>((set, get) => {
 
       const client = createStompClient({
         onConnect: () => {
+          if (get().client !== client) {
+            return;
+          }
+
+          reconnectWithoutRefresh = false;
           retryAttempt = 0;
+
           set({ connectionStatus: "connected" });
         },
 
         onWebSocketClose: () => {
           if (get().client !== client) {
+            return;
+          }
+
+          if (reconnectWithoutRefresh) {
+            set({
+              client: null,
+              connectionStatus: "disconnected",
+            });
+
+            scheduleRetry(lifecycleVersion);
             return;
           }
 
@@ -140,6 +158,7 @@ export const useStompStore = create<StompStore>((set, get) => {
       }
 
       const version = invalidateLifecycle();
+      reconnectWithoutRefresh = true;
 
       set({
         client: null,
