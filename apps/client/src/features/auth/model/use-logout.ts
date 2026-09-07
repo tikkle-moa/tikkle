@@ -17,8 +17,13 @@ export const useLogout = () => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      await disconnect();
-      logoutSession();
+      try {
+        await disconnect();
+      } catch (error) {
+        console.error("STOMP disconnect error:", error);
+      } finally {
+        logoutSession();
+      }
     }
   };
 

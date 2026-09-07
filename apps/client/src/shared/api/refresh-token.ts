@@ -2,7 +2,23 @@ import { getCookie } from "@shared/lib/cookie.utils";
 
 import type { RefreshResult } from "./refresh-token.types";
 
+type AccessTokenRefreshListener = () => void | Promise<void>;
+
 let refreshPromise: Promise<RefreshResult> | null = null;
+
+const refreshListeners = new Set<AccessTokenRefreshListener>();
+
+export const subscribeAccessTokenRefresh = (listener: AccessTokenRefreshListener) => {
+  refreshListeners.add(listener);
+
+  return () => {
+    refreshListeners.delete(listener);
+  };
+};
+
+const notifyAccessTokenRefresh = async () => {
+  await Promise.all([...refreshListeners].map((listener) => Promise.resolve().then(listener)));
+};
 
 const requestAccessTokenRefresh = async (): Promise<RefreshResult> => {
   const csrfToken = getCookie("XSRF-TOKEN");
@@ -30,9 +46,17 @@ const requestAccessTokenRefresh = async (): Promise<RefreshResult> => {
 
 export const refreshAccessToken = (): Promise<RefreshResult> => {
   if (!refreshPromise) {
-    refreshPromise = requestAccessTokenRefresh().finally(() => {
-      refreshPromise = null;
-    });
+    refreshPromise = requestAccessTokenRefresh()
+      .then(async (result) => {
+        if (result.type === "success") {
+          await notifyAccessTokenRefresh();
+        }
+
+        return result;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
   }
 
   return refreshPromise;

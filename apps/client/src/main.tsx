@@ -10,7 +10,13 @@ import App from "./app";
 
 apiClient.use(
   createRefreshTokenMiddleware(() => {
-    void useStompStore.getState().disconnect();
+    void useStompStore
+      .getState()
+      .disconnect()
+      .catch((error) => {
+        console.error("STOMP 세션 종료 실패:", error);
+      });
+
     useSessionStore.getState().clearSession();
   }),
 );

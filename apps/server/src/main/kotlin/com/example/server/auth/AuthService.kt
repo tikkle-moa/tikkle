@@ -164,6 +164,9 @@ class AuthService(
       Duration.ofDays(jwtProperties.refreshTokenExpirationDays),
     )
 
+    // 이전 Access Token JTI로 연결된 STOMP 세션 종료
+    webSocketSessionRegistry.closeAll(refreshTokenPayload.tokenId)
+
     return ReissuedTokenPair(
       accessToken = reissuedAccessToken,
       refreshToken = reissuedRefreshToken.token,
