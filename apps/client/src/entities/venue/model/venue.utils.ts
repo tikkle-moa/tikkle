@@ -9,3 +9,7 @@ export const getVenueStageTitleFontSize = (stageWidth: number, stageHeight: numb
 
   return Math.min(heightBasedSize, widthBasedSize);
 };
+
+export const getVenueRegion = (address: string) => {
+  return address.trim().split(/\s+/)[0];
+};

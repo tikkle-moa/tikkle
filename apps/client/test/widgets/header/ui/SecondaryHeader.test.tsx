@@ -28,4 +28,12 @@ describe("SecondaryHeader", () => {
     expect(screen.getByRole("link", { name: "홈" })).toHaveClass("text-gray-600");
     expect(screen.getByRole("link", { name: "콘서트" })).toHaveClass("text-brand-primary");
   });
+
+  it("공연장 경로에서는 공연장 탭을 활성 상태로 표시한다", () => {
+    renderSecondaryHeader(ROUTE_PATHS.VENUE_LIST);
+
+    expect(screen.getByRole("link", { name: "홈" })).toHaveClass("text-gray-600");
+    expect(screen.getByRole("link", { name: "콘서트" })).toHaveClass("text-gray-600");
+    expect(screen.getByRole("link", { name: "공연장" })).toHaveClass("text-brand-primary");
+  });
 });

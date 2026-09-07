@@ -6,6 +6,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.venue.dto.CreateVenueDetailRequest
 import com.example.server.venue.dto.UpdateVenueDetailRequest
 import com.example.server.venue.dto.VenueDetailResponse
+import com.example.server.venue.dto.VenueListResponse
 import com.example.server.venue.dto.VenueResponse
 import com.example.server.venue.dto.VenueSeatResponse
 import com.example.server.venue.entity.Venue
@@ -31,9 +32,14 @@ class VenueService(
   }
 
   @Transactional(readOnly = true)
-  fun getAllVenues(): List<VenueResponse> {
+  fun getAllVenues(): List<VenueListResponse> {
     val venues = venueRepository.findAll()
-    return venues.map(VenueResponse::from)
+    val venueSeatCountMap = venueSeatRepository.countGroupByVenueId().associate { it.venueId to it.count }
+    val concertCountMap = concertRepository.countGroupByVenueId().associate { it.venueId to it.count }
+
+    return venues.map { venue ->
+      VenueListResponse.from(venue = venue, venueSeatCount = venueSeatCountMap[venue.id] ?: 0L, concertCount = concertCountMap[venue.id] ?: 0L)
+    }
   }
 
   @Transactional(readOnly = true)

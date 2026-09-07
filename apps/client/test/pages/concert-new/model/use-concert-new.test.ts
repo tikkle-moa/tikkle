@@ -39,6 +39,7 @@ describe("useConcertNew", () => {
 
     expect(mockPost).toHaveBeenCalledWith("/api/concerts", { body: values });
     expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ["concerts"] });
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ["venues"] });
     expect(mockNavigate).toHaveBeenCalledWith("/concerts/21/performances/new", {
       replace: true,
     });

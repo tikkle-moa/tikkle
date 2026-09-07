@@ -12,6 +12,7 @@ import com.example.server.venue.dto.CreateVenueDetailRequest
 import com.example.server.venue.dto.CreateVenueRequest
 import com.example.server.venue.dto.CreateVenueSeatRequest
 import com.example.server.venue.dto.VenueDetailResponse
+import com.example.server.venue.dto.VenueListResponse
 import com.example.server.venue.dto.VenueResponse
 import com.example.server.venue.dto.VenueSeatResponse
 import org.junit.jupiter.api.BeforeEach
@@ -71,7 +72,7 @@ class VenueControllerTest {
   inner class GetVenues {
     @Test
     fun `공연장 목록을 조회한다`() {
-      given(venueService.getAllVenues()).willReturn(listOf(venueResponse()))
+      given(venueService.getAllVenues()).willReturn(listOf(venueListResponse()))
 
       mockMvc.get("/api/venues").andExpect {
         status { isOk() }
@@ -254,6 +255,17 @@ class VenueControllerTest {
     stagePositionX = BigDecimal("20.00"), stagePositionY = BigDecimal("5.00"),
     stageWidth = BigDecimal("40.00"), stageHeight = BigDecimal("10.00"),
     createdAt = LocalDateTime.of(2026, 8, 1, 12, 0),
+  )
+
+  private fun venueListResponse(name: String = "테스트 공연장") = VenueListResponse(
+    id = 1L,
+    name = name,
+    address = "서울",
+    width = BigDecimal("100.00"),
+    height = BigDecimal("100.00"),
+    createdAt = LocalDateTime.of(2026, 8, 1, 12, 0),
+    venueSeatCount = 1,
+    concertCount = 0,
   )
 
   @Suppress("UNCHECKED_CAST")
