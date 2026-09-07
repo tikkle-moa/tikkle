@@ -3,20 +3,30 @@ package com.example.server.global.security
 import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.refreshTokenKey
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.redis.core.StringRedisTemplate
+import org.springframework.scheduling.TaskScheduler
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.WebSocketSession
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ScheduledFuture
 
 @Component
-class WebSocketSessionRegistry(private val stringRedisTemplate: StringRedisTemplate) {
+class WebSocketSessionRegistry(
+  private val stringRedisTemplate: StringRedisTemplate,
+  @Qualifier("webSocketSessionTaskScheduler")
+  private val taskScheduler: TaskScheduler,
+) {
   private val log = LoggerFactory.getLogger(WebSocketSessionRegistry::class.java)
 
   private val sessionsByTokenId =
     ConcurrentHashMap<String, Map<String, WebSocketSession>>()
+
+  private val expirationTasksBySessionId =
+    ConcurrentHashMap<String, ScheduledFuture<*>>()
 
   fun register(session: WebSocketSession) {
     val payload = accessTokenPayload(session)
@@ -39,7 +49,10 @@ class WebSocketSessionRegistry(private val stringRedisTemplate: StringRedisTempl
         storedUserId != payload.userId.toString()
       ) {
         close(session, CloseStatus.POLICY_VIOLATION)
+        return
       }
+
+      scheduleExpiration(payload, session)
     } catch (exception: Exception) {
       close(session, CloseStatus.SERVER_ERROR)
       throw exception
@@ -47,6 +60,10 @@ class WebSocketSessionRegistry(private val stringRedisTemplate: StringRedisTempl
   }
 
   fun unregister(session: WebSocketSession) {
+    expirationTasksBySessionId
+      .remove(session.id)
+      ?.cancel(false)
+
     val payload = accessTokenPayload(session) ?: return
 
     sessionsByTokenId.computeIfPresent(payload.tokenId) { _, sessions ->
@@ -58,6 +75,38 @@ class WebSocketSessionRegistry(private val stringRedisTemplate: StringRedisTempl
     val sessions = sessionsByTokenId[tokenId] ?: return
 
     sessions.values.forEach { session ->
+      close(session, CloseStatus.POLICY_VIOLATION)
+    }
+  }
+
+  private fun scheduleExpiration(payload: AccessTokenPayload, session: WebSocketSession) {
+    val expirationTask = taskScheduler.schedule(
+      Runnable {
+        closeIfRegistered(
+          tokenId = payload.tokenId,
+          session = session,
+        )
+      },
+      payload.expiresAt,
+    ) ?: throw IllegalStateException("WebSocket 만료 작업을 예약하지 못했습니다.")
+
+    expirationTasksBySessionId
+      .put(session.id, expirationTask)
+      ?.cancel(false)
+
+    if (
+      !session.isOpen &&
+      expirationTasksBySessionId.remove(session.id, expirationTask)
+    ) {
+      expirationTask.cancel(false)
+    }
+  }
+
+  private fun closeIfRegistered(tokenId: String, session: WebSocketSession) {
+    val registeredSession = sessionsByTokenId[tokenId]
+      ?.get(session.id)
+
+    if (registeredSession === session) {
       close(session, CloseStatus.POLICY_VIOLATION)
     }
   }
