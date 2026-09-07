@@ -2,6 +2,9 @@ package com.example.server.global.exception
 
 import com.example.server.global.stomp.dto.StompCommandError
 import com.example.server.global.stomp.dto.StompCommandFailure
+import io.github.springwolf.core.asyncapi.annotations.AsyncMessage
+import io.github.springwolf.core.asyncapi.annotations.AsyncOperation
+import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.messaging.Message
@@ -73,6 +76,18 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
     log.warn("STOMP 요청 공통 필드 파싱 실패", exception)
   }.getOrNull()
 
+  @AsyncPublisher(
+    operation = AsyncOperation(
+      channelName = "/user/queue/{domain}",
+      description = "STOMP 명령 처리 실패 결과를 요청 사용자에게 전달합니다.",
+      payloadType = StompCommandFailure::class,
+      message = AsyncMessage(
+        messageId = "stomp-command-failure",
+        name = "StompCommandFailure",
+        title = "STOMP 명령 실패",
+      ),
+    ),
+  )
   private fun sendFailure(principal: Principal, destination: String?, request: StompRequestMetadata, errorCode: ErrorCode, message: String) {
     val domain = destination
       ?.let(syncDestinationPattern::matchEntire)
