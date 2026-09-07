@@ -1,12 +1,14 @@
 import { AlertCircle, Image, Info, LoaderCircle, Sparkles } from "lucide-react";
 
+import type { SubmitState } from "@shared/model/form.types";
+
 import { CONCERT_GENRE_MAP, ConcertCard, type CreateConcertRequest } from "@entities/concert";
 
 import ConcertFormInput from "./ConcertFormInput";
 import ConcertFormSelect from "./ConcertFormSelect";
 import ConcertFormTextarea from "./ConcertFormTextarea";
 
-import type { ConcertFormMode, SubmitState } from "../model/concert-form.types";
+import type { ConcertFormMode } from "../model/concert-form.types";
 import { useConcertForm } from "../model/use-concert-form";
 
 interface ConcertFormProps {
@@ -22,8 +24,8 @@ const ConcertForm = ({ mode, initialValues, initialVenueName, submitState, onSub
   const { isCreateMode, venues, isVenueLoading, isVenueError, isSubmitting, values, errors, updateField, handleSubmit, handlePosterError } =
     useConcertForm({
       mode,
-      submitState,
       initialValues,
+      submitState,
       onSubmit,
     });
 

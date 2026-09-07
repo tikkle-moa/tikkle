@@ -34,6 +34,7 @@ spring:
           max-wait: -1ms
 
 springdoc:
+  use-fqn: false
   api-docs:
     enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
     version: OPENAPI_3_0
@@ -43,6 +44,7 @@ springdoc:
     - /api/springwolf/**
 
 springwolf:
+  use-fqn: false
   enabled: ${SPRINGWOLF_ENABLED:true}
   docket:
     base-package: com.example.server

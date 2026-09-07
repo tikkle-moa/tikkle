@@ -1,0 +1,90 @@
+import type { CreateVenueRequest } from "@entities/venue";
+
+import type { SeatBatchValues } from "@features/venue-form/model/seat-batch.types";
+import { createSeatBatch, validateSeatBatch } from "@features/venue-form/model/seat-batch.utils";
+import type { VenueFormSeat } from "@features/venue-form/model/venue-form.types";
+
+const venue: CreateVenueRequest = {
+  name: "공연장",
+  address: "주소",
+  description: null,
+  width: 100,
+  height: 100,
+  stagePositionX: 80,
+  stagePositionY: 80,
+  stageWidth: 10,
+  stageHeight: 10,
+};
+
+const values: SeatBatchValues = {
+  sectionName: " A구역 ",
+  rows: 2,
+  columns: 3,
+  startSeatNumber: 10,
+  price: 50_000,
+  startX: 20,
+  startY: 30,
+  gapX: 10,
+  gapY: 5,
+};
+
+describe("seat batch utils", () => {
+  it("행과 열에 맞춰 좌석 번호와 좌표를 생성한다", () => {
+    const clientIdRef = { current: 10 };
+    expect(createSeatBatch(values, clientIdRef)).toEqual([
+      { clientId: 10, sectionName: "A구역", seatNumber: 10, seatLabel: "A구역 10번", price: 50_000, positionX: 20, positionY: 30 },
+      { clientId: 11, sectionName: "A구역", seatNumber: 11, seatLabel: "A구역 11번", price: 50_000, positionX: 30, positionY: 30 },
+      { clientId: 12, sectionName: "A구역", seatNumber: 12, seatLabel: "A구역 12번", price: 50_000, positionX: 40, positionY: 30 },
+      { clientId: 13, sectionName: "A구역", seatNumber: 13, seatLabel: "A구역 13번", price: 50_000, positionX: 20, positionY: 35 },
+      { clientId: 14, sectionName: "A구역", seatNumber: 14, seatLabel: "A구역 14번", price: 50_000, positionX: 30, positionY: 35 },
+      { clientId: 15, sectionName: "A구역", seatNumber: 15, seatLabel: "A구역 15번", price: 50_000, positionX: 40, positionY: 35 },
+    ]);
+  });
+
+  it.each([
+    [{ ...values, sectionName: " " }, "구역명을 입력해 주세요."],
+    [{ ...values, rows: 0 }, "행은 1 이상의 정수여야 합니다."],
+    [{ ...values, columns: 1.5 }, "열은 1 이상의 정수여야 합니다."],
+    [{ ...values, rows: 21, columns: 25 }, "한 번에 최대 500석까지 생성할 수 있습니다."],
+    [{ ...values, startSeatNumber: 0 }, "시작 번호는 1 이상의 정수여야 합니다."],
+    [{ ...values, price: -1 }, "가격은 0 이상의 정수여야 합니다."],
+    [{ ...values, gapX: 4.5 }, "좌석 간격은 좌석 크기보다 커야 합니다."],
+    [{ ...values, sectionName: "가".repeat(51) }, "구역명은 50자 이하로 입력해 주세요."],
+  ])("잘못된 일괄 생성값을 검증한다", (invalidValues, expected) => {
+    expect(validateSeatBatch(invalidValues as SeatBatchValues, venue, [], 100, 100)).toBe(expected);
+  });
+
+  it("마지막 좌석이 공연장 밖으로 나가면 생성하지 않는다", () => {
+    expect(validateSeatBatch({ ...values, startX: 90 }, venue, [], 100, 100)).toBe("생성될 좌석이 공연장 범위를 벗어납니다.");
+  });
+
+  it("기존 좌석과 같은 구역 및 좌석 번호가 포함되면 생성하지 않는다", () => {
+    const existingVenueSeats: VenueFormSeat[] = [
+      { clientId: 1, sectionName: " A구역 ", seatNumber: 11, seatLabel: "A 11번", price: 50_000, positionX: 10, positionY: 10 },
+    ];
+
+    expect(validateSeatBatch(values, venue, existingVenueSeats, 100, 100)).toBe("같은 구역에 중복된 좌석 번호가 있습니다.");
+  });
+
+  it("기존 좌석과 렌더링 영역이 겹치면 생성하지 않는다", () => {
+    const existingVenueSeats: VenueFormSeat[] = [
+      { clientId: 1, sectionName: "B구역", seatNumber: 1, seatLabel: "B 1번", price: 50_000, positionX: 34.49, positionY: 38.49 },
+    ];
+
+    expect(validateSeatBatch(values, venue, existingVenueSeats, 100, 100)).toBe("생성될 좌석 영역이 다른 좌석과 겹칩니다.");
+  });
+
+  it("생성될 좌석이 무대와 겹치면 생성하지 않는다", () => {
+    expect(validateSeatBatch({ ...values, rows: 1, columns: 1, startX: 80, startY: 80 }, venue, [], 100, 100)).toBe(
+      "생성될 좌석 영역이 무대와 겹칩니다.",
+    );
+  });
+
+  it("기존 좌석과 좌석 번호 및 위치가 겹치지 않으면 검증을 통과한다", () => {
+    const existingVenueSeats: VenueFormSeat[] = [
+      { clientId: 1, sectionName: "B구역", seatNumber: 1, seatLabel: "B 1번", price: 50_000, positionX: 10, positionY: 10 },
+    ];
+
+    expect(validateSeatBatch(values, venue, existingVenueSeats, 100, 100)).toBeNull();
+  });
+});

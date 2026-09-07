@@ -2,10 +2,12 @@ import type { SubmitEvent } from "react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
+import type { SubmitState } from "@shared/model/form.types";
+
 import type { CreatePerformanceRequest, UpdatePerformanceRequest } from "@entities/performance";
 
 import { createPerformance, updatePerformance } from "./performance-form.api";
-import type { PerformanceFormErrors, PerformanceFormValues, PerformanceSubmitState } from "./performance-form.types";
+import type { PerformanceFormErrors, PerformanceFormValues } from "./performance-form.types";
 import { getInitialPerformanceFormValues, validatePerformanceForm } from "./performance-form.utils";
 
 interface UsePerformanceFormProps {
@@ -19,7 +21,7 @@ interface UsePerformanceFormProps {
 export const usePerformanceForm = ({ concertId, performanceId, initialValues, onSaved, onSuccess }: UsePerformanceFormProps) => {
   const [values, setValues] = useState<PerformanceFormValues>(() => getInitialPerformanceFormValues(initialValues));
   const [errors, setErrors] = useState<PerformanceFormErrors>({});
-  const [submitState, setSubmitState] = useState<PerformanceSubmitState>({
+  const [submitState, setSubmitState] = useState<SubmitState>({
     status: "idle",
   });
 

@@ -1,6 +1,6 @@
 import { Link, generatePath } from "react-router";
 
-import { Info, MapPin, Music, Pencil } from "lucide-react";
+import { Info, MapPin, Music, Pencil, Trash } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
@@ -14,7 +14,7 @@ import PerformanceBookingPanel from "./PerformanceBookingPanel";
 import { useConcertDetail } from "../model/use-concert-detail";
 
 const ConcertDetailPage = () => {
-  const { concert, performances, isAdmin, isError, isParamValid, isPending, refetch } = useConcertDetail();
+  const { isParamValid, isAdmin, concert, performances, isPending, isError, refetch, handleDelete } = useConcertDetail();
 
   if (!isParamValid) {
     return <DetailMessage title="잘못된 공연입니다." description="올바르지 않은 콘서트 ID입니다." />;
@@ -50,16 +50,26 @@ const ConcertDetailPage = () => {
             <span className={`inline-flex rounded-md px-2 py-1 text-xs font-bold ${genre.className}`}>{genre.label}</span>
 
             {isAdmin && (
-              <Link
-                aria-label={`${concert.title} 수정`}
-                className="hover:text-brand-primary inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50"
-                to={generatePath(ROUTE_PATHS.CONCERT_EDIT, {
-                  concertId: String(concert.id),
-                })}
-              >
-                <Pencil className="size-3.5" aria-hidden />
-                수정
-              </Link>
+              <div className="flex items-center gap-4">
+                <Link
+                  aria-label={`${concert.title} 수정`}
+                  className="hover:text-brand-primary inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50"
+                  to={generatePath(ROUTE_PATHS.CONCERT_EDIT, {
+                    concertId: String(concert.id),
+                  })}
+                >
+                  <Pencil className="size-3.5" aria-hidden />
+                  수정
+                </Link>
+                <button
+                  aria-label={`${concert.title} 삭제`}
+                  className="hover:text-brand-primary inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50"
+                  onClick={handleDelete}
+                >
+                  <Trash className="size-3.5" aria-hidden />
+                  삭제
+                </button>
+              </div>
             )}
           </div>
 

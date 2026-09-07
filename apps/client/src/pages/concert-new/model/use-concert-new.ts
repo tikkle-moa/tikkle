@@ -6,10 +6,10 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@shared/api";
 import { ROUTE_PATHS } from "@shared/config/router.config";
+import type { SubmitState } from "@shared/model/form.types";
 
 import { CONCERT_QUERY_KEYS, type CreateConcertRequest } from "@entities/concert";
-
-import type { SubmitState } from "@features/concert-form";
+import { VENUE_QUERY_KEYS } from "@entities/venue";
 
 export const useConcertNew = () => {
   const queryClient = useQueryClient();
@@ -29,6 +29,7 @@ export const useConcertNew = () => {
       }
 
       queryClient.removeQueries({ queryKey: CONCERT_QUERY_KEYS.all });
+      queryClient.removeQueries({ queryKey: VENUE_QUERY_KEYS.all });
       toast.success(`"${values.title}" 콘서트가 등록되었습니다.`);
       navigate(
         generatePath(ROUTE_PATHS.PERFORMANCE_NEW, {

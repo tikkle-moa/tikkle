@@ -7,7 +7,7 @@ import com.example.server.global.response.ApiResponse
 import com.example.server.venue.dto.CreateVenueDetailRequest
 import com.example.server.venue.dto.UpdateVenueDetailRequest
 import com.example.server.venue.dto.VenueDetailResponse
-import com.example.server.venue.dto.VenueResponse
+import com.example.server.venue.dto.VenueListResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import jakarta.validation.Valid
@@ -32,7 +32,7 @@ class VenueController(private val venueService: VenueService) {
     responses = [SwaggerApiResponse(responseCode = "200", description = "공연장 목록 조회 성공")],
   )
   @GetMapping
-  fun getAllVenues(): ResponseEntity<ApiResponse.Success<List<VenueResponse>>> {
+  fun getAllVenues(): ResponseEntity<ApiResponse.Success<List<VenueListResponse>>> {
     val venues = venueService.getAllVenues()
 
     return ResponseEntity.ok(ApiResponse.ok(venues))

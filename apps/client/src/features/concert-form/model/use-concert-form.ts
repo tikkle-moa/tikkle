@@ -1,16 +1,18 @@
 import { type SubmitEvent, useEffect, useState } from "react";
 
+import type { SubmitState } from "@shared/model/form.types";
+
 import type { CreateConcertRequest } from "@entities/concert";
 import { useVenues } from "@entities/venue";
 
 import { EMPTY_CONCERT_FORM_VALUES } from "./concert-form.constants";
-import type { ConcertFormErrors, ConcertFormMode, SubmitState } from "./concert-form.types";
+import type { ConcertFormErrors, ConcertFormMode } from "./concert-form.types";
 import { getInitialConcertFormValues, toConcertRequest, validateConcertForm } from "./concert-form.utils";
 
 interface UseConcertFormProps {
   mode: ConcertFormMode;
-  submitState: SubmitState;
   initialValues?: Partial<CreateConcertRequest>;
+  submitState: SubmitState;
   onSubmit: (values: CreateConcertRequest) => void | Promise<void>;
 }
 

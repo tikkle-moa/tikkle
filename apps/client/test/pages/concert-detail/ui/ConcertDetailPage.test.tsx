@@ -1,6 +1,6 @@
 import { MemoryRouter } from "react-router";
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import ConcertDetailPage from "@pages/concert-detail/ui/ConcertDetailPage";
 
@@ -44,6 +44,7 @@ const pageState = {
   isParamValid: true,
   isPending: false,
   refetch: vi.fn().mockResolvedValue(undefined),
+  handleDelete: vi.fn(),
 };
 
 describe("ConcertDetailPage", () => {
@@ -57,15 +58,19 @@ describe("ConcertDetailPage", () => {
     mockUseConcertDetail.mockReturnValue(pageState);
   });
 
-  it("관리자에게 콘서트 수정 링크를 표시한다", () => {
+  it("관리자에게 콘서트 수정과 삭제 컨트롤을 표시하고 삭제를 전달한다", () => {
+    const handleDelete = vi.fn();
     mockUseConcertDetail.mockReturnValue({
       ...pageState,
       isAdmin: true,
+      handleDelete,
     });
 
     renderConcertDetailPage();
 
     expect(screen.getByRole("link", { name: "테스트 콘서트 수정" })).toHaveAttribute("href", "/concerts/1/edit");
+    fireEvent.click(screen.getByRole("button", { name: "테스트 콘서트 삭제" }));
+    expect(handleDelete).toHaveBeenCalledOnce();
   });
 
   it("관리자가 아닌 사용자에게는 콘서트 수정 링크를 표시하지 않는다", () => {
@@ -74,6 +79,7 @@ describe("ConcertDetailPage", () => {
     renderConcertDetailPage();
 
     expect(screen.queryByRole("link", { name: "테스트 콘서트 수정" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "테스트 콘서트 삭제" })).not.toBeInTheDocument();
   });
 
   it("잘못된 콘서트 ID이면 안내 메시지를 표시한다", () => {

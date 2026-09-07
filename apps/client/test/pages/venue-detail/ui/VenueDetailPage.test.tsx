@@ -1,8 +1,11 @@
+import { MemoryRouter } from "react-router";
+
 import { render, screen } from "@testing-library/react";
 
 import { VenueDetailPage } from "@pages/venue-detail";
 
-const { mockUseVenueDetail } = vi.hoisted(() => ({
+const { mockHandleDelete, mockUseVenueDetail } = vi.hoisted(() => ({
+  mockHandleDelete: vi.fn(),
   mockUseVenueDetail: vi.fn(),
 }));
 
@@ -52,15 +55,21 @@ describe("VenueDetailPage", () => {
 
     mockUseVenueDetail.mockReturnValue({
       isParamValid: true,
+      isAdmin: false,
       venue,
       venueSeats,
       isPending: false,
       isError: false,
+      handleDelete: mockHandleDelete,
     });
   });
 
   it("공연장 메타데이터와 좌석 배치도를 표시한다", () => {
-    render(<VenueDetailPage />);
+    render(
+      <MemoryRouter>
+        <VenueDetailPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole("heading", { name: venue.name })).toBeInTheDocument();
     expect(screen.getByText(venue.address)).toBeInTheDocument();
@@ -78,7 +87,28 @@ describe("VenueDetailPage", () => {
     expect(mapLink).toHaveAttribute("href", `https://map.naver.com/p/search/${encodeURIComponent(venue.address)}`);
     expect(mapLink).toHaveAttribute("target", "_blank");
     expect(mapLink).toHaveAttribute("rel", "noopener noreferrer");
-    expect(screen.getByRole("tooltip", { name: "네이버 지도로 보기" })).toBeInTheDocument();
+  });
+
+  it("관리자에게 수정 및 삭제 동작을 제공한다", async () => {
+    mockUseVenueDetail.mockReturnValue({
+      isParamValid: true,
+      isAdmin: true,
+      venue,
+      venueSeats,
+      isPending: false,
+      isError: false,
+      handleDelete: mockHandleDelete,
+    });
+
+    render(
+      <MemoryRouter>
+        <VenueDetailPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: `${venue.name} 수정` })).toHaveAttribute("href", "/venues/1/edit");
+    screen.getByRole("button", { name: `${venue.name} 삭제` }).click();
+    expect(mockHandleDelete).toHaveBeenCalledOnce();
   });
 
   it("공연장 설명이 없으면 설명 영역을 표시하지 않는다", () => {

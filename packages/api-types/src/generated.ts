@@ -287,7 +287,6 @@ export interface components {
     /** CreateVenueDetailRequest */
     CreateVenueDetailRequest: {
       venue: components["schemas"]["CreateVenueRequest"];
-      /** List */
       venueSeats: components["schemas"]["CreateVenueSeatRequest"][];
     };
     /** CreateVenueRequest */
@@ -304,8 +303,6 @@ export interface components {
     };
     /** CreateVenueSeatRequest */
     CreateVenueSeatRequest: {
-      /** Format: int64 */
-      id: number | null;
       sectionName: string;
       /** Format: int32 */
       seatNumber: number;
@@ -324,7 +321,6 @@ export interface components {
     /** VenueDetailResponse */
     VenueDetailResponse: {
       venue: components["schemas"]["VenueResponse"];
-      /** List */
       venueSeats: components["schemas"]["VenueSeatResponse"][];
     };
     /** VenueResponse */
@@ -441,37 +437,26 @@ export interface components {
     };
     /** UpdateVenueDetailRequest */
     UpdateVenueDetailRequest: {
-      venue: components["schemas"]["UpdateVenueRequest"] | null;
-      /** List */
-      venueSeats: components["schemas"]["UpdateVenueSeatRequest"][] | null;
-      /** List */
-      deletedSeatIds: number[] | null;
+      venue?: components["schemas"]["UpdateVenueRequest"];
+      venueSeats?: components["schemas"]["UpdateVenueSeatRequest"][];
+      deletedVenueSeatIds?: number[];
     };
     /** UpdateVenueRequest */
     UpdateVenueRequest: {
-      /** JsonNullable */
       name?: string;
-      /** JsonNullable */
       address?: string;
-      /** JsonNullable */
       description?: string | null;
-      /** JsonNullable */
       width?: number;
-      /** JsonNullable */
       height?: number;
-      /** JsonNullable */
       stagePositionX?: number;
-      /** JsonNullable */
       stagePositionY?: number;
-      /** JsonNullable */
       stageWidth?: number;
-      /** JsonNullable */
       stageHeight?: number;
     };
     /** UpdateVenueSeatRequest */
     UpdateVenueSeatRequest: {
       /** Format: int64 */
-      id: number | null;
+      id?: number;
       sectionName: string;
       /** Format: int32 */
       seatNumber: number;
@@ -483,41 +468,44 @@ export interface components {
     };
     /** UpdatePerformanceRequest */
     UpdatePerformanceRequest: {
-      /** JsonNullable */
       name?: string;
-      /**
-       * JsonNullable
-       * Format: date-time
-       */
+      /** Format: date-time */
       startsAt?: string;
-      /**
-       * JsonNullable
-       * Format: date-time
-       */
+      /** Format: date-time */
       bookingOpensAt?: string | null;
     };
     /** UpdateConcertRequest */
     UpdateConcertRequest: {
-      /** JsonNullable */
       title?: string;
       genre?: components["schemas"]["ConcertGenre"];
-      /** JsonNullable */
       posterUrl?: string | null;
-      /** JsonNullable */
       description?: string | null;
     };
     /** Success */
-    SuccessListVenueResponse: {
+    SuccessListVenueListResponse: {
       /** @enum {boolean} */
       success: true;
-      /** List */
-      data: components["schemas"]["VenueResponse"][];
+      data: components["schemas"]["VenueListResponse"][];
+    };
+    /** VenueListResponse */
+    VenueListResponse: {
+      /** Format: int64 */
+      id: number;
+      name: string;
+      address: string;
+      width: number;
+      height: number;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: int64 */
+      venueSeatCount: number;
+      /** Format: int64 */
+      concertCount: number;
     };
     /** Success */
     SuccessListPerformanceResponse: {
       /** @enum {boolean} */
       success: true;
-      /** List */
       data: components["schemas"]["PerformanceResponse"][];
     };
     /** HeldSeat */
@@ -531,9 +519,7 @@ export interface components {
     PerformanceSeatListResponse: {
       /** Format: date-time */
       serverTime: string;
-      /** List */
       bookedSeats: number[];
-      /** List */
       heldSeats: components["schemas"]["HeldSeat"][];
     };
     /** Success */
@@ -559,13 +545,11 @@ export interface components {
     SuccessListConcertListResponse: {
       /** @enum {boolean} */
       success: true;
-      /** List */
       data: components["schemas"]["ConcertListResponse"][];
     };
     /** ConcertDetailResponse */
     ConcertDetailResponse: {
       concert: components["schemas"]["ConcertResponse"];
-      /** List */
       performances: components["schemas"]["PerformanceResponse"][];
     };
     /** Success */
@@ -582,7 +566,6 @@ export interface components {
       nickname: string;
       profileImageUrl: string | null;
       role: components["schemas"]["UserRole"];
-      /** List */
       oauthAccounts: string[];
     };
     /** Success */
@@ -602,7 +585,6 @@ export interface components {
       code: number;
       message: string;
     };
-    /** Failure */
     Failure: {
       /**
        * @example false
@@ -644,7 +626,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SuccessListVenueResponse"];
+          "application/json": components["schemas"]["SuccessListVenueListResponse"];
         };
       };
     };
