@@ -135,6 +135,17 @@ describe("useConcertDetail", () => {
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 
+  it("상세 데이터가 없으면 기본 제목으로 삭제를 확인한다", async () => {
+    mocks.confirm.mockReturnValue(false);
+    mocks.mockUseConcertDetail.mockReturnValue({ data: undefined, isPending: false, isError: true });
+    const { result } = renderHook(() => useConcertDetail());
+
+    await act(() => result.current.handleDelete());
+
+    expect(mocks.confirm).toHaveBeenCalledWith('"콘서트" 콘서트를 삭제할까요?');
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
   it("삭제에 실패하면 오류를 알리고 캐시를 변경하거나 이동하지 않는다", async () => {
     mocks.confirm.mockReturnValue(true);
     mocks.delete.mockResolvedValue({ response: { ok: false } });
