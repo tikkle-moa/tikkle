@@ -4,4 +4,13 @@
  * Do not make direct changes to this file.
  */
 
-export type Root = any;
+export interface StompCommandFailure {
+  action: string;
+  error: StompCommandError;
+  requestId: string;
+  success: boolean;
+}
+export interface StompCommandError {
+  code: string;
+  message: string;
+}
