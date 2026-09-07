@@ -25,12 +25,7 @@ export const useStompSubscription = ({ destination, onMessage, headers, enabled 
       return;
     }
 
-    if (!client) {
-      useStompStore.getState().getClient();
-      return;
-    }
-
-    if (connectionStatus !== "connected" || !client.connected) {
+    if (!client || connectionStatus !== "connected" || !client.connected) {
       return;
     }
 

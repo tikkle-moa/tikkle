@@ -201,4 +201,23 @@ describe("useStompSubscription", () => {
 
     expect(unsubscribe).not.toHaveBeenCalled();
   });
+
+  it("Client가 없으면 연결을 생성하지 않고 구독을 건너뛴다", () => {
+    const getClient = vi.fn();
+
+    useStompStore.setState({
+      client: null,
+      connectionStatus: "disconnected",
+      getClient,
+    });
+
+    renderHook(() =>
+      useStompSubscription({
+        destination: "/user/queue/reservation",
+        onMessage: vi.fn(),
+      }),
+    );
+
+    expect(getClient).not.toHaveBeenCalled();
+  });
 });
