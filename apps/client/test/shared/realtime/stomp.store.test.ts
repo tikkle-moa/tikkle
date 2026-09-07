@@ -118,19 +118,55 @@ describe("useStompStore", () => {
     expect(useStompStore.getState().connectionStatus).toBe("connected");
   });
 
-  it("WebSocket 종료 콜백은 복구를 시작한다", () => {
+  it("예상하지 못한 종료는 직접 재연결하고 연결 실패 시에만 토큰을 갱신한다", async () => {
+    let firstCallbacks!: StompClientCallbacks;
+    let secondCallbacks!: StompClientCallbacks;
+
+    const firstClient = {
+      activate: vi.fn(),
+      deactivate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Client;
+
+    const secondClient = {
+      activate: vi.fn(),
+      deactivate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Client;
+
+    const thirdClient = {
+      activate: vi.fn(),
+      deactivate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Client;
+
+    mockCreateStompClient
+      .mockImplementationOnce((callbacks: StompClientCallbacks) => {
+        firstCallbacks = callbacks;
+        return firstClient;
+      })
+      .mockImplementationOnce((callbacks: StompClientCallbacks) => {
+        secondCallbacks = callbacks;
+        return secondClient;
+      })
+      .mockReturnValueOnce(thirdClient);
+
     useStompStore.getState().getClient();
 
-    const callbacks = mockCreateStompClient.mock.calls[0][0] as StompClientCallbacks;
-    const recover = vi.spyOn(useStompStore.getState(), "recover").mockResolvedValue(undefined);
+    firstCallbacks.onWebSocketClose();
 
-    try {
-      callbacks.onWebSocketClose();
+    expect(mockRefreshAccessToken).not.toHaveBeenCalled();
+    expect(useStompStore.getState().client).toBeNull();
 
-      expect(recover).toHaveBeenCalledOnce();
-    } finally {
-      recover.mockRestore();
-    }
+    await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
+
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
+    expect(mockRefreshAccessToken).not.toHaveBeenCalled();
+
+    secondCallbacks.onWebSocketClose();
+
+    await useStompStore.getState().recover();
+
+    expect(mockRefreshAccessToken).toHaveBeenCalledOnce();
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(3);
+    expect(useStompStore.getState().client).toBe(thirdClient);
   });
 
   it("토큰 갱신 성공 시 기존 연결을 해제하고 즉시 재연결한다", async () => {

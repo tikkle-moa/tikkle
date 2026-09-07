@@ -162,4 +162,43 @@ describe("useStompSubscription", () => {
 
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
+
+  it("이미 종료된 Client를 정리할 때 UNSUBSCRIBE 프레임을 전송하지 않는다", () => {
+    let connected = true;
+
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn().mockReturnValue({ unsubscribe });
+
+    const client = {
+      get connected() {
+        return connected;
+      },
+      subscribe,
+    } as unknown as Client;
+
+    useStompStore.setState({
+      client,
+      connectionStatus: "connected",
+    });
+
+    renderHook(() =>
+      useStompSubscription({
+        destination: "/user/queue/reservation",
+        onMessage: vi.fn(),
+      }),
+    );
+
+    expect(subscribe).toHaveBeenCalledOnce();
+
+    connected = false;
+
+    act(() => {
+      useStompStore.setState({
+        client: null,
+        connectionStatus: "disconnected",
+      });
+    });
+
+    expect(unsubscribe).not.toHaveBeenCalled();
+  });
 });
