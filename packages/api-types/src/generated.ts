@@ -284,10 +284,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** CreateVenueDetailRequest */
     CreateVenueDetailRequest: {
       venue: components["schemas"]["CreateVenueRequest"];
+      /** List */
       venueSeats: components["schemas"]["CreateVenueSeatRequest"][];
     };
+    /** CreateVenueRequest */
     CreateVenueRequest: {
       name: string;
       address: string;
@@ -299,6 +302,7 @@ export interface components {
       stageWidth: number;
       stageHeight: number;
     };
+    /** CreateVenueSeatRequest */
     CreateVenueSeatRequest: {
       /** Format: int64 */
       id: number | null;
@@ -311,15 +315,19 @@ export interface components {
       positionX: number;
       positionY: number;
     };
+    /** Success */
     SuccessVenueDetailResponse: {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["VenueDetailResponse"];
     };
+    /** VenueDetailResponse */
     VenueDetailResponse: {
       venue: components["schemas"]["VenueResponse"];
+      /** List */
       venueSeats: components["schemas"]["VenueSeatResponse"][];
     };
+    /** VenueResponse */
     VenueResponse: {
       /** Format: int64 */
       id: number;
@@ -335,6 +343,7 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
     };
+    /** VenueSeatResponse */
     VenueSeatResponse: {
       /** Format: int64 */
       id: number;
@@ -351,6 +360,7 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
     };
+    /** CreatePerformanceRequest */
     CreatePerformanceRequest: {
       /** Format: int64 */
       concertId: number;
@@ -360,6 +370,7 @@ export interface components {
       /** Format: date-time */
       bookingOpensAt: string | null;
     };
+    /** PerformanceResponse */
     PerformanceResponse: {
       /** Format: int64 */
       id: number;
@@ -376,15 +387,23 @@ export interface components {
       createdAt: string;
       status: components["schemas"]["PerformanceStatus"];
     };
-    /** @enum {string} */
+    /**
+     * PerformanceStatus
+     * @enum {string}
+     */
     PerformanceStatus: "UPCOMING" | "AVAILABLE" | "SOLD_OUT" | "ENDED";
+    /** Success */
     SuccessPerformanceResponse: {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["PerformanceResponse"];
     };
-    /** @enum {string} */
+    /**
+     * ConcertGenre
+     * @enum {string}
+     */
     ConcertGenre: "BALLAD" | "ROCK_METAL" | "RAP_HIPHOP" | "JAZZ_SOUL" | "TROT" | "INTERNATIONAL_ARTIST" | "FESTIVAL" | "INDIE";
+    /** CreateConcertRequest */
     CreateConcertRequest: {
       /** Format: int64 */
       venueId: number;
@@ -393,6 +412,7 @@ export interface components {
       posterUrl: string | null;
       description: string | null;
     };
+    /** ConcertResponse */
     ConcertResponse: {
       /** Format: int64 */
       id: number;
@@ -406,33 +426,49 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
     };
+    /** Success */
     SuccessConcertResponse: {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["ConcertResponse"];
     };
+    /** EmptySuccess */
     EmptySuccess: {
       /** @enum {boolean} */
       success: true;
       /** @enum {string|null} */
       data: null;
     };
+    /** UpdateVenueDetailRequest */
     UpdateVenueDetailRequest: {
       venue: components["schemas"]["UpdateVenueRequest"] | null;
+      /** List */
       venueSeats: components["schemas"]["UpdateVenueSeatRequest"][] | null;
+      /** List */
       deletedSeatIds: number[] | null;
     };
+    /** UpdateVenueRequest */
     UpdateVenueRequest: {
+      /** JsonNullable */
       name?: string;
+      /** JsonNullable */
       address?: string;
+      /** JsonNullable */
       description?: string | null;
+      /** JsonNullable */
       width?: number;
+      /** JsonNullable */
       height?: number;
+      /** JsonNullable */
       stagePositionX?: number;
+      /** JsonNullable */
       stagePositionY?: number;
+      /** JsonNullable */
       stageWidth?: number;
+      /** JsonNullable */
       stageHeight?: number;
     };
+    /** UpdateVenueSeatRequest */
     UpdateVenueSeatRequest: {
       /** Format: int64 */
       id: number | null;
@@ -445,46 +481,68 @@ export interface components {
       positionX: number;
       positionY: number;
     };
+    /** UpdatePerformanceRequest */
     UpdatePerformanceRequest: {
+      /** JsonNullable */
       name?: string;
-      /** Format: date-time */
+      /**
+       * JsonNullable
+       * Format: date-time
+       */
       startsAt?: string;
-      /** Format: date-time */
+      /**
+       * JsonNullable
+       * Format: date-time
+       */
       bookingOpensAt?: string | null;
     };
+    /** UpdateConcertRequest */
     UpdateConcertRequest: {
+      /** JsonNullable */
       title?: string;
       genre?: components["schemas"]["ConcertGenre"];
+      /** JsonNullable */
       posterUrl?: string | null;
+      /** JsonNullable */
       description?: string | null;
     };
+    /** Success */
     SuccessListVenueResponse: {
       /** @enum {boolean} */
       success: true;
+      /** List */
       data: components["schemas"]["VenueResponse"][];
     };
+    /** Success */
     SuccessListPerformanceResponse: {
       /** @enum {boolean} */
       success: true;
+      /** List */
       data: components["schemas"]["PerformanceResponse"][];
     };
+    /** HeldSeat */
     HeldSeat: {
       /** Format: int64 */
       id: number;
       /** Format: date-time */
       expiresAt: string;
     };
+    /** PerformanceSeatListResponse */
     PerformanceSeatListResponse: {
       /** Format: date-time */
       serverTime: string;
+      /** List */
       bookedSeats: number[];
+      /** List */
       heldSeats: components["schemas"]["HeldSeat"][];
     };
+    /** Success */
     SuccessPerformanceSeatListResponse: {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["PerformanceSeatListResponse"];
     };
+    /** ConcertListResponse */
     ConcertListResponse: {
       /** Format: int64 */
       id: number;
@@ -497,20 +555,26 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
     };
+    /** Success */
     SuccessListConcertListResponse: {
       /** @enum {boolean} */
       success: true;
+      /** List */
       data: components["schemas"]["ConcertListResponse"][];
     };
+    /** ConcertDetailResponse */
     ConcertDetailResponse: {
       concert: components["schemas"]["ConcertResponse"];
+      /** List */
       performances: components["schemas"]["PerformanceResponse"][];
     };
+    /** Success */
     SuccessConcertDetailResponse: {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["ConcertDetailResponse"];
     };
+    /** CurrentUserResponse */
     CurrentUserResponse: {
       /** Format: int64 */
       id: number;
@@ -518,20 +582,27 @@ export interface components {
       nickname: string;
       profileImageUrl: string | null;
       role: components["schemas"]["UserRole"];
+      /** List */
       oauthAccounts: string[];
     };
+    /** Success */
     SuccessCurrentUserResponse: {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["CurrentUserResponse"];
     };
-    /** @enum {string} */
+    /**
+     * UserRole
+     * @enum {string}
+     */
     UserRole: "USER" | "ADMIN";
+    /** Error */
     Error: {
       /** Format: int32 */
       code: number;
       message: string;
     };
+    /** Failure */
     Failure: {
       /**
        * @example false
