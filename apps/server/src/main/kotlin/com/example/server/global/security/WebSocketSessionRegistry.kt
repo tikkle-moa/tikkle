@@ -88,7 +88,7 @@ class WebSocketSessionRegistry(
         )
       },
       payload.expiresAt,
-    ) ?: throw IllegalStateException("WebSocket 만료 작업을 예약하지 못했습니다.")
+    )
 
     expirationTasksBySessionId
       .put(session.id, expirationTask)

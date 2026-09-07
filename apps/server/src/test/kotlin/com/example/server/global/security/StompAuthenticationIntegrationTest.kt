@@ -14,27 +14,19 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestComponent
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
 import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.messaging.Message
-import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.converter.StringMessageConverter
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.simp.annotation.SendToUser
 import org.springframework.messaging.simp.stomp.ConnectionLostException
-import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompFrameHandler
-import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.simp.stomp.StompHeaders
 import org.springframework.messaging.simp.stomp.StompSession
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter
-import org.springframework.messaging.support.ChannelInterceptor
-import org.springframework.messaging.support.ExecutorSubscribableChannel
-import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.ActiveProfiles
@@ -74,10 +66,6 @@ class StompAuthenticationIntegrationTest {
 
   @Autowired
   lateinit var jwtProperties: JwtProperties
-
-  @Autowired
-  @Qualifier("clientInboundChannel")
-  lateinit var clientInboundChannel: ExecutorSubscribableChannel
 
   @Autowired
   lateinit var userRepository: UserRepository
@@ -140,48 +128,6 @@ class StompAuthenticationIntegrationTest {
       }
     } finally {
       stompClient.stop()
-    }
-  }
-
-  @Test
-  fun `연결 후 access token이 만료되면 기존 연결의 SEND 명령을 거부한다`() {
-    val tokenId = UUID.randomUUID().toString()
-    val expiresAt = Instant.now()
-      .truncatedTo(ChronoUnit.SECONDS)
-      .plusSeconds(10)
-
-    val accessToken = Jwts.builder()
-      .id(tokenId)
-      .subject("1")
-      .claim("type", "ACCESS")
-      .claim("role", UserRole.USER.name)
-      .issuedAt(Date.from(Instant.now()))
-      .expiration(Date.from(expiresAt))
-      .signWith(
-        Keys.hmacShaKeyFor(jwtProperties.secret.toByteArray(Charsets.UTF_8)),
-      )
-      .compact()
-
-    assertCommandRejectedAfter(
-      accessToken = accessToken,
-      tokenId = tokenId,
-      expectedMessage = "액세스 토큰이 만료되었습니다.",
-    ) {
-      val remainingMillis = Duration.between(
-        Instant.now(),
-        expiresAt,
-      ).toMillis()
-
-      if (remainingMillis >= 0) {
-        Thread.sleep(remainingMillis + 50)
-      }
-
-      assertThat(Instant.now().isBefore(expiresAt)).isFalse()
-
-      // Redis 세션은 살아 있으므로 access token 만료로 거부되어야 한다.
-      assertThat(
-        stringRedisTemplate.opsForValue().get(refreshTokenKey(tokenId)),
-      ).isEqualTo("1")
     }
   }
 
@@ -383,6 +329,81 @@ class StompAuthenticationIntegrationTest {
     }
   }
 
+  @Test
+  fun `AccessToken이 만료되면 명령이 없어도 기존 구독 연결을 종료한다`() {
+    val tokenId = UUID.randomUUID().toString()
+    val expiresAt = Instant.now()
+      .truncatedTo(ChronoUnit.SECONDS)
+      .plusSeconds(5)
+
+    val key = refreshTokenKey(tokenId)
+
+    stringRedisTemplate.opsForValue().set(
+      key,
+      "1",
+      Duration.ofMinutes(5),
+    )
+    refreshTokenKeys += key
+
+    val accessToken = Jwts.builder()
+      .id(tokenId)
+      .subject("1")
+      .claim("type", "ACCESS")
+      .claim("role", UserRole.USER.name)
+      .issuedAt(Date.from(Instant.now()))
+      .expiration(Date.from(expiresAt))
+      .signWith(
+        Keys.hmacShaKeyFor(
+          jwtProperties.secret.toByteArray(Charsets.UTF_8),
+        ),
+      )
+      .compact()
+
+    val transportFailure = CompletableFuture<Throwable>()
+    val stompClient = WebSocketStompClient(
+      StandardWebSocketClient(),
+    ).apply {
+      setMessageConverter(StringMessageConverter())
+    }
+
+    try {
+      val session = stompClient.connectAsync(
+        "ws://localhost:$port/ws",
+        handshakeHeaders(accessToken),
+        object : StompSessionHandlerAdapter() {
+          override fun handleTransportError(session: StompSession, exception: Throwable) {
+            transportFailure.complete(exception)
+          }
+        },
+      ).get(5, TimeUnit.SECONDS)
+
+      try {
+        session.subscribe(
+          "/user/queue/test-authentication",
+          tokenIdFrameHandler(LinkedBlockingQueue()),
+        )
+
+        assertThat(
+          transportFailure.get(10, TimeUnit.SECONDS),
+        ).isInstanceOf(ConnectionLostException::class.java)
+
+        assertThat(session.isConnected).isFalse()
+
+        // Refresh 인증 세션이 남아 있어도 AccessToken 수명에 맞춰
+        // WebSocket 연결 자체가 종료되어야 한다.
+        assertThat(
+          stringRedisTemplate.opsForValue().get(key),
+        ).isEqualTo("1")
+      } finally {
+        if (session.isConnected) {
+          session.disconnect()
+        }
+      }
+    } finally {
+      stompClient.stop()
+    }
+  }
+
   private fun cookieValue(response: HttpResponse<*>, name: String): String = response.headers()
     .allValues("Set-Cookie")
     .asSequence()
@@ -400,89 +421,6 @@ class StompAuthenticationIntegrationTest {
 
     override fun handleFrame(headers: StompHeaders, payload: Any?) {
       receivedTokenIds.offer(payload as String)
-    }
-  }
-
-  private fun assertCommandRejectedAfter(accessToken: String, tokenId: String, expectedMessage: String, invalidateAuthentication: () -> Unit) {
-    val key = refreshTokenKey(tokenId)
-
-    stringRedisTemplate.opsForValue().set(
-      key,
-      "1",
-      Duration.ofMinutes(5),
-    )
-    refreshTokenKeys += key
-
-    val receivedTokenIds = LinkedBlockingQueue<String>()
-    val rejectedCommands = LinkedBlockingQueue<Exception>()
-
-    // 실제 인증 interceptor 앞에서 전송 결과만 관찰한다.
-    val observer = object : ChannelInterceptor {
-      override fun afterSendCompletion(message: Message<*>, channel: MessageChannel, sent: Boolean, ex: Exception?) {
-        val accessor = StompHeaderAccessor.wrap(message)
-        val authentication = accessor.user as? Authentication
-        val payload = authentication?.details as? AccessTokenPayload
-
-        if (
-          accessor.command == StompCommand.SEND &&
-          payload?.tokenId == tokenId &&
-          ex != null
-        ) {
-          rejectedCommands.offer(ex)
-        }
-      }
-    }
-
-    val stompClient = WebSocketStompClient(StandardWebSocketClient()).apply {
-      setMessageConverter(StringMessageConverter())
-    }
-
-    clientInboundChannel.addInterceptor(0, observer)
-
-    try {
-      val session = stompClient.connectAsync(
-        "ws://localhost:$port/ws",
-        handshakeHeaders(accessToken),
-        object : StompSessionHandlerAdapter() {},
-      ).get(5, TimeUnit.SECONDS)
-
-      try {
-        session.subscribe(
-          "/user/queue/test-authentication",
-          tokenIdFrameHandler(receivedTokenIds),
-        )
-
-        // 먼저 정상 실행을 확인해 연결·구독 실패와 인증 거부를 구분한다.
-        session.send("/api/test-authentication", "")
-
-        assertThat(receivedTokenIds.poll(5, TimeUnit.SECONDS))
-          .isEqualTo(tokenId)
-        assertThat(testController.handledTokenIds.count { it == tokenId })
-          .isEqualTo(1)
-
-        invalidateAuthentication()
-
-        // 재연결하지 않고 같은 세션에서 다시 전송한다.
-        assertThat(session.isConnected).isTrue()
-        session.send("/api/test-authentication", "")
-
-        val rejection = rejectedCommands.poll(5, TimeUnit.SECONDS)
-
-        assertThat(rejection)
-          .isInstanceOf(AccessDeniedException::class.java)
-          .hasMessage(expectedMessage)
-
-        // 거부된 명령은 Controller까지 도달하지 않아야 한다.
-        assertThat(testController.handledTokenIds.count { it == tokenId })
-          .isEqualTo(1)
-      } finally {
-        if (session.isConnected) {
-          session.disconnect()
-        }
-      }
-    } finally {
-      clientInboundChannel.removeInterceptor(observer)
-      stompClient.stop()
     }
   }
 
