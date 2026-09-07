@@ -289,6 +289,65 @@ describe("useStompStore", () => {
     expect(useStompStore.getState().client).toBeNull();
   });
 
+  it("토큰 갱신 후 연결 실패가 반복되어도 refresh 없이 backoff 재연결한다", async () => {
+    let secondCallbacks!: StompClientCallbacks;
+    let thirdCallbacks!: StompClientCallbacks;
+
+    const secondClient = {
+      activate: vi.fn(),
+      deactivate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Client;
+
+    const thirdClient = {
+      activate: vi.fn(),
+      deactivate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Client;
+
+    const fourthClient = {
+      activate: vi.fn(),
+      deactivate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Client;
+
+    mockCreateStompClient
+      .mockReturnValueOnce(mockClient)
+      .mockImplementationOnce((callbacks: StompClientCallbacks) => {
+        secondCallbacks = callbacks;
+        return secondClient;
+      })
+      .mockImplementationOnce((callbacks: StompClientCallbacks) => {
+        thirdCallbacks = callbacks;
+        return thirdClient;
+      })
+      .mockReturnValueOnce(fourthClient);
+
+    useStompStore.getState().getClient();
+
+    await useStompStore.getState().recover();
+
+    expect(mockRefreshAccessToken).toHaveBeenCalledOnce();
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
+
+    secondCallbacks.onWebSocketClose();
+
+    expect(mockRefreshAccessToken).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS - 1);
+
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(3);
+    expect(mockRefreshAccessToken).toHaveBeenCalledOnce();
+
+    thirdCallbacks.onWebSocketClose();
+
+    await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS * 2);
+
+    expect(mockCreateStompClient).toHaveBeenCalledTimes(4);
+    expect(mockRefreshAccessToken).toHaveBeenCalledOnce();
+  });
+
   it("이전 recovery가 남아 있어도 새 Client의 recovery를 가로채지 않는다", async () => {
     let resolveFirstRefresh!: (result: RefreshResult) => void;
     let resolveSecondRefresh!: (result: RefreshResult) => void;
@@ -356,6 +415,37 @@ describe("useStompStore", () => {
     expect(mockDeactivate).toHaveBeenCalledTimes(2);
     expect(mockCreateStompClient).toHaveBeenCalledTimes(3);
     expect(useStompStore.getState().client).toBe(thirdClient);
+  });
+
+  it("교체된 이전 Client의 connect 콜백은 연결 상태를 변경하지 않는다", async () => {
+    const firstClient = {
+      activate: vi.fn(),
+      deactivate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Client;
+
+    const secondClient = {
+      activate: vi.fn(),
+      deactivate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Client;
+
+    mockCreateStompClient.mockReturnValueOnce(firstClient).mockReturnValueOnce(secondClient);
+
+    useStompStore.getState().getClient();
+
+    const firstCallbacks = mockCreateStompClient.mock.calls[0][0] as StompClientCallbacks;
+
+    await useStompStore.getState().reconnectAfterRefresh();
+
+    const secondCallbacks = mockCreateStompClient.mock.calls[1][0] as StompClientCallbacks;
+
+    firstCallbacks.onConnect();
+
+    expect(useStompStore.getState().client).toBe(secondClient);
+    expect(useStompStore.getState().connectionStatus).toBe("connecting");
+
+    secondCallbacks.onConnect();
+
+    expect(useStompStore.getState().connectionStatus).toBe("connected");
   });
 
   it("해제된 이전 클라이언트의 종료 이벤트는 복구하지 않는다", async () => {
@@ -720,51 +810,5 @@ describe("useStompStore", () => {
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 
     expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
-  });
-
-  it("새 Client 종료 시 이전 recovery Promise에 막히지 않고 새 recovery를 시작한다", async () => {
-    let secondCallbacks!: StompClientCallbacks;
-    let resolveSecondRefresh!: (result: RefreshResult) => void;
-
-    const secondClient = {
-      activate: vi.fn(() => {
-        secondCallbacks.onWebSocketClose();
-      }),
-      deactivate: mockDeactivate,
-    } as unknown as Client;
-
-    mockCreateStompClient.mockReturnValueOnce(mockClient).mockImplementationOnce((callbacks: StompClientCallbacks) => {
-      secondCallbacks = callbacks;
-      return secondClient;
-    });
-
-    mockRefreshAccessToken.mockResolvedValueOnce({ type: "success" }).mockImplementationOnce(
-      () =>
-        new Promise<RefreshResult>((resolve) => {
-          resolveSecondRefresh = resolve;
-        }),
-    );
-
-    useStompStore.getState().getClient();
-
-    // 첫 번째 recovery가 새 Client를 생성한다.
-    const firstRecovery = useStompStore.getState().recover();
-
-    await firstRecovery;
-
-    // 새 Client의 종료 이벤트가 별도의 recovery를 시작해야 한다.
-    expect(mockRefreshAccessToken).toHaveBeenCalledTimes(2);
-    expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
-
-    // 이전 recovery가 새 recovery Promise를 덮어쓰거나 제거하지 않아야 한다.
-    const duplicateRecovery = useStompStore.getState().recover();
-
-    expect(mockRefreshAccessToken).toHaveBeenCalledTimes(2);
-
-    resolveSecondRefresh({ type: "retryable-failed" });
-
-    await duplicateRecovery;
-
-    expect(mockDeactivate).toHaveBeenCalledTimes(2);
   });
 });
