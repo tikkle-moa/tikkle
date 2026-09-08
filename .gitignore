@@ -4,10 +4,3 @@ dist/
 temp/
 .env
 .DS_Store
-
-.env.*
-!.env.example
-!.env.*.example
-
-*.env
-!*.env.example
