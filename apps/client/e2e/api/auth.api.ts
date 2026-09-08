@@ -1,5 +1,5 @@
 import { type Page } from "@playwright/test";
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 
 import type { UserRole } from "../../src/entities/session/model/session.types";
 import { TEST_CSRF_TOKEN } from "../config/api.config";
@@ -20,7 +20,7 @@ const createAccessToken = (role: UserRole) => {
 
   const now = Math.floor(Date.now() / 1000);
   const header = encode({ alg: "HS256", typ: "JWT" });
-  const payload = encode({ sub: role === "ADMIN" ? "1" : "2", type: "ACCESS", role, iat: now, exp: now + 3600 });
+  const payload = encode({ jti: randomUUID(), sub: role === "ADMIN" ? "1" : "2", type: "ACCESS", role, iat: now, exp: now + 3600 });
   const unsignedToken = `${header}.${payload}`;
   const signature = createHmac("sha256", secret).update(unsignedToken).digest("base64url");
 
