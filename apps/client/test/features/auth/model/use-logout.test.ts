@@ -5,8 +5,13 @@ import type { User } from "@entities/session/model/session.types";
 
 import { useLogout } from "@features/auth/model/use-logout";
 
-const { mockPost } = vi.hoisted(() => ({
+const { mockDisconnect, mockPost } = vi.hoisted(() => ({
+  mockDisconnect: vi.fn(),
   mockPost: vi.fn(),
+}));
+
+vi.mock("@shared/realtime/stomp.store", () => ({
+  useStompStore: (selector: (state: { disconnect: () => Promise<void> }) => unknown) => selector({ disconnect: mockDisconnect }),
 }));
 vi.mock("@shared/api", () => ({
   apiClient: { POST: mockPost },
@@ -23,9 +28,16 @@ const TEST_USER: User = {
 
 describe("useLogout", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+
     mockPost.mockResolvedValue({ data: { success: true } });
+    mockDisconnect.mockResolvedValue(undefined);
     vi.spyOn(console, "error").mockImplementation(() => {});
-    useSessionStore.setState({ user: TEST_USER, status: "authenticated", justLoggedOut: false });
+    useSessionStore.setState({
+      user: TEST_USER,
+      status: "authenticated",
+      justLoggedOut: false,
+    });
   });
 
   afterEach(() => {
@@ -40,11 +52,12 @@ describe("useLogout", () => {
     expect(mockPost).toHaveBeenCalledWith("/api/auth/logout");
   });
 
-  it("로그아웃 성공 시 세션을 초기화하고 홈으로 리다이렉트될 상태를 설정한다", async () => {
+  it("로그아웃 성공 시 STOMP 연결을 해제하고 세션을 초기화한다", async () => {
     const { result } = renderHook(() => useLogout());
 
     await result.current.handleLogout();
 
+    expect(mockDisconnect).toHaveBeenCalledOnce();
     expect(useSessionStore.getState().status).toBe("loading");
     expect(useSessionStore.getState().user).toBeNull();
     expect(useSessionStore.getState().justLoggedOut).toBe(true);
@@ -69,6 +82,21 @@ describe("useLogout", () => {
 
     await result.current.handleLogout();
 
+    expect(useSessionStore.getState().status).toBe("loading");
+    expect(useSessionStore.getState().user).toBeNull();
+    expect(useSessionStore.getState().justLoggedOut).toBe(true);
+  });
+
+  it("STOMP 연결 해제 실패 시에도 오류를 기록하고 세션을 초기화한다", async () => {
+    const disconnectError = new Error("STOMP disconnect failed");
+
+    mockDisconnect.mockRejectedValueOnce(disconnectError);
+
+    const { result } = renderHook(() => useLogout());
+
+    await result.current.handleLogout();
+
+    expect(console.error).toHaveBeenCalledWith("STOMP disconnect error:", disconnectError);
     expect(useSessionStore.getState().status).toBe("loading");
     expect(useSessionStore.getState().user).toBeNull();
     expect(useSessionStore.getState().justLoggedOut).toBe(true);

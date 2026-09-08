@@ -1,5 +1,6 @@
 package com.example.server.auth
 
+import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.dto.RefreshTokenPayload
 import com.example.server.auth.types.TokenType
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -145,6 +147,79 @@ class JwtTokenProviderTest {
 
       assertNull(jwtTokenProvider.parseAccessToken(missingRoleToken))
       assertNull(jwtTokenProvider.parseAccessToken(invalidRoleToken))
+    }
+  }
+
+  @Nested
+  inner class ParseAccessTokenPayload {
+    @Test
+    fun `유효한 토큰에서 인증 정보와 만료 시각을 반환한다`() {
+      val expiresAt = Instant.now()
+        .plusSeconds(60)
+        .truncatedTo(ChronoUnit.SECONDS)
+
+      val token = createToken(
+        claims = mapOf(
+          "type" to TokenType.ACCESS.name,
+          "role" to UserRole.USER.name,
+          "jti" to "test-token-id",
+        ),
+        expiresAt = expiresAt,
+      )
+
+      assertEquals(
+        AccessTokenPayload(
+          userId = 1L,
+          role = UserRole.USER,
+          tokenId = "test-token-id",
+          expiresAt = expiresAt,
+        ),
+        jwtTokenProvider.parseAccessTokenPayload(token),
+      )
+    }
+
+    @Test
+    fun `token ID가 없으면 null을 반환한다`() {
+      val token = createToken(
+        claims = mapOf(
+          "type" to TokenType.ACCESS.name,
+          "role" to UserRole.USER.name,
+        ),
+      )
+
+      assertNull(jwtTokenProvider.parseAccessTokenPayload(token))
+    }
+
+    @Test
+    fun `token ID가 빈 문자열이거나 공백뿐이면 null을 반환한다`() {
+      listOf("", "   ", "\t", "\u00A0").forEach { tokenId ->
+        val token = createToken(
+          claims = mapOf(
+            "type" to TokenType.ACCESS.name,
+            "role" to UserRole.USER.name,
+            "jti" to tokenId,
+          ),
+        )
+
+        assertNull(
+          jwtTokenProvider.parseAccessTokenPayload(token),
+          "공백 token ID를 허용하면 안 됩니다: ${tokenId.toCharArray().map { it.code }}",
+        )
+      }
+    }
+
+    @Test
+    fun `만료 시각이 없으면 null을 반환한다`() {
+      val token = createToken(
+        claims = mapOf(
+          "type" to TokenType.ACCESS.name,
+          "role" to UserRole.USER.name,
+          "jti" to "test-token-id",
+        ),
+        expiresAt = null,
+      )
+
+      assertNull(jwtTokenProvider.parseAccessTokenPayload(token))
     }
   }
 
@@ -343,7 +418,11 @@ class JwtTokenProviderTest {
     }
   }
 
-  private fun createToken(subject: String = "1", claims: Map<String, Any> = emptyMap()): String {
+  private fun createToken(
+    subject: String = "1",
+    claims: Map<String, Any> = emptyMap(),
+    expiresAt: Instant? = Instant.now().plusSeconds(60),
+  ): String {
     val key = Keys.hmacShaKeyFor(
       secret.toByteArray(StandardCharsets.UTF_8),
     )
@@ -351,7 +430,10 @@ class JwtTokenProviderTest {
     val builder = Jwts.builder()
       .subject(subject)
       .issuedAt(Date.from(Instant.now()))
-      .expiration(Date.from(Instant.now().plusSeconds(60)))
+
+    expiresAt?.let {
+      builder.expiration(Date.from(it))
+    }
 
     claims.forEach { (name, value) ->
       builder.claim(name, value)

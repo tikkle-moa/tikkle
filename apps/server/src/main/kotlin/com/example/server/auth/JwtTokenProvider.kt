@@ -1,5 +1,6 @@
 package com.example.server.auth
 
+import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.dto.IssuedRefreshToken
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.dto.RefreshTokenPayload
@@ -17,14 +18,19 @@ import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.UUID
 import javax.crypto.SecretKey
-
 @Component
 class JwtTokenProvider(private val jwtProperties: JwtProperties) {
   private val secretKey: SecretKey = Keys.hmacShaKeyFor(
     jwtProperties.secret.toByteArray(StandardCharsets.UTF_8),
   )
 
-  fun generateAccessToken(userId: Long, role: UserRole): String {
+  fun generateAccessToken(userId: Long, role: UserRole): String = generateAccessToken(
+    userId = userId,
+    role = role,
+    tokenId = UUID.randomUUID().toString(),
+  )
+
+  fun generateAccessToken(userId: Long, role: UserRole, tokenId: String): String {
     val now = Instant.now()
     val expiresAt = now.plus(
       jwtProperties.accessTokenExpirationMinutes,
@@ -32,6 +38,7 @@ class JwtTokenProvider(private val jwtProperties: JwtProperties) {
     )
 
     return Jwts.builder()
+      .id(tokenId)
       .subject(userId.toString())
       .claim("type", TokenType.ACCESS.name)
       .claim("role", role.name)
@@ -65,6 +72,16 @@ class JwtTokenProvider(private val jwtProperties: JwtProperties) {
   }
 
   fun parseAccessToken(token: String): LoginUserResult? {
+    val payload = parseAccessTokenPayload(token)
+      ?: return null
+
+    return LoginUserResult(
+      userId = payload.userId,
+      role = payload.role,
+    )
+  }
+
+  fun parseAccessTokenPayload(token: String): AccessTokenPayload? {
     val claims = try {
       parseClaims(token)
     } catch (_: JwtException) {
@@ -87,9 +104,19 @@ class JwtTokenProvider(private val jwtProperties: JwtProperties) {
       UserRole.valueOf(roleName)
     }.getOrNull() ?: return null
 
-    return LoginUserResult(
+    val tokenId = claims.id
+      ?.takeIf(String::isNotBlank)
+      ?: return null
+
+    val expiresAt = claims.expiration
+      ?.toInstant()
+      ?: return null
+
+    return AccessTokenPayload(
       userId = userId,
       role = role,
+      tokenId = tokenId,
+      expiresAt = expiresAt,
     )
   }
 

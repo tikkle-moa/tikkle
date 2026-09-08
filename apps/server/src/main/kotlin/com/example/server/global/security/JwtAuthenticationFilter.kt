@@ -1,6 +1,7 @@
 package com.example.server.global.security
 
 import com.example.server.auth.JwtTokenProvider
+import com.example.server.auth.dto.LoginUserResult
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -17,20 +18,25 @@ class JwtAuthenticationFilter(private val jwtTokenProvider: JwtTokenProvider) : 
       ?.firstOrNull { it.name == ACCESS_TOKEN_COOKIE_NAME }
       ?.value
 
-    val loginUser = accessToken
-      ?.let(jwtTokenProvider::parseAccessToken)
+    val accessTokenPayload = accessToken
+      ?.let(jwtTokenProvider::parseAccessTokenPayload)
 
     if (
-      loginUser != null &&
+      accessTokenPayload != null &&
       SecurityContextHolder.getContext().authentication == null
     ) {
       val authentication = UsernamePasswordAuthenticationToken(
-        loginUser,
+        LoginUserResult(
+          userId = accessTokenPayload.userId,
+          role = accessTokenPayload.role,
+        ),
         null,
         listOf(
-          SimpleGrantedAuthority("ROLE_${loginUser.role.name}"),
+          SimpleGrantedAuthority("ROLE_${accessTokenPayload.role.name}"),
         ),
-      )
+      ).apply {
+        details = accessTokenPayload
+      }
 
       val securityContext = SecurityContextHolder.createEmptyContext()
       securityContext.authentication = authentication
