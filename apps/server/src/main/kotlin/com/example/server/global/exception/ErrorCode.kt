@@ -16,4 +16,7 @@ enum class ErrorCode(val status: HttpStatus, val message: String) {
   // 5xx Server Error
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
   BAD_GATEWAY(HttpStatus.BAD_GATEWAY, "잘못된 게이트웨이입니다."),
+
+  // STOMP Error
+  HOLD_EXPIRED(HttpStatus.CONFLICT, "좌석 점유가 만료되었습니다."),
 }
