@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 
-const composeArgs = ["compose", "-f", "infra/docker/docker-compose.e2e.yaml"];
+const composeArgs = ["compose", "-f", "infra/docker/e2e/docker-compose.yaml"];
 const playwrightArgs = process.argv.slice(2);
 
 const runDockerCompose = (args) => {
@@ -19,12 +19,12 @@ try {
     "-d",
     "--build",
     "--wait",
-    "client-e2e",
-    "server-e2e",
+    "client",
+    "server",
   ]);
 
   if (exitCode === 0) {
-    exitCode = runDockerCompose(["run", "--rm", "e2e-seed"]);
+    exitCode = runDockerCompose(["run", "--rm", "seed"]);
   }
 
   if (exitCode === 0) {

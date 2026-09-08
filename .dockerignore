@@ -5,3 +5,13 @@
 **/build
 .pnpm-store
 temp
+
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/.gradle
+**/test-results
+**/playwright-report
+
+**/*.env
+!**/*.env.example
