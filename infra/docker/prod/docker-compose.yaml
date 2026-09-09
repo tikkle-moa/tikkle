@@ -10,8 +10,8 @@ services:
   client:
     # CI 등에서 빌드해 GHCR에 게시한 이미지를 내려받습니다.
     image: ghcr.io/${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}/client:${IMAGE_TAG:-latest}
-    container_name: tikkle-client
     pull_policy: always
+    container_name: tikkle-client
     networks:
       - tikkle-network
     ports:
@@ -38,8 +38,8 @@ services:
   server:
     # CI 등에서 빌드해 GHCR에 게시한 이미지를 내려받습니다.
     image: ghcr.io/${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}/server:${IMAGE_TAG:-latest}
-    container_name: tikkle-server
     pull_policy: always
+    container_name: tikkle-server
     networks:
       - tikkle-network
     expose:
@@ -78,6 +78,7 @@ services:
     networks:
       - tikkle-network
     image: mysql:8.4
+    container_name: tikkle-mysql
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
       MYSQL_USER: ${MYSQL_USER:?MYSQL_USER is required}
@@ -102,6 +103,7 @@ services:
     networks:
       - tikkle-network
     image: redis:7.4-alpine
+    container_name: tikkle-redis
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     command:
