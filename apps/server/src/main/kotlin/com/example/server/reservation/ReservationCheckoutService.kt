@@ -39,21 +39,14 @@ class ReservationCheckoutService(
       throw CustomException(ErrorCode.FORBIDDEN)
     }
 
-    val existingReservation = reservationRepository.findByHoldId(holdId)
+    val existingReservation =
+      reservationRepository.findByHoldIdForUpdate(holdId)
 
     if (existingReservation != null) {
-      if (existingReservation.booker.id != userId) {
-        throw CustomException(ErrorCode.FORBIDDEN)
-      }
-
-      if (existingReservation.status != ReservationStatus.PAYMENT_PENDING) {
-        throw CustomException(
-          ErrorCode.CONFLICT,
-          "이미 종료된 예약입니다.",
-        )
-      }
-
-      return StartCheckoutResult.from(existingReservation)
+      return existingCheckout(
+        reservation = existingReservation,
+        userId = userId,
+      )
     }
 
     val performance = performanceRepository.findByIdWithConcertAndVenue(hold.performanceId)
@@ -74,23 +67,35 @@ class ReservationCheckoutService(
       }
 
     val paymentExpiresAt = LocalDateTime.now().plus(PAYMENT_TTL)
+    val candidateOrderId = "tikkle-${UUID.randomUUID()}"
+    val orderName =
+      "${performance.concert.title} ${performance.name} ${venueSeats.size}석"
+    val amount = venueSeats.sumOf { it.price }
 
-    if (seatHoldService.extendForPayment(holdId, paymentExpiresAt) == null) {
-      throw CustomException(ErrorCode.HOLD_EXPIRED)
+    reservationRepository.insertPaymentPendingIfAbsent(
+      performanceId = performance.id,
+      bookerUserId = user.id,
+      holdId = holdId,
+      orderId = candidateOrderId,
+      orderName = orderName,
+      amount = amount,
+      paymentExpiresAt = paymentExpiresAt,
+    )
+
+    val reservation = reservationRepository.findByHoldIdForUpdate(holdId)
+      ?: throw IllegalStateException("생성한 결제 대기 예약을 찾을 수 없습니다.")
+
+    if (reservation.orderId != candidateOrderId) {
+      return existingCheckout(
+        reservation = reservation,
+        userId = userId,
+      )
     }
 
-    val reservation = reservationRepository.save(
-      Reservation(
-        performance = performance,
-        booker = user,
-        holdId = holdId,
-        orderId = "tikkle-${UUID.randomUUID()}",
-        orderName = "${performance.concert.title} ${performance.name} ${venueSeats.size}석",
-        amount = venueSeats.sumOf { it.price },
-        status = ReservationStatus.PAYMENT_PENDING,
-        paymentExpiresAt = paymentExpiresAt,
-      ),
-    )
+    if (seatHoldService.extendForPayment(holdId, paymentExpiresAt) == null) {
+      reservation.status = ReservationStatus.EXPIRED
+      throw CustomException(ErrorCode.HOLD_EXPIRED)
+    }
 
     return StartCheckoutResult.from(reservation)
   }
@@ -154,6 +159,21 @@ class ReservationCheckoutService(
         seatIds = hold.venueSeatIds,
       )
     }
+  }
+
+  private fun existingCheckout(reservation: Reservation, userId: Long): StartCheckoutResult {
+    if (reservation.booker.id != userId) {
+      throw CustomException(ErrorCode.FORBIDDEN)
+    }
+
+    if (reservation.status != ReservationStatus.PAYMENT_PENDING) {
+      throw CustomException(
+        ErrorCode.CONFLICT,
+        "이미 종료된 예약입니다.",
+      )
+    }
+
+    return StartCheckoutResult.from(reservation)
   }
 
   private fun releaseHoldAfterCommit(holdId: String, onReleased: (SeatHold) -> Unit) {
