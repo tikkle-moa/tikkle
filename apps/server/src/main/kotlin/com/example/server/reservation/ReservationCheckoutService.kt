@@ -3,6 +3,8 @@ package com.example.server.reservation
 import com.example.server.auth.repository.UserRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.PerformanceSeatEventPublisher
+import com.example.server.performance.SeatHold
 import com.example.server.performance.SeatHoldService
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.dto.CancelCheckoutResult
@@ -26,6 +28,7 @@ class ReservationCheckoutService(
   private val venueSeatRepository: VenueSeatRepository,
   private val reservationRepository: ReservationRepository,
   private val seatHoldService: SeatHoldService,
+  private val performanceSeatEventPublisher: PerformanceSeatEventPublisher,
 ) {
   @Transactional
   fun startCheckout(userId: Long, holdId: String): StartCheckoutResult {
@@ -122,24 +125,14 @@ class ReservationCheckoutService(
         ReservationStatus.EXPIRED
       }
 
-    releaseHoldAfterCommit(reservation.holdId)
-
-    return CancelCheckoutResult.from(reservation)
-  }
-
-  private fun releaseHoldAfterCommit(holdId: String) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      seatHoldService.release(holdId)
-      return
+    releaseHoldAfterCommit(reservation.holdId) { hold ->
+      performanceSeatEventPublisher.publishHoldReleased(
+        performanceId = hold.performanceId,
+        seatIds = hold.venueSeatIds,
+      )
     }
 
-    TransactionSynchronizationManager.registerSynchronization(
-      object : TransactionSynchronization {
-        override fun afterCommit() {
-          seatHoldService.release(holdId)
-        }
-      },
-    )
+    return CancelCheckoutResult.from(reservation)
   }
 
   @Transactional
@@ -155,7 +148,27 @@ class ReservationCheckoutService(
     }
 
     reservation.status = ReservationStatus.EXPIRED
-    releaseHoldAfterCommit(reservation.holdId)
+    releaseHoldAfterCommit(reservation.holdId) { hold ->
+      performanceSeatEventPublisher.publishHoldReleased(
+        performanceId = hold.performanceId,
+        seatIds = hold.venueSeatIds,
+      )
+    }
+  }
+
+  private fun releaseHoldAfterCommit(holdId: String, onReleased: (SeatHold) -> Unit) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      seatHoldService.release(holdId)?.let(onReleased)
+      return
+    }
+
+    TransactionSynchronizationManager.registerSynchronization(
+      object : TransactionSynchronization {
+        override fun afterCommit() {
+          seatHoldService.release(holdId)?.let(onReleased)
+        }
+      },
+    )
   }
 
   companion object {

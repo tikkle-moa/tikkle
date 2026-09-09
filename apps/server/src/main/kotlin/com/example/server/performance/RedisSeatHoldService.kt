@@ -97,15 +97,17 @@ class RedisSeatHoldService(
     return extendedHold.takeIf { extended }
   }
 
-  override fun release(holdId: String) {
+  override fun release(holdId: String): SeatHold? {
     val hold = findActive(holdId)
-      ?: return
+      ?: return null
 
-    stringRedisTemplate.execute(
+    val released = stringRedisTemplate.execute(
       releaseHoldScript,
       hold.venueSeatIds.map { seatKey(hold.performanceId, it) } + holdKey(hold.holdId),
       hold.holdId,
-    )
+    ) ?: return null
+
+    return hold.takeIf { released > 0 }
   }
 
   private fun holdKey(holdId: String) = "hold:$holdId"
@@ -163,14 +165,16 @@ class RedisSeatHoldService(
       setResultType(Long::class.java)
       setScriptText(
         """
+        local released = 0
+
         for i = 1, #KEYS - 1 do
           if redis.call('GET', KEYS[i]) == ARGV[1] then
-            redis.call('DEL', KEYS[i])
+            released = released + redis.call('DEL', KEYS[i])
           end
         end
-
-        redis.call('DEL', KEYS[#KEYS])
-        return 1
+        
+        released = released + redis.call('DEL', KEYS[#KEYS])
+        return released
         """.trimIndent(),
       )
     }

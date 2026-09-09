@@ -9,5 +9,5 @@ interface SeatHoldService {
 
   fun extendForPayment(holdId: String, paymentExpiresAt: LocalDateTime): SeatHold?
 
-  fun release(holdId: String)
+  fun release(holdId: String): SeatHold?
 }
