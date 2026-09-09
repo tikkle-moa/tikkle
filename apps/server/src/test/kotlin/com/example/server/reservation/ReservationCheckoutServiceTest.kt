@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyString
@@ -31,6 +33,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.never
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.Optional
@@ -326,6 +329,121 @@ class ReservationCheckoutServiceTest {
     }
   }
 
+  @Nested
+  @DisplayName("cancelCheckout")
+  inner class CancelCheckout {
+    @Test
+    fun `결제 대기 예약을 CANCELLED로 변경하고 Hold를 해제한다`() {
+      val reservation = reservation()
+
+      given(reservationRepository.findByIdForUpdate(501L))
+        .willReturn(reservation)
+
+      val result = reservationCheckoutService.cancelCheckout(
+        userId = USER_ID,
+        reservationId = 501L,
+      )
+
+      assertThat(result.reservationId).isEqualTo(501L)
+      assertThat(result.status).isEqualTo(ReservationStatus.CANCELLED)
+      assertThat(reservation.status).isEqualTo(ReservationStatus.CANCELLED)
+      then(seatHoldService).should().release(HOLD_ID)
+    }
+
+    @Test
+    fun `예약이 없으면 PAYMENT_NOT_FOUND를 던진다`() {
+      given(reservationRepository.findByIdForUpdate(501L))
+        .willReturn(null)
+
+      val exception = assertThrows<CustomException> {
+        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_NOT_FOUND)
+      then(seatHoldService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `예약 소유자가 아니면 FORBIDDEN을 던진다`() {
+      given(reservationRepository.findByIdForUpdate(501L))
+        .willReturn(reservation(booker = user(OTHER_USER_ID)))
+
+      val exception = assertThrows<CustomException> {
+        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+      then(seatHoldService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `이미 성공한 예약이면 PAYMENT_ALREADY_FINISHED를 던진다`() {
+      given(reservationRepository.findByIdForUpdate(501L))
+        .willReturn(reservation(status = ReservationStatus.SUCCEEDED))
+
+      val exception = assertThrows<CustomException> {
+        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_ALREADY_FINISHED)
+      then(seatHoldService).shouldHaveNoInteractions()
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+      value = ReservationStatus::class,
+      names = ["FAILED", "CANCELLED", "EXPIRED"],
+    )
+    fun `이미 종료된 예약이면 PAYMENT_ALREADY_CANCELLED를 던진다`(status: ReservationStatus) {
+      given(reservationRepository.findByIdForUpdate(501L))
+        .willReturn(reservation(status = status))
+
+      val exception = assertThrows<CustomException> {
+        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_ALREADY_CANCELLED)
+      then(seatHoldService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `결제 기한이 지난 예약은 EXPIRED로 변경하고 Hold를 해제한다`() {
+      val reservation = reservation(
+        paymentExpiresAt = LocalDateTime.now().minusSeconds(1),
+      )
+      given(reservationRepository.findByIdForUpdate(501L))
+        .willReturn(reservation)
+
+      val result = reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+
+      assertThat(result.status).isEqualTo(ReservationStatus.EXPIRED)
+      assertThat(reservation.status).isEqualTo(ReservationStatus.EXPIRED)
+      then(seatHoldService).should().release(HOLD_ID)
+    }
+
+    @Test
+    fun `트랜잭션 커밋 후에만 Hold를 해제한다`() {
+      given(reservationRepository.findByIdForUpdate(501L))
+        .willReturn(reservation())
+
+      TransactionSynchronizationManager.initSynchronization()
+
+      try {
+        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+
+        then(seatHoldService).should(never()).release(HOLD_ID)
+
+        TransactionSynchronizationManager
+          .getSynchronizations()
+          .forEach { it.afterCommit() }
+
+        then(seatHoldService).should().release(HOLD_ID)
+      } finally {
+        TransactionSynchronizationManager.clearSynchronization()
+      }
+    }
+  }
+
   private fun hold(ownerUserId: Long = USER_ID): SeatHold = SeatHold(
     holdId = HOLD_ID,
     ownerUserId = ownerUserId,
@@ -340,6 +458,7 @@ class ReservationCheckoutServiceTest {
     booker: User = user(),
     status: ReservationStatus = ReservationStatus.PAYMENT_PENDING,
     amount: Int = 132_000,
+    paymentExpiresAt: LocalDateTime = LocalDateTime.now().plusMinutes(5),
   ): Reservation = Reservation(
     id = id,
     performance = performance,
@@ -349,7 +468,7 @@ class ReservationCheckoutServiceTest {
     orderName = "아이유 콘서트 1회차 2석",
     amount = amount,
     status = status,
-    paymentExpiresAt = LocalDateTime.now().plusMinutes(5),
+    paymentExpiresAt = paymentExpiresAt,
   )
 
   private fun performance(): Performance = Performance(
