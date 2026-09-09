@@ -10,7 +10,7 @@ import com.example.server.performance.stomp.dto.ConfirmPaymentData
 import com.example.server.performance.stomp.dto.PerformanceSyncCommand
 import com.example.server.performance.stomp.dto.StartCheckoutCommand
 import com.example.server.performance.stomp.dto.StartCheckoutData
-import com.example.server.reservation.ReservationPaymentService
+import com.example.server.reservation.ReservationCheckoutService
 import com.example.server.reservation.dto.StartCheckoutResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -27,7 +27,7 @@ import java.util.UUID
 @ExtendWith(MockitoExtension::class)
 class PerformanceStompControllerTest {
   @Mock
-  lateinit var reservationPaymentService: ReservationPaymentService
+  lateinit var reservationCheckoutService: ReservationCheckoutService
 
   @InjectMocks
   lateinit var performanceStompController: PerformanceStompController
@@ -46,7 +46,7 @@ class PerformanceStompControllerTest {
     val result = startCheckoutResult()
 
     given(
-      reservationPaymentService.startCheckout(USER_ID, HOLD_ID),
+      reservationCheckoutService.startCheckout(USER_ID, HOLD_ID),
     ).willReturn(result)
 
     val response = performanceStompController.sync(
@@ -62,7 +62,7 @@ class PerformanceStompControllerTest {
       ),
     )
 
-    then(reservationPaymentService)
+    then(reservationCheckoutService)
       .should()
       .startCheckout(USER_ID, HOLD_ID)
   }
@@ -86,7 +86,7 @@ class PerformanceStompControllerTest {
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
-    then(reservationPaymentService).shouldHaveNoInteractions()
+    then(reservationCheckoutService).shouldHaveNoInteractions()
   }
 
   private fun startCheckoutResult() = StartCheckoutResult(

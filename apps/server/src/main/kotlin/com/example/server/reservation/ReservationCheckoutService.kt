@@ -17,7 +17,7 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 @Service
-class ReservationPaymentService(
+class ReservationCheckoutService(
   private val userRepository: UserRepository,
   private val performanceRepository: PerformanceRepository,
   private val venueSeatRepository: VenueSeatRepository,

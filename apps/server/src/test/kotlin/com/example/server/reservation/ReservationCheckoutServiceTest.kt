@@ -36,7 +36,7 @@ import java.time.LocalDateTime
 import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
-class ReservationPaymentServiceTest {
+class ReservationCheckoutServiceTest {
   @Mock
   lateinit var userRepository: UserRepository
 
@@ -53,7 +53,7 @@ class ReservationPaymentServiceTest {
   lateinit var seatHoldService: SeatHoldService
 
   @InjectMocks
-  lateinit var reservationPaymentService: ReservationPaymentService
+  lateinit var reservationCheckoutService: ReservationCheckoutService
 
   @Nested
   @DisplayName("startCheckout")
@@ -94,7 +94,7 @@ class ReservationPaymentServiceTest {
       given(reservationRepository.save(anyReservation()))
         .willReturn(savedReservation)
 
-      val result = reservationPaymentService.startCheckout(
+      val result = reservationCheckoutService.startCheckout(
         userId = USER_ID,
         holdId = HOLD_ID,
       )
@@ -135,7 +135,7 @@ class ReservationPaymentServiceTest {
       given(reservationRepository.findByHoldId(HOLD_ID))
         .willReturn(existingReservation)
 
-      val result = reservationPaymentService.startCheckout(
+      val result = reservationCheckoutService.startCheckout(
         userId = USER_ID,
         holdId = HOLD_ID,
       )
@@ -161,7 +161,7 @@ class ReservationPaymentServiceTest {
         .willReturn(reservation(booker = user(OTHER_USER_ID)))
 
       val exception = assertThrows<CustomException> {
-        reservationPaymentService.startCheckout(USER_ID, HOLD_ID)
+        reservationCheckoutService.startCheckout(USER_ID, HOLD_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
@@ -175,7 +175,7 @@ class ReservationPaymentServiceTest {
         .willReturn(null)
 
       val exception = assertThrows<CustomException> {
-        reservationPaymentService.startCheckout(USER_ID, HOLD_ID)
+        reservationCheckoutService.startCheckout(USER_ID, HOLD_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -197,7 +197,7 @@ class ReservationPaymentServiceTest {
       ).willReturn(listOf(venueSeat(101L, 66_000)))
 
       val exception = assertThrows<CustomException> {
-        reservationPaymentService.startCheckout(USER_ID, HOLD_ID)
+        reservationCheckoutService.startCheckout(USER_ID, HOLD_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -224,7 +224,7 @@ class ReservationPaymentServiceTest {
       given(userRepository.findById(USER_ID)).willReturn(Optional.empty())
 
       val exception = assertThrows<CustomException> {
-        reservationPaymentService.startCheckout(USER_ID, HOLD_ID)
+        reservationCheckoutService.startCheckout(USER_ID, HOLD_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -235,7 +235,7 @@ class ReservationPaymentServiceTest {
       given(seatHoldService.findActive(HOLD_ID)).willReturn(null)
 
       val exception = assertThrows<CustomException> {
-        reservationPaymentService.startCheckout(
+        reservationCheckoutService.startCheckout(
           userId = USER_ID,
           holdId = HOLD_ID,
         )
@@ -252,7 +252,7 @@ class ReservationPaymentServiceTest {
         .willReturn(hold(ownerUserId = OTHER_USER_ID))
 
       val exception = assertThrows<CustomException> {
-        reservationPaymentService.startCheckout(
+        reservationCheckoutService.startCheckout(
           userId = USER_ID,
           holdId = HOLD_ID,
         )
@@ -275,7 +275,7 @@ class ReservationPaymentServiceTest {
         .willReturn(existingReservation)
 
       val exception = assertThrows<CustomException> {
-        reservationPaymentService.startCheckout(
+        reservationCheckoutService.startCheckout(
           userId = USER_ID,
           holdId = HOLD_ID,
         )
@@ -313,7 +313,7 @@ class ReservationPaymentServiceTest {
       ).willReturn(null)
 
       val exception = assertThrows<CustomException> {
-        reservationPaymentService.startCheckout(
+        reservationCheckoutService.startCheckout(
           userId = USER_ID,
           holdId = HOLD_ID,
         )
