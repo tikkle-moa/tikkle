@@ -1,0 +1,59 @@
+name: CI - Build Check
+
+on:
+  pull_request:
+    branches: [develop, main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Code checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LOAD_DOTENV: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint check
+        run: pnpm lint
+      - name: Format check
+        run: pnpm format
+      - name: Build check
+        run: pnpm build
+
+  images:
+    name: Build ${{ matrix.app }} image
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [client, server]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./infra/docker/prod/${{ matrix.app }}.Dockerfile
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
