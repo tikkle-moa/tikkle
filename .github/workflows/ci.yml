@@ -3,7 +3,6 @@ name: CI - Build Check
 on:
   pull_request:
     branches: [develop, main]
-  workflow_call:
 
 permissions:
   contents: read
