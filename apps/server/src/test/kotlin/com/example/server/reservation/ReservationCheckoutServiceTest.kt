@@ -25,8 +25,9 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
-import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyInt
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
@@ -82,7 +83,8 @@ class ReservationCheckoutServiceTest {
       )
 
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
-      given(reservationRepository.findByHoldId(HOLD_ID)).willReturn(null)
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
+        .willReturn(null, savedReservation)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
         .willReturn(performance)
       given(
@@ -92,14 +94,13 @@ class ReservationCheckoutServiceTest {
         ),
       ).willReturn(seats)
       given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
+      givenPaymentPendingInsert(savedReservation)
       given(
         seatHoldService.extendForPayment(
           anyString(),
           anyLocalDateTime(),
         ),
       ).willReturn(hold)
-      given(reservationRepository.save(anyReservation()))
-        .willReturn(savedReservation)
 
       val result = reservationCheckoutService.startCheckout(
         userId = USER_ID,
@@ -110,22 +111,65 @@ class ReservationCheckoutServiceTest {
       assertThat(result.amount).isEqualTo(132_000)
       assertThat(result.orderName).isEqualTo("아이유 콘서트 1회차 2석")
       assertThat(result.orderId).isEqualTo(savedReservation.orderId)
+      assertThat(result.orderId).startsWith("tikkle-")
       assertThat(result.paymentExpiresAt)
         .isEqualTo(savedReservation.paymentExpiresAt)
 
-      val captor = ArgumentCaptor.forClass(Reservation::class.java)
-
       then(reservationRepository)
         .should()
-        .save(captor.capture())
+        .insertPaymentPendingIfAbsent(
+          performanceId = anyLong(),
+          bookerUserId = anyLong(),
+          holdId = anyString(),
+          orderId = anyString(),
+          orderName = anyString(),
+          amount = anyInt(),
+          paymentExpiresAt = anyLocalDateTime(),
+        )
+      then(seatHoldService)
+        .should()
+        .extendForPayment(
+          anyString(),
+          anyLocalDateTime(),
+        )
+    }
 
-      assertThat(captor.value.performance).isSameAs(performance)
-      assertThat(captor.value.booker).isSameAs(user)
-      assertThat(captor.value.holdId).isEqualTo(HOLD_ID)
-      assertThat(captor.value.amount).isEqualTo(132_000)
-      assertThat(captor.value.status)
-        .isEqualTo(ReservationStatus.PAYMENT_PENDING)
-      assertThat(captor.value.orderId).startsWith("tikkle-")
+    @Test
+    fun `예약 생성 후 재조회하지 못하면 예외를 던진다`() {
+      val hold = hold()
+      val user = user()
+      val performance = performance()
+      val seats = listOf(
+        venueSeat(id = 101L, price = 66_000),
+        venueSeat(id = 102L, price = 66_000),
+      )
+
+      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
+        .willReturn(null, null)
+      given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
+        .willReturn(performance)
+      given(
+        venueSeatRepository.findAllByVenueIdAndIdIn(
+          venueId = VENUE_ID,
+          venueSeatIds = hold.venueSeatIds,
+        ),
+      ).willReturn(seats)
+      given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
+      givenPaymentPendingInsert(reservation())
+
+      val exception = assertThrows<IllegalStateException> {
+        reservationCheckoutService.startCheckout(USER_ID, HOLD_ID)
+      }
+
+      assertThat(exception.message)
+        .isEqualTo("생성한 결제 대기 예약을 찾을 수 없습니다.")
+      then(seatHoldService)
+        .should(never())
+        .extendForPayment(
+          anyString(),
+          anyLocalDateTime(),
+        )
     }
 
     @Test
@@ -139,7 +183,7 @@ class ReservationCheckoutServiceTest {
       )
 
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
-      given(reservationRepository.findByHoldId(HOLD_ID))
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(existingReservation)
 
       val result = reservationCheckoutService.startCheckout(
@@ -155,16 +199,58 @@ class ReservationCheckoutServiceTest {
       then(venueSeatRepository).shouldHaveNoInteractions()
       then(userRepository).shouldHaveNoInteractions()
       then(seatHoldService).should().findActive(HOLD_ID)
-      then(reservationRepository).should().findByHoldId(HOLD_ID)
-
+      then(reservationRepository).should().findByHoldIdForUpdate(HOLD_ID)
       then(seatHoldService).shouldHaveNoMoreInteractions()
       then(reservationRepository).shouldHaveNoMoreInteractions()
     }
 
     @Test
+    fun `동시 요청이 먼저 생성한 예약을 반환하고 Hold를 다시 연장하지 않는다`() {
+      val hold = hold()
+      val user = user()
+      val performance = performance()
+      val seats = listOf(
+        venueSeat(id = 101L, price = 66_000),
+        venueSeat(id = 102L, price = 66_000),
+      )
+      val existingReservation = reservation(
+        id = RESERVATION_ID,
+        performance = performance,
+        booker = user,
+      )
+
+      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
+        .willReturn(null, existingReservation)
+      given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
+        .willReturn(performance)
+      given(
+        venueSeatRepository.findAllByVenueIdAndIdIn(
+          venueId = VENUE_ID,
+          venueSeatIds = hold.venueSeatIds,
+        ),
+      ).willReturn(seats)
+      given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
+
+      val result = reservationCheckoutService.startCheckout(
+        userId = USER_ID,
+        holdId = HOLD_ID,
+      )
+
+      assertThat(result.reservationId).isEqualTo(RESERVATION_ID)
+      assertThat(result.orderId).isEqualTo(existingReservation.orderId)
+      then(seatHoldService)
+        .should(never())
+        .extendForPayment(
+          anyString(),
+          anyLocalDateTime(),
+        )
+    }
+
+    @Test
     fun `기존 예약 소유자가 아니면 FORBIDDEN을 던진다`() {
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
-      given(reservationRepository.findByHoldId(HOLD_ID))
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(reservation(booker = user(OTHER_USER_ID)))
 
       val exception = assertThrows<CustomException> {
@@ -177,7 +263,8 @@ class ReservationCheckoutServiceTest {
     @Test
     fun `공연 회차가 없으면 NOT_FOUND를 던진다`() {
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
-      given(reservationRepository.findByHoldId(HOLD_ID)).willReturn(null)
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
+        .willReturn(null)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
         .willReturn(null)
 
@@ -193,7 +280,8 @@ class ReservationCheckoutServiceTest {
       val performance = performance()
 
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
-      given(reservationRepository.findByHoldId(HOLD_ID)).willReturn(null)
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
+        .willReturn(null)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
         .willReturn(performance)
       given(
@@ -219,7 +307,8 @@ class ReservationCheckoutServiceTest {
       )
 
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
-      given(reservationRepository.findByHoldId(HOLD_ID)).willReturn(null)
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
+        .willReturn(null)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
         .willReturn(performance)
       given(
@@ -272,14 +361,9 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `결제 대기 중이 아닌 기존 예약이면 CONFLICT를 던진다`() {
-      val hold = hold()
-      val existingReservation = reservation(
-        status = ReservationStatus.SUCCEEDED,
-      )
-
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
-      given(reservationRepository.findByHoldId(HOLD_ID))
-        .willReturn(existingReservation)
+      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
+        .willReturn(reservation(status = ReservationStatus.SUCCEEDED))
 
       val exception = assertThrows<CustomException> {
         reservationCheckoutService.startCheckout(
@@ -293,16 +377,16 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `결제용 Hold 연장에 실패하면 예약을 저장하지 않는다`() {
-      val hold = hold().copy(
-        venueSeatIds = listOf(101L),
-      )
+    fun `결제용 Hold 연장에 실패하면 생성한 예약을 EXPIRED로 변경한다`() {
+      val hold = hold().copy(venueSeatIds = listOf(101L))
+      val insertedReservation = reservation()
       val user = user()
       val performance = performance()
       val seats = listOf(venueSeat(101L, 66_000))
 
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
-      given(reservationRepository.findByHoldId(HOLD_ID)).willReturn(null)
+      given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
+        .willReturn(null, insertedReservation)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
         .willReturn(performance)
       given(
@@ -312,6 +396,7 @@ class ReservationCheckoutServiceTest {
         ),
       ).willReturn(seats)
       given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
+      givenPaymentPendingInsert(insertedReservation)
       given(
         seatHoldService.extendForPayment(
           anyString(),
@@ -320,16 +405,11 @@ class ReservationCheckoutServiceTest {
       ).willReturn(null)
 
       val exception = assertThrows<CustomException> {
-        reservationCheckoutService.startCheckout(
-          userId = USER_ID,
-          holdId = HOLD_ID,
-        )
+        reservationCheckoutService.startCheckout(USER_ID, HOLD_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.HOLD_EXPIRED)
-      then(reservationRepository)
-        .should(never())
-        .save(anyReservation())
+      assertThat(insertedReservation.status).isEqualTo(ReservationStatus.EXPIRED)
     }
   }
 
@@ -437,8 +517,8 @@ class ReservationCheckoutServiceTest {
     fun `트랜잭션 커밋 후에만 Hold를 해제한다`() {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation())
-
       given(seatHoldService.release(HOLD_ID)).willReturn(hold())
+
       TransactionSynchronizationManager.initSynchronization()
 
       try {
@@ -640,9 +720,21 @@ class ReservationCheckoutServiceTest {
     return LocalDateTime.MIN
   }
 
-  private fun anyReservation(): Reservation {
-    any(Reservation::class.java)
-    return reservation()
+  private fun givenPaymentPendingInsert(reservation: Reservation) {
+    given(
+      reservationRepository.insertPaymentPendingIfAbsent(
+        performanceId = anyLong(),
+        bookerUserId = anyLong(),
+        holdId = anyString(),
+        orderId = anyString(),
+        orderName = anyString(),
+        amount = anyInt(),
+        paymentExpiresAt = anyLocalDateTime(),
+      ),
+    ).willAnswer { invocation ->
+      reservation.orderId = invocation.getArgument(3)
+      1
+    }
   }
 
   companion object {
