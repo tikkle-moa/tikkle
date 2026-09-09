@@ -197,6 +197,8 @@ tasks.jacocoTestReport {
             "**/*Handler*",
             "**/*EntryPoint*",
             "**/*Interceptor*",
+            "**/*Publisher*",
+            "**/*Listener*",
           )
           exclude(
             "**/dto/**",

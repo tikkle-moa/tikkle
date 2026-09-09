@@ -5,6 +5,7 @@ import com.example.server.performance.stomp.dto.HoldReleasedEventData
 import com.example.server.performance.stomp.dto.PerformanceSeatEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentCaptor
 import org.mockito.BDDMockito.given
@@ -61,6 +62,25 @@ class PerformanceSeatStompPublisherTest {
     assertThat(event.type).isEqualTo(PerformanceSeatEvent.HOLD_RELEASED.name)
     assertThat(event.occurredAt.offset).isEqualTo(ZoneOffset.UTC)
     assertThat(event.data).isEqualTo(HoldReleasedEventData(SEAT_IDS))
+  }
+
+  @Test
+  fun `좌석 이벤트 버전을 증가시키지 못하면 예외를 던지고 발행하지 않는다`() {
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(
+      valueOperations.increment("performance:seat-event-version:$PERFORMANCE_ID"),
+    ).willReturn(null)
+
+    val exception = assertThrows<IllegalArgumentException> {
+      publisher.publishHoldReleased(
+        performanceId = PERFORMANCE_ID,
+        seatIds = SEAT_IDS,
+      )
+    }
+
+    assertThat(exception.message)
+      .isEqualTo("공연 좌석 이벤트 버전을 증가시키지 못했습니다.")
+    then(messagingTemplate).shouldHaveNoInteractions()
   }
 
   companion object {
