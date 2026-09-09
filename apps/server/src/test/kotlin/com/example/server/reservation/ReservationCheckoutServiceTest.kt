@@ -6,6 +6,7 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.PerformanceSeatEventPublisher
 import com.example.server.performance.SeatHold
 import com.example.server.performance.SeatHoldService
 import com.example.server.performance.entity.Performance
@@ -54,6 +55,9 @@ class ReservationCheckoutServiceTest {
 
   @Mock
   lateinit var seatHoldService: SeatHoldService
+
+  @Mock
+  lateinit var performanceSeatEventPublisher: PerformanceSeatEventPublisher
 
   @InjectMocks
   lateinit var reservationCheckoutService: ReservationCheckoutService
@@ -335,9 +339,11 @@ class ReservationCheckoutServiceTest {
     @Test
     fun `결제 대기 예약을 CANCELLED로 변경하고 Hold를 해제한다`() {
       val reservation = reservation()
+      val releasedHold = hold()
 
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation)
+      given(seatHoldService.release(HOLD_ID)).willReturn(releasedHold)
 
       val result = reservationCheckoutService.cancelCheckout(
         userId = USER_ID,
@@ -348,6 +354,12 @@ class ReservationCheckoutServiceTest {
       assertThat(result.status).isEqualTo(ReservationStatus.CANCELLED)
       assertThat(reservation.status).isEqualTo(ReservationStatus.CANCELLED)
       then(seatHoldService).should().release(HOLD_ID)
+      then(performanceSeatEventPublisher)
+        .should()
+        .publishHoldReleased(
+          performanceId = PERFORMANCE_ID,
+          seatIds = listOf(101L, 102L),
+        )
     }
 
     @Test
@@ -426,21 +438,62 @@ class ReservationCheckoutServiceTest {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation())
 
+      given(seatHoldService.release(HOLD_ID)).willReturn(hold())
       TransactionSynchronizationManager.initSynchronization()
 
       try {
         reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
 
         then(seatHoldService).should(never()).release(HOLD_ID)
+        then(performanceSeatEventPublisher).shouldHaveNoInteractions()
 
         TransactionSynchronizationManager
           .getSynchronizations()
           .forEach { it.afterCommit() }
 
         then(seatHoldService).should().release(HOLD_ID)
+        then(performanceSeatEventPublisher)
+          .should()
+          .publishHoldReleased(
+            performanceId = PERFORMANCE_ID,
+            seatIds = listOf(101L, 102L),
+          )
       } finally {
         TransactionSynchronizationManager.clearSynchronization()
       }
+    }
+
+    @Test
+    fun `커밋 시점에 Hold가 이미 사라졌으면 좌석 해제 이벤트를 발행하지 않는다`() {
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(reservation())
+      given(seatHoldService.release(HOLD_ID)).willReturn(null)
+
+      TransactionSynchronizationManager.initSynchronization()
+
+      try {
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
+
+        TransactionSynchronizationManager
+          .getSynchronizations()
+          .forEach { it.afterCommit() }
+
+        then(seatHoldService).should().release(HOLD_ID)
+        then(performanceSeatEventPublisher).shouldHaveNoInteractions()
+      } finally {
+        TransactionSynchronizationManager.clearSynchronization()
+      }
+    }
+
+    @Test
+    fun `Hold가 이미 사라졌으면 좌석 해제 이벤트를 발행하지 않는다`() {
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(reservation())
+      given(seatHoldService.release(HOLD_ID)).willReturn(null)
+
+      reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
+
+      then(performanceSeatEventPublisher).shouldHaveNoInteractions()
     }
   }
 
@@ -454,11 +507,18 @@ class ReservationCheckoutServiceTest {
       )
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation)
+      given(seatHoldService.release(HOLD_ID)).willReturn(hold())
 
       reservationCheckoutService.expireCheckout(RESERVATION_ID)
 
       assertThat(reservation.status).isEqualTo(ReservationStatus.EXPIRED)
       then(seatHoldService).should().release(HOLD_ID)
+      then(performanceSeatEventPublisher)
+        .should()
+        .publishHoldReleased(
+          performanceId = PERFORMANCE_ID,
+          seatIds = listOf(101L, 102L),
+        )
     }
 
     @Test
