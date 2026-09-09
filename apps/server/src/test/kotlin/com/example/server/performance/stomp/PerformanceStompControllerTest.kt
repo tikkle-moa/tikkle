@@ -27,6 +27,7 @@ import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.messaging.simp.annotation.SendToUser
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -42,6 +43,24 @@ class PerformanceStompControllerTest {
     userId = USER_ID,
     role = UserRole.USER,
   )
+
+  @Test
+  fun `예매 sync 응답은 요청 STOMP 세션에만 전송한다`() {
+    val syncMethod = PerformanceStompController::class.java.getDeclaredMethod(
+      "sync",
+      PerformanceSyncCommand::class.java,
+      LoginUserResult::class.java,
+    )
+
+    val sendToUser = requireNotNull(
+      syncMethod.getAnnotation(SendToUser::class.java),
+    )
+
+    assertThat(sendToUser.value)
+      .containsExactly("/queue/performance")
+    assertThat(sendToUser.broadcast)
+      .isFalse()
+  }
 
   @Nested
   @DisplayName("START_CHECKOUT")
