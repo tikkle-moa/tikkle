@@ -17,7 +17,10 @@ import org.springframework.stereotype.Controller
 @Controller
 class PerformanceStompController(private val reservationCheckoutService: ReservationCheckoutService) {
   @MessageMapping("/performance/sync")
-  @SendToUser("/queue/performance")
+  @SendToUser(
+    value = ["/queue/performance"],
+    broadcast = false,
+  )
   fun sync(command: PerformanceSyncCommand<*>, @AuthenticationPrincipal loginUser: LoginUserResult): StompCommandSuccess<out Any> = when (command) {
     is StartCheckoutCommand -> {
       val result = reservationCheckoutService.startCheckout(
