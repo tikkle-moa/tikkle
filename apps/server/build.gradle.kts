@@ -191,6 +191,7 @@ tasks.jacocoTestReport {
         fileTree(it) {
           include(
             "**/*Controller*",
+            "**/*Scheduler*",
             "**/*Service*",
             "**/*Provider*",
             "**/*Handler*",

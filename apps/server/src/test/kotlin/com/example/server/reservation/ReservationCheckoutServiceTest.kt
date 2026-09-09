@@ -71,7 +71,7 @@ class ReservationCheckoutServiceTest {
         venueSeat(id = 102L, price = 66_000),
       )
       val savedReservation = reservation(
-        id = 501L,
+        id = RESERVATION_ID,
         performance = performance,
         booker = user,
         amount = 132_000,
@@ -102,7 +102,7 @@ class ReservationCheckoutServiceTest {
         holdId = HOLD_ID,
       )
 
-      assertThat(result.reservationId).isEqualTo(501L)
+      assertThat(result.reservationId).isEqualTo(RESERVATION_ID)
       assertThat(result.amount).isEqualTo(132_000)
       assertThat(result.orderName).isEqualTo("아이유 콘서트 1회차 2석")
       assertThat(result.orderId).isEqualTo(savedReservation.orderId)
@@ -129,7 +129,7 @@ class ReservationCheckoutServiceTest {
       val hold = hold()
       val user = user()
       val existingReservation = reservation(
-        id = 501L,
+        id = RESERVATION_ID,
         booker = user,
         status = ReservationStatus.PAYMENT_PENDING,
       )
@@ -143,7 +143,7 @@ class ReservationCheckoutServiceTest {
         holdId = HOLD_ID,
       )
 
-      assertThat(result.reservationId).isEqualTo(501L)
+      assertThat(result.reservationId).isEqualTo(RESERVATION_ID)
       assertThat(result.orderId).isEqualTo(existingReservation.orderId)
       assertThat(result.amount).isEqualTo(existingReservation.amount)
 
@@ -336,15 +336,15 @@ class ReservationCheckoutServiceTest {
     fun `결제 대기 예약을 CANCELLED로 변경하고 Hold를 해제한다`() {
       val reservation = reservation()
 
-      given(reservationRepository.findByIdForUpdate(501L))
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation)
 
       val result = reservationCheckoutService.cancelCheckout(
         userId = USER_ID,
-        reservationId = 501L,
+        reservationId = RESERVATION_ID,
       )
 
-      assertThat(result.reservationId).isEqualTo(501L)
+      assertThat(result.reservationId).isEqualTo(RESERVATION_ID)
       assertThat(result.status).isEqualTo(ReservationStatus.CANCELLED)
       assertThat(reservation.status).isEqualTo(ReservationStatus.CANCELLED)
       then(seatHoldService).should().release(HOLD_ID)
@@ -352,11 +352,11 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `예약이 없으면 PAYMENT_NOT_FOUND를 던진다`() {
-      given(reservationRepository.findByIdForUpdate(501L))
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(null)
 
       val exception = assertThrows<CustomException> {
-        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_NOT_FOUND)
@@ -365,11 +365,11 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `예약 소유자가 아니면 FORBIDDEN을 던진다`() {
-      given(reservationRepository.findByIdForUpdate(501L))
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation(booker = user(OTHER_USER_ID)))
 
       val exception = assertThrows<CustomException> {
-        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
@@ -378,11 +378,11 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `이미 성공한 예약이면 PAYMENT_ALREADY_FINISHED를 던진다`() {
-      given(reservationRepository.findByIdForUpdate(501L))
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation(status = ReservationStatus.SUCCEEDED))
 
       val exception = assertThrows<CustomException> {
-        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_ALREADY_FINISHED)
@@ -395,11 +395,11 @@ class ReservationCheckoutServiceTest {
       names = ["FAILED", "CANCELLED", "EXPIRED"],
     )
     fun `이미 종료된 예약이면 PAYMENT_ALREADY_CANCELLED를 던진다`(status: ReservationStatus) {
-      given(reservationRepository.findByIdForUpdate(501L))
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation(status = status))
 
       val exception = assertThrows<CustomException> {
-        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_ALREADY_CANCELLED)
@@ -411,10 +411,10 @@ class ReservationCheckoutServiceTest {
       val reservation = reservation(
         paymentExpiresAt = LocalDateTime.now().minusSeconds(1),
       )
-      given(reservationRepository.findByIdForUpdate(501L))
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation)
 
-      val result = reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+      val result = reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
 
       assertThat(result.status).isEqualTo(ReservationStatus.EXPIRED)
       assertThat(reservation.status).isEqualTo(ReservationStatus.EXPIRED)
@@ -423,13 +423,13 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `트랜잭션 커밋 후에만 Hold를 해제한다`() {
-      given(reservationRepository.findByIdForUpdate(501L))
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation())
 
       TransactionSynchronizationManager.initSynchronization()
 
       try {
-        reservationCheckoutService.cancelCheckout(USER_ID, 501L)
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
 
         then(seatHoldService).should(never()).release(HOLD_ID)
 
@@ -444,6 +444,67 @@ class ReservationCheckoutServiceTest {
     }
   }
 
+  @Nested
+  @DisplayName("expireCheckout")
+  inner class ExpireCheckout {
+    @Test
+    fun `만료된 결제 대기 예약을 EXPIRED로 변경하고 Hold를 해제한다`() {
+      val reservation = reservation(
+        paymentExpiresAt = LocalDateTime.now().minusSeconds(1),
+      )
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(reservation)
+
+      reservationCheckoutService.expireCheckout(RESERVATION_ID)
+
+      assertThat(reservation.status).isEqualTo(ReservationStatus.EXPIRED)
+      then(seatHoldService).should().release(HOLD_ID)
+    }
+
+    @Test
+    fun `예약이 없으면 만료 처리를 건너뛴다`() {
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(null)
+
+      reservationCheckoutService.expireCheckout(RESERVATION_ID)
+
+      then(seatHoldService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `결제 기한이 남은 예약이면 만료 처리를 건너뛴다`() {
+      val reservation = reservation(
+        paymentExpiresAt = LocalDateTime.now().plusMinutes(1),
+      )
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(reservation)
+
+      reservationCheckoutService.expireCheckout(RESERVATION_ID)
+
+      assertThat(reservation.status).isEqualTo(ReservationStatus.PAYMENT_PENDING)
+      then(seatHoldService).shouldHaveNoInteractions()
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+      value = ReservationStatus::class,
+      names = ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"],
+    )
+    fun `결제 대기 상태가 아닌 예약이면 만료 처리를 건너뛴다`(status: ReservationStatus) {
+      val reservation = reservation(
+        status = status,
+        paymentExpiresAt = LocalDateTime.now().minusMinutes(1),
+      )
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(reservation)
+
+      reservationCheckoutService.expireCheckout(RESERVATION_ID)
+
+      assertThat(reservation.status).isEqualTo(status)
+      then(seatHoldService).shouldHaveNoInteractions()
+    }
+  }
+
   private fun hold(ownerUserId: Long = USER_ID): SeatHold = SeatHold(
     holdId = HOLD_ID,
     ownerUserId = ownerUserId,
@@ -453,7 +514,7 @@ class ReservationCheckoutServiceTest {
   )
 
   private fun reservation(
-    id: Long = 501L,
+    id: Long = RESERVATION_ID,
     performance: Performance = performance(),
     booker: User = user(),
     status: ReservationStatus = ReservationStatus.PAYMENT_PENDING,
@@ -530,5 +591,6 @@ class ReservationCheckoutServiceTest {
     private const val PERFORMANCE_ID = 10L
     private const val VENUE_ID = 20L
     private const val HOLD_ID = "hold-123"
+    private const val RESERVATION_ID = 501L
   }
 }
