@@ -142,6 +142,22 @@ class ReservationCheckoutService(
     )
   }
 
+  @Transactional
+  fun expireCheckout(reservationId: Long) {
+    val reservation = reservationRepository.findByIdForUpdate(reservationId)
+      ?: return
+
+    if (
+      reservation.status != ReservationStatus.PAYMENT_PENDING ||
+      reservation.paymentExpiresAt.isAfter(LocalDateTime.now())
+    ) {
+      return
+    }
+
+    reservation.status = ReservationStatus.EXPIRED
+    releaseHoldAfterCommit(reservation.holdId)
+  }
+
   companion object {
     private val PAYMENT_TTL = Duration.ofMinutes(5)
   }
