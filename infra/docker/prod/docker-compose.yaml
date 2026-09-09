@@ -104,11 +104,12 @@ services:
     image: redis:7.4-alpine
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDIS_NOTIFY_KEYSPACE_EVENTS: ${REDIS_NOTIFY_KEYSPACE_EVENTS:-Ex}
     command:
       [
         "sh",
         "-c",
-        'exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"',
+        'exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}" --notify-keyspace-events "$${REDIS_NOTIFY_KEYSPACE_EVENTS}"',
       ]
     volumes:
       - redis_data:/data
