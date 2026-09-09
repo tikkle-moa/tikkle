@@ -67,7 +67,7 @@ class ReservationCheckoutServiceTest {
   @DisplayName("startCheckout")
   inner class StartCheckout {
     @Test
-    fun `유효한 Hold로 PAYMENT_PENDING 예약을 생성한다`() {
+    fun `유효한 Hold로 PAYMENT_PENDING 예매를 생성한다`() {
       val hold = hold()
       val user = user()
       val performance = performance()
@@ -135,7 +135,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `예약 생성 후 재조회하지 못하면 예외를 던진다`() {
+    fun `예매 생성 후 재조회하지 못하면 예외를 던진다`() {
       val hold = hold()
       val user = user()
       val performance = performance()
@@ -163,7 +163,7 @@ class ReservationCheckoutServiceTest {
       }
 
       assertThat(exception.message)
-        .isEqualTo("생성한 결제 대기 예약을 찾을 수 없습니다.")
+        .isEqualTo("생성한 결제 대기 예매를 찾을 수 없습니다.")
       then(seatHoldService)
         .should(never())
         .extendForPayment(
@@ -173,7 +173,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `같은 Hold로 다시 요청하면 기존 결제 대기 예약을 반환한다`() {
+    fun `같은 Hold로 다시 요청하면 기존 결제 대기 예매를 반환한다`() {
       val hold = hold()
       val user = user()
       val existingReservation = reservation(
@@ -205,7 +205,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `동시 요청이 먼저 생성한 예약을 반환하고 Hold를 다시 연장하지 않는다`() {
+    fun `동시 요청이 먼저 생성한 예매를 반환하고 Hold를 다시 연장하지 않는다`() {
       val hold = hold()
       val user = user()
       val performance = performance()
@@ -248,7 +248,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `기존 예약 소유자가 아니면 FORBIDDEN을 던진다`() {
+    fun `기존 예매 소유자가 아니면 FORBIDDEN을 던진다`() {
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(reservation(booker = user(OTHER_USER_ID)))
@@ -360,7 +360,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `결제 대기 중이 아닌 기존 예약이면 CONFLICT를 던진다`() {
+    fun `결제 대기 중이 아닌 기존 예매면 CONFLICT를 던진다`() {
       given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(reservation(status = ReservationStatus.SUCCEEDED))
@@ -377,7 +377,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `결제용 Hold 연장에 실패하면 생성한 예약을 EXPIRED로 변경한다`() {
+    fun `결제용 Hold 연장에 실패하면 생성한 예매를 EXPIRED로 변경한다`() {
       val hold = hold().copy(venueSeatIds = listOf(101L))
       val insertedReservation = reservation()
       val user = user()
@@ -417,7 +417,7 @@ class ReservationCheckoutServiceTest {
   @DisplayName("cancelCheckout")
   inner class CancelCheckout {
     @Test
-    fun `결제 대기 예약을 CANCELLED로 변경하고 Hold를 해제한다`() {
+    fun `결제 대기 예매를 CANCELLED로 변경하고 Hold를 해제한다`() {
       val reservation = reservation()
       val releasedHold = hold()
 
@@ -443,7 +443,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `예약이 없으면 PAYMENT_NOT_FOUND를 던진다`() {
+    fun `예매가 없으면 PAYMENT_NOT_FOUND를 던진다`() {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(null)
 
@@ -456,7 +456,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `예약 소유자가 아니면 FORBIDDEN을 던진다`() {
+    fun `예매 소유자가 아니면 FORBIDDEN을 던진다`() {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation(booker = user(OTHER_USER_ID)))
 
@@ -469,7 +469,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `이미 성공한 예약이면 PAYMENT_ALREADY_FINISHED를 던진다`() {
+    fun `이미 성공한 예매면 PAYMENT_ALREADY_FINISHED를 던진다`() {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation(status = ReservationStatus.SUCCEEDED))
 
@@ -486,7 +486,7 @@ class ReservationCheckoutServiceTest {
       value = ReservationStatus::class,
       names = ["FAILED", "CANCELLED", "EXPIRED"],
     )
-    fun `이미 종료된 예약이면 PAYMENT_ALREADY_CANCELLED를 던진다`(status: ReservationStatus) {
+    fun `이미 종료된 예매면 PAYMENT_ALREADY_CANCELLED를 던진다`(status: ReservationStatus) {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation(status = status))
 
@@ -499,7 +499,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `결제 기한이 지난 예약은 EXPIRED로 변경하고 Hold를 해제한다`() {
+    fun `결제 기한이 지난 예매는 EXPIRED로 변경하고 Hold를 해제한다`() {
       val reservation = reservation(
         paymentExpiresAt = LocalDateTime.now().minusSeconds(1),
       )
@@ -581,7 +581,7 @@ class ReservationCheckoutServiceTest {
   @DisplayName("expireCheckout")
   inner class ExpireCheckout {
     @Test
-    fun `만료된 결제 대기 예약을 EXPIRED로 변경하고 Hold를 해제한다`() {
+    fun `만료된 결제 대기 예매를 EXPIRED로 변경하고 Hold를 해제한다`() {
       val reservation = reservation(
         paymentExpiresAt = LocalDateTime.now().minusSeconds(1),
       )
@@ -602,7 +602,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `예약이 없으면 만료 처리를 건너뛴다`() {
+    fun `예매가 없으면 만료 처리를 건너뛴다`() {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(null)
 
@@ -612,7 +612,7 @@ class ReservationCheckoutServiceTest {
     }
 
     @Test
-    fun `결제 기한이 남은 예약이면 만료 처리를 건너뛴다`() {
+    fun `결제 기한이 남은 예매면 만료 처리를 건너뛴다`() {
       val reservation = reservation(
         paymentExpiresAt = LocalDateTime.now().plusMinutes(1),
       )
@@ -630,7 +630,7 @@ class ReservationCheckoutServiceTest {
       value = ReservationStatus::class,
       names = ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"],
     )
-    fun `결제 대기 상태가 아닌 예약이면 만료 처리를 건너뛴다`(status: ReservationStatus) {
+    fun `결제 대기 상태가 아닌 예매면 만료 처리를 건너뛴다`(status: ReservationStatus) {
       val reservation = reservation(
         status = status,
         paymentExpiresAt = LocalDateTime.now().minusMinutes(1),

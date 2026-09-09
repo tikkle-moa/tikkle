@@ -47,7 +47,7 @@ class PerformanceStompControllerTest {
   @DisplayName("START_CHECKOUT")
   inner class StartCheckout {
     @Test
-    fun `예약 checkout 서비스에 위임하고 성공 응답을 반환한다`() {
+    fun `예매 checkout 서비스에 위임하고 성공 응답을 반환한다`() {
       val command = StartCheckoutCommand(
         requestId = REQUEST_ID,
         data = StartCheckoutData(HOLD_ID),
@@ -81,7 +81,7 @@ class PerformanceStompControllerTest {
   @DisplayName("CANCEL_PAYMENT")
   inner class CancelPayment {
     @Test
-    fun `예약 checkout 취소 서비스에 위임하고 성공 응답을 반환한다`() {
+    fun `예매 checkout 취소 서비스에 위임하고 성공 응답을 반환한다`() {
       val command = CancelPaymentCommand(
         requestId = REQUEST_ID,
         data = CancelPaymentData(reservationId = RESERVATION_ID),

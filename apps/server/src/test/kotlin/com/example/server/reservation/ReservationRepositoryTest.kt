@@ -52,7 +52,7 @@ class ReservationRepositoryTest {
   lateinit var transactionManager: PlatformTransactionManager
 
   @Test
-  fun `동일 Hold upsert는 두 번째 요청을 대기시키고 기존 예약을 반환한다`() {
+  fun `동일 Hold upsert는 두 번째 요청을 대기시키고 기존 예매를 반환한다`() {
     val (performanceId, userId) = createFixture()
     val holdId = "hold-checkout-${UUID.randomUUID()}"
     val firstOrderId = "tikkle-first-${UUID.randomUUID()}"

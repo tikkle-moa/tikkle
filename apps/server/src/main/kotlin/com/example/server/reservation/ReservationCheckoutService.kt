@@ -83,7 +83,7 @@ class ReservationCheckoutService(
     )
 
     val reservation = reservationRepository.findByHoldIdForUpdate(holdId)
-      ?: throw IllegalStateException("생성한 결제 대기 예약을 찾을 수 없습니다.")
+      ?: throw IllegalStateException("생성한 결제 대기 예매를 찾을 수 없습니다.")
 
     if (reservation.orderId != candidateOrderId) {
       return existingCheckout(
@@ -169,7 +169,7 @@ class ReservationCheckoutService(
     if (reservation.status != ReservationStatus.PAYMENT_PENDING) {
       throw CustomException(
         ErrorCode.CONFLICT,
-        "이미 종료된 예약입니다.",
+        "이미 종료된 예매입니다.",
       )
     }
 

@@ -26,7 +26,7 @@ class ReservationCheckoutExpirationSchedulerTest {
   lateinit var scheduler: ReservationCheckoutExpirationScheduler
 
   @Test
-  fun `만료된 결제 대기 예약이 없으면 만료 처리를 호출하지 않는다`() {
+  fun `만료된 결제 대기 예매가 없으면 만료 처리를 호출하지 않는다`() {
     given(
       reservationRepository.findAllByStatusAndPaymentExpiresAtBefore(
         anyReservationStatus(),
@@ -40,7 +40,7 @@ class ReservationCheckoutExpirationSchedulerTest {
   }
 
   @Test
-  fun `만료된 결제 대기 예약을 모두 만료 처리한다`() {
+  fun `만료된 결제 대기 예매를 모두 만료 처리한다`() {
     val firstReservation = reservation(FIRST_RESERVATION_ID)
     val secondReservation = reservation(SECOND_RESERVATION_ID)
 
