@@ -19,4 +19,7 @@ enum class ErrorCode(val status: HttpStatus, val message: String) {
 
   // STOMP Error
   HOLD_EXPIRED(HttpStatus.CONFLICT, "좌석 점유가 만료되었습니다."),
+  PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "결제 예약을 찾을 수 없습니다."),
+  PAYMENT_ALREADY_FINISHED(HttpStatus.CONFLICT, "이미 종료된 결제입니다."),
+  PAYMENT_ALREADY_CANCELLED(HttpStatus.CONFLICT, "이미 종료된 결제 요청입니다."),
 }

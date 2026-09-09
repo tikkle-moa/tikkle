@@ -5,6 +5,7 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.SeatHoldService
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.reservation.dto.CancelCheckoutResult
 import com.example.server.reservation.dto.StartCheckoutResult
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
@@ -12,6 +13,8 @@ import com.example.server.reservation.types.ReservationStatus
 import com.example.server.venue.repository.VenueSeatRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
@@ -87,6 +90,56 @@ class ReservationCheckoutService(
     )
 
     return StartCheckoutResult.from(reservation)
+  }
+
+  @Transactional
+  fun cancelCheckout(userId: Long, reservationId: Long): CancelCheckoutResult {
+    val reservation =
+      reservationRepository.findByIdForUpdate(reservationId)
+        ?: throw CustomException(ErrorCode.PAYMENT_NOT_FOUND)
+
+    if (reservation.booker.id != userId) {
+      throw CustomException(ErrorCode.FORBIDDEN)
+    }
+
+    when (reservation.status) {
+      ReservationStatus.SUCCEEDED ->
+        throw CustomException(ErrorCode.PAYMENT_ALREADY_FINISHED)
+
+      ReservationStatus.FAILED,
+      ReservationStatus.CANCELLED,
+      ReservationStatus.EXPIRED,
+      ->
+        throw CustomException(ErrorCode.PAYMENT_ALREADY_CANCELLED)
+
+      ReservationStatus.PAYMENT_PENDING -> Unit
+    }
+
+    reservation.status =
+      if (reservation.paymentExpiresAt.isAfter(LocalDateTime.now())) {
+        ReservationStatus.CANCELLED
+      } else {
+        ReservationStatus.EXPIRED
+      }
+
+    releaseHoldAfterCommit(reservation.holdId)
+
+    return CancelCheckoutResult.from(reservation)
+  }
+
+  private fun releaseHoldAfterCommit(holdId: String) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      seatHoldService.release(holdId)
+      return
+    }
+
+    TransactionSynchronizationManager.registerSynchronization(
+      object : TransactionSynchronization {
+        override fun afterCommit() {
+          seatHoldService.release(holdId)
+        }
+      },
+    )
   }
 
   companion object {
