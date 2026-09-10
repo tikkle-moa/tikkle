@@ -2,10 +2,12 @@ package com.example.server.performance
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.SeatHold
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.venue.repository.VenueSeatRepository
+import org.springframework.data.redis.core.ScanOptions
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript
 import org.springframework.stereotype.Service
@@ -22,6 +24,36 @@ class RedisSeatHoldService(
   private val stringRedisTemplate: StringRedisTemplate,
   private val objectMapper: ObjectMapper,
 ) {
+  fun findHeldSeatsByPerformanceId(performanceId: Long): List<HeldSeat> {
+    val now = LocalDateTime.now()
+    val holdIds = mutableSetOf<String>()
+
+    stringRedisTemplate.scan(
+      ScanOptions.scanOptions()
+        .match("hold:seat:$performanceId:*")
+        .count(100)
+        .build(),
+    ).use { cursor ->
+      while (cursor.hasNext()) {
+        stringRedisTemplate.opsForValue()
+          .get(cursor.next())
+          ?.let { holdIds += it }
+      }
+    }
+
+    return holdIds
+      .mapNotNull { holdId ->
+        stringRedisTemplate.opsForValue()
+          .get(holdKey(holdId))
+          ?.let { objectMapper.readValue(it, SeatHold::class.java) }
+      }
+      .filter { it.expiresAt.isAfter(now) }
+      .flatMap { hold ->
+        hold.venueSeatIds.map { seatId -> HeldSeat(id = seatId, expiresAt = hold.expiresAt) }
+      }
+      .sortedBy(HeldSeat::id)
+  }
+
   fun create(performanceId: Long, ownerUserId: Long, venueSeatIds: List<Long>): SeatHold {
     val seatIds = venueSeatIds.distinct()
 

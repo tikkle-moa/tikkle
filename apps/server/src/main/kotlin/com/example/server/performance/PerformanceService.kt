@@ -20,6 +20,7 @@ class PerformanceService(
   private val concertRepository: ConcertRepository,
   private val performanceRepository: PerformanceRepository,
   private val reservationSeatRepository: ReservationSeatRepository,
+  private val redisSeatHoldService: RedisSeatHoldService,
 ) {
   @Transactional(readOnly = true)
   fun getPerformances(): List<PerformanceResponse> {
@@ -47,7 +48,7 @@ class PerformanceService(
         performanceId = performanceId,
         status = ReservationStatus.SUCCEEDED,
       ),
-      heldSeats = emptyList(), // TODO: Implement held seats retrieval
+      heldSeats = redisSeatHoldService.findHeldSeatsByPerformanceId(performanceId),
     )
   }
 
