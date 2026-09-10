@@ -1,6 +1,5 @@
-package com.example.server.performance.stomp
+package com.example.server.performance
 
-import com.example.server.performance.PerformanceSeatEventPublisher
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test

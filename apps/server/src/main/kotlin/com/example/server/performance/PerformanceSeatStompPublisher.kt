@@ -1,9 +1,8 @@
-package com.example.server.performance.stomp
+package com.example.server.performance
 
 import com.example.server.global.stomp.dto.StompEvent
-import com.example.server.performance.PerformanceSeatEventPublisher
-import com.example.server.performance.stomp.dto.HoldReleasedEventData
-import com.example.server.performance.stomp.dto.PerformanceSeatEvent
+import com.example.server.performance.dto.HoldReleasedEventData
+import com.example.server.performance.dto.PerformanceSeatEvent
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Component

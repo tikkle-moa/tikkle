@@ -1,7 +1,7 @@
 package com.example.server.config
 
 import com.example.server.config.properties.ReservationHoldExpirationProperties
-import com.example.server.performance.stomp.RedisSeatHoldExpirationListener
+import com.example.server.performance.RedisSeatHoldExpirationListener
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties

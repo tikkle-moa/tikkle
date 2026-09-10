@@ -1,8 +1,8 @@
-package com.example.server.performance.stomp
+package com.example.server.performance
 
 import com.example.server.global.stomp.dto.StompEvent
-import com.example.server.performance.stomp.dto.HoldReleasedEventData
-import com.example.server.performance.stomp.dto.PerformanceSeatEvent
+import com.example.server.performance.dto.HoldReleasedEventData
+import com.example.server.performance.dto.PerformanceSeatEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows

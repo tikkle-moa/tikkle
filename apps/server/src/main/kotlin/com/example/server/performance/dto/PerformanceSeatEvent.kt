@@ -1,4 +1,4 @@
-package com.example.server.performance.stomp.dto
+package com.example.server.performance.dto
 
 enum class PerformanceSeatEvent {
   HOLD_RELEASED,

@@ -1,6 +1,5 @@
-package com.example.server.performance.stomp
+package com.example.server.performance
 
-import com.example.server.performance.PerformanceSeatEventPublisher
 import org.springframework.data.redis.connection.Message
 import org.springframework.data.redis.connection.MessageListener
 import org.springframework.stereotype.Component
