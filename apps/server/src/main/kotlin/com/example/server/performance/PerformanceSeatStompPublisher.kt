@@ -3,6 +3,7 @@ package com.example.server.performance
 import com.example.server.global.stomp.dto.StompEvent
 import com.example.server.performance.dto.HoldReleasedEventData
 import com.example.server.performance.dto.PerformanceSeatEvent
+import com.example.server.performance.dto.ReservationConfirmedEventData
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Component
@@ -12,7 +13,23 @@ import java.util.UUID
 
 @Component
 class PerformanceSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate, private val stringRedisTemplate: StringRedisTemplate) {
+  fun publishReservationConfirmed(performanceId: Long, seatIds: List<Long>) {
+    publish(
+      performanceId = performanceId,
+      type = PerformanceSeatEvent.RESERVATION_CONFIRMED,
+      data = ReservationConfirmedEventData(seatIds),
+    )
+  }
+
   fun publishHoldReleased(performanceId: Long, seatIds: List<Long>) {
+    publish(
+      performanceId = performanceId,
+      type = PerformanceSeatEvent.HOLD_RELEASED,
+      data = HoldReleasedEventData(seatIds),
+    )
+  }
+
+  private fun publish(performanceId: Long, type: PerformanceSeatEvent, data: Any) {
     val version = requireNotNull(
       stringRedisTemplate.opsForValue().increment(versionKey(performanceId)),
     ) {
@@ -25,8 +42,8 @@ class PerformanceSeatStompPublisher(private val messagingTemplate: SimpMessaging
         eventId = UUID.randomUUID(),
         version = version,
         occurredAt = OffsetDateTime.now(ZoneOffset.UTC),
-        type = PerformanceSeatEvent.HOLD_RELEASED.name,
-        data = HoldReleasedEventData(seatIds),
+        type = type.name,
+        data = data,
       ),
     )
   }
