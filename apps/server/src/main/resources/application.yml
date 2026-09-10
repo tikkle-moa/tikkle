@@ -103,3 +103,11 @@ reservation:
   hold-expiration:
     listener-enabled: ${RESERVATION_HOLD_EXPIRATION_LISTENER_ENABLED:true}
     redis-notify-keyspace-events: ${REDIS_NOTIFY_KEYSPACE_EVENTS:}
+  payment-reconciliation:
+    enabled: ${RESERVATION_PAYMENT_RECONCILIATION_ENABLED:true}
+    fixed-delay: ${RESERVATION_PAYMENT_RECONCILIATION_FIXED_DELAY:60000}
+
+toss:
+  payments:
+    base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
+    secret-key: ${TOSS_PAYMENTS_SECRET_KEY}
