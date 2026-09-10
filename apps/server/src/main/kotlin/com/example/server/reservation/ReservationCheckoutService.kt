@@ -111,14 +111,20 @@ class ReservationCheckoutService(
     }
 
     when (reservation.status) {
+      ReservationStatus.PAYMENT_CONFIRMING ->
+        throw CustomException(ErrorCode.CONFLICT, "결제 승인 결과를 확인하고 있습니다.")
+
+      ReservationStatus.REFUND_REQUIRED ->
+        throw CustomException(ErrorCode.CONFLICT, "결제 취소 또는 환불 확인이 필요합니다.")
+
       ReservationStatus.SUCCEEDED ->
         throw CustomException(ErrorCode.CONFLICT, "이미 종료된 결제입니다.")
 
       ReservationStatus.FAILED,
       ReservationStatus.CANCELLED,
       ReservationStatus.EXPIRED,
-      ->
-        throw CustomException(ErrorCode.CONFLICT, "이미 종료된 결제 요청입니다.")
+      ReservationStatus.REFUNDED,
+      -> throw CustomException(ErrorCode.CONFLICT, "이미 종료된 결제 요청입니다.")
 
       ReservationStatus.PAYMENT_PENDING -> Unit
     }
