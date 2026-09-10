@@ -84,6 +84,7 @@ test.describe("공연장 수정 페이지 정상 처리", () => {
 
     try {
       await page.goto(`/venues/${detail.venue.id}/edit`);
+      await expect(page.getByText(/1석 · 드래그 이동/)).toBeVisible();
       await page.getByRole("button", { name: "15개 좌석 생성" }).click();
       await expect(page.getByText(/16석 · 드래그 이동/)).toBeVisible();
       await page.getByRole("button", { name: "기존구역 1번", exact: true }).click();
@@ -270,7 +271,9 @@ test.describe("공연장 수정 페이지 API 오류", () => {
     try {
       await page.goto(`/venues/${detail.venue.id}/edit`);
       const changedName = `${detail.venue.name} 수정 실패`;
-      await page.getByLabel("공연장 이름").fill(changedName);
+      const nameInput = page.getByLabel("공연장 이름");
+      await expect(nameInput).toHaveValue(detail.venue.name);
+      await nameInput.fill(changedName);
       await setApiRole(page, "USER");
 
       const responsePromise = page.waitForResponse(
@@ -281,7 +284,7 @@ test.describe("공연장 수정 페이지 API 오류", () => {
 
       expect(response.status()).toBe(403);
       await expect(page.getByRole("alert")).toHaveText(/공연장 수정에 실패했습니다\./);
-      await expect(page.getByLabel("공연장 이름")).toHaveValue(changedName);
+      await expect(nameInput).toHaveValue(changedName);
       await expect(page).toHaveURL(`/venues/${detail.venue.id}/edit`);
     } finally {
       await deleteVenue(page, detail.venue.id);
@@ -295,7 +298,9 @@ test.describe("공연장 수정 페이지 API 오류", () => {
     try {
       await page.goto(`/venues/${detail.venue.id}/edit`);
       const changedName = `${detail.venue.name} 서버 오류`;
-      await page.getByLabel("공연장 이름").fill(changedName);
+      const nameInput = page.getByLabel("공연장 이름");
+      await expect(nameInput).toHaveValue(detail.venue.name);
+      await nameInput.fill(changedName);
       await page.route(`**/api/venues/${detail.venue.id}`, (route) =>
         route.fulfill({
           status: 500,
@@ -327,7 +332,9 @@ test.describe("공연장 수정 페이지 API 오류", () => {
     try {
       await page.goto(`/venues/${detail.venue.id}/edit`);
       const changedName = `${detail.venue.name} 네트워크 오류`;
-      await page.getByLabel("공연장 이름").fill(changedName);
+      const nameInput = page.getByLabel("공연장 이름");
+      await expect(nameInput).toHaveValue(detail.venue.name);
+      await nameInput.fill(changedName);
       await page.route(`**/api/venues/${detail.venue.id}`, (route) => route.abort("failed"));
 
       const requestPromise = page.waitForRequest(
@@ -338,7 +345,7 @@ test.describe("공연장 수정 페이지 API 오류", () => {
 
       expect(request.postDataJSON()).toEqual({ venue: { name: changedName } });
       await expect(page.getByRole("alert")).toHaveText("공연장 수정 중 오류가 발생했습니다.");
-      await expect(page.getByLabel("공연장 이름")).toHaveValue(changedName);
+      await expect(nameInput).toHaveValue(changedName);
       await expect(page).toHaveURL(`/venues/${detail.venue.id}/edit`);
     } finally {
       await deleteVenue(page, detail.venue.id);

@@ -80,6 +80,10 @@ jacoco {
   toolVersion = "0.8.14"
 }
 
+tasks.bootJar {
+  archiveFileName.set("server.jar")
+}
+
 tasks.withType<Test> {
   useJUnitPlatform()
 
