@@ -1,19 +1,18 @@
-package com.example.server.performance.stomp
+package com.example.server.reservation
 
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.global.stomp.dto.StompCommandSuccess
-import com.example.server.performance.stomp.dto.CancelPaymentCommand
-import com.example.server.performance.stomp.dto.CancelPaymentData
-import com.example.server.performance.stomp.dto.ConfirmPaymentCommand
-import com.example.server.performance.stomp.dto.ConfirmPaymentData
-import com.example.server.performance.stomp.dto.PerformanceSyncCommand
-import com.example.server.performance.stomp.dto.StartCheckoutCommand
-import com.example.server.performance.stomp.dto.StartCheckoutData
-import com.example.server.reservation.ReservationCheckoutService
 import com.example.server.reservation.dto.CancelCheckoutResult
+import com.example.server.reservation.dto.CancelPaymentCommand
+import com.example.server.reservation.dto.CancelPaymentData
+import com.example.server.reservation.dto.ConfirmPaymentCommand
+import com.example.server.reservation.dto.ConfirmPaymentData
+import com.example.server.reservation.dto.ReservationSyncCommand
+import com.example.server.reservation.dto.StartCheckoutCommand
+import com.example.server.reservation.dto.StartCheckoutData
 import com.example.server.reservation.dto.StartCheckoutResult
 import com.example.server.reservation.types.ReservationStatus
 import org.assertj.core.api.Assertions.assertThat
@@ -32,12 +31,12 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
-class PerformanceStompControllerTest {
+class ReservationStompControllerTest {
   @Mock
   lateinit var reservationCheckoutService: ReservationCheckoutService
 
   @InjectMocks
-  lateinit var performanceStompController: PerformanceStompController
+  lateinit var reservationStompController: ReservationStompController
 
   private val loginUser = LoginUserResult(
     userId = USER_ID,
@@ -46,9 +45,9 @@ class PerformanceStompControllerTest {
 
   @Test
   fun `예매 sync 응답은 요청 STOMP 세션에만 전송한다`() {
-    val syncMethod = PerformanceStompController::class.java.getDeclaredMethod(
+    val syncMethod = ReservationStompController::class.java.getDeclaredMethod(
       "sync",
-      PerformanceSyncCommand::class.java,
+      ReservationSyncCommand::class.java,
       LoginUserResult::class.java,
     )
 
@@ -57,7 +56,7 @@ class PerformanceStompControllerTest {
     )
 
     assertThat(sendToUser.value)
-      .containsExactly("/queue/performance")
+      .containsExactly("/queue/reservation")
     assertThat(sendToUser.broadcast)
       .isFalse()
   }
@@ -77,7 +76,7 @@ class PerformanceStompControllerTest {
         reservationCheckoutService.startCheckout(USER_ID, HOLD_ID),
       ).willReturn(result)
 
-      val response = performanceStompController.sync(
+      val response = reservationStompController.sync(
         command = command,
         loginUser = loginUser,
       )
@@ -114,7 +113,7 @@ class PerformanceStompControllerTest {
         reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID),
       ).willReturn(result)
 
-      val response = performanceStompController.sync(
+      val response = reservationStompController.sync(
         command = command,
         loginUser = loginUser,
       )
@@ -138,7 +137,7 @@ class PerformanceStompControllerTest {
   inner class ConfirmPayment {
     @Test
     fun `결제 PR 전에는 BAD_REQUEST를 던진다`() {
-      val command: PerformanceSyncCommand<*> = ConfirmPaymentCommand(
+      val command: ReservationSyncCommand<*> = ConfirmPaymentCommand(
         requestId = REQUEST_ID,
         data = ConfirmPaymentData(
           paymentKey = "payment-key",
@@ -148,7 +147,7 @@ class PerformanceStompControllerTest {
       )
 
       val exception = assertThrows<CustomException> {
-        performanceStompController.sync(
+        reservationStompController.sync(
           command = command,
           loginUser = loginUser,
         )
