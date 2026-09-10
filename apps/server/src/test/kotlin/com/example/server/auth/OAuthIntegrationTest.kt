@@ -7,6 +7,7 @@ import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.config.TestcontainersConfig
+import com.example.server.reservation.PaymentGateway
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DisplayName
@@ -22,6 +23,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
@@ -48,6 +50,8 @@ private const val GOOGLE_USER_INFO_URI = "https://openidconnect.googleapis.com/v
 @DisplayName("OAuth 인증 통합 테스트")
 class OAuthIntegrationTest {
   @Autowired lateinit var mockMvc: MockMvc
+
+  @MockitoBean lateinit var paymentGateway: PaymentGateway
 
   @Autowired lateinit var mockServer: MockRestServiceServer
 
