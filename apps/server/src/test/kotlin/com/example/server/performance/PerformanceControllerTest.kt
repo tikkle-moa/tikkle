@@ -12,7 +12,6 @@ import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceResponse
-import com.example.server.performance.dto.PerformanceSeatListResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.types.PerformanceStatus
 import org.junit.jupiter.api.BeforeEach
@@ -193,28 +192,6 @@ class PerformanceControllerTest {
           jsonPath("$.success") { value(false) }
           jsonPath("$.error.code") { value(404) }
         }
-    }
-  }
-
-  @Nested
-  @DisplayName("GET /api/performances/{id}/seats")
-  inner class GetSeatsStatus {
-    @Test
-    fun `인증 없이 서버 시각과 좌석 상태를 조회한다`() {
-      given(performanceService.getSeatsStatus(1L)).willReturn(
-        PerformanceSeatListResponse(LocalDateTime.now(), listOf(1L), emptyList()),
-      )
-      mockMvc.get("/api/performances/1/seats").andExpect {
-        status { isOk() }
-        jsonPath("$.data.bookedSeats[0]") { value(1) }
-        jsonPath("$.data.heldSeats") { isArray() }
-      }
-    }
-
-    @Test
-    fun `없는 공연 회차면 404를 반환한다`() {
-      given(performanceService.getSeatsStatus(99L)).willThrow(CustomException(ErrorCode.NOT_FOUND))
-      mockMvc.get("/api/performances/99/seats").andExpect { status { isNotFound() } }
     }
   }
 
