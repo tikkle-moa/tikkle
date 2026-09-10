@@ -270,7 +270,9 @@ test.describe("공연장 수정 페이지 API 오류", () => {
     try {
       await page.goto(`/venues/${detail.venue.id}/edit`);
       const changedName = `${detail.venue.name} 수정 실패`;
-      await page.getByLabel("공연장 이름").fill(changedName);
+      const nameInput = page.getByLabel("공연장 이름");
+      await expect(nameInput).toHaveValue(detail.venue.name);
+      await nameInput.fill(changedName);
       await setApiRole(page, "USER");
 
       const responsePromise = page.waitForResponse(
@@ -281,7 +283,7 @@ test.describe("공연장 수정 페이지 API 오류", () => {
 
       expect(response.status()).toBe(403);
       await expect(page.getByRole("alert")).toHaveText(/공연장 수정에 실패했습니다\./);
-      await expect(page.getByLabel("공연장 이름")).toHaveValue(changedName);
+      await expect(nameInput).toHaveValue(changedName);
       await expect(page).toHaveURL(`/venues/${detail.venue.id}/edit`);
     } finally {
       await deleteVenue(page, detail.venue.id);
