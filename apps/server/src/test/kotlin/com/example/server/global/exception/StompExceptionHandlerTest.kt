@@ -15,10 +15,13 @@ import org.mockito.BDDMockito.then
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.core.MethodParameter
 import org.springframework.messaging.Message
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.support.GenericMessage
+import org.springframework.validation.BeanPropertyBindingResult
 import tools.jackson.databind.ObjectMapper
 import java.nio.charset.StandardCharsets
 import java.security.Principal
@@ -118,6 +121,120 @@ class StompExceptionHandlerTest {
 
       handler.handleCustomException(
         exception = CustomException(ErrorCode.BAD_REQUEST),
+        message = GenericMessage("""{"invalid": true}"""),
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      then(messagingTemplateProvider)
+        .shouldHaveNoInteractions()
+    }
+  }
+
+  @Nested
+  inner class HandleMethodArgumentNotValidException {
+    @Test
+    fun `검증 실패 예외는 BAD_REQUEST 실패 Envelope로 전송한다`() {
+      givenValidRequestMetadata()
+      given(messagingTemplateProvider.getObject())
+        .willReturn(messagingTemplate)
+      val bindingResult = BeanPropertyBindingResult(
+        ValidationTarget(action = "GET_CURRENT_STATUS"),
+        "command",
+      ).apply {
+        rejectValue("action", "Pattern", "지원하지 않는 공연 동기화 명령입니다.")
+      }
+      val exception = MethodArgumentNotValidException(
+        requestMessage,
+        MethodParameter(
+          StompExceptionHandlerTest::class.java.getDeclaredMethod("validationTarget", ValidationTarget::class.java),
+          0,
+        ),
+        bindingResult,
+      )
+
+      handler.handleMethodArgumentNotValidException(
+        exception = exception,
+        message = requestMessage,
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      val responseCaptor = ArgumentCaptor.forClass(
+        StompCommandFailure::class.java,
+      )
+
+      then(messagingTemplate)
+        .should()
+        .convertAndSendToUser(
+          eq("1"),
+          eq("/queue/performance"),
+          responseCaptor.capture(),
+        )
+
+      assertThat(responseCaptor.value)
+        .isEqualTo(
+          StompCommandFailure(
+            requestId = requestId,
+            action = action,
+            error = StompCommandError(
+              code = ErrorCode.BAD_REQUEST.name,
+              message = "action: 지원하지 않는 공연 동기화 명령입니다.",
+            ),
+          ),
+        )
+    }
+
+    @Test
+    fun `검증 실패 메시지가 없으면 기본 BAD_REQUEST 메시지로 전송한다`() {
+      givenValidRequestMetadata()
+      given(messagingTemplateProvider.getObject())
+        .willReturn(messagingTemplate)
+      val exception = MethodArgumentNotValidException(
+        requestMessage,
+        validationMethodParameter(),
+      )
+
+      handler.handleMethodArgumentNotValidException(
+        exception = exception,
+        message = requestMessage,
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      val responseCaptor = ArgumentCaptor.forClass(
+        StompCommandFailure::class.java,
+      )
+
+      then(messagingTemplate)
+        .should()
+        .convertAndSendToUser(
+          eq("1"),
+          eq("/queue/performance"),
+          responseCaptor.capture(),
+        )
+
+      assertThat(responseCaptor.value.error.code)
+        .isEqualTo(ErrorCode.BAD_REQUEST.name)
+      assertThat(responseCaptor.value.error.message)
+        .isEqualTo(ErrorCode.BAD_REQUEST.message)
+    }
+
+    @Test
+    fun `검증 실패 예외도 요청 payload 파싱에 실패하면 메시지를 전송하지 않는다`() {
+      given(
+        objectMapper.readValue(
+          anyString(),
+          eq(StompRequestMetadata::class.java),
+        ),
+      ).willThrow(IllegalArgumentException("잘못된 payload"))
+      val exception = MethodArgumentNotValidException(
+        requestMessage,
+        validationMethodParameter(),
+      )
+
+      handler.handleMethodArgumentNotValidException(
+        exception = exception,
         message = GenericMessage("""{"invalid": true}"""),
         principal = principal,
         headerAccessor = headerAccessor("/api/performance/sync"),
@@ -278,4 +395,14 @@ class StompExceptionHandlerTest {
   private fun headerAccessor(destination: String): SimpMessageHeaderAccessor = SimpMessageHeaderAccessor.create().apply {
     this.destination = destination
   }
+
+  @Suppress("unused")
+  private fun validationTarget(command: ValidationTarget) = Unit
+
+  private fun validationMethodParameter() = MethodParameter(
+    StompExceptionHandlerTest::class.java.getDeclaredMethod("validationTarget", ValidationTarget::class.java),
+    0,
+  )
+
+  private data class ValidationTarget(val action: String)
 }

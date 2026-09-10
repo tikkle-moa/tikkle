@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.messaging.Message
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.web.bind.annotation.ControllerAdvice
@@ -41,6 +42,36 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       request = request,
       errorCode = exception.errorCode,
       message = exception.message,
+    )
+  }
+
+  @MessageExceptionHandler(MethodArgumentNotValidException::class)
+  fun handleMethodArgumentNotValidException(
+    exception: MethodArgumentNotValidException,
+    message: Message<*>,
+    principal: Principal,
+    headerAccessor: SimpMessageHeaderAccessor,
+  ) {
+    val request = readRequestMetadata(message) ?: return
+    val validationMessage = exception.bindingResult
+      ?.fieldErrors
+      ?.joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
+      .orEmpty()
+      .ifBlank { ErrorCode.BAD_REQUEST.message }
+
+    log.warn(
+      "STOMP MethodArgumentNotValidException: requestId=[{}], action=[{}], message=[{}]",
+      request.requestId,
+      request.action,
+      validationMessage,
+    )
+
+    sendFailure(
+      principal = principal,
+      destination = headerAccessor.destination,
+      request = request,
+      errorCode = ErrorCode.BAD_REQUEST,
+      message = validationMessage,
     )
   }
 
