@@ -580,6 +580,57 @@ class ReservationCheckoutServiceTest {
 
       then(performanceSeatStompPublisher).shouldHaveNoInteractions()
     }
+
+    @Test
+    fun `결제 승인 확인 중인 예매는 취소할 수 없다`() {
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(
+          reservation(status = ReservationStatus.PAYMENT_CONFIRMING),
+        )
+
+      val exception = assertThrows<CustomException> {
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      assertThat(exception).hasMessage("결제 승인 결과를 확인하고 있습니다.")
+      then(redisSeatHoldService).shouldHaveNoInteractions()
+      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `환불 확인이 필요한 예매는 취소할 수 없다`() {
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(
+          reservation(status = ReservationStatus.REFUND_REQUIRED),
+        )
+
+      val exception = assertThrows<CustomException> {
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      assertThat(exception).hasMessage("결제 취소 또는 환불 확인이 필요합니다.")
+      then(redisSeatHoldService).shouldHaveNoInteractions()
+      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `환불이 완료된 예매는 취소할 수 없다`() {
+      given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+        .willReturn(
+          reservation(status = ReservationStatus.REFUNDED),
+        )
+
+      val exception = assertThrows<CustomException> {
+        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      assertThat(exception).hasMessage("이미 종료된 결제 요청입니다.")
+      then(redisSeatHoldService).shouldHaveNoInteractions()
+      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
+    }
   }
 
   @Nested
@@ -633,7 +684,15 @@ class ReservationCheckoutServiceTest {
     @ParameterizedTest
     @EnumSource(
       value = ReservationStatus::class,
-      names = ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"],
+      names = [
+        "PAYMENT_CONFIRMING",
+        "SUCCEEDED",
+        "FAILED",
+        "CANCELLED",
+        "EXPIRED",
+        "REFUND_REQUIRED",
+        "REFUNDED",
+      ],
     )
     fun `결제 대기 상태가 아닌 예매면 만료 처리를 건너뛴다`(status: ReservationStatus) {
       val reservation = reservation(
