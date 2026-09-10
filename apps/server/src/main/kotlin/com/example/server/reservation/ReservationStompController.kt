@@ -1,8 +1,6 @@
 package com.example.server.reservation
 
 import com.example.server.auth.dto.LoginUserResult
-import com.example.server.global.exception.CustomException
-import com.example.server.global.exception.ErrorCode
 import com.example.server.global.stomp.dto.StompCommandSuccess
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentCommand
@@ -14,7 +12,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.stereotype.Controller
 
 @Controller
-class ReservationStompController(private val reservationCheckoutService: ReservationCheckoutService) {
+class ReservationStompController(
+  private val reservationCheckoutService: ReservationCheckoutService,
+  private val reservationPaymentService: ReservationPaymentService,
+) {
   @MessageMapping("/reservation/sync")
   @SendToUser(
     value = ["/queue/reservation"],
@@ -48,9 +49,17 @@ class ReservationStompController(private val reservationCheckoutService: Reserva
     }
 
     is ConfirmPaymentCommand -> {
-      throw CustomException(
-        ErrorCode.BAD_REQUEST,
-        "아직 지원하지 않는 결제 명령입니다.",
+      val result = reservationPaymentService.confirmPayment(
+        userId = loginUser.userId,
+        paymentKey = command.data.paymentKey,
+        orderId = command.data.orderId,
+        amount = command.data.amount,
+      )
+
+      StompCommandSuccess(
+        requestId = command.requestId,
+        action = command.action,
+        data = result,
       )
     }
   }
