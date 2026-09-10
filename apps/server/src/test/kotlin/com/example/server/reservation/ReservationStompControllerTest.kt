@@ -2,14 +2,13 @@ package com.example.server.reservation
 
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
-import com.example.server.global.exception.CustomException
-import com.example.server.global.exception.ErrorCode
 import com.example.server.global.stomp.dto.StompCommandSuccess
 import com.example.server.reservation.dto.CancelCheckoutResult
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.CancelPaymentData
 import com.example.server.reservation.dto.ConfirmPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentData
+import com.example.server.reservation.dto.ConfirmPaymentResult
 import com.example.server.reservation.dto.ReservationSyncCommand
 import com.example.server.reservation.dto.StartCheckoutCommand
 import com.example.server.reservation.dto.StartCheckoutData
@@ -19,7 +18,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
@@ -34,6 +32,9 @@ import java.util.UUID
 class ReservationStompControllerTest {
   @Mock
   lateinit var reservationCheckoutService: ReservationCheckoutService
+
+  @Mock
+  lateinit var reservationPaymentService: ReservationPaymentService
 
   @InjectMocks
   lateinit var reservationStompController: ReservationStompController
@@ -136,40 +137,69 @@ class ReservationStompControllerTest {
   @DisplayName("CONFIRM_PAYMENT")
   inner class ConfirmPayment {
     @Test
-    fun `결제 PR 전에는 BAD_REQUEST를 던진다`() {
-      val command: ReservationSyncCommand<*> = ConfirmPaymentCommand(
+    fun `결제 승인 서비스에 위임하고 성공 응답을 반환한다`() {
+      val command = ConfirmPaymentCommand(
         requestId = REQUEST_ID,
         data = ConfirmPaymentData(
-          paymentKey = "payment-key",
-          orderId = "order-id",
-          amount = 132_000,
+          paymentKey = PAYMENT_KEY,
+          orderId = ORDER_ID,
+          amount = AMOUNT,
+        ),
+      )
+      val result = ConfirmPaymentResult(
+        reservationId = RESERVATION_ID,
+        status = ReservationStatus.SUCCEEDED,
+      )
+
+      given(
+        reservationPaymentService.confirmPayment(
+          userId = USER_ID,
+          paymentKey = PAYMENT_KEY,
+          orderId = ORDER_ID,
+          amount = AMOUNT,
+        ),
+      ).willReturn(result)
+
+      val response = reservationStompController.sync(
+        command = command,
+        loginUser = loginUser,
+      )
+
+      assertThat(response).isEqualTo(
+        StompCommandSuccess(
+          requestId = REQUEST_ID,
+          action = "CONFIRM_PAYMENT",
+          data = result,
         ),
       )
 
-      val exception = assertThrows<CustomException> {
-        reservationStompController.sync(
-          command = command,
-          loginUser = loginUser,
+      then(reservationPaymentService)
+        .should()
+        .confirmPayment(
+          userId = USER_ID,
+          paymentKey = PAYMENT_KEY,
+          orderId = ORDER_ID,
+          amount = AMOUNT,
         )
-      }
-
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
       then(reservationCheckoutService).shouldHaveNoInteractions()
     }
   }
 
   private fun startCheckoutResult() = StartCheckoutResult(
-    reservationId = 501L,
-    orderId = "tikkle-order-501",
+    reservationId = RESERVATION_ID,
+    orderId = ORDER_ID,
     orderName = "아이유 콘서트 1회차 2석",
-    amount = 132_000,
+    amount = AMOUNT,
     paymentExpiresAt = LocalDateTime.of(2027, 1, 20, 19, 5),
   )
 
   companion object {
     private const val USER_ID = 1L
     private const val HOLD_ID = "hold-123"
-    private val REQUEST_ID = UUID.fromString("2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a")
     private const val RESERVATION_ID = 501L
+    private const val PAYMENT_KEY = "payment-key"
+    private const val ORDER_ID = "order-id"
+    private const val AMOUNT = 132_000
+    private val REQUEST_ID = UUID.fromString("2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a")
   }
 }
