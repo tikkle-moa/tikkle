@@ -24,6 +24,7 @@ services:
       NGINX_ENVSUBST_FILTER: "^(DOMAIN_NAME|CERTIFICATE_NAME)$$"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       server:
         condition: service_healthy
