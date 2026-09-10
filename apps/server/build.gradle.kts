@@ -195,11 +195,14 @@ tasks.jacocoTestReport {
         fileTree(it) {
           include(
             "**/*Controller*",
+            "**/*Scheduler*",
             "**/*Service*",
             "**/*Provider*",
             "**/*Handler*",
             "**/*EntryPoint*",
             "**/*Interceptor*",
+            "**/*Publisher*",
+            "**/*Listener*",
           )
           exclude(
             "**/dto/**",

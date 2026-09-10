@@ -98,3 +98,8 @@ oauth:
       token-uri: https://github.com/login/oauth/access_token
       user-info-uri: https://api.github.com/user
       scope: user:email
+
+reservation:
+  hold-expiration:
+    listener-enabled: ${RESERVATION_HOLD_EXPIRATION_LISTENER_ENABLED:true}
+    redis-notify-keyspace-events: ${REDIS_NOTIFY_KEYSPACE_EVENTS:}

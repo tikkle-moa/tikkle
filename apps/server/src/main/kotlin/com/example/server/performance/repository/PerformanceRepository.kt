@@ -35,4 +35,15 @@ interface PerformanceRepository : JpaRepository<Performance, Long> {
   @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query("DELETE FROM Performance p WHERE p.concert.id = :concertId")
   fun deleteAllByConcertId(concertId: Long): Int
+
+  @Query(
+    """
+    SELECT p
+    FROM Performance p
+    JOIN FETCH p.concert c
+    JOIN FETCH c.venue
+    WHERE p.id = :id
+  """,
+  )
+  fun findByIdWithConcertAndVenue(id: Long): Performance?
 }

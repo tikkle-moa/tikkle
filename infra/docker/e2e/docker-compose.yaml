@@ -90,7 +90,7 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    command: redis-server --requirepass tikkle_e2e_redis_password
+    command: redis-server --requirepass tikkle_e2e_redis_password --notify-keyspace-events Ex
     tmpfs:
       - /data
     healthcheck:
