@@ -2,6 +2,7 @@ package com.example.server.performance
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.dto.SeatHold
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.venue.repository.VenueSeatRepository
@@ -172,7 +173,7 @@ class RedisSeatHoldService(
             released = released + redis.call('DEL', KEYS[i])
           end
         end
-        
+
         released = released + redis.call('DEL', KEYS[#KEYS])
         return released
         """.trimIndent(),

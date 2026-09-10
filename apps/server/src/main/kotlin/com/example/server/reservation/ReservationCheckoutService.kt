@@ -4,8 +4,8 @@ import com.example.server.auth.repository.UserRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.PerformanceSeatEventPublisher
-import com.example.server.performance.SeatHold
 import com.example.server.performance.SeatHoldService
+import com.example.server.performance.dto.SeatHold
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.dto.CancelCheckoutResult
 import com.example.server.reservation.dto.StartCheckoutResult

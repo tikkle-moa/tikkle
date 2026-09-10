@@ -1,5 +1,6 @@
 package com.example.server.performance
 
+import com.example.server.performance.dto.SeatHold
 import java.time.LocalDateTime
 
 interface SeatHoldService {

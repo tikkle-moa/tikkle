@@ -1,4 +1,4 @@
-package com.example.server.performance
+package com.example.server.performance.dto
 
 import java.time.LocalDateTime
 

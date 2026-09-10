@@ -7,8 +7,8 @@ import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.PerformanceSeatEventPublisher
-import com.example.server.performance.SeatHold
 import com.example.server.performance.SeatHoldService
+import com.example.server.performance.dto.SeatHold
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.entity.Reservation
