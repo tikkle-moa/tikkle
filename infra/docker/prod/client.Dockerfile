@@ -11,7 +11,7 @@ RUN corepack enable && pnpm install --frozen-lockfile --filter client... --ignor
 COPY apps/client ./apps/client
 COPY packages/api-types ./packages/api-types
 
-RUN pnpm --filter client build
+RUN pnpm build:client
 
 FROM nginx:stable-alpine
 

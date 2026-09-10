@@ -10,8 +10,7 @@ RUN chmod +x gradlew
 
 COPY apps/server/src ./src
 
-RUN ./gradlew bootJar --no-daemon \
-  && cp build/libs/*.jar /app/server.jar
+RUN ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre
 
@@ -23,7 +22,7 @@ RUN apt-get update \
   && groupadd --system app \
   && useradd --system --gid app app
 
-COPY --from=build --chown=app:app /app/server.jar ./server.jar
+COPY --from=build --chown=app:app /app/build/libs/server.jar ./server.jar
 
 USER app
 

@@ -7,7 +7,7 @@
     "dev:client": "pnpm -F client dev",
     "dev:server": "cd apps/server && ./gradlew bootRun",
     "build:client": "pnpm -F client build",
-    "build:server": "cd apps/server && ./gradlew build",
+    "build:server": "cd apps/server && ./gradlew bootJar",
     "build": "pnpm build:client && pnpm build:server",
     "lint": "pnpm -F client lint",
     "lint:fix": "pnpm -F client lint:fix",
