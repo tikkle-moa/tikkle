@@ -21,4 +21,14 @@ interface VenueSeatRepository : JpaRepository<VenueSeat, Long> {
   @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query("DELETE FROM VenueSeat vs WHERE vs.venue.id = :venueId")
   fun deleteAllByVenueId(venueId: Long): Int
+
+  @Query(
+    """
+  SELECT vs
+  FROM VenueSeat vs
+  WHERE vs.venue.id = :venueId
+    AND vs.id IN :venueSeatIds
+  """,
+  )
+  fun findAllByVenueIdAndIdIn(venueId: Long, venueSeatIds: Collection<Long>): List<VenueSeat>
 }
