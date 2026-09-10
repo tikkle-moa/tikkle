@@ -122,7 +122,9 @@ test.describe("콘서트 수정 페이지 입력 오류", () => {
 
     try {
       await page.goto(`/concerts/${concert.id}/edit`);
-      await page.getByLabel("콘서트 제목").fill("");
+      const titleInput = page.getByLabel("콘서트 제목");
+      await expect(titleInput).toHaveValue(concert.title);
+      await titleInput.fill("");
       await page.getByRole("button", { name: "변경사항 저장", exact: true }).click();
 
       await expect(page.getByText("콘서트 제목을 입력해 주세요.")).toBeVisible();
@@ -141,6 +143,8 @@ test.describe("콘서트 수정 페이지 입력 오류", () => {
 
     try {
       await page.goto(`/concerts/${concert.id}/edit`);
+      const titleInput = page.getByLabel("콘서트 제목");
+      await expect(titleInput).toHaveValue(concert.title);
       await page.getByLabel("포스터 URL").fill("invalid-url");
       await page.getByRole("button", { name: "변경사항 저장", exact: true }).click();
 
