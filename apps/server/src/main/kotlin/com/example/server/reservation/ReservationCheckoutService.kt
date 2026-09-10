@@ -3,8 +3,8 @@ package com.example.server.reservation
 import com.example.server.auth.repository.UserRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.performance.PerformanceSeatEventPublisher
-import com.example.server.performance.SeatHoldService
+import com.example.server.performance.PerformanceSeatStompPublisher
+import com.example.server.performance.RedisSeatHoldService
 import com.example.server.performance.dto.SeatHold
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.dto.CancelCheckoutResult
@@ -27,12 +27,12 @@ class ReservationCheckoutService(
   private val performanceRepository: PerformanceRepository,
   private val venueSeatRepository: VenueSeatRepository,
   private val reservationRepository: ReservationRepository,
-  private val seatHoldService: SeatHoldService,
-  private val performanceSeatEventPublisher: PerformanceSeatEventPublisher,
+  private val redisSeatHoldService: RedisSeatHoldService,
+  private val performanceSeatStompPublisher: PerformanceSeatStompPublisher,
 ) {
   @Transactional
   fun startCheckout(userId: Long, holdId: String): StartCheckoutResult {
-    val hold = seatHoldService.findActive(holdId)
+    val hold = redisSeatHoldService.findActive(holdId)
       ?: throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
 
     if (hold.ownerUserId != userId) {
@@ -92,7 +92,7 @@ class ReservationCheckoutService(
       )
     }
 
-    if (seatHoldService.extendForPayment(holdId, paymentExpiresAt) == null) {
+    if (redisSeatHoldService.extendForPayment(holdId, paymentExpiresAt) == null) {
       reservation.status = ReservationStatus.EXPIRED
       throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
     }
@@ -131,7 +131,7 @@ class ReservationCheckoutService(
       }
 
     releaseHoldAfterCommit(reservation.holdId) { hold ->
-      performanceSeatEventPublisher.publishHoldReleased(
+      performanceSeatStompPublisher.publishHoldReleased(
         performanceId = hold.performanceId,
         seatIds = hold.venueSeatIds,
       )
@@ -154,7 +154,7 @@ class ReservationCheckoutService(
 
     reservation.status = ReservationStatus.EXPIRED
     releaseHoldAfterCommit(reservation.holdId) { hold ->
-      performanceSeatEventPublisher.publishHoldReleased(
+      performanceSeatStompPublisher.publishHoldReleased(
         performanceId = hold.performanceId,
         seatIds = hold.venueSeatIds,
       )
@@ -178,14 +178,14 @@ class ReservationCheckoutService(
 
   private fun releaseHoldAfterCommit(holdId: String, onReleased: (SeatHold) -> Unit) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      seatHoldService.release(holdId)?.let(onReleased)
+      redisSeatHoldService.release(holdId)?.let(onReleased)
       return
     }
 
     TransactionSynchronizationManager.registerSynchronization(
       object : TransactionSynchronization {
         override fun afterCommit() {
-          seatHoldService.release(holdId)?.let(onReleased)
+          redisSeatHoldService.release(holdId)?.let(onReleased)
         }
       },
     )

@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets
 @ExtendWith(MockitoExtension::class)
 class RedisSeatHoldExpirationListenerTest {
   @Mock
-  lateinit var performanceSeatEventPublisher: PerformanceSeatEventPublisher
+  lateinit var performanceSeatStompPublisher: PerformanceSeatStompPublisher
 
   @InjectMocks
   lateinit var listener: RedisSeatHoldExpirationListener
@@ -31,7 +31,7 @@ class RedisSeatHoldExpirationListenerTest {
         null,
       )
 
-      then(performanceSeatEventPublisher)
+      then(performanceSeatStompPublisher)
         .should()
         .publishHoldReleased(
           performanceId = 10L,
@@ -50,7 +50,7 @@ class RedisSeatHoldExpirationListenerTest {
     fun `좌석 Hold 키가 아닌 만료 이벤트는 무시한다`(key: String) {
       listener.onMessage(message(key), null)
 
-      then(performanceSeatEventPublisher).shouldHaveNoInteractions()
+      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
     }
   }
 

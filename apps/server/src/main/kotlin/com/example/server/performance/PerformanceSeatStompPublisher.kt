@@ -11,9 +11,8 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 @Component
-class PerformanceSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate, private val stringRedisTemplate: StringRedisTemplate) :
-  PerformanceSeatEventPublisher {
-  override fun publishHoldReleased(performanceId: Long, seatIds: List<Long>) {
+class PerformanceSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate, private val stringRedisTemplate: StringRedisTemplate) {
+  fun publishHoldReleased(performanceId: Long, seatIds: List<Long>) {
     val version = requireNotNull(
       stringRedisTemplate.opsForValue().increment(versionKey(performanceId)),
     ) {

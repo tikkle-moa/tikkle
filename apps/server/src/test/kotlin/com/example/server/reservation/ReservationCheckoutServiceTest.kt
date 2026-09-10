@@ -6,8 +6,8 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.performance.PerformanceSeatEventPublisher
-import com.example.server.performance.SeatHoldService
+import com.example.server.performance.PerformanceSeatStompPublisher
+import com.example.server.performance.RedisSeatHoldService
 import com.example.server.performance.dto.SeatHold
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
@@ -55,10 +55,10 @@ class ReservationCheckoutServiceTest {
   lateinit var reservationRepository: ReservationRepository
 
   @Mock
-  lateinit var seatHoldService: SeatHoldService
+  lateinit var redisSeatHoldService: RedisSeatHoldService
 
   @Mock
-  lateinit var performanceSeatEventPublisher: PerformanceSeatEventPublisher
+  lateinit var performanceSeatStompPublisher: PerformanceSeatStompPublisher
 
   @InjectMocks
   lateinit var reservationCheckoutService: ReservationCheckoutService
@@ -82,7 +82,7 @@ class ReservationCheckoutServiceTest {
         amount = 132_000,
       )
 
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold)
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(null, savedReservation)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
@@ -96,7 +96,7 @@ class ReservationCheckoutServiceTest {
       given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
       givenPaymentPendingInsert(savedReservation)
       given(
-        seatHoldService.extendForPayment(
+        redisSeatHoldService.extendForPayment(
           anyString(),
           anyLocalDateTime(),
         ),
@@ -126,7 +126,7 @@ class ReservationCheckoutServiceTest {
           amount = anyInt(),
           paymentExpiresAt = anyLocalDateTime(),
         )
-      then(seatHoldService)
+      then(redisSeatHoldService)
         .should()
         .extendForPayment(
           anyString(),
@@ -144,7 +144,7 @@ class ReservationCheckoutServiceTest {
         venueSeat(id = 102L, price = 66_000),
       )
 
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold)
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(null, null)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
@@ -164,7 +164,7 @@ class ReservationCheckoutServiceTest {
 
       assertThat(exception.message)
         .isEqualTo("생성한 결제 대기 예매를 찾을 수 없습니다.")
-      then(seatHoldService)
+      then(redisSeatHoldService)
         .should(never())
         .extendForPayment(
           anyString(),
@@ -182,7 +182,7 @@ class ReservationCheckoutServiceTest {
         status = ReservationStatus.PAYMENT_PENDING,
       )
 
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold)
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(existingReservation)
 
@@ -198,9 +198,9 @@ class ReservationCheckoutServiceTest {
       then(performanceRepository).shouldHaveNoInteractions()
       then(venueSeatRepository).shouldHaveNoInteractions()
       then(userRepository).shouldHaveNoInteractions()
-      then(seatHoldService).should().findActive(HOLD_ID)
+      then(redisSeatHoldService).should().findActive(HOLD_ID)
       then(reservationRepository).should().findByHoldIdForUpdate(HOLD_ID)
-      then(seatHoldService).shouldHaveNoMoreInteractions()
+      then(redisSeatHoldService).shouldHaveNoMoreInteractions()
       then(reservationRepository).shouldHaveNoMoreInteractions()
     }
 
@@ -219,7 +219,7 @@ class ReservationCheckoutServiceTest {
         booker = user,
       )
 
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold)
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(null, existingReservation)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
@@ -239,7 +239,7 @@ class ReservationCheckoutServiceTest {
 
       assertThat(result.reservationId).isEqualTo(RESERVATION_ID)
       assertThat(result.orderId).isEqualTo(existingReservation.orderId)
-      then(seatHoldService)
+      then(redisSeatHoldService)
         .should(never())
         .extendForPayment(
           anyString(),
@@ -249,7 +249,7 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `기존 예매 소유자가 아니면 FORBIDDEN을 던진다`() {
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold())
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(reservation(booker = user(OTHER_USER_ID)))
 
@@ -262,7 +262,7 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `공연 회차가 없으면 NOT_FOUND를 던진다`() {
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold())
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(null)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
@@ -279,7 +279,7 @@ class ReservationCheckoutServiceTest {
     fun `Hold의 좌석이 공연장에 없으면 NOT_FOUND를 던진다`() {
       val performance = performance()
 
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold())
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(null)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
@@ -306,7 +306,7 @@ class ReservationCheckoutServiceTest {
         venueSeat(102L, 66_000),
       )
 
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold())
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(null)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
@@ -328,7 +328,7 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `활성 Hold가 없으면 HOLD_EXPIRED를 던진다`() {
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(null)
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(null)
 
       val exception = assertThrows<CustomException> {
         reservationCheckoutService.startCheckout(
@@ -345,7 +345,7 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `Hold 소유자가 아니면 FORBIDDEN을 던진다`() {
-      given(seatHoldService.findActive(HOLD_ID))
+      given(redisSeatHoldService.findActive(HOLD_ID))
         .willReturn(hold(ownerUserId = OTHER_USER_ID))
 
       val exception = assertThrows<CustomException> {
@@ -362,7 +362,7 @@ class ReservationCheckoutServiceTest {
 
     @Test
     fun `결제 대기 중이 아닌 기존 예매면 CONFLICT를 던진다`() {
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold())
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold())
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(reservation(status = ReservationStatus.SUCCEEDED))
 
@@ -374,7 +374,7 @@ class ReservationCheckoutServiceTest {
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
-      then(seatHoldService).shouldHaveNoMoreInteractions()
+      then(redisSeatHoldService).shouldHaveNoMoreInteractions()
     }
 
     @Test
@@ -385,7 +385,7 @@ class ReservationCheckoutServiceTest {
       val performance = performance()
       val seats = listOf(venueSeat(101L, 66_000))
 
-      given(seatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold)
       given(reservationRepository.findByHoldIdForUpdate(HOLD_ID))
         .willReturn(null, insertedReservation)
       given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID))
@@ -399,7 +399,7 @@ class ReservationCheckoutServiceTest {
       given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
       givenPaymentPendingInsert(insertedReservation)
       given(
-        seatHoldService.extendForPayment(
+        redisSeatHoldService.extendForPayment(
           anyString(),
           anyLocalDateTime(),
         ),
@@ -425,7 +425,7 @@ class ReservationCheckoutServiceTest {
 
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation)
-      given(seatHoldService.release(HOLD_ID)).willReturn(releasedHold)
+      given(redisSeatHoldService.release(HOLD_ID)).willReturn(releasedHold)
 
       val result = reservationCheckoutService.cancelCheckout(
         userId = USER_ID,
@@ -435,8 +435,8 @@ class ReservationCheckoutServiceTest {
       assertThat(result.reservationId).isEqualTo(RESERVATION_ID)
       assertThat(result.status).isEqualTo(ReservationStatus.CANCELLED)
       assertThat(reservation.status).isEqualTo(ReservationStatus.CANCELLED)
-      then(seatHoldService).should().release(HOLD_ID)
-      then(performanceSeatEventPublisher)
+      then(redisSeatHoldService).should().release(HOLD_ID)
+      then(performanceSeatStompPublisher)
         .should()
         .publishHoldReleased(
           performanceId = PERFORMANCE_ID,
@@ -455,7 +455,7 @@ class ReservationCheckoutServiceTest {
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
       assertThat(exception).hasMessage("결제 대상 예매를 찾을 수 없습니다.")
-      then(seatHoldService).shouldHaveNoInteractions()
+      then(redisSeatHoldService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -468,7 +468,7 @@ class ReservationCheckoutServiceTest {
       }
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
-      then(seatHoldService).shouldHaveNoInteractions()
+      then(redisSeatHoldService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -482,7 +482,7 @@ class ReservationCheckoutServiceTest {
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
       assertThat(exception).hasMessage("이미 종료된 결제입니다.")
-      then(seatHoldService).shouldHaveNoInteractions()
+      then(redisSeatHoldService).shouldHaveNoInteractions()
     }
 
     @ParameterizedTest
@@ -500,7 +500,7 @@ class ReservationCheckoutServiceTest {
 
       assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
       assertThat(exception).hasMessage("이미 종료된 결제 요청입니다.")
-      then(seatHoldService).shouldHaveNoInteractions()
+      then(redisSeatHoldService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -515,29 +515,29 @@ class ReservationCheckoutServiceTest {
 
       assertThat(result.status).isEqualTo(ReservationStatus.EXPIRED)
       assertThat(reservation.status).isEqualTo(ReservationStatus.EXPIRED)
-      then(seatHoldService).should().release(HOLD_ID)
+      then(redisSeatHoldService).should().release(HOLD_ID)
     }
 
     @Test
     fun `트랜잭션 커밋 후에만 Hold를 해제한다`() {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation())
-      given(seatHoldService.release(HOLD_ID)).willReturn(hold())
+      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold())
 
       TransactionSynchronizationManager.initSynchronization()
 
       try {
         reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
 
-        then(seatHoldService).should(never()).release(HOLD_ID)
-        then(performanceSeatEventPublisher).shouldHaveNoInteractions()
+        then(redisSeatHoldService).should(never()).release(HOLD_ID)
+        then(performanceSeatStompPublisher).shouldHaveNoInteractions()
 
         TransactionSynchronizationManager
           .getSynchronizations()
           .forEach { it.afterCommit() }
 
-        then(seatHoldService).should().release(HOLD_ID)
-        then(performanceSeatEventPublisher)
+        then(redisSeatHoldService).should().release(HOLD_ID)
+        then(performanceSeatStompPublisher)
           .should()
           .publishHoldReleased(
             performanceId = PERFORMANCE_ID,
@@ -552,7 +552,7 @@ class ReservationCheckoutServiceTest {
     fun `커밋 시점에 Hold가 이미 사라졌으면 좌석 해제 이벤트를 발행하지 않는다`() {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation())
-      given(seatHoldService.release(HOLD_ID)).willReturn(null)
+      given(redisSeatHoldService.release(HOLD_ID)).willReturn(null)
 
       TransactionSynchronizationManager.initSynchronization()
 
@@ -563,8 +563,8 @@ class ReservationCheckoutServiceTest {
           .getSynchronizations()
           .forEach { it.afterCommit() }
 
-        then(seatHoldService).should().release(HOLD_ID)
-        then(performanceSeatEventPublisher).shouldHaveNoInteractions()
+        then(redisSeatHoldService).should().release(HOLD_ID)
+        then(performanceSeatStompPublisher).shouldHaveNoInteractions()
       } finally {
         TransactionSynchronizationManager.clearSynchronization()
       }
@@ -574,11 +574,11 @@ class ReservationCheckoutServiceTest {
     fun `Hold가 이미 사라졌으면 좌석 해제 이벤트를 발행하지 않는다`() {
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation())
-      given(seatHoldService.release(HOLD_ID)).willReturn(null)
+      given(redisSeatHoldService.release(HOLD_ID)).willReturn(null)
 
       reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
 
-      then(performanceSeatEventPublisher).shouldHaveNoInteractions()
+      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
     }
   }
 
@@ -592,13 +592,13 @@ class ReservationCheckoutServiceTest {
       )
       given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
         .willReturn(reservation)
-      given(seatHoldService.release(HOLD_ID)).willReturn(hold())
+      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold())
 
       reservationCheckoutService.expireCheckout(RESERVATION_ID)
 
       assertThat(reservation.status).isEqualTo(ReservationStatus.EXPIRED)
-      then(seatHoldService).should().release(HOLD_ID)
-      then(performanceSeatEventPublisher)
+      then(redisSeatHoldService).should().release(HOLD_ID)
+      then(performanceSeatStompPublisher)
         .should()
         .publishHoldReleased(
           performanceId = PERFORMANCE_ID,
@@ -613,7 +613,7 @@ class ReservationCheckoutServiceTest {
 
       reservationCheckoutService.expireCheckout(RESERVATION_ID)
 
-      then(seatHoldService).shouldHaveNoInteractions()
+      then(redisSeatHoldService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -627,7 +627,7 @@ class ReservationCheckoutServiceTest {
       reservationCheckoutService.expireCheckout(RESERVATION_ID)
 
       assertThat(reservation.status).isEqualTo(ReservationStatus.PAYMENT_PENDING)
-      then(seatHoldService).shouldHaveNoInteractions()
+      then(redisSeatHoldService).shouldHaveNoInteractions()
     }
 
     @ParameterizedTest
@@ -646,7 +646,7 @@ class ReservationCheckoutServiceTest {
       reservationCheckoutService.expireCheckout(RESERVATION_ID)
 
       assertThat(reservation.status).isEqualTo(status)
-      then(seatHoldService).shouldHaveNoInteractions()
+      then(redisSeatHoldService).shouldHaveNoInteractions()
     }
   }
 

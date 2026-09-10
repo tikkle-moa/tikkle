@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component
 import java.nio.charset.StandardCharsets
 
 @Component
-class RedisSeatHoldExpirationListener(private val performanceSeatEventPublisher: PerformanceSeatEventPublisher) : MessageListener {
+class RedisSeatHoldExpirationListener(private val performanceSeatStompPublisher: PerformanceSeatStompPublisher) : MessageListener {
   override fun onMessage(message: Message, pattern: ByteArray?) {
     val key = message.body.toString(StandardCharsets.UTF_8)
 
     val match = holdSeatKeyPattern.matchEntire(key)
       ?: return
 
-    performanceSeatEventPublisher.publishHoldReleased(
+    performanceSeatStompPublisher.publishHoldReleased(
       performanceId = match.groupValues[1].toLong(),
       seatIds = listOf(match.groupValues[2].toLong()),
     )

@@ -21,8 +21,8 @@ class RedisSeatHoldService(
   private val reservationSeatRepository: ReservationSeatRepository,
   private val stringRedisTemplate: StringRedisTemplate,
   private val objectMapper: ObjectMapper,
-) : SeatHoldService {
-  override fun create(performanceId: Long, ownerUserId: Long, venueSeatIds: List<Long>): SeatHold {
+) {
+  fun create(performanceId: Long, ownerUserId: Long, venueSeatIds: List<Long>): SeatHold {
     val seatIds = venueSeatIds.distinct()
 
     if (seatIds.isEmpty()) {
@@ -68,14 +68,14 @@ class RedisSeatHoldService(
     return hold
   }
 
-  override fun findActive(holdId: String): SeatHold? {
+  fun findActive(holdId: String): SeatHold? {
     val value = stringRedisTemplate.opsForValue().get(holdKey(holdId))
       ?: return null
 
     return objectMapper.readValue(value, SeatHold::class.java)
   }
 
-  override fun extendForPayment(holdId: String, paymentExpiresAt: LocalDateTime): SeatHold? {
+  fun extendForPayment(holdId: String, paymentExpiresAt: LocalDateTime): SeatHold? {
     val hold = findActive(holdId)
       ?: return null
 
@@ -98,7 +98,7 @@ class RedisSeatHoldService(
     return extendedHold.takeIf { extended }
   }
 
-  override fun release(holdId: String): SeatHold? {
+  fun release(holdId: String): SeatHold? {
     val hold = findActive(holdId)
       ?: return null
 
