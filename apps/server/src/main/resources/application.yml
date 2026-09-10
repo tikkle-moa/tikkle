@@ -47,6 +47,7 @@ springwolf:
   use-fqn: false
   enabled: ${SPRINGWOLF_ENABLED:true}
   docket:
+    payload-schema-format: openapi_v3
     base-package: com.example.server
     info:
       title: Tikkle STOMP API
