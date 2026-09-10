@@ -6,7 +6,6 @@ import com.example.server.global.openapi.ErrorResponseItem
 import com.example.server.global.response.ApiResponse
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceResponse
-import com.example.server.performance.dto.PerformanceSeatListResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -53,23 +52,6 @@ class PerformanceController(private val performanceService: PerformanceService) 
     val performanceResponse = performanceService.getPerformance(id)
 
     return ResponseEntity.ok(ApiResponse.ok(performanceResponse))
-  }
-
-  @Operation(
-    summary = "공연 좌석 상태 목록 조회",
-    description = "공연 회차의 좌석 상태 목록을 반환합니다.",
-    responses = [SwaggerApiResponse(responseCode = "200", description = "공연 좌석 상태 목록 조회 성공")],
-  )
-  @ErrorResponse(
-    responses = [
-      ErrorResponseItem(ErrorCode.NOT_FOUND, description = "공연 회차를 찾을 수 없음"),
-    ],
-  )
-  @GetMapping("/{id}/seats")
-  fun getSeatsStatus(@PathVariable id: Long): ResponseEntity<ApiResponse.Success<PerformanceSeatListResponse>> {
-    val seatListResponse = performanceService.getSeatsStatus(id)
-
-    return ResponseEntity.ok(ApiResponse.ok(seatListResponse))
   }
 
   @Operation(

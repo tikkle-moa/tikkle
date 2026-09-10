@@ -9,12 +9,19 @@ import com.example.server.performance.dto.PerformanceSeatListResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.reservation.repository.ReservationSeatRepository
+import com.example.server.reservation.types.ReservationStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 @Service
-class PerformanceService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
+class PerformanceService(
+  private val concertRepository: ConcertRepository,
+  private val performanceRepository: PerformanceRepository,
+  private val reservationSeatRepository: ReservationSeatRepository,
+  private val redisSeatHoldService: RedisSeatHoldService,
+) {
   @Transactional(readOnly = true)
   fun getPerformances(): List<PerformanceResponse> {
     val performances = performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc()
@@ -37,8 +44,11 @@ class PerformanceService(private val concertRepository: ConcertRepository, priva
 
     return PerformanceSeatListResponse(
       serverTime = LocalDateTime.now(),
-      bookedSeats = emptyList(), // TODO: Implement booked seats retrieval
-      heldSeats = emptyList(), // TODO: Implement held seats retrieval
+      bookedSeats = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+        performanceId = performanceId,
+        status = ReservationStatus.SUCCEEDED,
+      ),
+      heldSeats = redisSeatHoldService.findHeldSeatsByPerformanceId(performanceId),
     )
   }
 
