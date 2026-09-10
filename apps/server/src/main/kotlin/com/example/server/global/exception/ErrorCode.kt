@@ -16,10 +16,4 @@ enum class ErrorCode(val status: HttpStatus, val message: String) {
   // 5xx Server Error
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
   BAD_GATEWAY(HttpStatus.BAD_GATEWAY, "잘못된 게이트웨이입니다."),
-
-  // STOMP Error
-  HOLD_EXPIRED(HttpStatus.CONFLICT, "좌석 점유가 만료되었습니다."),
-  PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "결제 대상 예매를 찾을 수 없습니다."),
-  PAYMENT_ALREADY_FINISHED(HttpStatus.CONFLICT, "이미 종료된 결제입니다."),
-  PAYMENT_ALREADY_CANCELLED(HttpStatus.CONFLICT, "이미 종료된 결제 요청입니다."),
 }

@@ -337,7 +337,8 @@ class ReservationCheckoutServiceTest {
         )
       }
 
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.HOLD_EXPIRED)
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      assertThat(exception).hasMessage("좌석 점유가 만료되었습니다.")
       then(reservationRepository).shouldHaveNoInteractions()
       then(performanceRepository).shouldHaveNoInteractions()
     }
@@ -408,7 +409,8 @@ class ReservationCheckoutServiceTest {
         reservationCheckoutService.startCheckout(USER_ID, HOLD_ID)
       }
 
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.HOLD_EXPIRED)
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      assertThat(exception).hasMessage("좌석 점유가 만료되었습니다.")
       assertThat(insertedReservation.status).isEqualTo(ReservationStatus.EXPIRED)
     }
   }
@@ -451,7 +453,8 @@ class ReservationCheckoutServiceTest {
         reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
       }
 
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_NOT_FOUND)
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+      assertThat(exception).hasMessage("결제 대상 예매를 찾을 수 없습니다.")
       then(seatHoldService).shouldHaveNoInteractions()
     }
 
@@ -477,7 +480,8 @@ class ReservationCheckoutServiceTest {
         reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
       }
 
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_ALREADY_FINISHED)
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      assertThat(exception).hasMessage("이미 종료된 결제입니다.")
       then(seatHoldService).shouldHaveNoInteractions()
     }
 
@@ -494,7 +498,8 @@ class ReservationCheckoutServiceTest {
         reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID)
       }
 
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.PAYMENT_ALREADY_CANCELLED)
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      assertThat(exception).hasMessage("이미 종료된 결제 요청입니다.")
       then(seatHoldService).shouldHaveNoInteractions()
     }
 

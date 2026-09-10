@@ -33,7 +33,7 @@ class ReservationCheckoutService(
   @Transactional
   fun startCheckout(userId: Long, holdId: String): StartCheckoutResult {
     val hold = seatHoldService.findActive(holdId)
-      ?: throw CustomException(ErrorCode.HOLD_EXPIRED)
+      ?: throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
 
     if (hold.ownerUserId != userId) {
       throw CustomException(ErrorCode.FORBIDDEN)
@@ -94,7 +94,7 @@ class ReservationCheckoutService(
 
     if (seatHoldService.extendForPayment(holdId, paymentExpiresAt) == null) {
       reservation.status = ReservationStatus.EXPIRED
-      throw CustomException(ErrorCode.HOLD_EXPIRED)
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
     }
 
     return StartCheckoutResult.from(reservation)
@@ -104,7 +104,7 @@ class ReservationCheckoutService(
   fun cancelCheckout(userId: Long, reservationId: Long): CancelCheckoutResult {
     val reservation =
       reservationRepository.findByIdForUpdate(reservationId)
-        ?: throw CustomException(ErrorCode.PAYMENT_NOT_FOUND)
+        ?: throw CustomException(ErrorCode.NOT_FOUND, "결제 대상 예매를 찾을 수 없습니다.")
 
     if (reservation.booker.id != userId) {
       throw CustomException(ErrorCode.FORBIDDEN)
@@ -112,13 +112,13 @@ class ReservationCheckoutService(
 
     when (reservation.status) {
       ReservationStatus.SUCCEEDED ->
-        throw CustomException(ErrorCode.PAYMENT_ALREADY_FINISHED)
+        throw CustomException(ErrorCode.CONFLICT, "이미 종료된 결제입니다.")
 
       ReservationStatus.FAILED,
       ReservationStatus.CANCELLED,
       ReservationStatus.EXPIRED,
       ->
-        throw CustomException(ErrorCode.PAYMENT_ALREADY_CANCELLED)
+        throw CustomException(ErrorCode.CONFLICT, "이미 종료된 결제 요청입니다.")
 
       ReservationStatus.PAYMENT_PENDING -> Unit
     }
