@@ -65,3 +65,10 @@ oauth:
 reservation:
   hold-expiration:
     listener-enabled: false
+  payment-reconciliation:
+    enabled: false
+
+toss:
+  payments:
+    base-url: https://api.tosspayments.com
+    secret-key: test-toss-secret-key

@@ -51,6 +51,12 @@ class Reservation(
   @Column(name = "payment_expires_at", nullable = false)
   var paymentExpiresAt: LocalDateTime,
 
+  @Column(name = "payment_attempt_key", unique = true, length = 200)
+  var paymentAttemptKey: String? = null,
+
+  @Column(name = "payment_confirming_at")
+  var paymentConfirmingAt: LocalDateTime? = null,
+
   @Column(name = "payment_key", unique = true)
   var paymentKey: String? = null,
 

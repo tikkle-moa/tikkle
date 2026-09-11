@@ -198,6 +198,7 @@ tasks.jacocoTestReport {
             "**/*Scheduler*",
             "**/*Service*",
             "**/*Provider*",
+            "**/*Client*",
             "**/*Handler*",
             "**/*EntryPoint*",
             "**/*Interceptor*",

@@ -3,7 +3,10 @@ package com.example.server.performance
 import com.example.server.global.stomp.dto.StompEvent
 import com.example.server.performance.dto.HoldReleasedEventData
 import com.example.server.performance.dto.PerformanceSeatEvent
+import com.example.server.performance.dto.ReservationConfirmedEventData
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
@@ -19,6 +22,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate
 import java.time.ZoneOffset
 
 @ExtendWith(MockitoExtension::class)
+@DisplayName("PerformanceSeatStompPublisher")
 class PerformanceSeatStompPublisherTest {
   @Mock
   lateinit var messagingTemplate: SimpMessagingTemplate
@@ -32,55 +36,97 @@ class PerformanceSeatStompPublisherTest {
   @InjectMocks
   lateinit var publisher: PerformanceSeatStompPublisher
 
-  @Test
-  fun `좌석 해제 이벤트를 공연 topic으로 발행한다`() {
-    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
-    given(
-      valueOperations.increment("performance:seat-event-version:$PERFORMANCE_ID"),
-    ).willReturn(EVENT_VERSION)
+  @Nested
+  @DisplayName("publishHoldReleased")
+  inner class PublishHoldReleased {
+    @Test
+    fun `좌석 해제 이벤트를 공연 topic으로 발행한다`() {
+      given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+      given(
+        valueOperations.increment("performance:seat-event-version:$PERFORMANCE_ID"),
+      ).willReturn(EVENT_VERSION)
 
-    publisher.publishHoldReleased(
-      performanceId = PERFORMANCE_ID,
-      seatIds = SEAT_IDS,
-    )
-
-    val destinationCaptor = ArgumentCaptor.forClass(String::class.java)
-    val eventCaptor = ArgumentCaptor.forClass(Any::class.java)
-
-    then(messagingTemplate)
-      .should()
-      .convertAndSend(
-        destinationCaptor.capture(),
-        eventCaptor.capture(),
-      )
-
-    val event = eventCaptor.value as StompEvent<*>
-
-    assertThat(destinationCaptor.value)
-      .isEqualTo("/topic/performances/$PERFORMANCE_ID")
-    assertThat(event.version).isEqualTo(EVENT_VERSION)
-    assertThat(event.type).isEqualTo(PerformanceSeatEvent.HOLD_RELEASED.name)
-    assertThat(event.occurredAt.offset).isEqualTo(ZoneOffset.UTC)
-    assertThat(event.data).isEqualTo(HoldReleasedEventData(SEAT_IDS))
-  }
-
-  @Test
-  fun `좌석 이벤트 버전을 증가시키지 못하면 예외를 던지고 발행하지 않는다`() {
-    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
-    given(
-      valueOperations.increment("performance:seat-event-version:$PERFORMANCE_ID"),
-    ).willReturn(null)
-
-    val exception = assertThrows<IllegalArgumentException> {
       publisher.publishHoldReleased(
         performanceId = PERFORMANCE_ID,
         seatIds = SEAT_IDS,
       )
+
+      val destinationCaptor = ArgumentCaptor.forClass(String::class.java)
+      val eventCaptor = ArgumentCaptor.forClass(Any::class.java)
+
+      then(messagingTemplate)
+        .should()
+        .convertAndSend(
+          destinationCaptor.capture(),
+          eventCaptor.capture(),
+        )
+
+      val event = eventCaptor.value as StompEvent<*>
+
+      assertThat(destinationCaptor.value)
+        .isEqualTo("/topic/performances/$PERFORMANCE_ID")
+      assertThat(event.version).isEqualTo(EVENT_VERSION)
+      assertThat(event.type).isEqualTo(PerformanceSeatEvent.HOLD_RELEASED.name)
+      assertThat(event.occurredAt.offset).isEqualTo(ZoneOffset.UTC)
+      assertThat(event.data).isEqualTo(HoldReleasedEventData(SEAT_IDS))
     }
 
-    assertThat(exception.message)
-      .isEqualTo("공연 좌석 이벤트 버전을 증가시키지 못했습니다.")
-    then(messagingTemplate).shouldHaveNoInteractions()
+    @Test
+    fun `좌석 이벤트 버전을 증가시키지 못하면 예외를 던지고 발행하지 않는다`() {
+      given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+      given(
+        valueOperations.increment("performance:seat-event-version:$PERFORMANCE_ID"),
+      ).willReturn(null)
+
+      val exception = assertThrows<IllegalArgumentException> {
+        publisher.publishHoldReleased(
+          performanceId = PERFORMANCE_ID,
+          seatIds = SEAT_IDS,
+        )
+      }
+
+      assertThat(exception.message)
+        .isEqualTo("공연 좌석 이벤트 버전을 증가시키지 못했습니다.")
+      then(messagingTemplate).shouldHaveNoInteractions()
+    }
+  }
+
+  @Nested
+  @DisplayName("publishReservationConfirmed")
+  inner class PublishReservationConfirmed {
+    @Test
+    fun `예매 확정 이벤트를 공연 topic으로 발행한다`() {
+      given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+      given(
+        valueOperations.increment("performance:seat-event-version:$PERFORMANCE_ID"),
+      ).willReturn(EVENT_VERSION)
+
+      publisher.publishReservationConfirmed(
+        performanceId = PERFORMANCE_ID,
+        seatIds = SEAT_IDS,
+      )
+
+      val destinationCaptor = ArgumentCaptor.forClass(String::class.java)
+      val eventCaptor = ArgumentCaptor.forClass(Any::class.java)
+
+      then(messagingTemplate)
+        .should()
+        .convertAndSend(
+          destinationCaptor.capture(),
+          eventCaptor.capture(),
+        )
+
+      val event = eventCaptor.value as StompEvent<*>
+
+      assertThat(destinationCaptor.value)
+        .isEqualTo("/topic/performances/$PERFORMANCE_ID")
+      assertThat(event.version).isEqualTo(EVENT_VERSION)
+      assertThat(event.type)
+        .isEqualTo(PerformanceSeatEvent.RESERVATION_CONFIRMED.name)
+      assertThat(event.occurredAt.offset).isEqualTo(ZoneOffset.UTC)
+      assertThat(event.data)
+        .isEqualTo(ReservationConfirmedEventData(SEAT_IDS))
+    }
   }
 
   companion object {
