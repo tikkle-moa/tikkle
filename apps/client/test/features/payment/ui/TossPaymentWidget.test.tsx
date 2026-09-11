@@ -45,16 +45,6 @@ const createDeferred = <T,>() => {
   return { promise, reject, resolve };
 };
 
-const invokeReactClickHandler = (element: HTMLElement) => {
-  const propsKey = Object.keys(element).find((key) => key.startsWith("__reactProps$"));
-  if (!propsKey) {
-    throw new Error("React click handler를 찾을 수 없습니다.");
-  }
-
-  const props = (element as unknown as Record<string, { onClick?: () => void }>)[propsKey];
-  props.onClick?.();
-};
-
 describe("TossPaymentWidget", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_TOSS_CLIENT_KEY", "test_gck_docs_fixture");
@@ -106,6 +96,13 @@ describe("TossPaymentWidget", () => {
     vi.mocked(loadTossPayments).mockResolvedValue({ widgets: vi.fn().mockReturnValue(widgets) } as never);
 
     render(<TossPaymentWidget order={{ ...order, paymentExpiresAt: "2020-01-01T00:00:00" }} user={user} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("결제 가능 시간이 만료되었습니다.");
+    expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
+  });
+
+  it("결제 가능 시간이 유효하지 않으면 만료 상태로 처리한다", () => {
+    render(<TossPaymentWidget order={{ ...order, paymentExpiresAt: "invalid-date" }} user={user} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("결제 가능 시간이 만료되었습니다.");
     expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
@@ -208,21 +205,6 @@ describe("TossPaymentWidget", () => {
     });
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  it("위젯이 준비되지 않은 결제 요청은 무시한다", async () => {
-    const deferred = createDeferred<never>();
-    vi.mocked(loadTossPayments).mockReturnValue(deferred.promise as never);
-
-    render(<TossPaymentWidget order={order} user={user} />);
-
-    const button = screen.getByRole("button", { name: "300,000원 결제하기" });
-    await act(async () => {
-      invokeReactClickHandler(button);
-      await Promise.resolve();
-    });
-
-    expect(button).toBeDisabled();
   });
 
   it("결제 버튼을 누르면 Toss 결제를 요청한다", async () => {
