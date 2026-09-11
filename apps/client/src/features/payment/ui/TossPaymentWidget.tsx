@@ -41,16 +41,36 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
     const renderWidgets = async () => {
       try {
         const tossPayments = await loadTossPayments(clientKey);
+
+        if (isUnmounted) {
+          return;
+        }
+
         const nextWidgets = tossPayments.widgets({ customerKey: getPaymentCustomerKey(user.id) });
 
         await nextWidgets.setAmount({ currency: "KRW", value: order.amount });
+
+        if (isUnmounted) {
+          return;
+        }
+
         paymentMethodWidget = await nextWidgets.renderPaymentMethods({ selector: `#${paymentMethodSelector}` });
+
+        if (isUnmounted) {
+          void paymentMethodWidget.destroy();
+          return;
+        }
+
         agreementWidget = await nextWidgets.renderAgreement({ selector: `#${agreementSelector}` });
 
         if (!isUnmounted) {
           setWidgets(nextWidgets);
           setErrorMessage(null);
+          return;
         }
+
+        void paymentMethodWidget.destroy();
+        void agreementWidget.destroy();
       } catch {
         if (!isUnmounted) {
           setErrorMessage("결제수단을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
