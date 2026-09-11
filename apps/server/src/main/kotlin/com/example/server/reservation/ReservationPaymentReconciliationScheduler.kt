@@ -41,19 +41,28 @@ class ReservationPaymentReconciliationScheduler(
       return
     }
 
-    cursorId = reservations.last().id
+    var hasFailure = false
+    var lastSuccessfulId = cursorId
 
     reservations.forEach { reservation ->
       runCatching {
         reservationPaymentService.reconcilePayment(reservation.id)
       }.onFailure { exception ->
+        hasFailure = true
         log.error(
           "결제 상태 대사에 실패했습니다. reservationId={}",
           reservation.id,
           exception,
         )
+      }.onSuccess {
+        if (!hasFailure) {
+          lastSuccessfulId = reservation.id
+        }
       }
     }
+
+    // 조회 조건이 `id > cursorId`이므로 실패 이전의 마지막 성공 ID를 유지해 실패 건을 재처리한다.
+    cursorId = if (hasFailure) lastSuccessfulId else reservations.last().id
   }
 
   private companion object {
