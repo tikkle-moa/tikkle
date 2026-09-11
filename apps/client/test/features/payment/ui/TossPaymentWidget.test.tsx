@@ -101,11 +101,13 @@ describe("TossPaymentWidget", () => {
     expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
   });
 
-  it("결제 가능 시간이 유효하지 않으면 만료 상태로 처리한다", () => {
+  it("결제 가능 시간이 유효하지 않으면 만료 상태로 처리한다", async () => {
     render(<TossPaymentWidget order={{ ...order, paymentExpiresAt: "invalid-date" }} user={user} />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent("결제 가능 시간이 만료되었습니다.");
-    expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("결제 가능 시간이 만료되었습니다.");
+      expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
+    });
   });
 
   it("금액 설정 중 언마운트되면 이후 위젯을 렌더링하지 않는다", async () => {
