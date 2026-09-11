@@ -51,7 +51,7 @@ const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
         </p>
       </header>
 
-      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.85fr)] lg:items-start">
+      <div className="mt-7 space-y-6">
         <PaymentOrderSummary order={order} />
         <TossPaymentWidget order={order} user={user} />
       </div>
