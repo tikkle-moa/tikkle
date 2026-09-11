@@ -4,7 +4,7 @@ import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Limit
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
@@ -33,7 +33,7 @@ class ReservationPaymentReconciliationScheduler(
       .findAllByStatusInAndIdGreaterThanOrderByIdAsc(
         statuses = RECONCILIATION_STATUSES,
         id = cursorId,
-        pageable = PageRequest.of(0, BATCH_SIZE),
+        limit = Limit.of(BATCH_SIZE),
       )
 
     if (reservations.isEmpty()) {

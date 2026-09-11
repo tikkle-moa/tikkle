@@ -3,7 +3,7 @@ package com.example.server.reservation.repository
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.types.ReservationStatus
 import jakarta.persistence.LockModeType
-import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Limit
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
@@ -68,5 +68,5 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
 
   fun findAllByStatusAndPaymentExpiresAtBefore(status: ReservationStatus, paymentExpiresAt: LocalDateTime): List<Reservation>
 
-  fun findAllByStatusInAndIdGreaterThanOrderByIdAsc(statuses: Collection<ReservationStatus>, id: Long, pageable: Pageable): List<Reservation>
+  fun findAllByStatusInAndIdGreaterThanOrderByIdAsc(statuses: Collection<ReservationStatus>, id: Long, limit: Limit): List<Reservation>
 }

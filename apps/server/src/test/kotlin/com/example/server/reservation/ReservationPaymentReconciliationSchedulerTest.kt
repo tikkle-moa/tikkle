@@ -12,7 +12,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.mock
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Limit
 
 @ExtendWith(MockitoExtension::class)
 class ReservationPaymentReconciliationSchedulerTest {
@@ -107,7 +107,7 @@ class ReservationPaymentReconciliationSchedulerTest {
           ReservationStatus.REFUND_REQUIRED,
         ),
         id = cursorId,
-        pageable = PageRequest.of(0, BATCH_SIZE),
+        limit = Limit.of(BATCH_SIZE),
       ),
     ).willReturn(reservations)
   }
