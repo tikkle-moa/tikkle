@@ -64,6 +64,11 @@ export const usePaymentOrder = (reservationId: number, fixture = false): UsePaym
   });
 
   useEffect(() => {
+    requestIdRef.current = null;
+    setOrder(null);
+    setErrorMessage(null);
+    setIsLoading(true);
+
     if (!isReservationIdValid) {
       setErrorMessage("올바르지 않은 결제 주문입니다.");
       setIsLoading(false);
@@ -83,7 +88,6 @@ export const usePaymentOrder = (reservationId: number, fixture = false): UsePaym
 
     const requestId = crypto.randomUUID();
     requestIdRef.current = requestId;
-    setIsLoading(true);
 
     client.publish({
       destination: PAYMENT_STOMP_DESTINATIONS.request,

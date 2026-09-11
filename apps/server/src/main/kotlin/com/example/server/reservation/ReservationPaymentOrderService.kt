@@ -57,6 +57,7 @@ class ReservationPaymentOrderService(
       amount = reservation.amount,
       paymentExpiresAt = reservation.paymentExpiresAt,
       concertTitle = reservation.performance.concert.title,
+      posterUrl = reservation.performance.concert.posterUrl,
       performanceName = reservation.performance.name,
       performanceStartsAt = reservation.performance.startsAt,
       venueName = reservation.performance.concert.venue.name,

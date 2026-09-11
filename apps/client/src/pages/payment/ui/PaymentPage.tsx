@@ -53,7 +53,7 @@ const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
 
       <div className="mt-7 space-y-6">
         <PaymentOrderSummary order={order} />
-        <TossPaymentWidget order={order} user={user} />
+        <TossPaymentWidget key={order.orderId} order={order} user={user} />
       </div>
     </div>
   );

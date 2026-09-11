@@ -25,6 +25,22 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
   const [widgets, setWidgets] = useState<TossPaymentsWidgets | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [isExpired, setIsExpired] = useState(() => new Date(order.paymentExpiresAt).getTime() <= Date.now());
+
+  useEffect(() => {
+    const expiresAt = new Date(order.paymentExpiresAt).getTime();
+
+    if (!Number.isFinite(expiresAt)) {
+      setIsExpired(true);
+      return;
+    }
+
+    const updateExpiration = () => setIsExpired(expiresAt <= Date.now());
+    updateExpiration();
+
+    const timeoutId = window.setTimeout(updateExpiration, Math.max(0, expiresAt - Date.now()));
+    return () => window.clearTimeout(timeoutId);
+  }, [order.paymentExpiresAt]);
 
   useEffect(() => {
     const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY;
@@ -72,9 +88,13 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
         void paymentMethodWidget.destroy();
         void agreementWidget.destroy();
       } catch {
-        if (!isUnmounted) {
-          setErrorMessage("결제수단을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        if (isUnmounted) {
+          return;
         }
+
+        void paymentMethodWidget?.destroy();
+        void agreementWidget?.destroy();
+        setErrorMessage("결제수단을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
     };
 
@@ -88,7 +108,7 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
   }, [agreementSelector, order.amount, paymentMethodSelector, user.id]);
 
   const handlePaymentRequest = async () => {
-    if (!widgets) {
+    if (!widgets || isExpired) {
       return;
     }
 
@@ -122,16 +142,16 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
       </div>
       <div className="min-h-40" id={paymentMethodSelector} />
       <div className="border-t border-gray-100" id={agreementSelector} />
-      {errorMessage && (
+      {(isExpired || errorMessage) && (
         <p role="alert" className="px-5 pt-4 text-sm font-medium text-red-600 sm:px-7">
-          {errorMessage}
+          {isExpired ? "결제 가능 시간이 만료되었습니다." : errorMessage}
         </p>
       )}
       <div className="sticky bottom-0 mt-5 border-t border-gray-200 bg-white/95 p-4 backdrop-blur sm:static sm:px-7 sm:py-5">
         <button
           type="button"
           onClick={() => void handlePaymentRequest()}
-          disabled={!widgets || isRequesting}
+          disabled={!widgets || isRequesting || isExpired}
           className="bg-brand-primary w-full rounded-xl px-5 py-4 text-base font-bold text-white transition hover:bg-violet-700 disabled:bg-gray-300"
         >
           {isRequesting ? "결제창을 여는 중..." : `${formatPaymentAmount(order.amount)} 결제하기`}

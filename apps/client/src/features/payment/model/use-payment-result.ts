@@ -28,6 +28,8 @@ export const usePaymentResult = (request: PaymentResultRequest | null): UsePayme
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getClient = useStompStore((state) => state.getClient);
   const requestIdRef = useRef<string | null>(null);
+  const requestRef = useRef<PaymentResultRequest | null>(request);
+  const statusRef = useRef<PaymentResultStatus>("pending");
   const [status, setStatus] = useState<PaymentResultStatus>("pending");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -44,10 +46,12 @@ export const usePaymentResult = (request: PaymentResultRequest | null): UsePayme
 
     if (!response.success) {
       setErrorMessage(response.error?.message ?? "결제 처리 결과를 확인하지 못했습니다.");
+      statusRef.current = "failed";
       setStatus("failed");
       return;
     }
 
+    statusRef.current = "succeeded";
     setStatus("succeeded");
   }, []);
 
@@ -58,7 +62,19 @@ export const usePaymentResult = (request: PaymentResultRequest | null): UsePayme
   });
 
   useEffect(() => {
+    if (requestRef.current !== request) {
+      requestRef.current = request;
+      requestIdRef.current = null;
+      statusRef.current = "pending";
+      setStatus("pending");
+      setErrorMessage(null);
+    }
+
     if (!request || !client || connectionStatus !== "connected" || !client.connected) {
+      return;
+    }
+
+    if (statusRef.current !== "pending") {
       return;
     }
 

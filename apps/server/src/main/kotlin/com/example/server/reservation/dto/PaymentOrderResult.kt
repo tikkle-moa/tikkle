@@ -9,6 +9,7 @@ data class PaymentOrderResult(
   val amount: Int,
   val paymentExpiresAt: LocalDateTime,
   val concertTitle: String,
+  val posterUrl: String?,
   val performanceName: String,
   val performanceStartsAt: LocalDateTime,
   val venueName: String,
