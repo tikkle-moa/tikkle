@@ -4,6 +4,7 @@ import com.example.server.auth.dto.LoginUserResult
 import com.example.server.global.stomp.dto.StompCommandSuccess
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentCommand
+import com.example.server.reservation.dto.GetPaymentOrderCommand
 import com.example.server.reservation.dto.ReservationSyncCommand
 import com.example.server.reservation.dto.StartCheckoutCommand
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Controller
 @Controller
 class ReservationStompController(
   private val reservationCheckoutService: ReservationCheckoutService,
+  private val reservationPaymentOrderService: ReservationPaymentOrderService,
   private val reservationPaymentService: ReservationPaymentService,
 ) {
   @MessageMapping("/reservation/sync")
@@ -28,6 +30,19 @@ class ReservationStompController(
         val result = reservationCheckoutService.startCheckout(
           userId = loginUser.userId,
           holdId = command.data.holdId,
+        )
+
+        StompCommandSuccess(
+          requestId = command.requestId,
+          action = command.action,
+          data = result,
+        )
+      }
+
+      is GetPaymentOrderCommand -> {
+        val result = reservationPaymentOrderService.getPaymentOrder(
+          userId = loginUser.userId,
+          reservationId = command.data.reservationId,
         )
 
         StompCommandSuccess(

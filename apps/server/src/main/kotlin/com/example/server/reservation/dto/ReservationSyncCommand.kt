@@ -13,6 +13,7 @@ import java.util.UUID
 )
 @JsonSubTypes(
   JsonSubTypes.Type(StartCheckoutCommand::class, name = "START_CHECKOUT"),
+  JsonSubTypes.Type(GetPaymentOrderCommand::class, name = "GET_PAYMENT_ORDER"),
   JsonSubTypes.Type(ConfirmPaymentCommand::class, name = "CONFIRM_PAYMENT"),
   JsonSubTypes.Type(CancelPaymentCommand::class, name = "CANCEL_PAYMENT"),
 )
@@ -22,6 +23,14 @@ data class StartCheckoutCommand(override val requestId: UUID, override val actio
   ReservationSyncCommand<StartCheckoutData>
 
 data class StartCheckoutData(val holdId: String)
+
+data class GetPaymentOrderCommand(
+  override val requestId: UUID,
+  override val action: String = "GET_PAYMENT_ORDER",
+  override val data: GetPaymentOrderData,
+) : ReservationSyncCommand<GetPaymentOrderData>
+
+data class GetPaymentOrderData(val reservationId: Long)
 
 data class ConfirmPaymentCommand(
   override val requestId: UUID,
