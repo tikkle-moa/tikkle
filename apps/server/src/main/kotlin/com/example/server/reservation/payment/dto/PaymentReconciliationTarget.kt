@@ -1,4 +1,4 @@
-package com.example.server.reservation.dto
+package com.example.server.reservation.payment.dto
 
 import com.example.server.reservation.types.ReservationStatus
 

@@ -7,7 +7,7 @@ import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthErrorCode
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.config.TestcontainersConfig
-import com.example.server.reservation.PaymentGateway
+import com.example.server.reservation.payment.PaymentGateway
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DisplayName

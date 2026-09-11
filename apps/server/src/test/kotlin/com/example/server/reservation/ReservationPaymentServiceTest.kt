@@ -5,10 +5,11 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.PerformanceSeatStompPublisher
 import com.example.server.performance.RedisSeatHoldService
 import com.example.server.performance.dto.SeatHold
-import com.example.server.reservation.dto.ConfirmPaymentResult
-import com.example.server.reservation.dto.ExternalPayment
-import com.example.server.reservation.dto.PaymentReconciliationTarget
-import com.example.server.reservation.types.ExternalPaymentStatus
+import com.example.server.reservation.payment.PaymentGateway
+import com.example.server.reservation.payment.dto.ConfirmPaymentResult
+import com.example.server.reservation.payment.dto.ExternalPayment
+import com.example.server.reservation.payment.dto.PaymentReconciliationTarget
+import com.example.server.reservation.payment.types.ExternalPaymentStatus
 import com.example.server.reservation.types.ReservationStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName

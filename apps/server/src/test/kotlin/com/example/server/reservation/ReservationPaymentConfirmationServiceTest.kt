@@ -8,10 +8,10 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.RedisSeatHoldService
 import com.example.server.performance.dto.SeatHold
 import com.example.server.performance.entity.Performance
-import com.example.server.reservation.dto.ConfirmPaymentResult
-import com.example.server.reservation.dto.PaymentReconciliationTarget
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.entity.ReservationSeat
+import com.example.server.reservation.payment.dto.ConfirmPaymentResult
+import com.example.server.reservation.payment.dto.PaymentReconciliationTarget
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus

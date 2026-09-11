@@ -1,4 +1,4 @@
-package com.example.server.reservation.types
+package com.example.server.reservation.payment.types
 
 enum class ExternalPaymentStatus {
   READY,

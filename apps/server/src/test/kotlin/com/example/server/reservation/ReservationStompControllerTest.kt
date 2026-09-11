@@ -8,11 +8,11 @@ import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.CancelPaymentData
 import com.example.server.reservation.dto.ConfirmPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentData
-import com.example.server.reservation.dto.ConfirmPaymentResult
 import com.example.server.reservation.dto.ReservationSyncCommand
 import com.example.server.reservation.dto.StartCheckoutCommand
 import com.example.server.reservation.dto.StartCheckoutData
 import com.example.server.reservation.dto.StartCheckoutResult
+import com.example.server.reservation.payment.dto.ConfirmPaymentResult
 import com.example.server.reservation.types.ReservationStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName

@@ -1,6 +1,6 @@
-package com.example.server.reservation
+package com.example.server.reservation.payment
 
-import com.example.server.reservation.dto.ExternalPayment
+import com.example.server.reservation.payment.dto.ExternalPayment
 
 interface PaymentGateway {
   fun confirm(paymentKey: String, orderId: String, amount: Int): ExternalPayment
