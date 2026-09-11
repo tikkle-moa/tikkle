@@ -9,6 +9,7 @@ import { ConcertNewPage } from "@pages/concert-new";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
+import { PaymentFailPage, PaymentPage, PaymentSuccessPage } from "@pages/payment";
 import { PerformanceDetailPage } from "@pages/performance-detail";
 import { PerformanceNewPage } from "@pages/performance-new";
 import { SearchPage } from "@pages/search";
@@ -67,6 +68,19 @@ export const router = createBrowserRouter([
             children: [
               { path: ROUTE_PATHS.MY_FAVORITES, element: <FavoritePage /> },
               { path: ROUTE_PATHS.MY_RESERVATIONS, element: <ReservationPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <AppLayout showMobileBottomNavigation={false} />,
+        children: [
+          {
+            element: <AuthGuard />,
+            children: [
+              { path: ROUTE_PATHS.PAYMENT, element: <PaymentPage /> },
+              { path: ROUTE_PATHS.PAYMENT_SUCCESS, element: <PaymentSuccessPage /> },
+              { path: ROUTE_PATHS.PAYMENT_FAIL, element: <PaymentFailPage /> },
             ],
           },
         ],
