@@ -14,7 +14,7 @@ const order = {
   orderId: "tikkle-fixture-501",
   orderName: "2026 Summer Festival 2석",
   amount: 300_000,
-  paymentExpiresAt: "2026-09-11T23:30:00",
+  paymentExpiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   concertTitle: "2026 Summer Festival",
   performanceName: "2026 Summer Festival 1회차",
   performanceStartsAt: "2026-08-20T19:00:00",
