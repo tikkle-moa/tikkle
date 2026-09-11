@@ -16,9 +16,10 @@ import { formatPaymentAmount, getPaymentCustomerKey } from "../model/payment.uti
 interface TossPaymentWidgetProps {
   order: PaymentOrder;
   user: User;
+  previewOnly?: boolean;
 }
 
-const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
+const TossPaymentWidget = ({ order, user, previewOnly = false }: TossPaymentWidgetProps) => {
   const widgetId = useId().replaceAll(":", "");
   const paymentMethodSelector = `payment-method-${widgetId}`;
   const agreementSelector = `payment-agreement-${widgetId}`;
@@ -27,6 +28,10 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
   const [isRequesting, setIsRequesting] = useState(false);
 
   useEffect(() => {
+    if (previewOnly) {
+      return;
+    }
+
     const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY;
 
     if (!clientKey) {
@@ -65,7 +70,7 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
       void paymentMethodWidget?.destroy();
       void agreementWidget?.destroy();
     };
-  }, [agreementSelector, order.amount, paymentMethodSelector, user.id]);
+  }, [agreementSelector, order.amount, paymentMethodSelector, previewOnly, user.id]);
 
   const handlePaymentRequest = async () => {
     if (!widgets) {
@@ -100,8 +105,16 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
           결제수단
         </h2>
       </div>
-      <div className="min-h-40" id={paymentMethodSelector} />
-      <div className="border-t border-gray-100" id={agreementSelector} />
+      {previewOnly ? (
+        <div className="m-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 sm:m-7">결제수단 UI 미리보기</div>
+      ) : (
+        <div className="min-h-40" id={paymentMethodSelector} />
+      )}
+      {previewOnly ? (
+        <p className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500 sm:px-7">더미 주문서에서는 실제 결제를 진행할 수 없습니다.</p>
+      ) : (
+        <div className="border-t border-gray-100" id={agreementSelector} />
+      )}
       {errorMessage && (
         <p role="alert" className="px-5 pt-4 text-sm font-medium text-red-600 sm:px-7">
           {errorMessage}
@@ -111,10 +124,10 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
         <button
           type="button"
           onClick={() => void handlePaymentRequest()}
-          disabled={!widgets || isRequesting}
+          disabled={previewOnly || !widgets || isRequesting}
           className="bg-brand-primary w-full rounded-xl px-5 py-4 text-base font-bold text-white transition hover:bg-violet-700 disabled:bg-gray-300"
         >
-          {isRequesting ? "결제창을 여는 중..." : `${formatPaymentAmount(order.amount)} 결제하기`}
+          {previewOnly ? "미리보기 전용" : isRequesting ? "결제창을 여는 중..." : `${formatPaymentAmount(order.amount)} 결제하기`}
         </button>
       </div>
     </section>

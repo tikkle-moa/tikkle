@@ -13,7 +13,7 @@ import { usePaymentPage } from "../model/use-payment-page";
 const PaymentPage = () => {
   const navigate = useNavigate();
   const user = useSessionStore((state) => state.user);
-  const { order, errorMessage, isLoading, isReservationIdValid } = usePaymentPage();
+  const { order, errorMessage, isLoading, isReservationIdValid, isFixture } = usePaymentPage();
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;
@@ -49,7 +49,7 @@ const PaymentPage = () => {
 
       <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.85fr)] lg:items-start">
         <PaymentOrderSummary order={order} />
-        <TossPaymentWidget order={order} user={user} />
+        <TossPaymentWidget order={order} user={user} previewOnly={isFixture} />
       </div>
     </div>
   );
