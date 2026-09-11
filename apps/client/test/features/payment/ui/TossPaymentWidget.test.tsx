@@ -51,6 +51,7 @@ describe("TossPaymentWidget", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
@@ -96,6 +97,29 @@ describe("TossPaymentWidget", () => {
     vi.mocked(loadTossPayments).mockResolvedValue({ widgets: vi.fn().mockReturnValue(widgets) } as never);
 
     render(<TossPaymentWidget order={{ ...order, paymentExpiresAt: "2020-01-01T00:00:00" }} user={user} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("결제 가능 시간이 만료되었습니다.");
+    expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
+  });
+
+  it("결제 가능 시간이 지나면 타이머로 만료 상태를 갱신한다", async () => {
+    vi.useFakeTimers();
+    const widgets = {
+      setAmount: vi.fn().mockResolvedValue(undefined),
+      renderPaymentMethods: vi.fn().mockResolvedValue({ destroy: vi.fn() }),
+      renderAgreement: vi.fn().mockResolvedValue({ destroy: vi.fn() }),
+      requestPayment: vi.fn(),
+    };
+    vi.mocked(loadTossPayments).mockResolvedValue({ widgets: vi.fn().mockReturnValue(widgets) } as never);
+
+    const paymentExpiresAt = new Date(Date.now() + 1_000).toISOString();
+    render(<TossPaymentWidget order={{ ...order, paymentExpiresAt }} user={user} />);
+
+    expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1_000);
+    });
 
     expect(screen.getByRole("alert")).toHaveTextContent("결제 가능 시간이 만료되었습니다.");
     expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
