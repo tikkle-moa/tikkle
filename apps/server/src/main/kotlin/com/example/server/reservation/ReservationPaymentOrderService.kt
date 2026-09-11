@@ -61,7 +61,8 @@ class ReservationPaymentOrderService(
       performanceStartsAt = reservation.performance.startsAt,
       venueName = reservation.performance.concert.venue.name,
       seats = hold.venueSeatIds.map { venueSeatId ->
-        val seat = checkNotNull(venueSeats[venueSeatId])
+        val seat = venueSeats[venueSeatId]
+          ?: throw CustomException(ErrorCode.NOT_FOUND, "공연장 좌석을 찾을 수 없습니다.")
 
         PaymentOrderSeatResult(
           venueSeatId = seat.id,

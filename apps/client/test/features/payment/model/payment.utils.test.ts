@@ -43,6 +43,7 @@ describe("payment.utils", () => {
 
     expect(isPaymentOrder(order)).toBe(true);
     expect(isPaymentOrder({ ...order, seats: [{ ...order.seats[0], price: "66000" }] })).toBe(false);
+    expect(isPaymentOrder({ ...order, seats: [null] })).toBe(false);
     expect(isPaymentOrder(null)).toBe(false);
   });
 });

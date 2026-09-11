@@ -166,6 +166,36 @@ class ReservationPaymentOrderServiceTest {
     }
 
     @Test
+    fun `예매 소유자는 같지만 다른 공연의 Hold면 CONFLICT를 던진다`() {
+      given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
+        .willReturn(reservation())
+      given(redisSeatHoldService.findActive(HOLD_ID))
+        .willReturn(hold(performanceId = OTHER_PERFORMANCE_ID))
+
+      val exception = assertThrows<CustomException> {
+        reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      then(venueSeatRepository).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `좌석이 하나인 주문서도 좌석 상세를 생성한다`() {
+      val hold = hold(venueSeatIds = listOf(101L))
+      given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
+        .willReturn(reservation())
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, hold.venueSeatIds))
+        .willReturn(listOf(venueSeat(id = 101L, sectionName = "R석", seatLabel = "A-1", price = 66_000)))
+
+      val result = reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID)
+
+      assertThat(result.seats).hasSize(1)
+      assertThat(result.seats.single().seatLabel).isEqualTo("A-1")
+    }
+
+    @Test
     fun `Hold 좌석을 모두 찾지 못하면 NOT_FOUND를 던진다`() {
       val hold = hold()
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
@@ -174,6 +204,28 @@ class ReservationPaymentOrderServiceTest {
       given(
         venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, hold.venueSeatIds),
       ).willReturn(listOf(venueSeat(id = 101L, sectionName = "R석", seatLabel = "A-1", price = 66_000)))
+
+      val exception = assertThrows<CustomException> {
+        reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+    }
+
+    @Test
+    fun `조회된 좌석 개수는 같지만 요청한 좌석 ID가 없으면 NOT_FOUND를 던진다`() {
+      val hold = hold()
+      given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
+        .willReturn(reservation())
+      given(redisSeatHoldService.findActive(HOLD_ID)).willReturn(hold)
+      given(
+        venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, hold.venueSeatIds),
+      ).willReturn(
+        listOf(
+          venueSeat(id = 101L, sectionName = "R석", seatLabel = "A-1", price = 66_000),
+          venueSeat(id = 999L, sectionName = "R석", seatLabel = "Z-9", price = 66_000),
+        ),
+      )
 
       val exception = assertThrows<CustomException> {
         reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID)
