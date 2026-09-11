@@ -23,7 +23,7 @@ data class StompRequestMetadata(val requestId: UUID, val action: String)
 @ControllerAdvice
 class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvider<SimpMessagingTemplate>, private val objectMapper: ObjectMapper) {
   private val log = LoggerFactory.getLogger(StompExceptionHandler::class.java)
-  private val syncDestinationPattern = Regex("^/api/([^/]+)/sync$")
+  private val domainPattern = Regex("^/api/([^/]+)")
 
   @MessageExceptionHandler(CustomException::class)
   fun handleCustomException(exception: CustomException, message: Message<*>, principal: Principal, headerAccessor: SimpMessageHeaderAccessor) {
@@ -131,7 +131,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
     message: String,
   ) {
     val domain = destination
-      ?.let(syncDestinationPattern::matchEntire)
+      ?.let(domainPattern::find)
       ?.groupValues
       ?.get(1)
       ?: return
