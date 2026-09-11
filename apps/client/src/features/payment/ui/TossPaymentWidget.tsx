@@ -107,11 +107,7 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
     };
   }, [agreementSelector, order.amount, paymentMethodSelector, user.id]);
 
-  const handlePaymentRequest = async () => {
-    if (!widgets || isExpired) {
-      return;
-    }
-
+  const handlePaymentRequest = async (paymentWidgets: TossPaymentsWidgets) => {
     setIsRequesting(true);
 
     try {
@@ -119,7 +115,7 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
       const failUrl = new URL(PAYMENT_ROUTES.fail, origin);
       failUrl.searchParams.set("reservationId", String(order.reservationId));
 
-      await widgets.requestPayment({
+      await paymentWidgets.requestPayment({
         orderId: order.orderId,
         orderName: order.orderName,
         successUrl: new URL(PAYMENT_ROUTES.success, origin).toString(),
@@ -150,7 +146,7 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
       <div className="sticky bottom-0 mt-5 border-t border-gray-200 bg-white/95 p-4 backdrop-blur sm:static sm:px-7 sm:py-5">
         <button
           type="button"
-          onClick={() => void handlePaymentRequest()}
+          onClick={widgets && !isExpired ? () => void handlePaymentRequest(widgets) : undefined}
           disabled={!widgets || isRequesting || isExpired}
           className="bg-brand-primary w-full rounded-xl px-5 py-4 text-base font-bold text-white transition hover:bg-violet-700 disabled:bg-gray-300"
         >
