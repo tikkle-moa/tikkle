@@ -4,7 +4,7 @@ import com.example.server.config.properties.TossPaymentsProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.reservation.dto.ExternalPayment
-import com.example.server.reservation.dto.ExternalPaymentStatus
+import com.example.server.reservation.types.ExternalPaymentStatus
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component

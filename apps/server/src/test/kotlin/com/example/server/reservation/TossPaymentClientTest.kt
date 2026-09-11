@@ -4,7 +4,7 @@ import com.example.server.config.properties.TossPaymentsProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.reservation.dto.ExternalPayment
-import com.example.server.reservation.dto.ExternalPaymentStatus
+import com.example.server.reservation.types.ExternalPaymentStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName

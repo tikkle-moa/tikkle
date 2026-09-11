@@ -7,7 +7,7 @@ import com.example.server.performance.RedisSeatHoldService
 import com.example.server.performance.dto.SeatHold
 import com.example.server.reservation.dto.ConfirmPaymentResult
 import com.example.server.reservation.dto.ExternalPayment
-import com.example.server.reservation.dto.ExternalPaymentStatus
+import com.example.server.reservation.types.ExternalPaymentStatus
 import com.example.server.reservation.types.ReservationStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
