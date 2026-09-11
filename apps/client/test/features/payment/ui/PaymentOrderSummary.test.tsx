@@ -13,6 +13,7 @@ describe("PaymentOrderSummary", () => {
           amount: 132_000,
           paymentExpiresAt: "2027-01-20T19:05:00",
           concertTitle: "아이유 콘서트",
+          posterUrl: "https://example.com/iu-poster.jpg",
           performanceName: "1회차",
           performanceStartsAt: "2027-01-20T19:00:00",
           venueName: "티클홀",
@@ -25,6 +26,7 @@ describe("PaymentOrderSummary", () => {
     );
 
     expect(screen.getByRole("heading", { name: "아이유 콘서트" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "아이유 콘서트 포스터" })).toHaveAttribute("src", "https://example.com/iu-poster.jpg");
     expect(screen.getByText("R석 A-1")).toBeInTheDocument();
     expect(screen.getByText("R석 A-2")).toBeInTheDocument();
     expect(screen.getByText("총 2석")).toBeInTheDocument();
