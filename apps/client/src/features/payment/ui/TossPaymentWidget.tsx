@@ -25,28 +25,34 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
   const [widgets, setWidgets] = useState<TossPaymentsWidgets | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
-  const [isExpired, setIsExpired] = useState(() => new Date(order.paymentExpiresAt).getTime() <= Date.now());
+  const [expirationState, setExpirationState] = useState(() => {
+    const expiresAt = new Date(order.paymentExpiresAt).getTime();
+    return {
+      paymentExpiresAt: order.paymentExpiresAt,
+      isExpired: !Number.isFinite(expiresAt) || expiresAt <= Date.now(),
+    };
+  });
+  const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY;
+  const expiresAt = new Date(order.paymentExpiresAt).getTime();
+  const isExpired = !Number.isFinite(expiresAt) || (expirationState.paymentExpiresAt === order.paymentExpiresAt && expirationState.isExpired);
+  const displayedErrorMessage = clientKey ? errorMessage : "Toss 클라이언트 키가 설정되지 않았습니다.";
 
   useEffect(() => {
-    const expiresAt = new Date(order.paymentExpiresAt).getTime();
-
     if (!Number.isFinite(expiresAt)) {
-      setIsExpired(true);
       return;
     }
 
-    const updateExpiration = () => setIsExpired(expiresAt <= Date.now());
-    updateExpiration();
-
-    const timeoutId = window.setTimeout(updateExpiration, Math.max(0, expiresAt - Date.now()));
+    const timeoutId = window.setTimeout(
+      () => {
+        setExpirationState({ paymentExpiresAt: order.paymentExpiresAt, isExpired: true });
+      },
+      Math.max(0, expiresAt - Date.now()),
+    );
     return () => window.clearTimeout(timeoutId);
-  }, [order.paymentExpiresAt]);
+  }, [expiresAt, order.paymentExpiresAt]);
 
   useEffect(() => {
-    const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY;
-
     if (!clientKey) {
-      setErrorMessage("Toss 클라이언트 키가 설정되지 않았습니다.");
       return;
     }
 
@@ -105,7 +111,7 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
       void paymentMethodWidget?.destroy();
       void agreementWidget?.destroy();
     };
-  }, [agreementSelector, order.amount, paymentMethodSelector, user.id]);
+  }, [agreementSelector, clientKey, order.amount, paymentMethodSelector, user.id]);
 
   const handlePaymentRequest = async (paymentWidgets: TossPaymentsWidgets) => {
     setIsRequesting(true);
@@ -138,9 +144,9 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
       </div>
       <div className="min-h-40" id={paymentMethodSelector} />
       <div className="border-t border-gray-100" id={agreementSelector} />
-      {(isExpired || errorMessage) && (
+      {(isExpired || displayedErrorMessage) && (
         <p role="alert" className="px-5 pt-4 text-sm font-medium text-red-600 sm:px-7">
-          {isExpired ? "결제 가능 시간이 만료되었습니다." : errorMessage}
+          {isExpired ? "결제 가능 시간이 만료되었습니다." : displayedErrorMessage}
         </p>
       )}
       <div className="sticky bottom-0 mt-5 border-t border-gray-200 bg-white/95 p-4 backdrop-blur sm:static sm:px-7 sm:py-5">

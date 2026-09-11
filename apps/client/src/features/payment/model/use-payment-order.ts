@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useStompStore } from "@shared/realtime/stomp.store";
 import { useStompSubscription } from "@shared/realtime/use-stomp-subscription";
@@ -15,15 +15,35 @@ interface UsePaymentOrderResult {
   isFixture: boolean;
 }
 
+interface PaymentOrderState {
+  key: string;
+  order: PaymentOrder | null;
+  errorMessage: string | null;
+  isLoading: boolean;
+}
+
 export const usePaymentOrder = (reservationId: number, fixture = false): UsePaymentOrderResult => {
   const client = useStompStore((state) => state.client);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getClient = useStompStore((state) => state.getClient);
   const requestIdRef = useRef<string | null>(null);
-  const [order, setOrder] = useState<PaymentOrder | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryKey = `${reservationId}:${fixture ? "fixture" : "server"}`;
+  const [paymentState, setPaymentState] = useState<PaymentOrderState>(() => ({
+    key: queryKey,
+    order: null,
+    errorMessage: null,
+    isLoading: true,
+  }));
   const isReservationIdValid = Number.isInteger(reservationId) && reservationId > 0;
+  const fixtureOrder = useMemo(
+    () => (fixture && isReservationIdValid ? createPaymentOrderFixture(reservationId) : null),
+    [fixture, isReservationIdValid, reservationId],
+  );
+
+  const visibleState = paymentState.key === queryKey ? paymentState : { key: queryKey, order: null, errorMessage: null, isLoading: true };
+  const order = fixtureOrder ?? visibleState.order;
+  const errorMessage = !isReservationIdValid ? "올바르지 않은 결제 주문입니다." : visibleState.errorMessage;
+  const isLoading = !isReservationIdValid || fixture ? false : visibleState.isLoading;
 
   useEffect(() => {
     if (fixture) {
@@ -33,29 +53,43 @@ export const usePaymentOrder = (reservationId: number, fixture = false): UsePaym
     getClient();
   }, [fixture, getClient]);
 
-  const handleMessage = useCallback((message: { body: string }) => {
-    const response = parsePaymentCommandResponse(message.body);
+  const handleMessage = useCallback(
+    (message: { body: string }) => {
+      const response = parsePaymentCommandResponse(message.body);
 
-    if (!response || response.requestId !== requestIdRef.current || response.action !== "GET_PAYMENT_ORDER") {
-      return;
-    }
+      if (!response || response.requestId !== requestIdRef.current || response.action !== "GET_PAYMENT_ORDER") {
+        return;
+      }
 
-    if (!response.success) {
-      setErrorMessage(response.error?.message ?? "결제 주문서를 불러오지 못했습니다.");
-      setIsLoading(false);
-      return;
-    }
+      if (!response.success) {
+        setPaymentState({
+          key: queryKey,
+          order: null,
+          errorMessage: response.error?.message ?? "결제 주문서를 불러오지 못했습니다.",
+          isLoading: false,
+        });
+        return;
+      }
 
-    if (!isPaymentOrder(response.data)) {
-      setErrorMessage("결제 주문서 형식이 올바르지 않습니다.");
-      setIsLoading(false);
-      return;
-    }
+      if (!isPaymentOrder(response.data)) {
+        setPaymentState({
+          key: queryKey,
+          order: null,
+          errorMessage: "결제 주문서 형식이 올바르지 않습니다.",
+          isLoading: false,
+        });
+        return;
+      }
 
-    setOrder(response.data);
-    setErrorMessage(null);
-    setIsLoading(false);
-  }, []);
+      setPaymentState({
+        key: queryKey,
+        order: response.data,
+        errorMessage: null,
+        isLoading: false,
+      });
+    },
+    [queryKey],
+  );
 
   useStompSubscription({
     destination: PAYMENT_STOMP_DESTINATIONS.response,
@@ -65,20 +99,8 @@ export const usePaymentOrder = (reservationId: number, fixture = false): UsePaym
 
   useEffect(() => {
     requestIdRef.current = null;
-    setOrder(null);
-    setErrorMessage(null);
-    setIsLoading(true);
 
-    if (!isReservationIdValid) {
-      setErrorMessage("올바르지 않은 결제 주문입니다.");
-      setIsLoading(false);
-      return;
-    }
-
-    if (fixture) {
-      setOrder(createPaymentOrderFixture(reservationId));
-      setErrorMessage(null);
-      setIsLoading(false);
+    if (!isReservationIdValid || fixture) {
       return;
     }
 
