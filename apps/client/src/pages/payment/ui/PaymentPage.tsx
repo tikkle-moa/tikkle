@@ -10,10 +10,14 @@ import { PaymentOrderSummary, TossPaymentWidget } from "@features/payment";
 
 import { usePaymentPage } from "../model/use-payment-page";
 
-const PaymentPage = () => {
+interface PaymentPageProps {
+  fixture?: boolean;
+}
+
+const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
   const navigate = useNavigate();
   const user = useSessionStore((state) => state.user);
-  const { order, errorMessage, isLoading, isReservationIdValid, isFixture } = usePaymentPage();
+  const { order, errorMessage, isLoading, isReservationIdValid, isFixture } = usePaymentPage(fixture);
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useStompStore } from "@shared/realtime/stomp.store";
 import { useStompSubscription } from "@shared/realtime/use-stomp-subscription";
 
-import { PAYMENT_STOMP_DESTINATIONS, isPaymentUiFixtureEnabled } from "./payment.constants";
+import { PAYMENT_STOMP_DESTINATIONS } from "./payment.constants";
 import { createPaymentOrderFixture } from "./payment.fixtures";
 import type { PaymentOrder } from "./payment.types";
 import { isPaymentOrder, parsePaymentCommandResponse } from "./payment.utils";
@@ -15,7 +15,7 @@ interface UsePaymentOrderResult {
   isFixture: boolean;
 }
 
-export const usePaymentOrder = (reservationId: number): UsePaymentOrderResult => {
+export const usePaymentOrder = (reservationId: number, fixture = false): UsePaymentOrderResult => {
   const client = useStompStore((state) => state.client);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getClient = useStompStore((state) => state.getClient);
@@ -26,12 +26,12 @@ export const usePaymentOrder = (reservationId: number): UsePaymentOrderResult =>
   const isReservationIdValid = Number.isInteger(reservationId) && reservationId > 0;
 
   useEffect(() => {
-    if (isPaymentUiFixtureEnabled) {
+    if (fixture) {
       return;
     }
 
     getClient();
-  }, [getClient]);
+  }, [fixture, getClient]);
 
   const handleMessage = useCallback((message: { body: string }) => {
     const response = parsePaymentCommandResponse(message.body);
@@ -60,7 +60,7 @@ export const usePaymentOrder = (reservationId: number): UsePaymentOrderResult =>
   useStompSubscription({
     destination: PAYMENT_STOMP_DESTINATIONS.response,
     onMessage: handleMessage,
-    enabled: isReservationIdValid && !isPaymentUiFixtureEnabled,
+    enabled: isReservationIdValid && !fixture,
   });
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export const usePaymentOrder = (reservationId: number): UsePaymentOrderResult =>
       return;
     }
 
-    if (isPaymentUiFixtureEnabled) {
+    if (fixture) {
       setOrder(createPaymentOrderFixture(reservationId));
       setErrorMessage(null);
       setIsLoading(false);
@@ -93,7 +93,7 @@ export const usePaymentOrder = (reservationId: number): UsePaymentOrderResult =>
         data: { reservationId },
       }),
     });
-  }, [client, connectionStatus, isReservationIdValid, reservationId]);
+  }, [client, connectionStatus, fixture, isReservationIdValid, reservationId]);
 
-  return { order, errorMessage, isLoading, isFixture: isPaymentUiFixtureEnabled };
+  return { order, errorMessage, isLoading, isFixture: fixture };
 };

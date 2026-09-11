@@ -1,5 +1,7 @@
 import type { PaymentOrder } from "./payment.types";
 
+export const PAYMENT_FIXTURE_RESERVATION_ID = 501;
+
 export const createPaymentOrderFixture = (reservationId: number): PaymentOrder => ({
   reservationId,
   orderId: `tikkle-fixture-${reservationId}`,
