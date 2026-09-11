@@ -200,26 +200,6 @@ export interface paths {
     patch: operations["update_1"];
     trace?: never;
   };
-  "/api/performances/{id}/seats": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * 공연 좌석 상태 목록 조회
-     * @description 공연 회차의 좌석 상태 목록을 반환합니다.
-     */
-    get: operations["getSeatsStatus"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/auth/oauth/{oauth_provider}": {
     parameters: {
       query?: never;
@@ -507,26 +487,6 @@ export interface components {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["PerformanceResponse"][];
-    };
-    /** HeldSeat */
-    HeldSeat: {
-      /** Format: int64 */
-      id: number;
-      /** Format: date-time */
-      expiresAt: string;
-    };
-    /** PerformanceSeatListResponse */
-    PerformanceSeatListResponse: {
-      /** Format: date-time */
-      serverTime: string;
-      bookedSeats: number[];
-      heldSeats: components["schemas"]["HeldSeat"][];
-    };
-    /** Success */
-    SuccessPerformanceSeatListResponse: {
-      /** @enum {boolean} */
-      success: true;
-      data: components["schemas"]["PerformanceSeatListResponse"];
     };
     /** ConcertListResponse */
     ConcertListResponse: {
@@ -1662,46 +1622,6 @@ export interface operations {
         };
       };
       /** @description 콘서트를 찾을 수 없음 */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          /**
-           * @example {
-           *       "success": false,
-           *       "error": {
-           *         "code": 404,
-           *         "message": "대상을 찾을 수 없습니다."
-           *       }
-           *     }
-           */
-          "application/json": components["schemas"]["Failure"];
-        };
-      };
-    };
-  };
-  getSeatsStatus: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description 공연 좌석 상태 목록 조회 성공 */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SuccessPerformanceSeatListResponse"];
-        };
-      };
-      /** @description 공연 회차를 찾을 수 없음 */
       404: {
         headers: {
           [name: string]: unknown;
