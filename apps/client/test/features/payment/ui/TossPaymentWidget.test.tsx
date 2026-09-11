@@ -1,3 +1,5 @@
+import { StrictMode } from "react";
+
 import { render, screen, waitFor } from "@testing-library/react";
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 
@@ -53,7 +55,11 @@ describe("TossPaymentWidget", () => {
       widgets: vi.fn().mockReturnValue(widgets),
     } as never);
 
-    render(<TossPaymentWidget order={order} user={user} />);
+    render(
+      <StrictMode>
+        <TossPaymentWidget order={order} user={user} />
+      </StrictMode>,
+    );
 
     await waitFor(() => expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeEnabled());
     expect(loadTossPayments).toHaveBeenCalledWith("test_gck_docs_fixture");
