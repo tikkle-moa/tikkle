@@ -9,6 +9,7 @@ export interface PaymentOrder {
   reservationId: number;
   orderId: string;
   orderName: string;
+  posterUrl?: string;
   amount: number;
   paymentExpiresAt: string;
   concertTitle: string;

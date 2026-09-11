@@ -12,28 +12,39 @@ interface PaymentOrderSummaryProps {
 const PaymentOrderSummary = ({ order }: PaymentOrderSummaryProps) => (
   <section aria-labelledby="payment-order-title" className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
     <div className="bg-linear-to-br from-violet-950 via-violet-900 to-fuchsia-900 px-5 py-6 text-white sm:px-7">
-      <p className="text-sm font-semibold text-violet-200">예매 정보</p>
-      <h1 id="payment-order-title" className="mt-2 text-2xl font-bold tracking-tight">
-        {order.concertTitle}
-      </h1>
-      <p className="mt-1 text-sm text-violet-100">{order.performanceName}</p>
+      <div className="flex flex-col gap-5 sm:flex-row">
+        {order.posterUrl && (
+          <img
+            src={order.posterUrl}
+            alt={`${order.concertTitle} 포스터`}
+            className="h-36 w-24 rounded-xl object-cover shadow-lg ring-1 ring-white/20"
+          />
+        )}
+        <div className="min-w-0 grow">
+          <p className="text-sm font-semibold text-violet-200">예매 정보</p>
+          <h1 id="payment-order-title" className="mt-2 text-2xl font-bold tracking-tight">
+            {order.concertTitle}
+          </h1>
+          <p className="mt-1 text-sm text-violet-100">{order.performanceName}</p>
 
-      <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-        <div className="flex items-start gap-2 rounded-xl bg-white/10 p-3">
-          <CalendarDays className="mt-0.5 size-4 shrink-0 text-violet-200" aria-hidden />
-          <div>
-            <dt className="text-xs text-violet-200">공연 일시</dt>
-            <dd className="mt-1 font-semibold">{formatDateTime(order.performanceStartsAt)}</dd>
-          </div>
+          <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+            <div className="flex items-start gap-2 rounded-xl bg-white/10 p-3">
+              <CalendarDays className="mt-0.5 size-4 shrink-0 text-violet-200" aria-hidden />
+              <div>
+                <dt className="text-xs text-violet-200">공연 일시</dt>
+                <dd className="mt-1 font-semibold">{formatDateTime(order.performanceStartsAt)}</dd>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-xl bg-white/10 p-3">
+              <MapPin className="mt-0.5 size-4 shrink-0 text-violet-200" aria-hidden />
+              <div>
+                <dt className="text-xs text-violet-200">공연장</dt>
+                <dd className="mt-1 font-semibold">{order.venueName}</dd>
+              </div>
+            </div>
+          </dl>
         </div>
-        <div className="flex items-start gap-2 rounded-xl bg-white/10 p-3">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-violet-200" aria-hidden />
-          <div>
-            <dt className="text-xs text-violet-200">공연장</dt>
-            <dd className="mt-1 font-semibold">{order.venueName}</dd>
-          </div>
-        </div>
-      </dl>
+      </div>
     </div>
 
     <div className="p-5 sm:p-7">
