@@ -74,6 +74,7 @@ class ReservationPaymentOrderServiceTest {
       assertThat(result.orderName).isEqualTo("아이유 콘서트 1회차 2석")
       assertThat(result.amount).isEqualTo(132_000)
       assertThat(result.concertTitle).isEqualTo("아이유 콘서트")
+      assertThat(result.posterUrl).isEqualTo("https://example.com/iu-poster.jpg")
       assertThat(result.performanceName).isEqualTo("1회차")
       assertThat(result.venueName).isEqualTo("티클홀")
       assertThat(result.seats).extracting("venueSeatId").containsExactly(102L, 101L)
@@ -256,6 +257,7 @@ class ReservationPaymentOrderServiceTest {
       venue = venue,
       title = "아이유 콘서트",
       genre = ConcertGenre.BALLAD,
+      posterUrl = "https://example.com/iu-poster.jpg",
     )
     val performance = Performance(
       id = PERFORMANCE_ID,

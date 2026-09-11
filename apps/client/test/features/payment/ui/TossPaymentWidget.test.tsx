@@ -96,6 +96,21 @@ describe("TossPaymentWidget", () => {
     expect(loadTossPayments).not.toHaveBeenCalled();
   });
 
+  it("결제 가능 시간이 지나면 결제 버튼을 비활성화한다", async () => {
+    const widgets = {
+      setAmount: vi.fn().mockResolvedValue(undefined),
+      renderPaymentMethods: vi.fn().mockResolvedValue({ destroy: vi.fn() }),
+      renderAgreement: vi.fn().mockResolvedValue({ destroy: vi.fn() }),
+      requestPayment: vi.fn(),
+    };
+    vi.mocked(loadTossPayments).mockResolvedValue({ widgets: vi.fn().mockReturnValue(widgets) } as never);
+
+    render(<TossPaymentWidget order={{ ...order, paymentExpiresAt: "2020-01-01T00:00:00" }} user={user} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("결제 가능 시간이 만료되었습니다.");
+    expect(screen.getByRole("button", { name: "300,000원 결제하기" })).toBeDisabled();
+  });
+
   it("금액 설정 중 언마운트되면 이후 위젯을 렌더링하지 않는다", async () => {
     const setAmount = createDeferred<void>();
     const widgets = {

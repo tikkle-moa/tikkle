@@ -243,6 +243,7 @@ class ReservationStompControllerTest {
     amount = AMOUNT,
     paymentExpiresAt = LocalDateTime.of(2027, 1, 20, 19, 5),
     concertTitle = "아이유 콘서트",
+    posterUrl = null,
     performanceName = "1회차",
     performanceStartsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
     venueName = "티클홀",
