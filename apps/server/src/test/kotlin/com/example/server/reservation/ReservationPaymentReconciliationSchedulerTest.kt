@@ -5,8 +5,10 @@ import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
+import org.mockito.BDDMockito.willAnswer
 import org.mockito.BDDMockito.willThrow
 import org.mockito.InjectMocks
 import org.mockito.Mock
@@ -74,6 +76,37 @@ class ReservationPaymentReconciliationSchedulerTest {
     then(reservationPaymentService)
       .should()
       .reconcilePayment(SECOND_RESERVATION_ID)
+  }
+
+  @Test
+  fun `대사 실패가 발생하면 다음 실행에서 실패 예매부터 다시 조회한다`() {
+    val firstReservation = reservation(FIRST_RESERVATION_ID)
+    val failedReservation = reservation(SECOND_RESERVATION_ID)
+    val laterReservation = reservation(SECOND_RESERVATION_ID + 1)
+
+    givenReconciliationTargets(
+      reservations = listOf(firstReservation, failedReservation, laterReservation),
+    )
+
+    willAnswer { invocation ->
+      if (invocation.getArgument<Long>(0) == SECOND_RESERVATION_ID) {
+        throw IllegalStateException("일시적인 오류")
+      }
+    }.given(reservationPaymentService)
+      .reconcilePayment(anyLong())
+
+    scheduler.reconcilePaymentReservations()
+    scheduler.reconcilePaymentReservations()
+
+    then(reservationRepository).should()
+      .findAllByStatusInAndIdGreaterThanOrderByIdAsc(
+        statuses = setOf(
+          ReservationStatus.PAYMENT_CONFIRMING,
+          ReservationStatus.REFUND_REQUIRED,
+        ),
+        id = FIRST_RESERVATION_ID,
+        limit = Limit.of(BATCH_SIZE),
+      )
   }
 
   @Test
