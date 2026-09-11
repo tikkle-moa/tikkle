@@ -82,7 +82,7 @@ class TossPaymentClient(restClientBuilder: RestClient.Builder, private val prope
           headers.setBasicAuth(properties.secretKey, "")
         }
         .retrieve()
-        .body(TossPaymentResponse::class.java)
+        .body<TossPaymentResponse>()
         ?: throw CustomException(
           ErrorCode.BAD_GATEWAY,
           "결제 조회 응답이 비어 있습니다.",
