@@ -8,6 +8,10 @@ import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.CancelPaymentData
 import com.example.server.reservation.dto.ConfirmPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentData
+import com.example.server.reservation.dto.GetPaymentOrderCommand
+import com.example.server.reservation.dto.GetPaymentOrderData
+import com.example.server.reservation.dto.PaymentOrderResult
+import com.example.server.reservation.dto.PaymentOrderSeatResult
 import com.example.server.reservation.dto.ReservationSyncCommand
 import com.example.server.reservation.dto.StartCheckoutCommand
 import com.example.server.reservation.dto.StartCheckoutData
@@ -32,6 +36,9 @@ import java.util.UUID
 class ReservationStompControllerTest {
   @Mock
   lateinit var reservationCheckoutService: ReservationCheckoutService
+
+  @Mock
+  lateinit var reservationPaymentOrderService: ReservationPaymentOrderService
 
   @Mock
   lateinit var reservationPaymentService: ReservationPaymentService
@@ -93,6 +100,42 @@ class ReservationStompControllerTest {
       then(reservationCheckoutService)
         .should()
         .startCheckout(USER_ID, HOLD_ID)
+    }
+  }
+
+  @Nested
+  @DisplayName("GET_PAYMENT_ORDER")
+  inner class GetPaymentOrder {
+    @Test
+    fun `결제 주문 조회 서비스에 위임하고 성공 응답을 반환한다`() {
+      val command = GetPaymentOrderCommand(
+        requestId = REQUEST_ID,
+        data = GetPaymentOrderData(reservationId = RESERVATION_ID),
+      )
+      val result = paymentOrderResult()
+
+      given(
+        reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID),
+      ).willReturn(result)
+
+      val response = reservationStompController.sync(
+        command = command,
+        loginUser = loginUser,
+      )
+
+      assertThat(response).isEqualTo(
+        StompCommandSuccess(
+          requestId = REQUEST_ID,
+          action = "GET_PAYMENT_ORDER",
+          data = result,
+        ),
+      )
+
+      then(reservationPaymentOrderService)
+        .should()
+        .getPaymentOrder(USER_ID, RESERVATION_ID)
+      then(reservationCheckoutService).shouldHaveNoInteractions()
+      then(reservationPaymentService).shouldHaveNoInteractions()
     }
   }
 
@@ -191,6 +234,27 @@ class ReservationStompControllerTest {
     orderName = "아이유 콘서트 1회차 2석",
     amount = AMOUNT,
     paymentExpiresAt = LocalDateTime.of(2027, 1, 20, 19, 5),
+  )
+
+  private fun paymentOrderResult() = PaymentOrderResult(
+    reservationId = RESERVATION_ID,
+    orderId = ORDER_ID,
+    orderName = "아이유 콘서트 1회차 2석",
+    amount = AMOUNT,
+    paymentExpiresAt = LocalDateTime.of(2027, 1, 20, 19, 5),
+    concertTitle = "아이유 콘서트",
+    posterUrl = null,
+    performanceName = "1회차",
+    performanceStartsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
+    venueName = "티클홀",
+    seats = listOf(
+      PaymentOrderSeatResult(
+        venueSeatId = 101L,
+        sectionName = "R석",
+        seatLabel = "A-1",
+        price = 66_000,
+      ),
+    ),
   )
 
   companion object {

@@ -9,6 +9,7 @@ import { ConcertNewPage } from "@pages/concert-new";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
+import { PaymentFailPage, PaymentFixtureCheckoutPage, PaymentPage, PaymentSuccessPage } from "@pages/payment";
 import { PerformanceDetailPage } from "@pages/performance-detail";
 import { PerformanceNewPage } from "@pages/performance-new";
 import { SearchPage } from "@pages/search";
@@ -21,6 +22,7 @@ import AdminGuard from "./AdminGuard";
 import AppLayout from "./AppLayout";
 import AuthGuard from "./AuthGuard";
 import GuestGuard from "./GuestGuard";
+import PaymentLayout from "./PaymentLayout";
 import RootLayout from "./RootLayout";
 
 export const router = createBrowserRouter([
@@ -67,6 +69,21 @@ export const router = createBrowserRouter([
             children: [
               { path: ROUTE_PATHS.MY_FAVORITES, element: <FavoritePage /> },
               { path: ROUTE_PATHS.MY_RESERVATIONS, element: <ReservationPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <PaymentLayout />,
+        children: [
+          {
+            element: <AuthGuard />,
+            children: [
+              { path: ROUTE_PATHS.PAYMENT_FIXTURE_CHECKOUT, element: <PaymentFixtureCheckoutPage /> },
+              { path: ROUTE_PATHS.PAYMENT_FIXTURE, element: <PaymentPage fixture /> },
+              { path: ROUTE_PATHS.PAYMENT, element: <PaymentPage /> },
+              { path: ROUTE_PATHS.PAYMENT_SUCCESS, element: <PaymentSuccessPage /> },
+              { path: ROUTE_PATHS.PAYMENT_FAIL, element: <PaymentFailPage /> },
             ],
           },
         ],
