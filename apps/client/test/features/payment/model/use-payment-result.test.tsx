@@ -33,7 +33,7 @@ describe("usePaymentResult", () => {
   });
 
   it("취소 성공 후 STOMP가 재연결되어도 취소 명령을 중복 전송하지 않는다", async () => {
-    const { result } = renderHook(() => usePaymentResult(request));
+    const { result } = renderHook(() => usePaymentResult({ request }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
     const firstRequest = JSON.parse(publish.mock.calls[0][0].body) as { requestId: string };
@@ -59,7 +59,7 @@ describe("usePaymentResult", () => {
   });
 
   it("결제 처리 실패 응답은 서버 오류 메시지와 실패 상태를 표시한다", async () => {
-    const { result } = renderHook(() => usePaymentResult(request));
+    const { result } = renderHook(() => usePaymentResult({ request }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
     const requestId = JSON.parse(publish.mock.calls[0][0].body).requestId as string;
@@ -79,7 +79,7 @@ describe("usePaymentResult", () => {
   });
 
   it("오류 메시지가 없는 실패 응답은 기본 메시지를 표시한다", async () => {
-    const { result } = renderHook(() => usePaymentResult(request));
+    const { result } = renderHook(() => usePaymentResult({ request }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
     const requestId = JSON.parse(publish.mock.calls[0][0].body).requestId as string;
@@ -96,7 +96,7 @@ describe("usePaymentResult", () => {
 
   it("새 결제 요청으로 바뀌면 이전 실패 상태를 초기화하고 다시 전송한다", async () => {
     const nextRequest = { action: "CANCEL_PAYMENT" as const, data: { reservationId: 502 } };
-    const { result, rerender } = renderHook(({ currentRequest }) => usePaymentResult(currentRequest), {
+    const { result, rerender } = renderHook(({ currentRequest }) => usePaymentResult({ request: currentRequest }), {
       initialProps: { currentRequest: request },
     });
 
@@ -123,7 +123,7 @@ describe("usePaymentResult", () => {
   });
 
   it("현재 요청과 일치하지 않는 응답은 무시한다", async () => {
-    const { result } = renderHook(() => usePaymentResult(request));
+    const { result } = renderHook(() => usePaymentResult({ request }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
 

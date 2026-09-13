@@ -25,11 +25,13 @@ describe("usePaymentOrder", () => {
   });
 
   afterEach(() => {
-    useStompStore.setState({ client: null, connectionStatus: "disconnected" });
+    act(() => {
+      useStompStore.setState({ client: null, connectionStatus: "disconnected" });
+    });
   });
 
   it("예약 번호가 바뀌면 이전 주문을 비우고 새 주문을 조회한다", async () => {
-    const { result, rerender } = renderHook(({ reservationId }) => usePaymentOrder(reservationId), {
+    const { result, rerender } = renderHook(({ reservationId }) => usePaymentOrder({ reservationId }), {
       initialProps: { reservationId: 501 },
     });
 
@@ -56,7 +58,7 @@ describe("usePaymentOrder", () => {
   });
 
   it("예약 번호가 올바르지 않으면 주문 조회를 중단한다", () => {
-    const { result } = renderHook(() => usePaymentOrder(0));
+    const { result } = renderHook(() => usePaymentOrder({ reservationId: 0 }));
 
     expect(result.current).toMatchObject({
       order: null,
@@ -67,7 +69,7 @@ describe("usePaymentOrder", () => {
   });
 
   it("fixture 모드에서는 STOMP 요청 없이 주문서를 제공한다", async () => {
-    const { result } = renderHook(() => usePaymentOrder(501, true));
+    const { result } = renderHook(() => usePaymentOrder({ reservationId: 501, fixture: true }));
 
     await waitFor(() => expect(result.current.order?.reservationId).toBe(501));
     expect(result.current.isFixture).toBe(true);
@@ -76,7 +78,7 @@ describe("usePaymentOrder", () => {
   });
 
   it("주문 조회 실패 응답은 서버 오류 메시지를 표시한다", async () => {
-    const { result } = renderHook(() => usePaymentOrder(501));
+    const { result } = renderHook(() => usePaymentOrder({ reservationId: 501 }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
     const requestId = JSON.parse(publish.mock.calls[0][0].body).requestId as string;
@@ -97,7 +99,7 @@ describe("usePaymentOrder", () => {
   });
 
   it("오류 메시지가 없는 실패 응답은 기본 메시지를 표시한다", async () => {
-    const { result } = renderHook(() => usePaymentOrder(501));
+    const { result } = renderHook(() => usePaymentOrder({ reservationId: 501 }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
     const requestId = JSON.parse(publish.mock.calls[0][0].body).requestId as string;
@@ -112,7 +114,7 @@ describe("usePaymentOrder", () => {
   });
 
   it("주문서 형식이 올바르지 않은 성공 응답은 오류로 처리한다", async () => {
-    const { result } = renderHook(() => usePaymentOrder(501));
+    const { result } = renderHook(() => usePaymentOrder({ reservationId: 501 }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
     const requestId = JSON.parse(publish.mock.calls[0][0].body).requestId as string;
@@ -128,7 +130,7 @@ describe("usePaymentOrder", () => {
   });
 
   it("현재 요청과 일치하지 않는 응답은 무시한다", async () => {
-    const { result } = renderHook(() => usePaymentOrder(501));
+    const { result } = renderHook(() => usePaymentOrder({ reservationId: 501 }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
 
