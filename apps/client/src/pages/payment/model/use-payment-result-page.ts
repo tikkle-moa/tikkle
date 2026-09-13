@@ -26,7 +26,7 @@ export const usePaymentSuccessPage = () => {
     };
   }, [searchParams]);
 
-  return { isRequestValid: request !== null, ...usePaymentResult(request) };
+  return { isRequestValid: request !== null, ...usePaymentResult({ request }) };
 };
 
 export const usePaymentFailPage = () => {
@@ -44,5 +44,5 @@ export const usePaymentFailPage = () => {
     };
   }, [searchParams]);
 
-  return { isRequestValid: request !== null, ...usePaymentResult(request) };
+  return { isRequestValid: request !== null, ...usePaymentResult({ request }) };
 };

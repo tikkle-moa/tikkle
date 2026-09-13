@@ -6,7 +6,7 @@ export const usePaymentPage = (fixture = false) => {
   const { reservationId } = useParams();
   const id = fixture ? PAYMENT_FIXTURE_RESERVATION_ID : Number(reservationId);
   const isReservationIdValid = fixture || (Number.isInteger(id) && id > 0);
-  const paymentOrder = usePaymentOrder(id, fixture);
+  const paymentOrder = usePaymentOrder({ reservationId: id, fixture });
 
   return {
     isReservationIdValid,

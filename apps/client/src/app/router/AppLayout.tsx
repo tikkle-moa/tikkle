@@ -9,10 +9,9 @@ import { useSecondaryHeaderVisibility } from "../model/use-secondary-header-visi
 
 interface AppLayoutProps {
   showSecondaryHeader?: boolean;
-  showMobileBottomNavigation?: boolean;
 }
 
-const AppLayout = ({ showSecondaryHeader = false, showMobileBottomNavigation = true }: AppLayoutProps) => {
+const AppLayout = ({ showSecondaryHeader = false }: AppLayoutProps) => {
   const { heroRef, isSecondaryHeaderVisible, scrollContainerRef } = useSecondaryHeaderVisibility();
 
   return (
@@ -28,7 +27,7 @@ const AppLayout = ({ showSecondaryHeader = false, showMobileBottomNavigation = t
         </div>
       </main>
 
-      {showMobileBottomNavigation && <MobileBottomNavigation />}
+      <MobileBottomNavigation />
     </div>
   );
 };

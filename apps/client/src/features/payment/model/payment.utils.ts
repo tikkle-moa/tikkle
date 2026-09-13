@@ -1,7 +1,10 @@
-import { getPaymentCustomerKeyStorageKey } from "./payment.constants";
 import type { PaymentCommandResponse, PaymentOrder, PaymentOrderSeat } from "./payment.types";
 
 export const formatPaymentAmount = (amount: number) => `${new Intl.NumberFormat("ko-KR").format(amount)}원`;
+
+const PAYMENT_CUSTOMER_KEY_STORAGE_PREFIX = "tikkle.payment.customer-key";
+
+export const getPaymentCustomerKeyStorageKey = (userId: number) => `${PAYMENT_CUSTOMER_KEY_STORAGE_PREFIX}.${userId}`;
 
 export const getPaymentCustomerKey = (userId: number) => {
   const storageKey = getPaymentCustomerKeyStorageKey(userId);

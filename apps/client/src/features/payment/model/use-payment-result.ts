@@ -4,26 +4,14 @@ import { useStompStore } from "@shared/realtime/stomp.store";
 import { useStompSubscription } from "@shared/realtime/use-stomp-subscription";
 
 import { PAYMENT_STOMP_DESTINATIONS } from "./payment.constants";
+import type { PaymentResultRequest, PaymentResultStatus } from "./payment.types";
 import { parsePaymentCommandResponse } from "./payment.utils";
 
-export type PaymentResultRequest =
-  | {
-      action: "CONFIRM_PAYMENT";
-      data: { paymentKey: string; orderId: string; amount: number };
-    }
-  | {
-      action: "CANCEL_PAYMENT";
-      data: { reservationId: number };
-    };
-
-export type PaymentResultStatus = "pending" | "succeeded" | "failed";
-
-interface UsePaymentResultReturn {
-  errorMessage: string | null;
-  status: PaymentResultStatus;
+interface UsePaymentResultProps {
+  request: PaymentResultRequest | null;
 }
 
-export const usePaymentResult = (request: PaymentResultRequest | null): UsePaymentResultReturn => {
+export const usePaymentResult = ({ request }: UsePaymentResultProps) => {
   const client = useStompStore((state) => state.client);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getClient = useStompStore((state) => state.getClient);

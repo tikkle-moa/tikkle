@@ -19,6 +19,25 @@ export interface PaymentOrder {
   seats: PaymentOrderSeat[];
 }
 
+export interface PaymentOrderState {
+  key: string;
+  order: PaymentOrder | null;
+  errorMessage: string | null;
+  isLoading: boolean;
+}
+
+export type PaymentResultRequest =
+  | {
+      action: "CONFIRM_PAYMENT";
+      data: { paymentKey: string; orderId: string; amount: number };
+    }
+  | {
+      action: "CANCEL_PAYMENT";
+      data: { reservationId: number };
+    };
+
+export type PaymentResultStatus = "pending" | "succeeded" | "failed";
+
 export interface PaymentCommandFailure {
   code: string;
   message: string;

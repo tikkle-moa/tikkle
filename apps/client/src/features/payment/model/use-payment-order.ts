@@ -5,24 +5,15 @@ import { useStompSubscription } from "@shared/realtime/use-stomp-subscription";
 
 import { PAYMENT_STOMP_DESTINATIONS } from "./payment.constants";
 import { createPaymentOrderFixture } from "./payment.fixtures";
-import type { PaymentOrder } from "./payment.types";
+import type { PaymentOrderState } from "./payment.types";
 import { isPaymentOrder, parsePaymentCommandResponse } from "./payment.utils";
 
-interface UsePaymentOrderResult {
-  order: PaymentOrder | null;
-  errorMessage: string | null;
-  isLoading: boolean;
-  isFixture: boolean;
+interface UsePaymentOrderProps {
+  reservationId: number;
+  fixture?: boolean;
 }
 
-interface PaymentOrderState {
-  key: string;
-  order: PaymentOrder | null;
-  errorMessage: string | null;
-  isLoading: boolean;
-}
-
-export const usePaymentOrder = (reservationId: number, fixture = false): UsePaymentOrderResult => {
+export const usePaymentOrder = ({ reservationId, fixture = false }: UsePaymentOrderProps) => {
   const client = useStompStore((state) => state.client);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getClient = useStompStore((state) => state.getClient);
