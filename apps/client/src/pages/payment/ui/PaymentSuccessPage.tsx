@@ -5,7 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { usePaymentSuccessPage } from "../model/use-payment-result-page";
+import { usePaymentSuccessPage } from "../model/use-payment-success-page";
 
 const PaymentSuccessPage = () => {
   const { errorMessage, isRequestValid, status } = usePaymentSuccessPage();

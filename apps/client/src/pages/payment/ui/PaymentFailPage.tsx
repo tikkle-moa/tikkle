@@ -5,7 +5,7 @@ import { AlertCircle } from "lucide-react";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { usePaymentFailPage } from "../model/use-payment-result-page";
+import { usePaymentFailPage } from "../model/use-payment-fail-page";
 
 const PaymentFailPage = () => {
   const { errorMessage, isRequestValid, status } = usePaymentFailPage();

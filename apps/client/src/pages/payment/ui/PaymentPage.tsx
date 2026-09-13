@@ -1,10 +1,6 @@
-import { useNavigate } from "react-router";
-
 import { ArrowLeft, Clock3 } from "lucide-react";
 
 import DetailMessage from "@shared/ui/DetailMessage";
-
-import { useSessionStore } from "@entities/session";
 
 import { PaymentOrderSummary, TossPaymentWidget } from "@features/payment";
 
@@ -15,9 +11,7 @@ interface PaymentPageProps {
 }
 
 const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
-  const navigate = useNavigate();
-  const user = useSessionStore((state) => state.user);
-  const { order, errorMessage, isLoading, isReservationIdValid } = usePaymentPage(fixture);
+  const { handleBack, order, errorMessage, isLoading, isReservationIdValid, user } = usePaymentPage({ fixture });
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;
@@ -35,7 +29,7 @@ const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
     <div className="mx-auto w-full max-w-5xl pb-6">
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={handleBack}
         className="hover:text-brand-primary inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 transition-colors"
       >
         <ArrowLeft className="size-4" aria-hidden />
