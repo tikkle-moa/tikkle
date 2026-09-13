@@ -29,7 +29,16 @@ describe("usePaymentResult", () => {
   });
 
   afterEach(() => {
-    useStompStore.setState({ client: null, connectionStatus: "disconnected" });
+    act(() => {
+      useStompStore.setState({ client: null, connectionStatus: "disconnected" });
+    });
+  });
+
+  it("요청이 없으면 결제 결과 명령을 전송하지 않는다", () => {
+    const { result } = renderHook(() => usePaymentResult({ request: null }));
+
+    expect(result.current).toEqual({ errorMessage: null, status: "pending" });
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it("취소 성공 후 STOMP가 재연결되어도 취소 명령을 중복 전송하지 않는다", async () => {
@@ -55,6 +64,19 @@ describe("usePaymentResult", () => {
     });
 
     await waitFor(() => expect(result.current.status).toBe("succeeded"));
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("응답을 받기 전에 STOMP가 재연결되어도 처리 중인 명령을 중복 전송하지 않는다", async () => {
+    const { result } = renderHook(() => usePaymentResult({ request }));
+
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      useStompStore.setState({ client: secondClient, connectionStatus: "connected" });
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("pending"));
     expect(publish).toHaveBeenCalledTimes(1);
   });
 

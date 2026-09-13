@@ -42,17 +42,20 @@ export const useTossPaymentWidget = ({ order, user }: UseTossPaymentWidgetProps)
       return;
     }
 
-    const timeoutId = window.setTimeout(
-      () => {
-        setExpirationState({ paymentExpiresAt: order.paymentExpiresAt, isExpired: true });
-      },
-      Math.max(0, expiresAt - Date.now()),
-    );
+    const remainingMilliseconds = expiresAt - Date.now();
+
+    if (remainingMilliseconds <= 0) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setExpirationState({ paymentExpiresAt: order.paymentExpiresAt, isExpired: true });
+    }, remainingMilliseconds);
     return () => window.clearTimeout(timeoutId);
   }, [expiresAt, order.paymentExpiresAt]);
 
   useEffect(() => {
-    if (!clientKey) {
+    if (!clientKey || isExpired) {
       return;
     }
 
@@ -111,7 +114,7 @@ export const useTossPaymentWidget = ({ order, user }: UseTossPaymentWidgetProps)
       void paymentMethodWidget?.destroy();
       void agreementWidget?.destroy();
     };
-  }, [agreementSelector, clientKey, order.amount, paymentMethodSelector, user.id]);
+  }, [agreementSelector, clientKey, isExpired, order.amount, paymentMethodSelector, user.id]);
 
   const handlePaymentRequest = useCallback(async () => {
     if (!widgets || isExpired) {

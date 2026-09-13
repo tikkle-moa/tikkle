@@ -16,7 +16,10 @@ export const usePaymentResult = ({ request }: UsePaymentResultProps) => {
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getClient = useStompStore((state) => state.getClient);
   const requestIdRef = useRef<string | null>(null);
+  const requestKey = request ? JSON.stringify(request) : null;
   const requestRef = useRef<PaymentResultRequest | null>(request);
+  const requestKeyRef = useRef<string | null>(requestKey);
+  const hasPublishedRequestRef = useRef(false);
   const statusRef = useRef<PaymentResultStatus>("pending");
   const [status, setStatus] = useState<PaymentResultStatus>("pending");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -50,32 +53,35 @@ export const usePaymentResult = ({ request }: UsePaymentResultProps) => {
   });
 
   useEffect(() => {
-    if (requestRef.current !== request) {
+    if (requestKeyRef.current !== requestKey) {
+      requestKeyRef.current = requestKey;
       requestRef.current = request;
       requestIdRef.current = null;
+      hasPublishedRequestRef.current = false;
       statusRef.current = "pending";
       setStatus("pending");
       setErrorMessage(null);
     }
 
-    if (!request || !client || connectionStatus !== "connected" || !client.connected) {
+    if (!requestRef.current || !client || connectionStatus !== "connected" || !client.connected) {
       return;
     }
 
-    if (statusRef.current !== "pending") {
+    if (statusRef.current !== "pending" || hasPublishedRequestRef.current) {
       return;
     }
 
-    const requestId = crypto.randomUUID();
+    const requestId = requestIdRef.current ?? crypto.randomUUID();
     requestIdRef.current = requestId;
+    hasPublishedRequestRef.current = true;
     setStatus("pending");
     setErrorMessage(null);
 
     client.publish({
       destination: PAYMENT_STOMP_DESTINATIONS.request,
-      body: JSON.stringify({ requestId, ...request }),
+      body: JSON.stringify({ requestId, ...requestRef.current }),
     });
-  }, [client, connectionStatus, request]);
+  }, [client, connectionStatus, request, requestKey]);
 
   return { errorMessage, status };
 };
