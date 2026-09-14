@@ -101,6 +101,61 @@ class RedisVenueSeatHoldService(
     return holdDetail
   }
 
+  fun releaseVenueSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): List<Long> {
+    validateVenueSeatIds(venueSeatIds)
+
+    val groupId = getGroupId(userId, performanceId)
+    val venueSeatKeys = venueSeatIds.map { holdVenueSeatKey(performanceId, it) }
+    val holdIds = stringRedisTemplate.opsForValue().multiGet(venueSeatKeys)
+      .map { it ?: throw CustomException(ErrorCode.NOT_FOUND, "점유되지 않은 좌석이 포함되어 있습니다.") }
+
+    val seatIdsByHoldId = venueSeatIds
+      .zip(holdIds)
+      .groupBy(keySelector = { (_, holdId) -> holdId }, valueTransform = { (venueSeatId, _) -> venueSeatId })
+      .mapValues { (_, seatIds) -> seatIds.toSet() }
+
+    val holdDetailKeys = seatIdsByHoldId.keys.map { holdDetailKey(it) }
+    val storedHoldDetails = stringRedisTemplate.opsForValue().multiGet(holdDetailKeys)
+    val holdDetails = storedHoldDetails.map { value ->
+      value
+        ?.let { objectMapper.readValue(it, VenueSeatHoldDetail::class.java) }
+        ?.also { if (it.groupId != groupId) throw CustomException(ErrorCode.FORBIDDEN, "홀드에 대한 권한이 없습니다.") }
+        ?: throw CustomException(ErrorCode.NOT_FOUND, "좌석 점유 정보를 찾을 수 없습니다.")
+    }
+
+    val updatedHoldDetails = holdDetails.map { holdDetail ->
+      val seatIds = seatIdsByHoldId.getValue(holdDetail.holdId)
+      holdDetail.copy(venueSeatIds = holdDetail.venueSeatIds.filterNot { it in seatIds })
+    }
+
+    val (emptyHoldDetails, remainingHoldDetails) = storedHoldDetails.zip(updatedHoldDetails).partition { (_, updated) ->
+      updated.venueSeatIds.isEmpty()
+    }
+
+    val keys = venueSeatKeys +
+      emptyHoldDetails.map { (_, updated) -> holdDetailKey(updated.holdId) } +
+      remainingHoldDetails.map { (_, updated) -> holdDetailKey(updated.holdId) } +
+      listOf(holdGroupKey(groupId))
+
+    val released = stringRedisTemplate.execute(
+      releaseVenueSeatsScript,
+      keys,
+      venueSeatKeys.size.toString(),
+      emptyHoldDetails.size.toString(),
+      remainingHoldDetails.size.toString(),
+      *holdIds.toTypedArray(),
+      *(emptyHoldDetails + remainingHoldDetails).map { (stored, _) -> requireNotNull(stored) }.toTypedArray(),
+      *emptyHoldDetails.map { (_, updated) -> updated.holdId }.toTypedArray(),
+      *remainingHoldDetails.map { (_, updated) -> objectMapper.writeValueAsString(updated) }.toTypedArray(),
+    ) == 0L
+
+    if (!released) {
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 해제할 수 없습니다.")
+    }
+
+    return venueSeatIds
+  }
+
   fun getGroupId(userId: Long, performanceId: Long): String {
     // 추후 사용자 ID를 기반으로 그룹 ID를 가져오는 로직 구현 필요
     // 현재는 단순히 사용자 ID를 문자열로 변환하여 그룹 ID로 사용
@@ -127,6 +182,11 @@ class RedisVenueSeatHoldService(
 
     private val holdVenueSeatsScript = DefaultRedisScript<Long>().apply {
       setLocation(ClassPathResource("redis/hold-venue-seats.lua"))
+      resultType = Long::class.java
+    }
+
+    private val releaseVenueSeatsScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/release-venue-seats.lua"))
       resultType = Long::class.java
     }
   }
