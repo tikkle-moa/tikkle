@@ -12,20 +12,20 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 @Component
-class PerformanceSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate, private val stringRedisTemplate: StringRedisTemplate) {
-  fun publishReservationConfirmed(performanceId: Long, seatIds: List<Long>) {
+class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate, private val stringRedisTemplate: StringRedisTemplate) {
+  fun publishReservationConfirmed(performanceId: Long, venueSeatIds: List<Long>) {
     publish(
       performanceId = performanceId,
       type = PerformanceSeatEvent.RESERVATION_CONFIRMED,
-      data = ReservationConfirmedEventData(seatIds),
+      data = ReservationConfirmedEventData(venueSeatIds),
     )
   }
 
-  fun publishHoldReleased(performanceId: Long, seatIds: List<Long>) {
+  fun publishHoldReleased(performanceId: Long, venueSeatIds: List<Long>) {
     publish(
       performanceId = performanceId,
       type = PerformanceSeatEvent.HOLD_RELEASED,
-      data = HoldReleasedEventData(seatIds),
+      data = HoldReleasedEventData(venueSeatIds),
     )
   }
 
