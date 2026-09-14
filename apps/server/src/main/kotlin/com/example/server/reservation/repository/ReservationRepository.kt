@@ -12,6 +12,18 @@ import org.springframework.data.repository.query.Param
 import java.time.LocalDateTime
 
 interface ReservationRepository : JpaRepository<Reservation, Long> {
+  @Query(
+    """
+    SELECT r
+    FROM Reservation r
+    JOIN FETCH r.performance p
+    JOIN FETCH p.concert c
+    JOIN FETCH c.venue
+    WHERE r.id = :reservationId
+    """,
+  )
+  fun findPaymentOrderById(reservationId: Long): Reservation?
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT r FROM Reservation r WHERE r.orderId = :orderId")
   fun findByOrderIdForUpdate(orderId: String): Reservation?
