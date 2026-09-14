@@ -308,7 +308,7 @@ class StompExceptionHandlerTest {
       exception = CustomException(ErrorCode.BAD_REQUEST),
       message = requestMessage,
       principal = principal,
-      headerAccessor = headerAccessor("/api/invalid"),
+      headerAccessor = headerAccessor("/invalid"),
     )
 
     then(messagingTemplateProvider)

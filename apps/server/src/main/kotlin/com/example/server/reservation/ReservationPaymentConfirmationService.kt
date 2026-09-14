@@ -182,7 +182,6 @@ class ReservationPaymentConfirmationService(
 
     if (
       holds == null ||
-      holds.performanceId != reservation.performance.id ||
       !reservation.paymentExpiresAt.isAfter(LocalDateTime.now())
     ) {
       reservation.status = ReservationStatus.REFUND_REQUIRED

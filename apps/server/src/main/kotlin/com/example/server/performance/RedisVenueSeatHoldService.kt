@@ -118,11 +118,10 @@ class RedisVenueSeatHoldService(
 
     val holdDetailKeys = seatIdsByHoldId.keys.map { holdDetailKey(it) }
     val storedHoldDetails = stringRedisTemplate.opsForValue().multiGet(holdDetailKeys)
+      .map { it ?: throw CustomException(ErrorCode.NOT_FOUND, "좌석 점유 정보를 찾을 수 없습니다.") }
     val holdDetails = storedHoldDetails.map { value ->
-      value
-        ?.let { objectMapper.readValue(it, VenueSeatHoldDetail::class.java) }
-        ?.also { if (it.groupId != groupId) throw CustomException(ErrorCode.FORBIDDEN, "홀드에 대한 권한이 없습니다.") }
-        ?: throw CustomException(ErrorCode.NOT_FOUND, "좌석 점유 정보를 찾을 수 없습니다.")
+      objectMapper.readValue(value, VenueSeatHoldDetail::class.java)
+        .also { if (it.groupId != groupId) throw CustomException(ErrorCode.FORBIDDEN, "홀드에 대한 권한이 없습니다.") }
     }
 
     val updatedHoldDetails = holdDetails.map { holdDetail ->
@@ -146,7 +145,7 @@ class RedisVenueSeatHoldService(
       emptyHoldDetails.size.toString(),
       remainingHoldDetails.size.toString(),
       *holdIds.toTypedArray(),
-      *(emptyHoldDetails + remainingHoldDetails).map { (stored, _) -> requireNotNull(stored) }.toTypedArray(),
+      *(emptyHoldDetails + remainingHoldDetails).map { (stored, _) -> stored }.toTypedArray(),
       *emptyHoldDetails.map { (_, updated) -> updated.holdId }.toTypedArray(),
       *remainingHoldDetails.map { (_, updated) -> objectMapper.writeValueAsString(updated) }.toTypedArray(),
     ) == 0L

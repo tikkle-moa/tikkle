@@ -2,18 +2,20 @@ package com.example.server.reservation
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.performance.PerformanceSeatStompPublisher
-import com.example.server.performance.RedisSeatHoldService
-import com.example.server.performance.dto.SeatHold
+import com.example.server.performance.PerformanceVenueSeatStompPublisher
+import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.reservation.payment.PaymentGateway
+import com.example.server.reservation.payment.dto.ActiveHoldsSnapshot
 import com.example.server.reservation.payment.dto.ConfirmPaymentResult
 import com.example.server.reservation.payment.dto.ExternalPayment
+import com.example.server.reservation.payment.dto.PaymentConfirmationAttempt
+import com.example.server.reservation.payment.dto.PaymentConfirmationCompletion
+import com.example.server.reservation.payment.dto.PaymentConfirmationStart
 import com.example.server.reservation.payment.dto.PaymentReconciliationTarget
 import com.example.server.reservation.payment.types.ExternalPaymentStatus
 import com.example.server.reservation.types.ReservationStatus
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.DisplayName
-import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
@@ -25,1259 +27,589 @@ import org.mockito.Mock
 import org.mockito.Mockito.never
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.transaction.support.TransactionSynchronizationManager
-import java.time.LocalDateTime
 
 @ExtendWith(MockitoExtension::class)
-@DisplayName("ReservationPaymentService")
 class ReservationPaymentServiceTest {
-  @Mock
-  lateinit var paymentConfirmationService: ReservationPaymentConfirmationService
+  @Mock lateinit var paymentConfirmationService: ReservationPaymentConfirmationService
 
-  @Mock
-  lateinit var redisSeatHoldService: RedisSeatHoldService
+  @Mock lateinit var redisVenueSeatHoldService: RedisVenueSeatHoldService
 
-  @Mock
-  lateinit var paymentGateway: PaymentGateway
+  @Mock lateinit var paymentGateway: PaymentGateway
 
-  @Mock
-  lateinit var performanceSeatStompPublisher: PerformanceSeatStompPublisher
+  @Mock lateinit var performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher
 
-  @InjectMocks
-  lateinit var reservationPaymentService: ReservationPaymentService
+  @InjectMocks lateinit var service: ReservationPaymentService
 
-  @Nested
-  @DisplayName("confirmPayment")
-  inner class ConfirmPayment {
-    @Test
-    fun `Toss 승인과 로컬 확정에 성공하면 Hold를 해제하고 확정 이벤트를 발행한다`() {
-      val attempt = attempt()
-      val hold = hold()
-      val result = result()
-
-      givenReady(attempt)
-      given(paymentConfirmationService.complete(attempt))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result,
-            hold = hold,
-          ),
-        )
-      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold)
-
-      val actual = reservationPaymentService.confirmPayment(
-        userId = USER_ID,
-        paymentKey = PAYMENT_KEY,
-        orderId = ORDER_ID,
-        amount = AMOUNT,
-      )
-
-      assertThat(actual).isEqualTo(result)
-      then(paymentGateway).should().confirm(
-        PAYMENT_KEY,
-        ORDER_ID,
-        AMOUNT,
-      )
-      then(paymentConfirmationService).should().complete(attempt)
-      then(redisSeatHoldService).should().release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishReservationConfirmed(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `로컬 확정 결과에 Hold가 없으면 Hold 해제와 이벤트 발행을 건너뛴다`() {
-      val attempt = attempt()
-      val result = result()
-
-      givenReady(attempt)
-      given(paymentConfirmationService.complete(attempt))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result,
-            hold = null,
-          ),
-        )
-
-      val actual = reservationPaymentService.confirmPayment(
-        USER_ID,
-        PAYMENT_KEY,
-        ORDER_ID,
-        AMOUNT,
-      )
-
-      assertThat(actual).isEqualTo(result)
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `이미 성공한 결제면 Toss 승인과 로컬 확정을 다시 요청하지 않는다`() {
-      val result = result()
-
-      given(
-        paymentConfirmationService.begin(
-          userId = USER_ID,
-          paymentKey = PAYMENT_KEY,
-          orderId = ORDER_ID,
-          amount = AMOUNT,
-        ),
-      ).willReturn(
-        PaymentConfirmationStart.AlreadySucceeded(result),
-      )
-
-      val actual = reservationPaymentService.confirmPayment(
-        USER_ID,
-        PAYMENT_KEY,
-        ORDER_ID,
-        AMOUNT,
-      )
-
-      assertThat(actual).isEqualTo(result)
-      then(paymentGateway).shouldHaveNoInteractions()
-      then(paymentConfirmationService).shouldHaveNoMoreInteractions()
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `Toss 승인에 실패하면 로컬 확정과 취소를 요청하지 않는다`() {
-      val attempt = attempt()
-      val exception = CustomException(
-        ErrorCode.BAD_GATEWAY,
-        "결제 승인에 실패했습니다.",
-      )
-
-      givenConfirmationStart(attempt)
-
-      willThrow(exception)
-        .given(paymentGateway)
-        .confirm(PAYMENT_KEY, ORDER_ID, AMOUNT)
-
-      val actual = assertThrows<CustomException> {
-        reservationPaymentService.confirmPayment(
-          USER_ID,
-          PAYMENT_KEY,
-          ORDER_ID,
-          AMOUNT,
-        )
-      }
-
-      assertThat(actual).isSameAs(exception)
-      then(paymentConfirmationService)
-        .should(never())
-        .complete(attempt)
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `로컬 확정에 실패하고 Toss 취소에 성공하면 REFUNDED 처리 후 Hold를 해제한다`() {
-      val attempt = attempt()
-      val hold = hold()
-
-      givenReady(attempt)
-      given(paymentConfirmationService.complete(attempt))
-        .willReturn(
-          PaymentConfirmationCompletion.RefundRequired(hold),
-        )
-      given(paymentConfirmationService.completeRefund(attempt))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold)
-
-      val exception = assertThrows<CustomException> {
-        reservationPaymentService.confirmPayment(
-          USER_ID,
-          PAYMENT_KEY,
-          ORDER_ID,
-          AMOUNT,
-        )
-      }
-
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
-      assertThat(exception.message)
-        .isEqualTo("예매 확정에 실패해 결제를 취소했습니다.")
-
-      then(paymentGateway).should().confirm(
-        PAYMENT_KEY,
-        ORDER_ID,
-        AMOUNT,
-      )
-      then(paymentGateway).should().cancel(
-        PAYMENT_KEY,
-        "예매 확정에 실패했습니다.",
-        "reservation-refund-$RESERVATION_ID",
-      )
-      then(paymentConfirmationService).should().completeRefund(attempt)
-      then(redisSeatHoldService).should().release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `로컬 확정에 실패하고 활성 Hold가 없으면 이벤트를 발행하지 않는다`() {
-      val attempt = attempt()
-
-      givenReady(attempt)
-      given(paymentConfirmationService.complete(attempt))
-        .willReturn(
-          PaymentConfirmationCompletion.RefundRequired(null),
-        )
-      given(paymentConfirmationService.completeRefund(attempt))
-        .willReturn(null)
-
-      val exception = assertThrows<CustomException> {
-        reservationPaymentService.confirmPayment(
-          USER_ID,
-          PAYMENT_KEY,
-          ORDER_ID,
-          AMOUNT,
-        )
-      }
-
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
-      then(paymentGateway).should().cancel(
-        PAYMENT_KEY,
-        "예매 확정에 실패했습니다.",
-        "reservation-refund-$RESERVATION_ID",
-      )
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `Toss 취소에 실패하면 환불 완료 처리를 요청하지 않는다`() {
-      val attempt = attempt()
-      val hold = hold()
-      val exception = CustomException(
-        ErrorCode.BAD_GATEWAY,
-        "결제 취소에 실패했습니다.",
-      )
-
-      givenReady(attempt)
-      given(paymentConfirmationService.complete(attempt))
-        .willReturn(
-          PaymentConfirmationCompletion.RefundRequired(hold),
-        )
-      willThrow(exception)
-        .given(paymentGateway)
-        .cancel(
-          PAYMENT_KEY,
-          "예매 확정에 실패했습니다.",
-          "reservation-refund-$RESERVATION_ID",
-        )
-
-      val actual = assertThrows<CustomException> {
-        reservationPaymentService.confirmPayment(
-          USER_ID,
-          PAYMENT_KEY,
-          ORDER_ID,
-          AMOUNT,
-        )
-      }
-
-      assertThat(actual).isSameAs(exception)
-      then(paymentConfirmationService)
-        .should(never())
-        .completeRefund(attempt)
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `Toss 승인 후 로컬 확정 예외가 발생하면 환불을 시도한다`() {
-      val attempt = attempt()
-      val localException = IllegalStateException("reservation seat save failed")
-
-      givenReady(attempt)
-      willThrow(localException)
-        .given(paymentConfirmationService)
-        .complete(attempt)
-      given(paymentConfirmationService.markRefundRequired(attempt))
-        .willReturn(true)
-      given(paymentConfirmationService.completeRefund(attempt))
-        .willReturn(null)
-
-      val actual = assertThrows<IllegalStateException> {
-        reservationPaymentService.confirmPayment(
-          USER_ID,
-          PAYMENT_KEY,
-          ORDER_ID,
-          AMOUNT,
-        )
-      }
-
-      assertThat(actual).isSameAs(localException)
-      then(paymentConfirmationService).should().markRefundRequired(attempt)
-      then(paymentGateway).should().cancel(
-        PAYMENT_KEY,
-        "예매 확정에 실패했습니다.",
-        "reservation-refund-$RESERVATION_ID",
-      )
-      then(paymentConfirmationService).should().completeRefund(attempt)
-    }
-
-    @Test
-    fun `로컬 확정 예외 후 환불 전환 대상이 아니면 원래 예외를 유지한다`() {
-      val attempt = attempt()
-      val localException = IllegalStateException("reservation seat save failed")
-
-      givenReady(attempt)
-      willThrow(localException)
-        .given(paymentConfirmationService)
-        .complete(attempt)
-      given(paymentConfirmationService.markRefundRequired(attempt))
-        .willReturn(false)
-
-      val actual = assertThrows<IllegalStateException> {
-        reservationPaymentService.confirmPayment(
-          USER_ID,
-          PAYMENT_KEY,
-          ORDER_ID,
-          AMOUNT,
-        )
-      }
-
-      assertThat(actual).isSameAs(localException)
-      then(paymentConfirmationService).should().markRefundRequired(attempt)
-      then(paymentGateway).should(never()).cancel(
-        PAYMENT_KEY,
-        "예매 확정에 실패했습니다.",
-        "reservation-refund-$RESERVATION_ID",
-      )
-    }
-
-    @Test
-    fun `Hold 해제와 이벤트 발행은 트랜잭션 커밋 후 수행한다`() {
-      val attempt = attempt()
-      val hold = hold()
-      val result = result()
-
-      givenReady(attempt)
-      given(paymentConfirmationService.complete(attempt))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result,
-            hold = hold,
-          ),
-        )
-      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold)
-
-      TransactionSynchronizationManager.initSynchronization()
-
-      try {
-        val actual = reservationPaymentService.confirmPayment(
-          USER_ID,
-          PAYMENT_KEY,
-          ORDER_ID,
-          AMOUNT,
-        )
-
-        assertThat(actual).isEqualTo(result)
-        then(redisSeatHoldService).shouldHaveNoInteractions()
-        then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-
-        TransactionSynchronizationManager
-          .getSynchronizations()
-          .forEach { synchronization -> synchronization.afterCommit() }
-
-        then(redisSeatHoldService).should().release(HOLD_ID)
-        then(performanceSeatStompPublisher)
-          .should()
-          .publishReservationConfirmed(
-            performanceId = PERFORMANCE_ID,
-            seatIds = SEAT_IDS,
-          )
-      } finally {
-        TransactionSynchronizationManager.clearSynchronization()
-      }
-    }
-
-    @Test
-    fun `Hold 해제에 실패해도 예매 확정 이벤트를 발행한다`() {
-      val attempt = attempt()
-      val hold = hold()
-      val result = result()
-
-      givenReady(attempt)
-      given(paymentConfirmationService.complete(attempt))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result,
-            hold = hold,
-          ),
-        )
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(null)
-
-      val actual = reservationPaymentService.confirmPayment(
-        USER_ID,
-        PAYMENT_KEY,
-        ORDER_ID,
-        AMOUNT,
-      )
-
-      assertThat(actual).isEqualTo(result)
-      then(redisSeatHoldService).should().release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishReservationConfirmed(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `Toss 승인 결과가 완료 상태가 아니면 로컬 확정을 진행하지 않는다`() {
-      val attempt = attempt()
-
-      givenReady(
-        attempt = attempt,
-        paymentStatus = ExternalPaymentStatus.WAITING_FOR_DEPOSIT,
-      )
-
-      val exception = assertThrows<CustomException> {
-        reservationPaymentService.confirmPayment(
-          userId = USER_ID,
-          paymentKey = PAYMENT_KEY,
-          orderId = ORDER_ID,
-          amount = AMOUNT,
-        )
-      }
-
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
-      assertThat(exception.message)
-        .isEqualTo("결제 승인 결과를 확인하고 있습니다.")
-
-      then(paymentConfirmationService)
-        .should(never())
-        .complete(attempt)
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
+  @AfterEach
+  fun clearTransactionSynchronization() {
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.clearSynchronization()
     }
   }
 
-  @Nested
-  @DisplayName("reconcilePayment")
-  inner class ReconcilePayment {
-    @Test
-    fun `대사 대상 예매가 없으면 외부 결제를 조회하지 않는다`() {
-      given(
-        paymentConfirmationService.findReconciliationTarget(RESERVATION_ID),
-      ).willReturn(null)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentGateway).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `승인 중인 결제를 Toss에서 찾을 수 없으면 로컬 실패 처리 후 Hold를 해제한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
-      given(paymentConfirmationService.markPaymentFailed(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .markPaymentFailed(attempt())
-      then(redisSeatHoldService)
-        .should()
-        .release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `환불 필요 결제를 Toss에서 찾을 수 없으면 환불 완료 처리 후 Hold를 해제한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.REFUND_REQUIRED)
-      given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .completeRefund(attempt())
-      then(redisSeatHoldService)
-        .should()
-        .release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `외부 paymentKey가 다르면 로컬 상태를 변경하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      given(paymentGateway.find(PAYMENT_KEY))
-        .willReturn(
-          externalPayment(
-            status = ExternalPaymentStatus.DONE,
-            paymentKey = "another-payment-key",
-          ),
-        )
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .findReconciliationTarget(RESERVATION_ID)
-      then(paymentConfirmationService).shouldHaveNoMoreInteractions()
-    }
-
-    @Test
-    fun `외부 orderId가 다르면 로컬 상태를 변경하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      given(paymentGateway.find(PAYMENT_KEY))
-        .willReturn(
-          externalPayment(
-            status = ExternalPaymentStatus.DONE,
-            orderId = "another-order-id",
-          ),
-        )
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .findReconciliationTarget(RESERVATION_ID)
-      then(paymentConfirmationService).shouldHaveNoMoreInteractions()
-    }
-
-    @Test
-    fun `외부 결제 금액이 다르면 로컬 상태를 변경하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      given(
-        paymentGateway.find(PAYMENT_KEY),
-      ).willReturn(
-        externalPayment(
-          status = ExternalPaymentStatus.DONE,
-          amount = AMOUNT + 1,
-        ),
-      )
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .findReconciliationTarget(RESERVATION_ID)
-      then(paymentConfirmationService).shouldHaveNoMoreInteractions()
-    }
-
-    @Test
-    fun `승인 중인 결제가 Toss에서 완료되면 로컬 확정 후 예매 확정 이벤트를 발행한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-      given(paymentConfirmationService.complete(attempt()))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result(),
-            hold = hold,
-          ),
-        )
-      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService).should().complete(attempt())
-      then(redisSeatHoldService).should().release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishReservationConfirmed(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `승인 중인 결제가 완료되어도 Hold가 없으면 이벤트를 발행하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-      given(paymentConfirmationService.complete(attempt()))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result(),
-            hold = null,
-          ),
-        )
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService).should().complete(attempt())
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `대사 중 로컬 확정 예외가 발생하면 환불을 시도한다`() {
-      val localException = IllegalStateException("reservation seat save failed")
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-      willThrow(localException)
-        .given(paymentConfirmationService)
-        .complete(attempt())
-      given(paymentConfirmationService.markRefundRequired(attempt()))
-        .willReturn(true)
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(null)
-
-      val actual = assertThrows<IllegalStateException> {
-        reservationPaymentService.reconcilePayment(RESERVATION_ID)
-      }
-
-      assertThat(actual).isSameAs(localException)
-      then(paymentConfirmationService).should().markRefundRequired(attempt())
-      then(paymentGateway).should().cancel(
-        PAYMENT_KEY,
-        "예매 확정에 실패했습니다.",
-        "reservation-refund-$RESERVATION_ID",
-      )
-      then(paymentConfirmationService).should().completeRefund(attempt())
-    }
-
-    @Test
-    fun `승인 중인 결제가 Toss에서 취소되면 로컬 실패 처리 후 Hold를 해제한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.CANCELED)
-      given(paymentConfirmationService.markPaymentFailed(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService).should().markPaymentFailed(attempt())
-      then(redisSeatHoldService).should().release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `승인 중인 결제가 취소되어도 로컬 실패 처리 대상이 아니면 이벤트를 발행하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.CANCELED)
-      given(paymentConfirmationService.markPaymentFailed(attempt()))
-        .willReturn(null)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService).should().markPaymentFailed(attempt())
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `승인 중인 결제의 로컬 확정이 실패하면 Toss 취소 후 환불 완료 처리한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-      given(paymentConfirmationService.complete(attempt()))
-        .willReturn(
-          PaymentConfirmationCompletion.RefundRequired(hold),
-        )
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentGateway)
-        .should()
-        .cancel(
-          PAYMENT_KEY,
-          "예매 확정에 실패했습니다.",
-          "reservation-refund-$RESERVATION_ID",
-        )
-      then(paymentConfirmationService).should().completeRefund(attempt())
-      then(redisSeatHoldService).should().release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `환불 필요 결제가 Toss에서 완료 상태면 취소 후 환불 완료 처리한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.REFUND_REQUIRED)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentGateway)
-        .should()
-        .cancel(
-          PAYMENT_KEY,
-          "예매 확정에 실패했습니다.",
-          "reservation-refund-$RESERVATION_ID",
-        )
-      then(paymentConfirmationService).should().completeRefund(attempt())
-      then(redisSeatHoldService).should().release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `환불 필요 결제가 Toss에서 취소되면 환불 완료 처리 후 Hold를 해제한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.REFUND_REQUIRED)
-      givenExternalPayment(ExternalPaymentStatus.CANCELED)
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID)).willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService).should().completeRefund(attempt())
-      then(redisSeatHoldService).should().release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-      then(paymentGateway).should().find(PAYMENT_KEY)
-      then(paymentGateway).shouldHaveNoMoreInteractions()
-    }
-
-    @Test
-    fun `환불 필요 결제가 취소되어도 환불 완료 대상이 아니면 이벤트를 발행하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.REFUND_REQUIRED)
-      givenExternalPayment(ExternalPaymentStatus.CANCELED)
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(null)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService).should().completeRefund(attempt())
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `환불 필요 결제가 아직 처리 중이면 로컬 상태를 변경하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.REFUND_REQUIRED)
-      givenExternalPayment(ExternalPaymentStatus.IN_PROGRESS)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .findReconciliationTarget(RESERVATION_ID)
-      then(paymentConfirmationService).shouldHaveNoMoreInteractions()
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `지원하지 않는 대사 대상 상태면 아무 작업도 하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.SUCCEEDED)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .findReconciliationTarget(RESERVATION_ID)
-      then(paymentConfirmationService).shouldHaveNoMoreInteractions()
-    }
-
-    @Test
-    fun `커밋 후 Hold 해제에 실패해도 예매 확정 이벤트를 발행한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-      given(paymentConfirmationService.complete(attempt()))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result(),
-            hold = hold,
-          ),
-        )
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(null)
-
-      TransactionSynchronizationManager.initSynchronization()
-
-      try {
-        reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-        then(redisSeatHoldService).shouldHaveNoInteractions()
-        then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-
-        TransactionSynchronizationManager
-          .getSynchronizations()
-          .forEach { synchronization -> synchronization.afterCommit() }
-
-        then(redisSeatHoldService).should().release(HOLD_ID)
-        then(performanceSeatStompPublisher)
-          .should()
-          .publishReservationConfirmed(
-            performanceId = PERFORMANCE_ID,
-            seatIds = SEAT_IDS,
-          )
-      } finally {
-        TransactionSynchronizationManager.clearSynchronization()
-      }
-    }
-
-    @Test
-    fun `승인 중인 결제가 아직 처리 중이면 로컬 상태를 변경하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.IN_PROGRESS)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .findReconciliationTarget(RESERVATION_ID)
-      then(paymentConfirmationService).shouldHaveNoMoreInteractions()
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `승인 중인 결제를 찾을 수 없어도 로컬 실패 처리 대상이 아니면 아무 작업도 하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
-      given(paymentConfirmationService.markPaymentFailed(attempt()))
-        .willReturn(null)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .markPaymentFailed(attempt())
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `환불 필요 결제를 찾을 수 없어도 환불 완료 대상이 아니면 아무 작업도 하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.REFUND_REQUIRED)
-      given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(null)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .completeRefund(attempt())
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `지원하지 않는 대사 대상 상태에서 외부 결제도 없으면 아무 작업도 하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.SUCCEEDED)
-      given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should(never())
-        .markPaymentFailed(attempt())
-      then(paymentConfirmationService)
-        .should(never())
-        .completeRefund(attempt())
-      then(redisSeatHoldService).shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `환불 필요 결제가 부분 취소 상태면 잔여 결제를 취소하고 환불 완료 처리한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.REFUND_REQUIRED)
-      givenExternalPayment(ExternalPaymentStatus.PARTIAL_CANCELED)
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentGateway)
-        .should()
-        .cancel(
-          PAYMENT_KEY,
-          "예매 확정에 실패했습니다.",
-          "reservation-refund-$RESERVATION_ID",
-        )
-      then(paymentConfirmationService)
-        .should()
-        .completeRefund(attempt())
-      then(redisSeatHoldService)
-        .should()
-        .release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `실패 예매의 Hold 해제와 좌석 이벤트 발행은 트랜잭션 커밋 후 수행한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.CANCELED)
-      given(paymentConfirmationService.markPaymentFailed(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(hold)
-
-      TransactionSynchronizationManager.initSynchronization()
-
-      try {
-        reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-        then(redisSeatHoldService).shouldHaveNoInteractions()
-        then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-
-        TransactionSynchronizationManager
-          .getSynchronizations()
-          .forEach { synchronization -> synchronization.afterCommit() }
-
-        then(redisSeatHoldService)
-          .should()
-          .release(HOLD_ID)
-        then(performanceSeatStompPublisher)
-          .should()
-          .publishHoldReleased(
-            performanceId = PERFORMANCE_ID,
-            seatIds = SEAT_IDS,
-          )
-      } finally {
-        TransactionSynchronizationManager.clearSynchronization()
-      }
-    }
-
-    @Test
-    fun `실패 예매의 Hold 해제에 실패하면 좌석 이벤트를 발행하지 않는다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.CANCELED)
-      given(paymentConfirmationService.markPaymentFailed(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(null)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(redisSeatHoldService)
-        .should()
-        .release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `트랜잭션 커밋 후 Hold 해제에 실패하면 좌석 이벤트를 발행하지 않는다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.CANCELED)
-      given(paymentConfirmationService.markPaymentFailed(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(null)
-
-      TransactionSynchronizationManager.initSynchronization()
-
-      try {
-        reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-        then(redisSeatHoldService).shouldHaveNoInteractions()
-        then(performanceSeatStompPublisher).shouldHaveNoInteractions()
-
-        TransactionSynchronizationManager
-          .getSynchronizations()
-          .forEach { synchronization -> synchronization.afterCommit() }
-
-        then(redisSeatHoldService)
-          .should()
-          .release(HOLD_ID)
-        then(performanceSeatStompPublisher)
-          .shouldHaveNoInteractions()
-      } finally {
-        TransactionSynchronizationManager.clearSynchronization()
-      }
-    }
-
-    @Test
-    fun `승인 중인 결제가 부분 취소 상태면 환불 대기 전환 후 잔여 결제를 취소한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.PARTIAL_CANCELED)
-      given(paymentConfirmationService.markRefundRequired(attempt()))
-        .willReturn(true)
-      given(paymentConfirmationService.completeRefund(attempt()))
-        .willReturn(hold)
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(hold)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .markRefundRequired(attempt())
-      then(paymentGateway)
-        .should()
-        .cancel(
-          PAYMENT_KEY,
-          "예매 확정에 실패했습니다.",
-          "reservation-refund-$RESERVATION_ID",
-        )
-      then(paymentConfirmationService)
-        .should()
-        .completeRefund(attempt())
-      then(redisSeatHoldService)
-        .should()
-        .release(HOLD_ID)
-      then(performanceSeatStompPublisher)
-        .should()
-        .publishHoldReleased(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-    }
-
-    @Test
-    fun `부분 취소 결제가 환불 전환 대상이 아니면 추가 취소를 요청하지 않는다`() {
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.PARTIAL_CANCELED)
-      given(paymentConfirmationService.markRefundRequired(attempt()))
-        .willReturn(false)
-
-      reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-      then(paymentConfirmationService)
-        .should()
-        .markRefundRequired(attempt())
-      then(paymentGateway)
-        .should()
-        .find(PAYMENT_KEY)
-      then(paymentGateway)
-        .shouldHaveNoMoreInteractions()
-      then(paymentConfirmationService)
-        .shouldHaveNoMoreInteractions()
-      then(redisSeatHoldService)
-        .shouldHaveNoInteractions()
-      then(performanceSeatStompPublisher)
-        .shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `커밋 후 Hold 해제 예외가 발생해도 예매 확정 이벤트를 발행한다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-      given(paymentConfirmationService.complete(attempt()))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result(),
-            hold = hold,
-          ),
-        )
-
-      willThrow(IllegalStateException("Redis unavailable"))
-        .given(redisSeatHoldService)
-        .release(HOLD_ID)
-
-      TransactionSynchronizationManager.initSynchronization()
-
-      try {
-        reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-        TransactionSynchronizationManager
-          .getSynchronizations()
-          .forEach { synchronization -> synchronization.afterCommit() }
-
-        then(performanceSeatStompPublisher)
-          .should()
-          .publishReservationConfirmed(
-            performanceId = PERFORMANCE_ID,
-            seatIds = SEAT_IDS,
-          )
-      } finally {
-        TransactionSynchronizationManager.clearSynchronization()
-      }
-    }
-
-    @Test
-    fun `커밋 후 예매 확정 이벤트 발행 예외가 대사 호출로 전파되지 않는다`() {
-      val hold = hold()
-
-      givenReconciliationTarget(ReservationStatus.PAYMENT_CONFIRMING)
-      givenExternalPayment(ExternalPaymentStatus.DONE)
-      given(paymentConfirmationService.complete(attempt()))
-        .willReturn(
-          PaymentConfirmationCompletion.Succeeded(
-            result = result(),
-            hold = hold,
-          ),
-        )
-      given(redisSeatHoldService.release(HOLD_ID))
-        .willReturn(hold)
-
-      willThrow(IllegalStateException("STOMP unavailable"))
-        .given(performanceSeatStompPublisher)
-        .publishReservationConfirmed(
-          performanceId = PERFORMANCE_ID,
-          seatIds = SEAT_IDS,
-        )
-
-      TransactionSynchronizationManager.initSynchronization()
-
-      try {
-        reservationPaymentService.reconcilePayment(RESERVATION_ID)
-
-        TransactionSynchronizationManager
-          .getSynchronizations()
-          .forEach { synchronization -> synchronization.afterCommit() }
-
-        then(redisSeatHoldService)
-          .should()
-          .release(HOLD_ID)
-      } finally {
-        TransactionSynchronizationManager.clearSynchronization()
-      }
-    }
+  @Test
+  fun `결제 승인 성공 시 Hold를 최종 처리하고 좌석 확정 이벤트를 발행한다`() {
+    val attempt = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
+    val holds = ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, VENUE_SEAT_IDS)
+    given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+      .willReturn(PaymentConfirmationStart.Ready(attempt))
+    given(paymentGateway.confirm(PAYMENT_KEY, ORDER_ID, AMOUNT))
+      .willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.DONE))
+    given(paymentConfirmationService.complete(attempt))
+      .willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
+
+    val result = service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+
+    assertThat(result).isEqualTo(ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED))
+    then(redisVenueSeatHoldService).should().finalizeForPayment(GROUP_ID)
+    then(performanceVenueSeatStompPublisher).should().publishReservationConfirmed(PERFORMANCE_ID, VENUE_SEAT_IDS)
   }
 
-  private fun givenReconciliationTarget(status: ReservationStatus) {
-    given(
-      paymentConfirmationService.findReconciliationTarget(RESERVATION_ID),
-    ).willReturn(
-      PaymentReconciliationTarget(
-        reservationId = RESERVATION_ID,
-        status = status,
-        paymentKey = PAYMENT_KEY,
-        orderId = ORDER_ID,
-        amount = AMOUNT,
-      ),
-    )
+  @Test
+  fun `이미 성공한 결제는 외부 결제 승인 없이 기존 결과를 반환한다`() {
+    val result = ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED)
+    given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+      .willReturn(PaymentConfirmationStart.AlreadySucceeded(result))
+
+    assertThat(service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)).isEqualTo(result)
+    then(paymentGateway).shouldHaveNoInteractions()
   }
 
-  private fun givenExternalPayment(status: ExternalPaymentStatus) {
-    given(paymentGateway.find(PAYMENT_KEY))
-      .willReturn(externalPayment(status))
-  }
-
-  private fun externalPayment(status: ExternalPaymentStatus, paymentKey: String = PAYMENT_KEY, orderId: String = ORDER_ID, amount: Int = AMOUNT) =
-    ExternalPayment(
-      paymentKey = paymentKey,
-      orderId = orderId,
-      amount = amount,
-      status = status,
+  @Test
+  fun `외부 결제가 DONE이 아니면 승인 대기 충돌을 반환한다`() {
+    val attempt = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
+    given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)).willReturn(PaymentConfirmationStart.Ready(attempt))
+    given(paymentGateway.confirm(PAYMENT_KEY, ORDER_ID, AMOUNT)).willReturn(
+      ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.IN_PROGRESS),
     )
 
-  private fun givenReady(attempt: PaymentConfirmationAttempt, paymentStatus: ExternalPaymentStatus = ExternalPaymentStatus.DONE) {
-    givenConfirmationStart(attempt)
+    val exception = assertThrows<CustomException> { service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT) }
 
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(paymentConfirmationService).should().begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `승인 후 확정 검증이 실패하면 결제를 취소하고 Hold를 해제한다`() {
+    val attempt = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
+    val holds = ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, VENUE_SEAT_IDS)
+    given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)).willReturn(PaymentConfirmationStart.Ready(attempt))
     given(
-      paymentGateway.confirm(
+      paymentGateway.confirm(PAYMENT_KEY, ORDER_ID, AMOUNT),
+    ).willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.DONE))
+    given(paymentConfirmationService.complete(attempt)).willReturn(PaymentConfirmationCompletion.RefundRequired(holds))
+    given(paymentConfirmationService.completeRefund(attempt)).willReturn(holds)
+    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(VENUE_SEAT_IDS)
+
+    val exception = assertThrows<CustomException> { service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT) }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(paymentGateway).should().cancel(PAYMENT_KEY, "예매 확정에 실패했습니다.", "reservation-refund-$RESERVATION_ID")
+    then(paymentConfirmationService).should().completeRefund(attempt)
+    then(redisVenueSeatHoldService).should().releaseAllVenueSeats(GROUP_ID)
+    then(performanceVenueSeatStompPublisher).should().publishHoldReleased(PERFORMANCE_ID, VENUE_SEAT_IDS)
+  }
+
+  @Test
+  fun `확정 처리 중 예외가 나면 환불 상태 전환 후 원래 예외를 다시 던진다`() {
+    val attempt = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
+    val holds = ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, VENUE_SEAT_IDS)
+    val failure = IllegalStateException("database failure")
+    given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)).willReturn(PaymentConfirmationStart.Ready(attempt))
+    given(
+      paymentGateway.confirm(PAYMENT_KEY, ORDER_ID, AMOUNT),
+    ).willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.DONE))
+    given(paymentConfirmationService.complete(attempt)).willThrow(failure)
+    given(paymentConfirmationService.markRefundRequired(attempt)).willReturn(true)
+    given(paymentConfirmationService.completeRefund(attempt)).willReturn(holds)
+    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(VENUE_SEAT_IDS)
+
+    val exception = assertThrows<IllegalStateException> { service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT) }
+
+    assertThat(exception).isSameAs(failure)
+    then(paymentGateway).should().cancel(PAYMENT_KEY, "예매 확정에 실패했습니다.", "reservation-refund-$RESERVATION_ID")
+  }
+
+  @Test
+  fun `대상 결제가 없으면 승인 중 예매를 실패 처리하고 Hold를 해제한다`() {
+    val holds = ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, VENUE_SEAT_IDS)
+    val attempt = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(
+      com.example.server.reservation.payment.dto.PaymentReconciliationTarget(
+        RESERVATION_ID,
+        ReservationStatus.PAYMENT_CONFIRMING,
         PAYMENT_KEY,
         ORDER_ID,
         AMOUNT,
       ),
-    ).willReturn(
-      externalPayment(paymentStatus),
     )
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
+    given(paymentConfirmationService.markPaymentFailed(attempt)).willReturn(holds)
+    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(VENUE_SEAT_IDS)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).should().markPaymentFailed(attempt)
+    then(redisVenueSeatHoldService).should().releaseAllVenueSeats(GROUP_ID)
+    then(performanceVenueSeatStompPublisher).should().publishHoldReleased(PERFORMANCE_ID, VENUE_SEAT_IDS)
   }
 
-  private fun givenConfirmationStart(attempt: PaymentConfirmationAttempt) {
-    given(
-      paymentConfirmationService.begin(
-        userId = USER_ID,
-        paymentKey = PAYMENT_KEY,
-        orderId = ORDER_ID,
-        amount = AMOUNT,
+  @Test
+  fun `대사 중 DONE 결제는 정상 확정 흐름을 재사용한다`() {
+    val attempt = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
+    val holds = ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, VENUE_SEAT_IDS)
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(
+      com.example.server.reservation.payment.dto.PaymentReconciliationTarget(
+        RESERVATION_ID,
+        ReservationStatus.PAYMENT_CONFIRMING,
+        PAYMENT_KEY,
+        ORDER_ID,
+        AMOUNT,
       ),
-    ).willReturn(
-      PaymentConfirmationStart.Ready(attempt),
     )
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.DONE))
+    given(
+      paymentConfirmationService.complete(attempt),
+    ).willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(redisVenueSeatHoldService).should().finalizeForPayment(GROUP_ID)
+    then(performanceVenueSeatStompPublisher).should().publishReservationConfirmed(PERFORMANCE_ID, VENUE_SEAT_IDS)
   }
 
-  private fun attempt() = PaymentConfirmationAttempt(
-    reservationId = RESERVATION_ID,
-    paymentKey = PAYMENT_KEY,
+  @Test
+  fun `환불 필요 결제가 취소되면 REFUNDED 처리 후 Hold를 해제한다`() {
+    val attempt = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
+    val holds = ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, VENUE_SEAT_IDS)
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(
+      com.example.server.reservation.payment.dto.PaymentReconciliationTarget(
+        RESERVATION_ID,
+        ReservationStatus.REFUND_REQUIRED,
+        PAYMENT_KEY,
+        ORDER_ID,
+        AMOUNT,
+      ),
+    )
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.CANCELED))
+    given(paymentConfirmationService.completeRefund(attempt)).willReturn(holds)
+    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(VENUE_SEAT_IDS)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).should().completeRefund(attempt)
+    then(redisVenueSeatHoldService).should().releaseAllVenueSeats(GROUP_ID)
+  }
+
+  @Test
+  fun `트랜잭션이 활성화되어 있으면 Hold 후처리를 커밋 뒤로 미룬다`() {
+    val attempt = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
+    val holds = ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, VENUE_SEAT_IDS)
+    given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)).willReturn(PaymentConfirmationStart.Ready(attempt))
+    given(
+      paymentGateway.confirm(PAYMENT_KEY, ORDER_ID, AMOUNT),
+    ).willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.DONE))
+    given(
+      paymentConfirmationService.complete(attempt),
+    ).willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
+    given(redisVenueSeatHoldService.finalizeForPayment(GROUP_ID)).willReturn(VENUE_SEAT_IDS)
+    TransactionSynchronizationManager.initSynchronization()
+
+    service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+    TransactionSynchronizationManager.getSynchronizations().forEach { it.afterCommit() }
+    then(redisVenueSeatHoldService).should().finalizeForPayment(GROUP_ID)
+  }
+
+  @Test
+  fun `확정 결과에 Hold가 없으면 후처리를 건너뛴다`() {
+    val attempt = attempt()
+    val result = result()
+    givenReady(attempt)
+    given(paymentConfirmationService.complete(attempt))
+      .willReturn(PaymentConfirmationCompletion.Succeeded(result, null))
+
+    assertThat(service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)).isEqualTo(result)
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+    then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `확정 실패 결과에 Hold가 없어도 결제 취소 후 예외를 반환한다`() {
+    val attempt = attempt()
+    givenReady(attempt)
+    given(paymentConfirmationService.complete(attempt))
+      .willReturn(PaymentConfirmationCompletion.RefundRequired(null))
+    given(paymentConfirmationService.completeRefund(attempt)).willReturn(null)
+
+    val exception = assertThrows<CustomException> {
+      service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(paymentGateway).should().cancel(PAYMENT_KEY, "예매 확정에 실패했습니다.", "reservation-refund-$RESERVATION_ID")
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `외부 결제 취소에 실패하면 환불 완료 처리를 시도하지 않는다`() {
+    val attempt = attempt()
+    val holds = holds()
+    val exception = CustomException(ErrorCode.BAD_GATEWAY, "cancel failed")
+    givenReady(attempt)
+    given(paymentConfirmationService.complete(attempt)).willReturn(PaymentConfirmationCompletion.RefundRequired(holds))
+    willThrow(exception).given(paymentGateway).cancel(PAYMENT_KEY, "예매 확정에 실패했습니다.", "reservation-refund-$RESERVATION_ID")
+
+    val actual = assertThrows<CustomException> {
+      service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+    }
+
+    assertThat(actual).isSameAs(exception)
+    then(paymentConfirmationService).should(never()).completeRefund(attempt)
+  }
+
+  @Test
+  fun `확정 예외 후 환불 전환 대상이 아니면 원래 예외를 유지한다`() {
+    val attempt = attempt()
+    val failure = IllegalStateException("complete failed")
+    givenReady(attempt)
+    given(paymentConfirmationService.complete(attempt)).willThrow(failure)
+    given(paymentConfirmationService.markRefundRequired(attempt)).willReturn(false)
+
+    assertThat(
+      assertThrows<IllegalStateException> {
+        service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+      },
+    ).isSameAs(failure)
+    then(paymentGateway).should(never()).cancel(PAYMENT_KEY, "예매 확정에 실패했습니다.", "reservation-refund-$RESERVATION_ID")
+  }
+
+  @Test
+  fun `대사 대상이 없으면 외부 결제를 조회하지 않는다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(null)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentGateway).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `외부 결제가 없고 환불 필요 상태면 환불 완료 후 Hold를 해제한다`() {
+    val target = target(ReservationStatus.REFUND_REQUIRED)
+    val holds = holds()
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
+    given(paymentConfirmationService.completeRefund(attempt())).willReturn(holds)
+    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(VENUE_SEAT_IDS)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).should().completeRefund(attempt())
+    then(performanceVenueSeatStompPublisher).should().publishHoldReleased(PERFORMANCE_ID, VENUE_SEAT_IDS)
+  }
+
+  @Test
+  fun `외부 결제 정보가 일치하지 않으면 로컬 처리를 건너뛴다`() {
+    val target = target(ReservationStatus.PAYMENT_CONFIRMING)
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(
+      ExternalPayment("other-key", ORDER_ID, AMOUNT + 1, ExternalPaymentStatus.DONE),
+    )
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `승인 중 결제가 완료됐지만 로컬 확정이 환불 필요면 결제를 취소한다`() {
+    val target = target(ReservationStatus.PAYMENT_CONFIRMING)
+    val holds = holds()
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.DONE))
+    given(paymentConfirmationService.complete(attempt())).willReturn(PaymentConfirmationCompletion.RefundRequired(holds))
+    given(paymentConfirmationService.completeRefund(attempt())).willReturn(null)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentGateway).should().cancel(PAYMENT_KEY, "예매 확정에 실패했습니다.", "reservation-refund-$RESERVATION_ID")
+  }
+
+  @Test
+  fun `승인 중 결제가 취소되면 실패 처리하고 Hold 해제 이벤트를 발행한다`() {
+    val target = target(ReservationStatus.PAYMENT_CONFIRMING)
+    val holds = holds()
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
+    given(paymentConfirmationService.markPaymentFailed(attempt())).willReturn(holds)
+    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(VENUE_SEAT_IDS)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).should().markPaymentFailed(attempt())
+    then(performanceVenueSeatStompPublisher).should().publishHoldReleased(PERFORMANCE_ID, VENUE_SEAT_IDS)
+  }
+
+  @Test
+  fun `부분 취소된 승인 중 결제는 환불 필요 상태로 전환한 뒤 취소한다`() {
+    val target = target(ReservationStatus.PAYMENT_CONFIRMING)
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.PARTIAL_CANCELED))
+    given(paymentConfirmationService.markRefundRequired(attempt())).willReturn(true)
+    given(paymentConfirmationService.completeRefund(attempt())).willReturn(null)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).should().markRefundRequired(attempt())
+    then(paymentGateway).should().cancel(PAYMENT_KEY, "예매 확정에 실패했습니다.", "reservation-refund-$RESERVATION_ID")
+  }
+
+  @Test
+  fun `부분 취소된 승인 중 결제가 환불 전환 대상이 아니면 중단한다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.PARTIAL_CANCELED))
+    given(paymentConfirmationService.markRefundRequired(attempt())).willReturn(false)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentGateway).shouldHaveNoMoreInteractions()
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `결제 승인 중 상태에서 아직 처리 중인 외부 상태는 유지한다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.IN_PROGRESS))
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `환불 필요 결제가 완료 또는 부분 취소면 잔여 결제를 취소한다`() {
+    listOf(ExternalPaymentStatus.DONE, ExternalPaymentStatus.PARTIAL_CANCELED).forEach { status ->
+      given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.REFUND_REQUIRED))
+      given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(status))
+      given(paymentConfirmationService.completeRefund(attempt())).willReturn(null)
+
+      service.reconcilePayment(RESERVATION_ID)
+    }
+
+    then(paymentGateway).should(org.mockito.Mockito.times(2)).cancel(PAYMENT_KEY, "예매 확정에 실패했습니다.", "reservation-refund-$RESERVATION_ID")
+    then(paymentGateway).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `환불 필요 결제가 취소되고 Hold가 없으면 이벤트를 발행하지 않는다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.REFUND_REQUIRED))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
+    given(paymentConfirmationService.completeRefund(attempt())).willReturn(null)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `지원하지 않는 환불 결제 상태는 유지한다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.REFUND_REQUIRED))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.IN_PROGRESS))
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+    then(paymentGateway).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `Hold 최종 처리 또는 이벤트 발행 실패가 결제 결과로 전파되지 않는다`() {
+    val attempt = attempt()
+    val holds = holds()
+    givenReady(attempt)
+    given(paymentConfirmationService.complete(attempt)).willReturn(PaymentConfirmationCompletion.Succeeded(result(), holds))
+    willThrow(IllegalStateException("redis failed")).given(redisVenueSeatHoldService).finalizeForPayment(GROUP_ID)
+    willThrow(IllegalStateException("stomp failed")).given(performanceVenueSeatStompPublisher)
+      .publishReservationConfirmed(PERFORMANCE_ID, VENUE_SEAT_IDS)
+
+    assertThat(service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)).isEqualTo(result())
+  }
+
+  @Test
+  fun `Hold 해제에서 NOT_FOUND는 조용히 무시한다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
+    given(paymentConfirmationService.markPaymentFailed(attempt())).willReturn(holds())
+    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID))
+      .willThrow(CustomException(ErrorCode.NOT_FOUND, "already released"))
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `Hold 해제에서 일반 예외가 발생해도 대사 호출은 완료한다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
+    given(paymentConfirmationService.markPaymentFailed(attempt())).willReturn(holds())
+    willThrow(IllegalStateException("redis failed")).given(redisVenueSeatHoldService).releaseAllVenueSeats(GROUP_ID)
+
+    service.reconcilePayment(RESERVATION_ID)
+  }
+
+  @Test
+  fun `외부 결제가 없고 지원하지 않는 상태면 아무 작업도 하지 않는다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.SUCCEEDED))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `외부 결제가 있고 지원하지 않는 대사 상태면 아무 작업도 하지 않는다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.SUCCEEDED))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.DONE))
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `외부 결제가 없고 승인 실패 처리 대상이 아니면 Hold를 해제하지 않는다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
+    given(paymentConfirmationService.markPaymentFailed(attempt())).willReturn(null)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `외부 결제가 없고 환불 완료 대상이 아니면 Hold를 해제하지 않는다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.REFUND_REQUIRED))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
+    given(paymentConfirmationService.completeRefund(attempt())).willReturn(null)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `외부 결제의 주문 ID만 다르면 로컬 처리를 건너뛴다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(ExternalPayment(PAYMENT_KEY, "other-order", AMOUNT, ExternalPaymentStatus.DONE))
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `외부 결제의 금액만 다르면 로컬 처리를 건너뛴다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT + 1, ExternalPaymentStatus.DONE))
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(paymentConfirmationService).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `승인 중 완료 결제의 로컬 성공 결과에 Hold가 없으면 후처리하지 않는다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.DONE))
+    given(paymentConfirmationService.complete(attempt())).willReturn(PaymentConfirmationCompletion.Succeeded(result(), null))
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+    then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `승인 중 취소 결제의 실패 처리 대상이 아니면 이벤트를 발행하지 않는다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
+    given(paymentConfirmationService.markPaymentFailed(attempt())).willReturn(null)
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+    then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `환불 필요 결제가 취소되면 Hold 해제 이벤트를 발행하지 않을 수 있다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.REFUND_REQUIRED))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
+    given(paymentConfirmationService.completeRefund(attempt())).willReturn(holds())
+    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(emptyList())
+
+    service.reconcilePayment(RESERVATION_ID)
+
+    then(redisVenueSeatHoldService).should().releaseAllVenueSeats(GROUP_ID)
+    then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `Hold 해제의 다른 CustomException도 삼켜 대사 흐름을 유지한다`() {
+    given(paymentConfirmationService.findReconciliationTarget(RESERVATION_ID)).willReturn(target(ReservationStatus.PAYMENT_CONFIRMING))
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
+    given(paymentConfirmationService.markPaymentFailed(attempt())).willReturn(holds())
+    willThrow(CustomException(ErrorCode.CONFLICT, "changed"))
+      .given(redisVenueSeatHoldService)
+      .releaseAllVenueSeats(GROUP_ID)
+
+    service.reconcilePayment(RESERVATION_ID)
+  }
+
+  private fun holds() = ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, VENUE_SEAT_IDS)
+
+  private fun target(status: ReservationStatus) = PaymentReconciliationTarget(
+    RESERVATION_ID,
+    status,
+    PAYMENT_KEY,
+    ORDER_ID,
+    AMOUNT,
   )
 
-  private fun result() = ConfirmPaymentResult(
-    reservationId = RESERVATION_ID,
-    status = ReservationStatus.SUCCEEDED,
+  private fun externalPayment(status: ExternalPaymentStatus) = ExternalPayment(
+    PAYMENT_KEY,
+    ORDER_ID,
+    AMOUNT,
+    status,
   )
 
-  private fun hold() = SeatHold(
-    holdId = HOLD_ID,
-    ownerUserId = USER_ID,
-    performanceId = PERFORMANCE_ID,
-    venueSeatIds = SEAT_IDS,
-    expiresAt = LocalDateTime.now().plusMinutes(5),
-  )
+  private fun attempt() = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
 
-  private companion object {
-    const val USER_ID = 1L
-    const val PERFORMANCE_ID = 10L
-    const val RESERVATION_ID = 501L
-    const val HOLD_ID = "hold-123"
-    const val ORDER_ID = "tikkle-order-501"
-    const val PAYMENT_KEY = "payment-key"
-    const val AMOUNT = 132_000
-    val SEAT_IDS = listOf(101L, 102L)
+  private fun result() = ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED)
+
+  private fun givenReady(attempt: PaymentConfirmationAttempt) {
+    given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+      .willReturn(PaymentConfirmationStart.Ready(attempt))
+    given(paymentGateway.confirm(PAYMENT_KEY, ORDER_ID, AMOUNT))
+      .willReturn(externalPayment(ExternalPaymentStatus.DONE))
+  }
+
+  companion object {
+    private const val USER_ID = 1L
+    private const val RESERVATION_ID = 501L
+    private const val PERFORMANCE_ID = 10L
+    private const val GROUP_ID = "1:10"
+    private const val PAYMENT_KEY = "payment-key"
+    private const val ORDER_ID = "order-id"
+    private const val AMOUNT = 132_000
+    private val VENUE_SEAT_IDS = listOf(101L, 102L)
   }
 }

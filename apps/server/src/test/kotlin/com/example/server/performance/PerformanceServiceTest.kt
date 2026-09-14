@@ -44,7 +44,7 @@ class PerformanceServiceTest {
   lateinit var reservationSeatRepository: ReservationSeatRepository
 
   @Mock
-  lateinit var redisSeatHoldService: RedisSeatHoldService
+  lateinit var redisVenueSeatHoldService: RedisVenueSeatHoldService
 
   @InjectMocks
   lateinit var performanceService: PerformanceService
@@ -193,7 +193,7 @@ class PerformanceServiceTest {
         ),
       ).willReturn(listOf(1L, 3L))
       val heldSeatExpiresAt = LocalDateTime.of(2027, 1, 1, 12, 5)
-      given(redisSeatHoldService.findHeldSeatsByPerformanceId(1L))
+      given(redisVenueSeatHoldService.findHeldSeatsByPerformanceId(1L))
         .willReturn(listOf(HeldSeat(id = 2L, expiresAt = heldSeatExpiresAt)))
       val before = LocalDateTime.now()
       val result = performanceService.getSeatsStatus(1L)
