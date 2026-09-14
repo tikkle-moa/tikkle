@@ -209,6 +209,29 @@ class RedisVenueSeatHoldService(
     return activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
   }
 
+  fun releaseAllVenueSeats(groupId: String): List<Long> {
+    val activeHoldData = findActiveHoldDataByGroupId(groupId)
+
+    val keys = activeHoldData.holdVenueSeatEntries.map { it.key } +
+      activeHoldData.holdDetailKeys +
+      activeHoldData.holdGroupKey
+
+    val released = stringRedisTemplate.execute(
+      releaseAllVenueSeatsScript,
+      keys,
+      activeHoldData.holdVenueSeatEntries.size.toString(),
+      activeHoldData.holdDetails.size.toString(),
+      *activeHoldData.holdVenueSeatEntries.map { it.holdId }.toTypedArray(),
+      *activeHoldData.storedHoldDetailJsons.toTypedArray(),
+    ) == 0L
+
+    if (!released) {
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 해제할 수 없습니다.")
+    }
+
+    return activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
+  }
+
   fun findActiveHoldDataByGroupId(groupId: String): ActiveHoldData {
     val holdGroupKey = holdGroupKey(groupId)
     val holdIds = stringRedisTemplate.opsForZSet()
@@ -282,6 +305,11 @@ class RedisVenueSeatHoldService(
 
     private val finalizeForPaymentScript = DefaultRedisScript<Long>().apply {
       setLocation(ClassPathResource("redis/finalize-for-payment.lua"))
+      resultType = Long::class.java
+    }
+
+    private val releaseAllVenueSeatsScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/release-all-venue-seats.lua"))
       resultType = Long::class.java
     }
   }
