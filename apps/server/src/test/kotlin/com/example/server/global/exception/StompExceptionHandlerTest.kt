@@ -119,6 +119,12 @@ class StompExceptionHandlerTest {
           SimpMessageHeaderAccessor::class.java,
         )?.isMutable,
       ).isTrue()
+      assertThat(
+        MessageHeaderAccessor.getAccessor(
+          headersCaptor.value,
+          SimpMessageHeaderAccessor::class.java,
+        )?.sessionId,
+      ).isEqualTo("session-1")
     }
 
     @Test
@@ -374,7 +380,6 @@ class StompExceptionHandlerTest {
       .convertAndSendToUser(
         eq("1"),
         eq("/queue/performance"),
-
         ArgumentCaptor.forClass(StompCommandFailure::class.java).capture(),
         any<Map<String, Any>>(),
       )
@@ -411,6 +416,7 @@ class StompExceptionHandlerTest {
 
   private fun headerAccessor(destination: String): SimpMessageHeaderAccessor = SimpMessageHeaderAccessor.create().apply {
     this.destination = destination
+    sessionId = "session-1"
   }
 
   @Suppress("unused")

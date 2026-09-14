@@ -8,6 +8,8 @@ import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.UserRole
 import com.example.server.config.TestcontainersConfig
 import com.example.server.config.properties.JwtProperties
+import com.example.server.global.exception.CustomException
+import com.example.server.global.exception.ErrorCode
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import org.assertj.core.api.Assertions.assertThat
@@ -30,6 +32,7 @@ import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.util.MimeType
 import org.springframework.web.socket.WebSocketHttpHeaders
 import org.springframework.web.socket.client.standard.StandardWebSocketClient
 import org.springframework.web.socket.messaging.WebSocketStompClient
@@ -53,6 +56,7 @@ import java.util.concurrent.TimeUnit
 @Import(
   TestcontainersConfig::class,
   StompAuthenticationTestController::class,
+  StompExceptionTestController::class,
 )
 class StompAuthenticationIntegrationTest {
   @LocalServerPort
@@ -71,6 +75,9 @@ class StompAuthenticationIntegrationTest {
   lateinit var userRepository: UserRepository
 
   @Autowired
+  lateinit var stompExceptionTestController: StompExceptionTestController
+
+  @Autowired
   lateinit var testController: StompAuthenticationTestController
 
   private val refreshTokenKeys = mutableSetOf<String>()
@@ -80,6 +87,7 @@ class StompAuthenticationIntegrationTest {
     refreshTokenKeys.forEach(stringRedisTemplate::delete)
     refreshTokenKeys.clear()
     testController.handledTokenIds.clear()
+    stompExceptionTestController.handledRequests.clear()
   }
 
   @Test
@@ -123,6 +131,76 @@ class StompAuthenticationIntegrationTest {
 
         assertThat(receivedTokenIds.poll(5, TimeUnit.SECONDS))
           .isEqualTo(tokenId)
+      } finally {
+        session.disconnect()
+      }
+    } finally {
+      stompClient.stop()
+    }
+  }
+
+  @Test
+  fun `STOMP CustomException은 구독한 개인 queue에 실패 응답을 전달한다`() {
+    val tokenId = UUID.randomUUID().toString()
+    val userId = 1L
+    val refreshTokenKey = refreshTokenKey(tokenId)
+
+    stringRedisTemplate.opsForValue().set(
+      refreshTokenKey,
+      userId.toString(),
+      Duration.ofMinutes(5),
+    )
+    refreshTokenKeys += refreshTokenKey
+
+    val accessToken = jwtTokenProvider.generateAccessToken(
+      userId = userId,
+      role = UserRole.USER,
+      tokenId = tokenId,
+    )
+    val requestId = UUID.randomUUID()
+    val receivedFailures = LinkedBlockingQueue<String>()
+    val stompClient = WebSocketStompClient(StandardWebSocketClient()).apply {
+      setMessageConverter(StompStringMessageConverter())
+    }
+
+    try {
+      val session = stompClient.connectAsync(
+        "ws://localhost:$port/ws",
+        handshakeHeaders(accessToken),
+        object : StompSessionHandlerAdapter() {},
+      ).get(5, TimeUnit.SECONDS)
+
+      try {
+        val receivedProbeResponses = LinkedBlockingQueue<String>()
+        session.subscribe(
+          "/user/queue/test-authentication",
+          tokenIdFrameHandler(receivedProbeResponses),
+        )
+        session.subscribe(
+          "/user/queue/test-exception",
+          tokenIdFrameHandler(receivedFailures),
+        )
+
+        session.send("/api/test-authentication", "")
+        assertThat(receivedProbeResponses.poll(5, TimeUnit.SECONDS))
+          .isEqualTo(tokenId)
+
+        session.send(
+          "/api/test-exception/sync",
+          """
+          {"requestId":"$requestId","action":"TEST","data":{}}
+          """.trimIndent(),
+        )
+
+        assertThat(stompExceptionTestController.handledRequests.poll(5, TimeUnit.SECONDS))
+          .isEqualTo(Unit)
+
+        val failure = receivedFailures.poll(5, TimeUnit.SECONDS)
+
+        assertThat(failure)
+          .contains("\"requestId\":\"$requestId\"")
+          .contains("\"action\":\"TEST\"")
+          .contains("\"code\":\"NOT_FOUND\"")
       } finally {
         session.disconnect()
       }
@@ -424,6 +502,12 @@ class StompAuthenticationIntegrationTest {
     }
   }
 
+  private class StompStringMessageConverter : StringMessageConverter() {
+    init {
+      addSupportedMimeTypes(MimeType("application", "json"))
+    }
+  }
+
   private data class LogoutTestConnection(
     val session: StompSession,
     val receivedTokenIds: LinkedBlockingQueue<String>,
@@ -479,5 +563,17 @@ class StompAuthenticationTestController {
     handledTokenIds.add(accessTokenPayload.tokenId)
 
     return accessTokenPayload.tokenId
+  }
+}
+
+@TestComponent
+@Controller
+class StompExceptionTestController {
+  val handledRequests = LinkedBlockingQueue<Unit>()
+
+  @MessageMapping("/test-exception/sync")
+  fun throwCustomException(): String {
+    handledRequests.offer(Unit)
+    throw CustomException(ErrorCode.NOT_FOUND)
   }
 }
