@@ -186,6 +186,29 @@ class RedisVenueSeatHoldService(
     return transitionedHoldDetails
   }
 
+  fun finalizeForPayment(groupId: String): List<Long> {
+    val activeHoldData = findActiveHoldDataByGroupId(groupId)
+
+    val keys = activeHoldData.holdVenueSeatEntries.map { it.key } +
+      activeHoldData.holdDetailKeys +
+      activeHoldData.holdGroupKey
+
+    val finalized = stringRedisTemplate.execute(
+      finalizeForPaymentScript,
+      keys,
+      activeHoldData.holdVenueSeatEntries.size.toString(),
+      activeHoldData.holdDetails.size.toString(),
+      *activeHoldData.holdVenueSeatEntries.map { it.holdId }.toTypedArray(),
+      *activeHoldData.storedHoldDetailJsons.toTypedArray(),
+    ) == 0L
+
+    if (!finalized) {
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 결제를 완료할 수 없습니다.")
+    }
+
+    return activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
+  }
+
   fun findActiveHoldDataByGroupId(groupId: String): ActiveHoldData {
     val holdGroupKey = holdGroupKey(groupId)
     val holdIds = stringRedisTemplate.opsForZSet()
@@ -254,6 +277,11 @@ class RedisVenueSeatHoldService(
 
     private val transitionForPaymentScript = DefaultRedisScript<Long>().apply {
       setLocation(ClassPathResource("redis/transition-for-payment.lua"))
+      resultType = Long::class.java
+    }
+
+    private val finalizeForPaymentScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/finalize-for-payment.lua"))
       resultType = Long::class.java
     }
   }
