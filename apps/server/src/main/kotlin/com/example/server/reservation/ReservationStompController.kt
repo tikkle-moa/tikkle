@@ -34,7 +34,7 @@ class ReservationStompController(
       is StartCheckoutCommand -> {
         val result = reservationCheckoutService.startCheckout(
           userId = loginUser.userId,
-          holdId = command.data.holdId,
+          performanceId = command.data.performanceId,
         )
 
         StompCommandSuccess(
