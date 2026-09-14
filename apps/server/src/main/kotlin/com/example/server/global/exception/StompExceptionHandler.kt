@@ -8,12 +8,15 @@ import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.messaging.Message
+import org.springframework.messaging.converter.MessageConversionException
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.web.bind.annotation.ControllerAdvice
 import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.exc.InvalidTypeIdException
+import tools.jackson.databind.exc.MismatchedInputException
 import java.nio.charset.StandardCharsets
 import java.security.Principal
 import java.util.UUID
@@ -74,6 +77,47 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       request = request,
       errorCode = ErrorCode.BAD_REQUEST,
       message = validationMessage,
+    )
+  }
+
+  @MessageExceptionHandler(MessageConversionException::class)
+  fun handleMessageConversionException(
+    exception: MessageConversionException,
+    message: Message<*>,
+    principal: Principal,
+    headerAccessor: SimpMessageHeaderAccessor,
+  ) {
+    val request = readRequestMetadata(message) ?: return
+    val conversionMessage =
+      when (val cause = exception.cause) {
+        is InvalidTypeIdException -> "action 값 '${cause.typeId}'은 올바르지 않습니다."
+
+        is MismatchedInputException -> {
+          val field = cause.path.joinToString(".") { it.propertyName ?: "[${it.index}]" }
+          when {
+            field.isNotBlank() -> "$field 값이 없거나 형식이 올바르지 않습니다."
+
+            else -> ErrorCode.BAD_REQUEST.message
+          }
+        }
+
+        else -> ErrorCode.BAD_REQUEST.message
+      }
+
+    log.warn(
+      "STOMP MessageConversionException: requestId=[{}], action=[{}], message=[{}]",
+      request.requestId,
+      request.action,
+      conversionMessage,
+    )
+
+    sendFailure(
+      principal = principal,
+      destination = headerAccessor.destination,
+      sessionId = headerAccessor.sessionId,
+      request = request,
+      errorCode = ErrorCode.BAD_REQUEST,
+      message = conversionMessage,
     )
   }
 
