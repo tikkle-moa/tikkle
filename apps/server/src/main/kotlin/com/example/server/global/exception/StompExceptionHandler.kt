@@ -126,6 +126,10 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       ?.get(1)
       ?: return
 
+    val headerAccessor = SimpMessageHeaderAccessor.create().apply {
+      setLeaveMutable(true)
+    }
+
     messagingTemplateProvider.getObject().convertAndSendToUser(
       principal.name,
       "/queue/$domain",
@@ -137,6 +141,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
           message = message,
         ),
       ),
+      headerAccessor.messageHeaders,
     )
   }
 }

@@ -1,6 +1,8 @@
 package com.example.server.reservation
 
 import com.example.server.auth.dto.LoginUserResult
+import com.example.server.global.exception.CustomException
+import com.example.server.global.exception.ErrorCode
 import com.example.server.global.stomp.dto.StompCommandSuccess
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentCommand
@@ -10,7 +12,7 @@ import com.example.server.reservation.dto.StartCheckoutCommand
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.messaging.simp.annotation.SendToUser
-import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Controller
 
 @Controller
@@ -24,8 +26,11 @@ class ReservationStompController(
     value = ["/queue/reservation"],
     broadcast = false,
   )
-  fun sync(@Payload command: ReservationSyncCommand<*>, @AuthenticationPrincipal loginUser: LoginUserResult): StompCommandSuccess<out Any> =
-    when (command) {
+  fun sync(@Payload command: ReservationSyncCommand<*>, authentication: Authentication): StompCommandSuccess<out Any> {
+    val loginUser = authentication.principal as? LoginUserResult
+      ?: throw CustomException(ErrorCode.UNAUTHORIZED)
+
+    return when (command) {
       is StartCheckoutCommand -> {
         val result = reservationCheckoutService.startCheckout(
           userId = loginUser.userId,
@@ -80,4 +85,5 @@ class ReservationStompController(
         )
       }
     }
+  }
 }
