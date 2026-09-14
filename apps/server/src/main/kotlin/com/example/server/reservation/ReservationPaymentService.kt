@@ -2,12 +2,15 @@ package com.example.server.reservation
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.performance.PerformanceSeatStompPublisher
-import com.example.server.performance.RedisSeatHoldService
-import com.example.server.performance.dto.SeatHold
+import com.example.server.performance.PerformanceVenueSeatStompPublisher
+import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.reservation.payment.PaymentGateway
+import com.example.server.reservation.payment.dto.ActiveHoldsSnapshot
 import com.example.server.reservation.payment.dto.ConfirmPaymentResult
 import com.example.server.reservation.payment.dto.ExternalPayment
+import com.example.server.reservation.payment.dto.PaymentConfirmationAttempt
+import com.example.server.reservation.payment.dto.PaymentConfirmationCompletion
+import com.example.server.reservation.payment.dto.PaymentConfirmationStart
 import com.example.server.reservation.payment.types.ExternalPaymentStatus
 import com.example.server.reservation.types.ReservationStatus
 import org.slf4j.LoggerFactory
@@ -18,13 +21,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Service
 class ReservationPaymentService(
   private val paymentConfirmationService: ReservationPaymentConfirmationService,
-  private val redisSeatHoldService: RedisSeatHoldService,
+  private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
   private val paymentGateway: PaymentGateway,
-  private val performanceSeatStompPublisher: PerformanceSeatStompPublisher,
+  private val performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher,
 ) {
-  private val log = LoggerFactory.getLogger(
-    ReservationPaymentService::class.java,
-  )
+  private val log = LoggerFactory.getLogger(ReservationPaymentService::class.java)
 
   fun confirmPayment(userId: Long, paymentKey: String, orderId: String, amount: Int): ConfirmPaymentResult {
     val attempt = when (
@@ -54,10 +55,7 @@ class ReservationPaymentService(
 
     return when (val completed = completeApprovedPayment(attempt)) {
       is PaymentConfirmationCompletion.Succeeded -> {
-        completed.hold?.let { hold ->
-          releaseHoldAndPublishReservationConfirmed(hold)
-        }
-
+        completed.holds?.let(::finalizeHoldsAndPublishReservationConfirmed)
         completed.result
       }
 
@@ -89,27 +87,13 @@ class ReservationPaymentService(
         ReservationStatus.PAYMENT_CONFIRMING -> {
           paymentConfirmationService
             .markPaymentFailed(attempt)
-            ?.let { hold ->
-              releaseHoldAfterCommit(hold.holdId) { releasedHold ->
-                performanceSeatStompPublisher.publishHoldReleased(
-                  performanceId = releasedHold.performanceId,
-                  seatIds = releasedHold.venueSeatIds,
-                )
-              }
-            }
+            ?.let(::releaseHoldsAfterCommit)
         }
 
         ReservationStatus.REFUND_REQUIRED -> {
           paymentConfirmationService
             .completeRefund(attempt)
-            ?.let { hold ->
-              releaseHoldAfterCommit(hold.holdId) { releasedHold ->
-                performanceSeatStompPublisher.publishHoldReleased(
-                  performanceId = releasedHold.performanceId,
-                  seatIds = releasedHold.venueSeatIds,
-                )
-              }
-            }
+            ?.let(::releaseHoldsAfterCommit)
         }
 
         else -> Unit
@@ -150,9 +134,7 @@ class ReservationPaymentService(
       ExternalPaymentStatus.DONE -> {
         when (val completed = completeApprovedPayment(attempt)) {
           is PaymentConfirmationCompletion.Succeeded -> {
-            completed.hold?.let { hold ->
-              releaseHoldAndPublishReservationConfirmed(hold)
-            }
+            completed.holds?.let(::finalizeHoldsAndPublishReservationConfirmed)
           }
 
           is PaymentConfirmationCompletion.RefundRequired -> {
@@ -167,14 +149,7 @@ class ReservationPaymentService(
       -> {
         paymentConfirmationService
           .markPaymentFailed(attempt)
-          ?.let { hold ->
-            releaseHoldAfterCommit(hold.holdId) { releasedHold ->
-              performanceSeatStompPublisher.publishHoldReleased(
-                performanceId = releasedHold.performanceId,
-                seatIds = releasedHold.venueSeatIds,
-              )
-            }
-          }
+          ?.let(::releaseHoldsAfterCommit)
       }
 
       ExternalPaymentStatus.PARTIAL_CANCELED -> {
@@ -201,14 +176,7 @@ class ReservationPaymentService(
       ExternalPaymentStatus.CANCELED -> {
         paymentConfirmationService
           .completeRefund(attempt)
-          ?.let { hold ->
-            releaseHoldAfterCommit(hold.holdId) { releasedHold ->
-              performanceSeatStompPublisher.publishHoldReleased(
-                performanceId = releasedHold.performanceId,
-                seatIds = releasedHold.venueSeatIds,
-              )
-            }
-          }
+          ?.let(::releaseHoldsAfterCommit)
       }
 
       ExternalPaymentStatus.READY,
@@ -223,20 +191,13 @@ class ReservationPaymentService(
   private fun cancelAndCompleteRefund(attempt: PaymentConfirmationAttempt) {
     paymentGateway.cancel(
       paymentKey = attempt.paymentKey,
-      cancelReason = REFUND_CANCEL_REASON,
+      cancelReason = "예매 확정에 실패했습니다.",
       idempotencyKey = "reservation-refund-${attempt.reservationId}",
     )
 
     paymentConfirmationService
       .completeRefund(attempt)
-      ?.let { hold ->
-        releaseHoldAfterCommit(hold.holdId) { releasedHold ->
-          performanceSeatStompPublisher.publishHoldReleased(
-            performanceId = releasedHold.performanceId,
-            seatIds = releasedHold.venueSeatIds,
-          )
-        }
-      }
+      ?.let(::releaseHoldsAfterCommit)
   }
 
   private fun completeApprovedPayment(attempt: PaymentConfirmationAttempt): PaymentConfirmationCompletion = try {
@@ -245,67 +206,76 @@ class ReservationPaymentService(
     if (paymentConfirmationService.markRefundRequired(attempt)) {
       cancelAndCompleteRefund(attempt)
     }
-
     throw exception
   }
 
-  private fun releaseHoldAndPublishReservationConfirmed(hold: SeatHold) {
-    fun releaseAndPublish() {
+  private fun finalizeHoldsAndPublishReservationConfirmed(holds: ActiveHoldsSnapshot) {
+    val finalize = {
       try {
-        redisSeatHoldService.release(hold.holdId)
+        redisVenueSeatHoldService.finalizeForPayment(holds.groupId)
       } catch (exception: Exception) {
         log.error(
-          "예매 확정 후 Hold 해제에 실패했습니다. holdId={}",
-          hold.holdId,
+          "예매 확정 후 Hold 최종 처리에 실패했습니다. groupId={}",
+          holds.groupId,
           exception,
         )
       }
 
       try {
-        performanceSeatStompPublisher.publishReservationConfirmed(
-          performanceId = hold.performanceId,
-          seatIds = hold.venueSeatIds,
+        performanceVenueSeatStompPublisher.publishReservationConfirmed(
+          performanceId = holds.performanceId,
+          venueSeatIds = holds.venueSeatIds,
         )
       } catch (exception: Exception) {
         log.error(
-          "예매 확정 이벤트 발행에 실패했습니다. performanceId={}, seatIds={}",
-          hold.performanceId,
-          hold.venueSeatIds,
+          "예매 확정 이벤트 발행에 실패했습니다. performanceId={}, venueSeatIds={}",
+          holds.performanceId,
+          holds.venueSeatIds,
           exception,
         )
       }
     }
 
+    runAfterCommit(finalize)
+  }
+
+  private fun releaseHoldsAfterCommit(holds: ActiveHoldsSnapshot) {
+    val release = {
+      try {
+        val releasedVenueSeatIds = redisVenueSeatHoldService.releaseAllVenueSeats(holds.groupId)
+
+        if (releasedVenueSeatIds.isNotEmpty()) {
+          performanceVenueSeatStompPublisher.publishHoldReleased(
+            performanceId = holds.performanceId,
+            venueSeatIds = releasedVenueSeatIds,
+          )
+        }
+      } catch (exception: Exception) {
+        if (exception !is CustomException || exception.errorCode != ErrorCode.NOT_FOUND) {
+          log.error(
+            "Hold 해제에 실패했습니다. groupId={}",
+            holds.groupId,
+            exception,
+          )
+        }
+      }
+    }
+
+    runAfterCommit(release)
+  }
+
+  private fun runAfterCommit(action: () -> Unit) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      releaseAndPublish()
+      action()
       return
     }
 
     TransactionSynchronizationManager.registerSynchronization(
       object : TransactionSynchronization {
         override fun afterCommit() {
-          releaseAndPublish()
+          action()
         }
       },
     )
-  }
-
-  private fun releaseHoldAfterCommit(holdId: String, onReleased: (SeatHold) -> Unit) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      redisSeatHoldService.release(holdId)?.let(onReleased)
-      return
-    }
-
-    TransactionSynchronizationManager.registerSynchronization(
-      object : TransactionSynchronization {
-        override fun afterCommit() {
-          redisSeatHoldService.release(holdId)?.let(onReleased)
-        }
-      },
-    )
-  }
-
-  private companion object {
-    const val REFUND_CANCEL_REASON = "예매 확정에 실패했습니다."
   }
 }

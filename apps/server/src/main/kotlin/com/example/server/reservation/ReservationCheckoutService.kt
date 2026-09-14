@@ -3,9 +3,8 @@ package com.example.server.reservation
 import com.example.server.auth.repository.UserRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.performance.PerformanceSeatStompPublisher
-import com.example.server.performance.RedisSeatHoldService
-import com.example.server.performance.dto.SeatHold
+import com.example.server.performance.PerformanceVenueSeatStompPublisher
+import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.dto.CancelCheckoutResult
 import com.example.server.reservation.dto.StartCheckoutResult
@@ -13,6 +12,7 @@ import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
 import com.example.server.venue.repository.VenueSeatRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
@@ -27,74 +27,93 @@ class ReservationCheckoutService(
   private val performanceRepository: PerformanceRepository,
   private val venueSeatRepository: VenueSeatRepository,
   private val reservationRepository: ReservationRepository,
-  private val redisSeatHoldService: RedisSeatHoldService,
-  private val performanceSeatStompPublisher: PerformanceSeatStompPublisher,
+  private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
+  private val performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher,
 ) {
-  @Transactional
-  fun startCheckout(userId: Long, holdId: String): StartCheckoutResult {
-    val hold = redisSeatHoldService.findActive(holdId)
-      ?: throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
+  private val log = LoggerFactory.getLogger(ReservationCheckoutService::class.java)
 
-    if (hold.ownerUserId != userId) {
-      throw CustomException(ErrorCode.FORBIDDEN)
+  @Transactional
+  fun startCheckout(userId: Long, performanceId: Long): StartCheckoutResult {
+    val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId)
+    val activeHoldData = try {
+      redisVenueSeatHoldService.findActiveHoldDataByGroupId(groupId)
+    } catch (exception: CustomException) {
+      if (exception.errorCode == ErrorCode.NOT_FOUND) {
+        throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
+      }
+
+      throw exception
     }
 
-    val existingReservation =
-      reservationRepository.findByHoldIdForUpdate(holdId)
+    if (
+      activeHoldData.performanceId != performanceId ||
+      activeHoldData.holdDetails.any { it.groupId != groupId || it.performanceId != performanceId }
+    ) {
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유 정보가 공연 회차와 일치하지 않습니다.")
+    }
 
+    val venueSeatIds = activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
+    if (venueSeatIds.distinct().size != venueSeatIds.size) {
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유 정보가 올바르지 않습니다.")
+    }
+
+    val existingReservation = reservationRepository.findByGroupIdForUpdate(groupId)
     if (existingReservation != null) {
       return existingCheckout(
         reservation = existingReservation,
-        userId = userId,
+        groupId = groupId,
       )
     }
 
-    val performance = performanceRepository.findByIdWithConcertAndVenue(hold.performanceId)
+    val performance = performanceRepository.findByIdWithConcertAndVenue(performanceId)
       ?: throw CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.")
 
     val venueSeats = venueSeatRepository.findAllByVenueIdAndIdIn(
       venueId = performance.concert.venue.id,
-      venueSeatIds = hold.venueSeatIds,
+      venueSeatIds = venueSeatIds,
     )
 
-    if (venueSeats.size != hold.venueSeatIds.size) {
+    if (venueSeats.size != venueSeatIds.size) {
       throw CustomException(ErrorCode.NOT_FOUND, "공연장 좌석을 찾을 수 없습니다.")
     }
 
     val user = userRepository.findById(userId)
-      .orElseThrow {
-        CustomException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다.")
-      }
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다.") }
 
     val paymentExpiresAt = LocalDateTime.now().plus(PAYMENT_TTL)
     val candidateOrderId = "tikkle-${UUID.randomUUID()}"
-    val orderName =
-      "${performance.concert.title} ${performance.name} ${venueSeats.size}석"
+    val orderName = "${performance.concert.title} ${performance.name} ${venueSeats.size}석"
     val amount = venueSeats.sumOf { it.price }
 
     reservationRepository.insertPaymentPendingIfAbsent(
       performanceId = performance.id,
       bookerUserId = user.id,
-      holdId = holdId,
+      groupId = groupId,
       orderId = candidateOrderId,
       orderName = orderName,
       amount = amount,
       paymentExpiresAt = paymentExpiresAt,
     )
 
-    val reservation = reservationRepository.findByHoldIdForUpdate(holdId)
+    val reservation = reservationRepository.findByGroupIdForUpdate(groupId)
       ?: throw IllegalStateException("생성한 결제 대기 예매를 찾을 수 없습니다.")
 
     if (reservation.orderId != candidateOrderId) {
       return existingCheckout(
         reservation = reservation,
-        userId = userId,
+        groupId = groupId,
       )
     }
 
-    if (redisSeatHoldService.extendForPayment(holdId, paymentExpiresAt) == null) {
+    try {
+      redisVenueSeatHoldService.transitionForPayment(groupId, paymentExpiresAt)
+    } catch (exception: CustomException) {
       reservation.status = ReservationStatus.EXPIRED
-      throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
+      if (exception.errorCode == ErrorCode.NOT_FOUND) {
+        throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
+      }
+
+      throw exception
     }
 
     return StartCheckoutResult.from(reservation)
@@ -102,12 +121,11 @@ class ReservationCheckoutService(
 
   @Transactional
   fun cancelCheckout(userId: Long, reservationId: Long): CancelCheckoutResult {
-    val reservation =
-      reservationRepository.findByIdForUpdate(reservationId)
-        ?: throw CustomException(ErrorCode.NOT_FOUND, "결제 대상 예매를 찾을 수 없습니다.")
+    val reservation = reservationRepository.findByIdForUpdate(reservationId)
+      ?: throw CustomException(ErrorCode.NOT_FOUND, "결제 대상 예매를 찾을 수 없습니다.")
 
     if (reservation.booker.id != userId) {
-      throw CustomException(ErrorCode.FORBIDDEN)
+      throw CustomException(ErrorCode.FORBIDDEN, "예매 취소 권한이 없습니다.")
     }
 
     when (reservation.status) {
@@ -129,19 +147,16 @@ class ReservationCheckoutService(
       ReservationStatus.PAYMENT_PENDING -> Unit
     }
 
-    reservation.status =
-      if (reservation.paymentExpiresAt.isAfter(LocalDateTime.now())) {
-        ReservationStatus.CANCELLED
-      } else {
-        ReservationStatus.EXPIRED
-      }
-
-    releaseHoldAfterCommit(reservation.holdId) { hold ->
-      performanceSeatStompPublisher.publishHoldReleased(
-        performanceId = hold.performanceId,
-        seatIds = hold.venueSeatIds,
-      )
+    reservation.status = if (reservation.paymentExpiresAt.isAfter(LocalDateTime.now())) {
+      ReservationStatus.CANCELLED
+    } else {
+      ReservationStatus.EXPIRED
     }
+
+    releaseHoldAfterCommit(
+      groupId = reservation.groupId,
+      performanceId = reservation.performance.id,
+    )
 
     return CancelCheckoutResult.from(reservation)
   }
@@ -159,39 +174,56 @@ class ReservationCheckoutService(
     }
 
     reservation.status = ReservationStatus.EXPIRED
-    releaseHoldAfterCommit(reservation.holdId) { hold ->
-      performanceSeatStompPublisher.publishHoldReleased(
-        performanceId = hold.performanceId,
-        seatIds = hold.venueSeatIds,
-      )
-    }
+
+    releaseHoldAfterCommit(
+      groupId = reservation.groupId,
+      performanceId = reservation.performance.id,
+    )
   }
 
-  private fun existingCheckout(reservation: Reservation, userId: Long): StartCheckoutResult {
-    if (reservation.booker.id != userId) {
-      throw CustomException(ErrorCode.FORBIDDEN)
+  private fun existingCheckout(reservation: Reservation, groupId: String): StartCheckoutResult {
+    if (reservation.groupId != groupId) {
+      throw CustomException(ErrorCode.FORBIDDEN, "다른 사용자의 결제 대기 예매입니다.")
     }
 
     if (reservation.status != ReservationStatus.PAYMENT_PENDING) {
-      throw CustomException(
-        ErrorCode.CONFLICT,
-        "이미 종료된 예매입니다.",
-      )
+      throw CustomException(ErrorCode.CONFLICT, "이미 종료된 예매입니다.")
     }
 
     return StartCheckoutResult.from(reservation)
   }
 
-  private fun releaseHoldAfterCommit(holdId: String, onReleased: (SeatHold) -> Unit) {
+  private fun releaseHoldAfterCommit(groupId: String, performanceId: Long) {
+    val release = {
+      try {
+        val releasedVenueSeatIds = redisVenueSeatHoldService.releaseAllVenueSeats(groupId)
+
+        if (releasedVenueSeatIds.isNotEmpty()) {
+          performanceVenueSeatStompPublisher.publishHoldReleased(
+            performanceId = performanceId,
+            venueSeatIds = releasedVenueSeatIds,
+          )
+        }
+      } catch (e: Exception) {
+        if (e !is CustomException || e.errorCode != ErrorCode.NOT_FOUND) {
+          log.error(
+            "결제 대기 취소 후 Hold 해제에 실패했습니다. groupId={}",
+            groupId,
+            e,
+          )
+        }
+      }
+    }
+
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      redisSeatHoldService.release(holdId)?.let(onReleased)
+      release()
       return
     }
 
     TransactionSynchronizationManager.registerSynchronization(
       object : TransactionSynchronization {
         override fun afterCommit() {
-          redisSeatHoldService.release(holdId)?.let(onReleased)
+          release()
         }
       },
     )
