@@ -19,6 +19,7 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.core.MethodParameter
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageHeaders
+import org.springframework.messaging.converter.MessageConversionException
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
@@ -26,6 +27,8 @@ import org.springframework.messaging.support.GenericMessage
 import org.springframework.messaging.support.MessageHeaderAccessor
 import org.springframework.validation.BeanPropertyBindingResult
 import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.exc.InvalidTypeIdException
+import tools.jackson.databind.exc.MismatchedInputException
 import java.nio.charset.StandardCharsets
 import java.security.Principal
 import java.util.UUID
@@ -265,6 +268,131 @@ class StompExceptionHandlerTest {
   }
 
   @Nested
+  inner class HandleMessageConversionException {
+    @Test
+    fun `지원하지 않는 action 변환 오류는 action 오류 메시지로 전송한다`() {
+      givenValidRequestMetadata()
+      given(messagingTemplateProvider.getObject())
+        .willReturn(messagingTemplate)
+      val exception = MessageConversionException(
+        "메시지 변환 실패",
+        invalidTypeIdException("UNKNOWN_ACTION"),
+      )
+
+      handler.handleMessageConversionException(
+        exception = exception,
+        message = requestMessage,
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      assertFailureMessage("action 값 'UNKNOWN_ACTION'은 올바르지 않습니다.")
+    }
+
+    @Test
+    fun `필드 변환 오류는 경로를 포함한 메시지로 전송한다`() {
+      givenValidRequestMetadata()
+      given(messagingTemplateProvider.getObject())
+        .willReturn(messagingTemplate)
+      val exception = MessageConversionException(
+        "메시지 변환 실패",
+        mismatchedInputException().apply {
+          prependPath("root", "venueSeatIds")
+          prependPath("root", "data")
+        },
+      )
+
+      handler.handleMessageConversionException(
+        exception = exception,
+        message = requestMessage,
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      assertFailureMessage("data.venueSeatIds 값이 없거나 형식이 올바르지 않습니다.")
+    }
+
+    @Test
+    fun `배열 인덱스 변환 오류는 인덱스 경로를 포함한 메시지로 전송한다`() {
+      givenValidRequestMetadata()
+      given(messagingTemplateProvider.getObject())
+        .willReturn(messagingTemplate)
+      val exception = MessageConversionException(
+        "메시지 변환 실패",
+        mismatchedInputException().apply {
+          prependPath("root", 0)
+          prependPath("root", "data")
+        },
+      )
+
+      handler.handleMessageConversionException(
+        exception = exception,
+        message = requestMessage,
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      assertFailureMessage("data.[0] 값이 없거나 형식이 올바르지 않습니다.")
+    }
+
+    @Test
+    fun `경로가 없는 변환 오류는 기본 BAD_REQUEST 메시지로 전송한다`() {
+      givenValidRequestMetadata()
+      given(messagingTemplateProvider.getObject())
+        .willReturn(messagingTemplate)
+      val exception = MessageConversionException(
+        "메시지 변환 실패",
+        mismatchedInputException(),
+      )
+
+      handler.handleMessageConversionException(
+        exception = exception,
+        message = requestMessage,
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      assertFailureMessage(ErrorCode.BAD_REQUEST.message)
+    }
+
+    @Test
+    fun `알 수 없는 변환 오류는 기본 BAD_REQUEST 메시지로 전송한다`() {
+      givenValidRequestMetadata()
+      given(messagingTemplateProvider.getObject())
+        .willReturn(messagingTemplate)
+
+      handler.handleMessageConversionException(
+        exception = MessageConversionException("메시지 변환 실패", IllegalArgumentException("원인")),
+        message = requestMessage,
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      assertFailureMessage(ErrorCode.BAD_REQUEST.message)
+    }
+
+    @Test
+    fun `변환 오류 요청 payload 파싱에 실패하면 메시지를 전송하지 않는다`() {
+      given(
+        objectMapper.readValue(
+          anyString(),
+          eq(StompRequestMetadata::class.java),
+        ),
+      ).willThrow(IllegalArgumentException("잘못된 payload"))
+
+      handler.handleMessageConversionException(
+        exception = MessageConversionException("메시지 변환 실패"),
+        message = GenericMessage("""{"invalid": true}"""),
+        principal = principal,
+        headerAccessor = headerAccessor("/api/performance/sync"),
+      )
+
+      then(messagingTemplateProvider)
+        .shouldHaveNoInteractions()
+    }
+  }
+
+  @Nested
   inner class HandleException {
     @Test
     fun `처리되지 않은 예외는 내부 오류 실패 Envelope로 전송한다`() {
@@ -412,6 +540,48 @@ class StompExceptionHandlerTest {
         eq(StompRequestMetadata::class.java),
       ),
     ).willReturn(requestMetadata)
+  }
+
+  private fun assertFailureMessage(expectedMessage: String) {
+    val responseCaptor = ArgumentCaptor.forClass(
+      StompCommandFailure::class.java,
+    )
+
+    then(messagingTemplate)
+      .should()
+      .convertAndSendToUser(
+        eq("1"),
+        eq("/queue/performance"),
+        responseCaptor.capture(),
+        any<Map<String, Any>>(),
+      )
+
+    assertThat(responseCaptor.value)
+      .extracting { it.error.message }
+      .isEqualTo(expectedMessage)
+  }
+
+  private fun invalidTypeIdException(typeId: String): InvalidTypeIdException {
+    val mapper = ObjectMapper()
+    mapper.createParser("{}").use { parser ->
+      return InvalidTypeIdException.from(
+        parser,
+        "잘못된 action",
+        mapper.constructType(Any::class.java),
+        typeId,
+      )
+    }
+  }
+
+  private fun mismatchedInputException(): MismatchedInputException {
+    val mapper = ObjectMapper()
+    mapper.createParser("{}").use { parser ->
+      return MismatchedInputException.from(
+        parser,
+        Any::class.java,
+        "잘못된 입력",
+      )
+    }
   }
 
   private fun headerAccessor(destination: String): SimpMessageHeaderAccessor = SimpMessageHeaderAccessor.create().apply {
