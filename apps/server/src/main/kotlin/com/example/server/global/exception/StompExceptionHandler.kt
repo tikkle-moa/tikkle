@@ -39,6 +39,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
     sendFailure(
       principal = principal,
       destination = headerAccessor.destination,
+      sessionId = headerAccessor.sessionId,
       request = request,
       errorCode = exception.errorCode,
       message = exception.message,
@@ -69,6 +70,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
     sendFailure(
       principal = principal,
       destination = headerAccessor.destination,
+      sessionId = headerAccessor.sessionId,
       request = request,
       errorCode = ErrorCode.BAD_REQUEST,
       message = validationMessage,
@@ -89,6 +91,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
     sendFailure(
       principal = principal,
       destination = headerAccessor.destination,
+      sessionId = headerAccessor.sessionId,
       request = request,
       errorCode = ErrorCode.INTERNAL_SERVER_ERROR,
       message = ErrorCode.INTERNAL_SERVER_ERROR.message,
@@ -119,24 +122,39 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       ),
     ),
   )
-  private fun sendFailure(principal: Principal, destination: String?, request: StompRequestMetadata, errorCode: ErrorCode, message: String) {
+  private fun sendFailure(
+    principal: Principal,
+    destination: String?,
+    sessionId: String?,
+    request: StompRequestMetadata,
+    errorCode: ErrorCode,
+    message: String,
+  ) {
     val domain = destination
       ?.let(syncDestinationPattern::matchEntire)
       ?.groupValues
       ?.get(1)
       ?: return
 
+    val failure = StompCommandFailure(
+      requestId = request.requestId,
+      action = request.action,
+      error = StompCommandError(
+        code = errorCode.name,
+        message = message,
+      ),
+    )
+
+    val headerAccessor = SimpMessageHeaderAccessor.create().apply {
+      this.sessionId = sessionId
+      setLeaveMutable(true)
+    }
+
     messagingTemplateProvider.getObject().convertAndSendToUser(
       principal.name,
       "/queue/$domain",
-      StompCommandFailure(
-        requestId = request.requestId,
-        action = request.action,
-        error = StompCommandError(
-          code = errorCode.name,
-          message = message,
-        ),
-      ),
+      failure,
+      headerAccessor.messageHeaders,
     )
   }
 }
