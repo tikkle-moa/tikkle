@@ -2,6 +2,8 @@ package com.example.server.reservation
 
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
+import com.example.server.global.exception.CustomException
+import com.example.server.global.exception.ErrorCode
 import com.example.server.global.stomp.dto.StompCommandSuccess
 import com.example.server.reservation.dto.CancelCheckoutResult
 import com.example.server.reservation.dto.CancelPaymentCommand
@@ -29,6 +31,8 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.messaging.simp.annotation.SendToUser
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.Authentication
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -50,13 +54,14 @@ class ReservationStompControllerTest {
     userId = USER_ID,
     role = UserRole.USER,
   )
+  private val authentication: Authentication = UsernamePasswordAuthenticationToken(loginUser, null)
 
   @Test
   fun `예매 sync 응답은 요청 STOMP 세션에만 전송한다`() {
     val syncMethod = ReservationStompController::class.java.getDeclaredMethod(
       "sync",
       ReservationSyncCommand::class.java,
-      LoginUserResult::class.java,
+      Authentication::class.java,
     )
 
     val sendToUser = requireNotNull(
@@ -86,7 +91,7 @@ class ReservationStompControllerTest {
 
       val response = reservationStompController.sync(
         command = command,
-        loginUser = loginUser,
+        authentication = authentication,
       )
 
       assertThat(response).isEqualTo(
@@ -120,7 +125,7 @@ class ReservationStompControllerTest {
 
       val response = reservationStompController.sync(
         command = command,
-        loginUser = loginUser,
+        authentication = authentication,
       )
 
       assertThat(response).isEqualTo(
@@ -159,7 +164,7 @@ class ReservationStompControllerTest {
 
       val response = reservationStompController.sync(
         command = command,
-        loginUser = loginUser,
+        authentication = authentication,
       )
 
       assertThat(response).isEqualTo(
@@ -205,7 +210,7 @@ class ReservationStompControllerTest {
 
       val response = reservationStompController.sync(
         command = command,
-        loginUser = loginUser,
+        authentication = authentication,
       )
 
       assertThat(response).isEqualTo(
@@ -225,6 +230,28 @@ class ReservationStompControllerTest {
           amount = AMOUNT,
         )
       then(reservationCheckoutService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `LoginUserResult가 아닌 인증 주체면 UNAUTHORIZED 예외를 던진다`() {
+      val command = ConfirmPaymentCommand(
+        requestId = REQUEST_ID,
+        data = ConfirmPaymentData(
+          paymentKey = PAYMENT_KEY,
+          orderId = ORDER_ID,
+          amount = AMOUNT,
+        ),
+      )
+
+      val exception = org.junit.jupiter.api.assertThrows<CustomException> {
+        reservationStompController.sync(
+          command = command,
+          authentication = UsernamePasswordAuthenticationToken("invalid", null),
+        )
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
+      then(reservationPaymentService).shouldHaveNoInteractions()
     }
   }
 

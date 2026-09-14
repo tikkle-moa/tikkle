@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.BDDMockito.given
@@ -17,10 +18,12 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.core.MethodParameter
 import org.springframework.messaging.Message
+import org.springframework.messaging.MessageHeaders
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.support.GenericMessage
+import org.springframework.messaging.support.MessageHeaderAccessor
 import org.springframework.validation.BeanPropertyBindingResult
 import tools.jackson.databind.ObjectMapper
 import java.nio.charset.StandardCharsets
@@ -88,6 +91,7 @@ class StompExceptionHandlerTest {
       val responseCaptor = ArgumentCaptor.forClass(
         StompCommandFailure::class.java,
       )
+      val headersCaptor = ArgumentCaptor.forClass(MessageHeaders::class.java)
 
       then(messagingTemplate)
         .should()
@@ -95,6 +99,7 @@ class StompExceptionHandlerTest {
           eq("1"),
           eq("/queue/performance"),
           responseCaptor.capture(),
+          headersCaptor.capture(),
         )
 
       assertThat(responseCaptor.value)
@@ -108,6 +113,12 @@ class StompExceptionHandlerTest {
             ),
           ),
         )
+      assertThat(
+        MessageHeaderAccessor.getAccessor(
+          headersCaptor.value,
+          SimpMessageHeaderAccessor::class.java,
+        )?.isMutable,
+      ).isTrue()
     }
 
     @Test
@@ -170,6 +181,7 @@ class StompExceptionHandlerTest {
           eq("1"),
           eq("/queue/performance"),
           responseCaptor.capture(),
+          any<Map<String, Any>>(),
         )
 
       assertThat(responseCaptor.value)
@@ -212,6 +224,7 @@ class StompExceptionHandlerTest {
           eq("1"),
           eq("/queue/performance"),
           responseCaptor.capture(),
+          any<Map<String, Any>>(),
         )
 
       assertThat(responseCaptor.value.error.code)
@@ -270,6 +283,7 @@ class StompExceptionHandlerTest {
           eq("1"),
           eq("/queue/performance"),
           responseCaptor.capture(),
+          any<Map<String, Any>>(),
         )
 
       assertThat(responseCaptor.value.error.code)
@@ -320,6 +334,7 @@ class StompExceptionHandlerTest {
         eq("1"),
         eq("/queue/performance"),
         responseCaptor.capture(),
+        any<Map<String, Any>>(),
       )
 
     assertThat(responseCaptor.value.requestId)
@@ -359,7 +374,9 @@ class StompExceptionHandlerTest {
       .convertAndSendToUser(
         eq("1"),
         eq("/queue/performance"),
+
         ArgumentCaptor.forClass(StompCommandFailure::class.java).capture(),
+        any<Map<String, Any>>(),
       )
   }
 
