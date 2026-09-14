@@ -7,3 +7,5 @@ export const PAYMENT_ROUTES = {
   success: "/payments/success",
   fail: "/payments/fail",
 } as const;
+
+export const PAYMENT_CUSTOMER_KEY_STORAGE_PREFIX = "tikkle.payment.customer-key";

@@ -30,7 +30,7 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
       <div className="sticky bottom-0 mt-5 border-t border-gray-200 bg-white/95 p-4 backdrop-blur sm:static sm:px-7 sm:py-5">
         <button
           type="button"
-          onClick={() => void handlePaymentRequest()}
+          onClick={handlePaymentRequest}
           disabled={!widgets || isRequesting || isExpired}
           className="bg-brand-primary w-full rounded-xl px-5 py-4 text-base font-bold text-white transition hover:bg-violet-700 disabled:bg-gray-300"
         >
