@@ -2,7 +2,9 @@ package com.example.server.performance
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.dto.ActiveHoldData
 import com.example.server.performance.dto.HeldSeat
+import com.example.server.performance.dto.HoldVenueSeatEntry
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
@@ -156,6 +158,66 @@ class RedisVenueSeatHoldService(
     return venueSeatIds
   }
 
+  fun transitionForPayment(groupId: String, paymentExpiresAt: LocalDateTime): List<VenueSeatHoldDetail> {
+    val activeHoldData = findActiveHoldDataByGroupId(groupId)
+
+    val keys = activeHoldData.holdVenueSeatEntries.map { it.key } +
+      activeHoldData.holdDetailKeys +
+      activeHoldData.holdGroupKey
+
+    val transitionedHoldDetails = activeHoldData.holdDetails.map { it.copy(expiresAt = paymentExpiresAt) }
+
+    val transitioned = stringRedisTemplate.execute(
+      transitionForPaymentScript,
+      keys,
+      activeHoldData.holdVenueSeatEntries.size.toString(),
+      activeHoldData.holdDetails.size.toString(),
+      paymentExpiresAt.toEpochMillis().toString(),
+      *activeHoldData.holdVenueSeatEntries.map { it.holdId }.toTypedArray(),
+      *activeHoldData.storedHoldDetailJsons.toTypedArray(),
+      *transitionedHoldDetails.map { objectMapper.writeValueAsString(it) }.toTypedArray(),
+      *transitionedHoldDetails.map { it.holdId }.toTypedArray(),
+    ) == 0L
+
+    if (!transitioned) {
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 결제 전환을 할 수 없습니다.")
+    }
+
+    return transitionedHoldDetails
+  }
+
+  fun findActiveHoldDataByGroupId(groupId: String): ActiveHoldData {
+    val holdGroupKey = holdGroupKey(groupId)
+    val holdIds = stringRedisTemplate.opsForZSet()
+      .rangeByScore(holdGroupKey, (System.currentTimeMillis() + 1).toDouble(), Double.POSITIVE_INFINITY)
+      .toList()
+    if (holdIds.isEmpty()) throw CustomException(ErrorCode.NOT_FOUND, "점유된 좌석이 존재하지 않습니다.")
+
+    val holdDetailKeys = holdIds.map { holdDetailKey(it) }
+    val storedHoldDetailJsons = stringRedisTemplate.opsForValue().multiGet(holdDetailKeys)
+      .map { it ?: throw CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "좌석 점유 정보가 일치하지 않습니다.") }
+    val holdDetails = storedHoldDetailJsons.map { objectMapper.readValue(it, VenueSeatHoldDetail::class.java) }
+
+    val holdVenueSeatEntries = holdDetails.flatMap { holdDetail ->
+      holdDetail.venueSeatIds.map { venueSeatId ->
+        HoldVenueSeatEntry(
+          key = holdVenueSeatKey(holdDetail.performanceId, venueSeatId),
+          holdId = holdDetail.holdId,
+          venueSeatId = venueSeatId,
+        )
+      }
+    }
+    return ActiveHoldData(
+      groupId = groupId,
+      performanceId = holdDetails.first().performanceId,
+      holdGroupKey = holdGroupKey,
+      storedHoldDetailJsons = storedHoldDetailJsons,
+      holdDetailKeys = holdDetailKeys,
+      holdDetails = holdDetails,
+      holdVenueSeatEntries = holdVenueSeatEntries,
+    )
+  }
+
   fun getGroupId(userId: Long, performanceId: Long): String {
     // 추후 사용자 ID를 기반으로 그룹 ID를 가져오는 로직 구현 필요
     // 현재는 단순히 사용자 ID를 문자열로 변환하여 그룹 ID로 사용
@@ -187,6 +249,11 @@ class RedisVenueSeatHoldService(
 
     private val releaseVenueSeatsScript = DefaultRedisScript<Long>().apply {
       setLocation(ClassPathResource("redis/release-venue-seats.lua"))
+      resultType = Long::class.java
+    }
+
+    private val transitionForPaymentScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/transition-for-payment.lua"))
       resultType = Long::class.java
     }
   }
