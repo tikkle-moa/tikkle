@@ -1,6 +1,6 @@
 package com.example.server.performance
 
-import com.example.server.global.stomp.dto.StompEvent
+import com.example.server.global.stomp.StompEvent
 import com.example.server.performance.dto.HoldReleasedEventData
 import com.example.server.performance.dto.PerformanceSeatEvent
 import com.example.server.performance.dto.ReservationConfirmedEventData
