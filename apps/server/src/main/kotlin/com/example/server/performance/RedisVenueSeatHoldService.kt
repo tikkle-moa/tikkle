@@ -83,7 +83,9 @@ class RedisVenueSeatHoldService(
       expiresAt = LocalDateTime.now().plus(SEAT_HOLD_TTL).truncatedTo(ChronoUnit.MILLIS),
     )
 
-    val keys = holdDetail.venueSeatIds.map { holdVenueSeatKey(holdDetail.performanceId, it) } + listOf(
+    val venueSeatKeys = holdDetail.venueSeatIds.map { holdVenueSeatKey(holdDetail.performanceId, it) }
+    val finalizingVenueSeatKeys = holdDetail.venueSeatIds.map { finalizingVenueSeatKey(holdDetail.performanceId, it) }
+    val keys = venueSeatKeys + finalizingVenueSeatKeys + listOf(
       holdDetailKey(holdDetail.holdId),
       holdGroupKey(holdDetail.groupId),
     )
@@ -94,6 +96,7 @@ class RedisVenueSeatHoldService(
       holdDetail.holdId,
       holdDetail.expiresAt.toEpochMillis().toString(),
       objectMapper.writeValueAsString(holdDetail),
+      venueSeatKeys.size.toString(),
     ) == 0L
 
     if (!held) {
@@ -187,8 +190,10 @@ class RedisVenueSeatHoldService(
 
   fun finalizeForPayment(groupId: String): List<Long> {
     val activeHoldData = findActiveHoldDataByGroupId(groupId)
+    val finalizingVenueSeatKeys = activeHoldData.holdVenueSeatEntries.map { finalizingVenueSeatKey(activeHoldData.performanceId, it.venueSeatId) }
 
     val keys = activeHoldData.holdVenueSeatEntries.map { it.key } +
+      finalizingVenueSeatKeys +
       activeHoldData.holdDetailKeys +
       activeHoldData.holdGroupKey
 
@@ -281,6 +286,7 @@ class RedisVenueSeatHoldService(
   private fun holdGroupKey(groupId: String) = "hold:group:$groupId"
   private fun holdDetailKey(holdId: String) = "hold:detail:$holdId"
   private fun holdVenueSeatKey(performanceId: Long, venueSeatId: Long) = "hold:venue-seat:$performanceId:$venueSeatId"
+  private fun finalizingVenueSeatKey(performanceId: Long, venueSeatId: Long) = "hold:venue-seat-finalizing:$performanceId:$venueSeatId"
 
   private fun LocalDateTime.toEpochMillis(): Long = atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 

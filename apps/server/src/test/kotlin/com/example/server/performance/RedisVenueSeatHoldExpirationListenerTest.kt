@@ -28,7 +28,15 @@ class RedisVenueSeatHoldExpirationListenerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = ["hold:detail:hold-123", "hold:group:user:10", "oauth:state:abc", "performance:seat-event-version:10"])
+  @ValueSource(
+    strings = [
+      "hold:detail:hold-123",
+      "hold:group:user:10",
+      "hold:venue-seat-finalizing:10:101",
+      "oauth:state:abc",
+      "performance:seat-event-version:10",
+    ],
+  )
   fun `좌석 Hold 키가 아닌 만료 이벤트는 무시한다`(key: String) {
     listener.onMessage(message(key), null)
     then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.test.context.ActiveProfiles
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -35,6 +36,8 @@ class RedisVenueSeatHoldServiceIntegrationTest {
   @Autowired lateinit var venueRepository: VenueRepository
 
   @Autowired lateinit var venueSeatRepository: VenueSeatRepository
+
+  @Autowired lateinit var stringRedisTemplate: StringRedisTemplate
 
   @Test
   fun `여러 좌석을 원자적으로 점유하고 부분 해제한다`() {
@@ -90,6 +93,16 @@ class RedisVenueSeatHoldServiceIntegrationTest {
 
     assertThat(finalizedSeatIds).containsExactlyElementsOf(fixture.seatIds)
     assertThat(service.findHeldSeatsByPerformanceId(fixture.performanceId)).isEmpty()
+    fixture.seatIds.forEach { seatId ->
+      assertThat(stringRedisTemplate.hasKey("hold:venue-seat:${fixture.performanceId}:$seatId")).isFalse()
+      assertThat(stringRedisTemplate.opsForValue().get("hold:venue-seat-finalizing:${fixture.performanceId}:$seatId"))
+        .isEqualTo("FINALIZING")
+    }
+
+    val conflict = assertThrows<CustomException> {
+      service.holdVenueSeats(USER_ID + 1, fixture.performanceId, listOf(fixture.seatIds.first()))
+    }
+    assertThat(conflict.errorCode).isEqualTo(ErrorCode.CONFLICT)
   }
 
   private fun fixture(): Fixture {
