@@ -10,6 +10,7 @@ import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
+import com.example.server.reservation.types.ReservationStatus
 import com.example.server.venue.entity.Venue
 import com.example.server.venue.entity.VenueSeat
 import com.example.server.venue.repository.VenueSeatRepository
@@ -35,6 +36,7 @@ import org.springframework.data.redis.core.ZSetOperations
 import tools.jackson.databind.ObjectMapper
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
 class RedisVenueSeatHoldServiceTest {
@@ -78,7 +80,14 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
-  fun `공연의 활성 Hold 좌석을 만료 시각과 함께 반환한다`() {
+  fun `서버 시각과 좌석 상태 목록을 반환한다`() {
+    given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
+    given(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+        performanceId = PERFORMANCE_ID,
+        status = ReservationStatus.SUCCEEDED,
+      ),
+    ).willReturn(listOf(1L, 3L))
     val expiresAt = LocalDateTime.now().plusMinutes(4)
     val hold = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(102L, 101L), expiresAt)
     given(stringRedisTemplate.scan(any(ScanOptions::class.java))).willReturn(cursor)
@@ -89,14 +98,25 @@ class RedisVenueSeatHoldServiceTest {
     given(valueOperations.get("hold:venue-seat:$PERFORMANCE_ID:102")).willReturn(HOLD_ID)
     given(valueOperations.get("hold:detail:$HOLD_ID")).willReturn(objectMapper.writeValueAsString(hold))
 
-    val result = service.findHeldSeatsByPerformanceId(PERFORMANCE_ID)
+    val before = LocalDateTime.now()
+    val result = service.getSeatStatus(PERFORMANCE_ID)
+    val after = LocalDateTime.now()
 
-    assertThat(result).containsExactly(HeldSeat(101L, expiresAt), HeldSeat(102L, expiresAt))
+    assertThat(result.serverTime).isBetween(before, after)
+    assertThat(result.bookedSeats).containsExactly(1L, 3L)
+    assertThat(result.heldSeats).containsExactly(HeldSeat(101L, expiresAt), HeldSeat(102L, expiresAt))
     then(cursor).should().close()
   }
 
   @Test
   fun `좌석 키나 Hold 본문이 없거나 만료된 Hold는 무시한다`() {
+    given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
+    given(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+        performanceId = PERFORMANCE_ID,
+        status = ReservationStatus.SUCCEEDED,
+      ),
+    ).willReturn(listOf(1L, 3L))
     given(stringRedisTemplate.scan(any(ScanOptions::class.java))).willReturn(cursor)
     given(cursor.hasNext()).willReturn(true, true, true, false)
     given(cursor.next()).willReturn(
@@ -121,19 +141,33 @@ class RedisVenueSeatHoldServiceTest {
       ),
     )
 
-    assertThat(service.findHeldSeatsByPerformanceId(PERFORMANCE_ID)).isEmpty()
+    assertThat(service.getSeatStatus(PERFORMANCE_ID).heldSeats).isEmpty()
     then(cursor).should().close()
   }
 
   @Test
   fun `Redis 스캔 중 예외가 나도 cursor를 닫는다`() {
+    given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
+    given(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+        performanceId = PERFORMANCE_ID,
+        status = ReservationStatus.SUCCEEDED,
+      ),
+    ).willReturn(listOf(1L, 3L))
     given(stringRedisTemplate.scan(any(ScanOptions::class.java))).willReturn(cursor)
     given(cursor.hasNext()).willThrow(IllegalStateException("Redis scan failed"))
 
-    val exception = assertThrows<IllegalStateException> { service.findHeldSeatsByPerformanceId(PERFORMANCE_ID) }
+    val exception = assertThrows<IllegalStateException> { service.getSeatStatus(PERFORMANCE_ID) }
 
     assertThat(exception).hasMessage("Redis scan failed")
     then(cursor).should().close()
+  }
+
+  @Test
+  fun `공연이 없으면 예외를 던진다`() {
+    given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.empty())
+    val exception = assertThrows<CustomException> { service.getSeatStatus(PERFORMANCE_ID) }
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
   }
 
   @Test

@@ -1,7 +1,7 @@
 package com.example.server.global.exception
 
-import com.example.server.global.stomp.dto.StompCommandError
-import com.example.server.global.stomp.dto.StompCommandFailure
+import com.example.server.global.stomp.StompErrorMessage
+import com.example.server.global.stomp.StompFailureMessage
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -92,7 +92,7 @@ class StompExceptionHandlerTest {
       )
 
       val responseCaptor = ArgumentCaptor.forClass(
-        StompCommandFailure::class.java,
+        StompFailureMessage::class.java,
       )
       val headersCaptor = ArgumentCaptor.forClass(MessageHeaders::class.java)
 
@@ -107,10 +107,9 @@ class StompExceptionHandlerTest {
 
       assertThat(responseCaptor.value)
         .isEqualTo(
-          StompCommandFailure(
+          StompFailureMessage(
             requestId = requestId,
-            action = action,
-            error = StompCommandError(
+            error = StompErrorMessage(
               code = ErrorCode.CONFLICT.name,
               message = "이미 처리된 요청입니다.",
             ),
@@ -181,7 +180,7 @@ class StompExceptionHandlerTest {
       )
 
       val responseCaptor = ArgumentCaptor.forClass(
-        StompCommandFailure::class.java,
+        StompFailureMessage::class.java,
       )
 
       then(messagingTemplate)
@@ -195,10 +194,9 @@ class StompExceptionHandlerTest {
 
       assertThat(responseCaptor.value)
         .isEqualTo(
-          StompCommandFailure(
+          StompFailureMessage(
             requestId = requestId,
-            action = action,
-            error = StompCommandError(
+            error = StompErrorMessage(
               code = ErrorCode.BAD_REQUEST.name,
               message = "action: 지원하지 않는 공연 동기화 명령입니다.",
             ),
@@ -224,7 +222,7 @@ class StompExceptionHandlerTest {
       )
 
       val responseCaptor = ArgumentCaptor.forClass(
-        StompCommandFailure::class.java,
+        StompFailureMessage::class.java,
       )
 
       then(messagingTemplate)
@@ -408,7 +406,7 @@ class StompExceptionHandlerTest {
       )
 
       val responseCaptor = ArgumentCaptor.forClass(
-        StompCommandFailure::class.java,
+        StompFailureMessage::class.java,
       )
 
       then(messagingTemplate)
@@ -474,7 +472,7 @@ class StompExceptionHandlerTest {
     )
 
     val responseCaptor = ArgumentCaptor.forClass(
-      StompCommandFailure::class.java,
+      StompFailureMessage::class.java,
     )
 
     then(messagingTemplate)
@@ -488,8 +486,6 @@ class StompExceptionHandlerTest {
 
     assertThat(responseCaptor.value.requestId)
       .isEqualTo(requestId)
-    assertThat(responseCaptor.value.action)
-      .isEqualTo(action)
   }
 
   @Test
@@ -523,7 +519,7 @@ class StompExceptionHandlerTest {
       .convertAndSendToUser(
         eq("1"),
         eq("/queue/performance/sync"),
-        ArgumentCaptor.forClass(StompCommandFailure::class.java).capture(),
+        ArgumentCaptor.forClass(StompFailureMessage::class.java).capture(),
         any<Map<String, Any>>(),
       )
   }
@@ -559,7 +555,7 @@ class StompExceptionHandlerTest {
 
   private fun assertFailureMessage(expectedMessage: String) {
     val responseCaptor = ArgumentCaptor.forClass(
-      StompCommandFailure::class.java,
+      StompFailureMessage::class.java,
     )
 
     then(messagingTemplate)

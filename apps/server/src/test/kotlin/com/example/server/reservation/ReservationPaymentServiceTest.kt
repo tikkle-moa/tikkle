@@ -4,9 +4,9 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.performance.RedisVenueSeatHoldService
+import com.example.server.reservation.dto.ConfirmPaymentMessage
 import com.example.server.reservation.payment.PaymentGateway
 import com.example.server.reservation.payment.dto.ActiveHoldsSnapshot
-import com.example.server.reservation.payment.dto.ConfirmPaymentResult
 import com.example.server.reservation.payment.dto.ExternalPayment
 import com.example.server.reservation.payment.dto.PaymentConfirmationAttempt
 import com.example.server.reservation.payment.dto.PaymentConfirmationCompletion
@@ -56,18 +56,18 @@ class ReservationPaymentServiceTest {
     given(paymentGateway.confirm(PAYMENT_KEY, ORDER_ID, AMOUNT))
       .willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.DONE))
     given(paymentConfirmationService.complete(attempt))
-      .willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
+      .willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentMessage(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
 
     val result = service.confirmPayment(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
 
-    assertThat(result).isEqualTo(ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED))
+    assertThat(result).isEqualTo(ConfirmPaymentMessage(RESERVATION_ID, ReservationStatus.SUCCEEDED))
     then(redisVenueSeatHoldService).should().finalizeForPayment(GROUP_ID)
     then(performanceVenueSeatStompPublisher).should().publishReservationConfirmed(PERFORMANCE_ID, VENUE_SEAT_IDS)
   }
 
   @Test
   fun `이미 성공한 결제는 외부 결제 승인 없이 기존 결과를 반환한다`() {
-    val result = ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED)
+    val result = ConfirmPaymentMessage(RESERVATION_ID, ReservationStatus.SUCCEEDED)
     given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
       .willReturn(PaymentConfirmationStart.AlreadySucceeded(result))
 
@@ -171,7 +171,7 @@ class ReservationPaymentServiceTest {
     given(paymentGateway.find(PAYMENT_KEY)).willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.DONE))
     given(
       paymentConfirmationService.complete(attempt),
-    ).willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
+    ).willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentMessage(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
 
     service.reconcilePayment(RESERVATION_ID)
 
@@ -212,7 +212,7 @@ class ReservationPaymentServiceTest {
     ).willReturn(ExternalPayment(PAYMENT_KEY, ORDER_ID, AMOUNT, ExternalPaymentStatus.DONE))
     given(
       paymentConfirmationService.complete(attempt),
-    ).willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
+    ).willReturn(PaymentConfirmationCompletion.Succeeded(ConfirmPaymentMessage(RESERVATION_ID, ReservationStatus.SUCCEEDED), holds))
     given(redisVenueSeatHoldService.finalizeForPayment(GROUP_ID)).willReturn(VENUE_SEAT_IDS)
     TransactionSynchronizationManager.initSynchronization()
 
@@ -593,7 +593,7 @@ class ReservationPaymentServiceTest {
 
   private fun attempt() = PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY)
 
-  private fun result() = ConfirmPaymentResult(RESERVATION_ID, ReservationStatus.SUCCEEDED)
+  private fun result() = ConfirmPaymentMessage(RESERVATION_ID, ReservationStatus.SUCCEEDED)
 
   private fun givenReady(attempt: PaymentConfirmationAttempt) {
     given(paymentConfirmationService.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
