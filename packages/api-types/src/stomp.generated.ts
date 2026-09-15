@@ -4,7 +4,14 @@
  * Do not make direct changes to this file.
  */
 
+export type PerformanceIdGetMinusSeatMinusStatus = PerformanceSeatStatusMessage | StompFailureMessage;
+export type PerformanceIdHoldMinusSeats = HoldVenueSeatsMessage | StompFailureMessage;
+export type PerformanceIdReleaseMinusSeats = ReleaseVenueSeatsMessage | StompFailureMessage;
 export type Performances = ReleaseVenueSeatsCommand | PerformanceSeatStatusCommand | HoldVenueSeatsCommand;
+export type ReservationCancelMinusPayment = CancelCheckoutMessage | StompFailureMessage;
+export type ReservationConfirmMinusPayment = ConfirmPaymentMessage | StompFailureMessage;
+export type ReservationGetMinusPaymentMinusOrder = PaymentOrderMessage | StompFailureMessage;
+export type ReservationStartMinusCheckout = StartCheckoutMessage | StompFailureMessage;
 export interface PerformanceSeatStatusMessage {
   data: PerformanceSeatStatusMessageData;
   requestId: string;
@@ -18,6 +25,15 @@ export interface PerformanceSeatStatusMessageData {
 export interface HeldSeat {
   expiresAt: string;
   id: number;
+}
+export interface StompFailureMessage {
+  error: StompError;
+  requestId: string;
+  success: boolean;
+}
+export interface StompError {
+  code: string;
+  message: string;
 }
 export interface PerformanceSeatStatusCommand {
   requestId: string;

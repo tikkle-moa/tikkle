@@ -45,7 +45,7 @@ class AsyncApiConfig {
     }
 
     if (schemaName.startsWith("StompSuccessMessage")) {
-      schema.required = listOf("requestId", "action", "success", "data")
+      schema.required = listOf("requestId", "success", "data")
     }
 
     val properties = schema.properties ?: return@SchemasPostProcessor
