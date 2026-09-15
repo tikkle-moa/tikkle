@@ -7,6 +7,7 @@ import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.HoldVenueSeatEntry
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.venue.repository.VenueSeatRepository
 import org.springframework.core.io.ClassPathResource
@@ -14,6 +15,7 @@ import org.springframework.data.redis.core.ScanOptions
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.ObjectMapper
 import java.time.Duration
 import java.time.LocalDateTime
@@ -26,6 +28,7 @@ class RedisVenueSeatHoldService(
   private val performanceRepository: PerformanceRepository,
   private val venueSeatRepository: VenueSeatRepository,
   private val reservationSeatRepository: ReservationSeatRepository,
+  private val reservationRepository: ReservationRepository,
   private val stringRedisTemplate: StringRedisTemplate,
   private val objectMapper: ObjectMapper,
 ) {
@@ -59,8 +62,12 @@ class RedisVenueSeatHoldService(
       .sortedBy(HeldSeat::id)
   }
 
+  @Transactional
   fun holdVenueSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): VenueSeatHoldDetail {
     validateVenueSeatIds(venueSeatIds)
+
+    val groupId = getGroupId(userId, performanceId)
+    ensureHoldModificationAllowed(groupId)
 
     val performance = performanceRepository.findByIdWithConcertAndVenue(performanceId)
       ?: throw CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.")
@@ -74,7 +81,6 @@ class RedisVenueSeatHoldService(
       throw CustomException(ErrorCode.CONFLICT, "이미 예매된 좌석이 포함되어 있습니다.")
     }
 
-    val groupId = getGroupId(userId, performanceId)
     val holdDetail = VenueSeatHoldDetail(
       holdId = UUID.randomUUID().toString(),
       groupId = groupId,
@@ -106,10 +112,13 @@ class RedisVenueSeatHoldService(
     return holdDetail
   }
 
+  @Transactional
   fun releaseVenueSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): List<Long> {
     validateVenueSeatIds(venueSeatIds)
 
     val groupId = getGroupId(userId, performanceId)
+    ensureHoldModificationAllowed(groupId)
+
     val venueSeatKeys = venueSeatIds.map { holdVenueSeatKey(performanceId, it) }
     val holdIds = stringRedisTemplate.opsForValue().multiGet(venueSeatKeys)
       .map { it ?: throw CustomException(ErrorCode.NOT_FOUND, "점유되지 않은 좌석이 포함되어 있습니다.") }
@@ -280,6 +289,13 @@ class RedisVenueSeatHoldService(
     }
     if (venueSeatIds.distinct().size != venueSeatIds.size) {
       throw CustomException(ErrorCode.BAD_REQUEST, "중복된 좌석 ID가 포함되어 있습니다.")
+    }
+  }
+
+  private fun ensureHoldModificationAllowed(groupId: String) {
+    val reservation = reservationRepository.findByGroupIdForUpdate(groupId)
+    if (reservation != null) {
+      throw CustomException(ErrorCode.CONFLICT, "결제 대기 이후에는 좌석을 변경할 수 없습니다.")
     }
   }
 

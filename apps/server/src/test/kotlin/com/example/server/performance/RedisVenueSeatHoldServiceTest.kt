@@ -8,6 +8,7 @@ import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.venue.entity.Venue
 import com.example.server.venue.entity.VenueSeat
@@ -43,6 +44,8 @@ class RedisVenueSeatHoldServiceTest {
 
   @Mock lateinit var reservationSeatRepository: ReservationSeatRepository
 
+  @Mock lateinit var reservationRepository: ReservationRepository
+
   lateinit var stringRedisTemplate: StringRedisTemplate
 
   @Mock lateinit var valueOperations: ValueOperations<String, String>
@@ -68,6 +71,7 @@ class RedisVenueSeatHoldServiceTest {
       performanceRepository,
       venueSeatRepository,
       reservationSeatRepository,
+      reservationRepository,
       stringRedisTemplate,
       objectMapper,
     ).also { service = it }
@@ -149,6 +153,30 @@ class RedisVenueSeatHoldServiceTest {
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
+  }
+
+  @Test
+  fun `결제 대기 이후에는 좌석을 추가할 수 없다`() {
+    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(mock())
+
+    val exception = assertThrows<CustomException> {
+      service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(performanceRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `결제 대기 이후에는 좌석을 부분 해제할 수 없다`() {
+    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(mock())
+
+    val exception = assertThrows<CustomException> {
+      service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(stringRedisTemplate).shouldHaveNoInteractions()
   }
 
   @Test
