@@ -14,6 +14,7 @@ import org.mockito.ArgumentMatchers.eq
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.Mock
+import org.mockito.Mockito.mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.core.MethodParameter
@@ -26,6 +27,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.support.GenericMessage
 import org.springframework.messaging.support.MessageHeaderAccessor
 import org.springframework.validation.BeanPropertyBindingResult
+import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.databind.exc.InvalidTypeIdException
 import tools.jackson.databind.exc.MismatchedInputException
@@ -48,20 +50,16 @@ class StompExceptionHandlerTest {
   private lateinit var requestMessage: Message<String>
 
   private val principal = Principal { "1" }
+  private val rootNode = mock<JsonNode>()
+  private val requestIdNode = mock<JsonNode>()
   private val requestId = UUID.fromString("2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a")
-  private val action = "START_CHECKOUT"
   private val requestPayload =
     """
   {
     "requestId": "$requestId",
-    "action": "$action",
     "data": {}
   }
     """.trimIndent()
-  private val requestMetadata = StompRequestMetadata(
-    requestId = requestId,
-    action = action,
-  )
 
   @BeforeEach
   fun setUp() {
@@ -132,10 +130,7 @@ class StompExceptionHandlerTest {
     @Test
     fun `CustomException 요청 payload 파싱에 실패하면 메시지를 전송하지 않는다`() {
       given(
-        objectMapper.readValue(
-          anyString(),
-          eq(StompRequestMetadata::class.java),
-        ),
+        objectMapper.readTree(anyString()),
       ).willThrow(IllegalArgumentException("잘못된 payload"))
 
       handler.handleCustomException(
@@ -243,10 +238,7 @@ class StompExceptionHandlerTest {
     @Test
     fun `검증 실패 예외도 요청 payload 파싱에 실패하면 메시지를 전송하지 않는다`() {
       given(
-        objectMapper.readValue(
-          anyString(),
-          eq(StompRequestMetadata::class.java),
-        ),
+        objectMapper.readTree(anyString()),
       ).willThrow(IllegalArgumentException("잘못된 payload"))
       val exception = MethodArgumentNotValidException(
         requestMessage,
@@ -372,10 +364,7 @@ class StompExceptionHandlerTest {
     @Test
     fun `변환 오류 요청 payload 파싱에 실패하면 메시지를 전송하지 않는다`() {
       given(
-        objectMapper.readValue(
-          anyString(),
-          eq(StompRequestMetadata::class.java),
-        ),
+        objectMapper.readTree(anyString()),
       ).willThrow(IllegalArgumentException("잘못된 payload"))
 
       handler.handleMessageConversionException(
@@ -492,18 +481,21 @@ class StompExceptionHandlerTest {
   fun `객체 payload는 JSON 문자열로 변환한 뒤 요청 공통 필드를 파싱한다`() {
     val payload = mapOf(
       "requestId" to requestId.toString(),
-      "action" to action,
       "data" to emptyMap<String, Any>(),
     )
 
     given(objectMapper.writeValueAsString(payload))
       .willReturn(requestPayload)
+    given(objectMapper.readTree(anyString()))
+      .willReturn(rootNode)
+    given(rootNode.get("requestId"))
+      .willReturn(requestIdNode)
     given(
-      objectMapper.readValue(
-        requestPayload,
-        StompRequestMetadata::class.java,
+      objectMapper.treeToValue(
+        requestIdNode,
+        UUID::class.java,
       ),
-    ).willReturn(requestMetadata)
+    ).willReturn(requestId)
     given(messagingTemplateProvider.getObject())
       .willReturn(messagingTemplate)
 
@@ -527,10 +519,7 @@ class StompExceptionHandlerTest {
   @Test
   fun `요청 공통 필드를 파싱하지 못하면 메시지를 전송하지 않는다`() {
     given(
-      objectMapper.readValue(
-        anyString(),
-        eq(StompRequestMetadata::class.java),
-      ),
+      objectMapper.readTree(anyString()),
     ).willThrow(IllegalArgumentException("잘못된 payload"))
 
     handler.handleException(
@@ -545,12 +534,18 @@ class StompExceptionHandlerTest {
   }
 
   private fun givenValidRequestMetadata() {
+    given(objectMapper.readTree(anyString()))
+      .willReturn(rootNode)
+
+    given(rootNode.get("requestId"))
+      .willReturn(requestIdNode)
+
     given(
-      objectMapper.readValue(
-        anyString(),
-        eq(StompRequestMetadata::class.java),
+      objectMapper.treeToValue(
+        requestIdNode,
+        UUID::class.java,
       ),
-    ).willReturn(requestMetadata)
+    ).willReturn(requestId)
   }
 
   private fun assertFailureMessage(expectedMessage: String) {

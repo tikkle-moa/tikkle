@@ -146,7 +146,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
 
     objectMapper.readTree(payload)
       .get("requestId")
-      ?.let { objectMapper.treeToValue(it, UUID::class.java) }
+      .let { objectMapper.treeToValue(it, UUID::class.java) }
   }.onFailure { exception ->
     log.warn("STOMP requestId 파싱 실패", exception)
   }.getOrNull()
