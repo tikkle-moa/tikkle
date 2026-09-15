@@ -1,7 +1,7 @@
 package com.example.server.global.exception
 
-import com.example.server.global.stomp.dto.StompCommandError
-import com.example.server.global.stomp.dto.StompCommandFailure
+import com.example.server.global.stomp.StompErrorMessage
+import com.example.server.global.stomp.StompFailureMessage
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.messaging.Message
@@ -163,10 +163,9 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       return
     }
 
-    val failure = StompCommandFailure(
+    val failure = StompFailureMessage(
       requestId = request.requestId,
-      action = request.action,
-      error = StompCommandError(
+      error = StompErrorMessage(
         code = errorCode.name,
         message = message,
       ),
