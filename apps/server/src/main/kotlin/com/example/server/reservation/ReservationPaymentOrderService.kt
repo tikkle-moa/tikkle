@@ -3,8 +3,8 @@ package com.example.server.reservation
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.RedisVenueSeatHoldService
-import com.example.server.reservation.dto.PaymentOrderResult
-import com.example.server.reservation.dto.PaymentOrderSeatResult
+import com.example.server.reservation.dto.PaymentOrderMessage
+import com.example.server.reservation.dto.PaymentOrderSeatMessage
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
 import com.example.server.venue.repository.VenueSeatRepository
@@ -19,7 +19,7 @@ class ReservationPaymentOrderService(
   private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
 ) {
   @Transactional(readOnly = true)
-  fun getPaymentOrder(userId: Long, reservationId: Long): PaymentOrderResult {
+  fun getPaymentOrder(userId: Long, reservationId: Long): PaymentOrderMessage {
     val reservation = reservationRepository.findPaymentOrderById(reservationId)
       ?: throw CustomException(ErrorCode.NOT_FOUND, "결제 대상 예매를 찾을 수 없습니다.")
 
@@ -64,7 +64,7 @@ class ReservationPaymentOrderService(
       throw CustomException(ErrorCode.NOT_FOUND, "공연장 좌석을 찾을 수 없습니다.")
     }
 
-    return PaymentOrderResult(
+    return PaymentOrderMessage(
       reservationId = reservation.id,
       orderId = reservation.orderId,
       orderName = reservation.orderName,
@@ -79,7 +79,7 @@ class ReservationPaymentOrderService(
         val seat = venueSeats[venueSeatId]
           ?: throw CustomException(ErrorCode.NOT_FOUND, "공연장 좌석을 찾을 수 없습니다.")
 
-        PaymentOrderSeatResult(
+        PaymentOrderSeatMessage(
           venueSeatId = seat.id,
           sectionName = seat.sectionName,
           seatLabel = seat.seatLabel,

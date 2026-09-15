@@ -2,7 +2,7 @@ package com.example.server.reservation.dto
 
 import java.time.LocalDateTime
 
-data class PaymentOrderResult(
+data class PaymentOrderMessage(
   val reservationId: Long,
   val orderId: String,
   val orderName: String,
@@ -13,7 +13,7 @@ data class PaymentOrderResult(
   val performanceName: String,
   val performanceStartsAt: LocalDateTime,
   val venueName: String,
-  val seats: List<PaymentOrderSeatResult>,
+  val seats: List<PaymentOrderSeatMessage>,
 )
 
-data class PaymentOrderSeatResult(val venueSeatId: Long, val sectionName: String, val seatLabel: String, val price: Int)
+data class PaymentOrderSeatMessage(val venueSeatId: Long, val sectionName: String, val seatLabel: String, val price: Int)
