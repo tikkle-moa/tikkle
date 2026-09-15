@@ -70,18 +70,10 @@ export interface CancelCheckoutMessage {
 }
 export interface CancelCheckoutMessageData {
   reservationId: number;
-  reservedStatus: ReservationStatus;
+  status: ReservationStatus;
 }
-export enum ReservationStatus {
-  PAYMENT_PENDING = "PAYMENT_PENDING",
-  PAYMENT_CONFIRMING = "PAYMENT_CONFIRMING",
-  SUCCEEDED = "SUCCEEDED",
-  FAILED = "FAILED",
-  CANCELLED = "CANCELLED",
-  EXPIRED = "EXPIRED",
-  REFUND_REQUIRED = "REFUND_REQUIRED",
-  REFUNDED = "REFUNDED",
-}
+export type ReservationStatus =
+  "PAYMENT_PENDING" | "PAYMENT_CONFIRMING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "EXPIRED" | "REFUND_REQUIRED" | "REFUNDED";
 export interface CancelPaymentCommand {
   data: CancelPaymentData;
   requestId: string;
@@ -96,7 +88,7 @@ export interface ConfirmPaymentMessage {
 }
 export interface ConfirmPaymentMessageData {
   reservationId: number;
-  reservedStatus: ReservationStatus;
+  status: ReservationStatus;
 }
 export interface ConfirmPaymentCommand {
   data: ConfirmPaymentData;

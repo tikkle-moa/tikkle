@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { TypeScriptGenerator, typeScriptDefaultModelNameConstraints } from "@asyncapi/modelina";
+import { TypeScriptGenerator, typeScriptDefaultModelNameConstraints, typeScriptDefaultPropertyKeyConstraints } from "@asyncapi/modelina";
 import { DiagnosticSeverity, Parser } from "@asyncapi/parser";
 import { format, resolveConfig } from "prettier";
 
@@ -186,9 +186,10 @@ const asyncApi = normalizeSpringwolfDocument(await response.json());
 await validateAsyncApi(asyncApi, "Springwolf AsyncAPI 문서");
 
 const constrainModelName = typeScriptDefaultModelNameConstraints();
-
+const constrainPropertyKey = typeScriptDefaultPropertyKeyConstraints();
 const generator = new TypeScriptGenerator({
   modelType: "interface",
+  enumType: "union",
   processorOptions: {
     jsonSchema: {
       ignoreAdditionalProperties: true,
@@ -199,6 +200,15 @@ const generator = new TypeScriptGenerator({
       constrainModelName({
         ...context,
         modelName: context.modelName.split(".").at(-1) ?? context.modelName,
+      }),
+
+    propertyKey: (context) =>
+      constrainPropertyKey({
+        ...context,
+        options: {
+          ...context.options,
+          useJavascriptReservedKeywords: false,
+        },
       }),
   },
 });
