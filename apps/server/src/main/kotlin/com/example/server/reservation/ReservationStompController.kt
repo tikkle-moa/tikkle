@@ -3,7 +3,6 @@ package com.example.server.reservation
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.global.stomp.StompSuccessMessage
 import com.example.server.reservation.dto.CancelCheckoutMessage
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentCommand
@@ -30,10 +29,10 @@ class ReservationStompController(
     value = ["/queue/reservation/start-checkout"],
     broadcast = false,
   )
-  fun startCheckout(@Payload @Valid request: StartCheckoutCommand, authentication: Authentication): StompSuccessMessage<StartCheckoutMessage> {
+  fun startCheckout(@Payload @Valid request: StartCheckoutCommand, authentication: Authentication): StartCheckoutMessage {
     val user = loginUser(authentication)
 
-    return StompSuccessMessage(
+    return StartCheckoutMessage(
       requestId = request.requestId,
       data = reservationCheckoutService.startCheckout(
         userId = user.userId,
@@ -47,10 +46,10 @@ class ReservationStompController(
     value = ["/queue/reservation/get-payment-order"],
     broadcast = false,
   )
-  fun getPaymentOrder(@Payload @Valid request: GetPaymentOrderCommand, authentication: Authentication): StompSuccessMessage<PaymentOrderMessage> {
+  fun getPaymentOrder(@Payload @Valid request: GetPaymentOrderCommand, authentication: Authentication): PaymentOrderMessage {
     val user = loginUser(authentication)
 
-    return StompSuccessMessage(
+    return PaymentOrderMessage(
       requestId = request.requestId,
       data = reservationPaymentOrderService.getPaymentOrder(
         userId = user.userId,
@@ -64,10 +63,10 @@ class ReservationStompController(
     value = ["/queue/reservation/confirm-payment"],
     broadcast = false,
   )
-  fun confirmPayment(@Payload @Valid request: ConfirmPaymentCommand, authentication: Authentication): StompSuccessMessage<ConfirmPaymentMessage> {
+  fun confirmPayment(@Payload @Valid request: ConfirmPaymentCommand, authentication: Authentication): ConfirmPaymentMessage {
     val user = loginUser(authentication)
 
-    return StompSuccessMessage(
+    return ConfirmPaymentMessage(
       requestId = request.requestId,
       data = reservationPaymentService.confirmPayment(
         userId = user.userId,
@@ -83,10 +82,10 @@ class ReservationStompController(
     value = ["/queue/reservation/cancel-payment"],
     broadcast = false,
   )
-  fun cancelPayment(@Payload @Valid request: CancelPaymentCommand, authentication: Authentication): StompSuccessMessage<CancelCheckoutMessage> {
+  fun cancelPayment(@Payload @Valid request: CancelPaymentCommand, authentication: Authentication): CancelCheckoutMessage {
     val user = loginUser(authentication)
 
-    return StompSuccessMessage(
+    return CancelCheckoutMessage(
       requestId = request.requestId,
       data = reservationCheckoutService.cancelCheckout(
         userId = user.userId,

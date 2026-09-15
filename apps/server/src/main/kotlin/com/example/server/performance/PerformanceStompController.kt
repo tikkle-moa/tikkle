@@ -1,12 +1,12 @@
 package com.example.server.performance
 
 import com.example.server.auth.dto.LoginUserResult
-import com.example.server.global.stomp.StompSuccessMessage
 import com.example.server.performance.dto.HoldVenueSeatsCommand
+import com.example.server.performance.dto.HoldVenueSeatsMessage
 import com.example.server.performance.dto.PerformanceSeatStatusCommand
 import com.example.server.performance.dto.PerformanceSeatStatusMessage
 import com.example.server.performance.dto.ReleaseVenueSeatsCommand
-import com.example.server.performance.dto.VenueSeatHoldDetail
+import com.example.server.performance.dto.ReleaseVenueSeatsMessage
 import jakarta.validation.Valid
 import org.springframework.messaging.handler.annotation.DestinationVariable
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -26,10 +26,10 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
   fun getSeatStatus(
     @DestinationVariable("performanceId") performanceId: Long,
     @Payload @Valid command: PerformanceSeatStatusCommand,
-  ): StompSuccessMessage<PerformanceSeatStatusMessage> {
+  ): PerformanceSeatStatusMessage {
     val result = redisVenueSeatHoldService.getSeatStatus(performanceId)
 
-    return StompSuccessMessage(
+    return PerformanceSeatStatusMessage(
       requestId = command.requestId,
       data = result,
     )
@@ -44,9 +44,9 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
     @DestinationVariable("performanceId") performanceId: Long,
     @Payload @Valid command: HoldVenueSeatsCommand,
     authentication: Authentication,
-  ): StompSuccessMessage<VenueSeatHoldDetail> {
+  ): HoldVenueSeatsMessage {
     val loginUser = authentication.principal as LoginUserResult
-    return StompSuccessMessage(
+    return HoldVenueSeatsMessage(
       requestId = command.requestId,
       data = redisVenueSeatHoldService.holdVenueSeats(
         loginUser.userId,
@@ -65,14 +65,14 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
     @DestinationVariable("performanceId") performanceId: Long,
     @Payload @Valid command: ReleaseVenueSeatsCommand,
     authentication: Authentication,
-  ): StompSuccessMessage<List<Long>> {
+  ): ReleaseVenueSeatsMessage {
     val loginUser = authentication.principal as LoginUserResult
     redisVenueSeatHoldService.releaseVenueSeats(
       loginUser.userId,
       performanceId,
       command.data,
     )
-    return StompSuccessMessage(
+    return ReleaseVenueSeatsMessage(
       requestId = command.requestId,
       data = command.data,
     )

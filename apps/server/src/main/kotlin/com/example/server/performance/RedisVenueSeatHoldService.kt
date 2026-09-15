@@ -5,7 +5,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.ActiveHoldData
 import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.HoldVenueSeatEntry
-import com.example.server.performance.dto.PerformanceSeatStatusMessage
+import com.example.server.performance.dto.PerformanceSeatStatusMessageData
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.repository.ReservationRepository
@@ -35,11 +35,11 @@ class RedisVenueSeatHoldService(
   private val objectMapper: ObjectMapper,
 ) {
   @Transactional(readOnly = true)
-  fun getSeatStatus(performanceId: Long): PerformanceSeatStatusMessage {
+  fun getSeatStatus(performanceId: Long): PerformanceSeatStatusMessageData {
     performanceRepository.findById(performanceId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
 
-    return PerformanceSeatStatusMessage(
+    return PerformanceSeatStatusMessageData(
       serverTime = LocalDateTime.now(),
       bookedSeats = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
         performanceId = performanceId,

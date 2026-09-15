@@ -1,8 +1,13 @@
 package com.example.server.reservation.dto
 
+import com.example.server.global.stomp.StompSuccessMessage
 import java.time.LocalDateTime
+import java.util.UUID
 
-data class PaymentOrderMessage(
+data class PaymentOrderMessage(override val requestId: UUID, override val data: PaymentOrderMessageData) :
+  StompSuccessMessage<PaymentOrderMessageData>
+
+data class PaymentOrderMessageData(
   val reservationId: Long,
   val orderId: String,
   val orderName: String,
@@ -13,7 +18,7 @@ data class PaymentOrderMessage(
   val performanceName: String,
   val performanceStartsAt: LocalDateTime,
   val venueName: String,
-  val seats: List<PaymentOrderSeatMessage>,
+  val seats: List<PaymentOrderSeatData>,
 )
 
-data class PaymentOrderSeatMessage(val venueSeatId: Long, val sectionName: String, val seatLabel: String, val price: Int)
+data class PaymentOrderSeatData(val venueSeatId: Long, val sectionName: String, val seatLabel: String, val price: Int)

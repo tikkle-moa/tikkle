@@ -1,6 +1,6 @@
 package com.example.server.global.exception
 
-import com.example.server.global.stomp.StompErrorMessage
+import com.example.server.global.stomp.StompError
 import com.example.server.global.stomp.StompFailureMessage
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
@@ -165,7 +165,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
 
     val failure = StompFailureMessage(
       requestId = request.requestId,
-      error = StompErrorMessage(
+      error = StompError(
         code = errorCode.name,
         message = message,
       ),

@@ -6,8 +6,8 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.repository.PerformanceRepository
-import com.example.server.reservation.dto.CancelCheckoutMessage
-import com.example.server.reservation.dto.StartCheckoutMessage
+import com.example.server.reservation.dto.CancelCheckoutMessageData
+import com.example.server.reservation.dto.StartCheckoutMessageData
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
@@ -33,7 +33,7 @@ class ReservationCheckoutService(
   private val log = LoggerFactory.getLogger(ReservationCheckoutService::class.java)
 
   @Transactional
-  fun startCheckout(userId: Long, performanceId: Long): StartCheckoutMessage {
+  fun startCheckout(userId: Long, performanceId: Long): StartCheckoutMessageData {
     val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId)
     val activeHoldData = try {
       redisVenueSeatHoldService.findActiveHoldDataByGroupId(groupId)
@@ -116,11 +116,11 @@ class ReservationCheckoutService(
       throw exception
     }
 
-    return StartCheckoutMessage.from(reservation)
+    return StartCheckoutMessageData.from(reservation)
   }
 
   @Transactional
-  fun cancelCheckout(userId: Long, reservationId: Long): CancelCheckoutMessage {
+  fun cancelCheckout(userId: Long, reservationId: Long): CancelCheckoutMessageData {
     val reservation = reservationRepository.findByIdForUpdate(reservationId)
       ?: throw CustomException(ErrorCode.NOT_FOUND, "결제 대상 예매를 찾을 수 없습니다.")
 
@@ -158,7 +158,7 @@ class ReservationCheckoutService(
       performanceId = reservation.performance.id,
     )
 
-    return CancelCheckoutMessage.from(reservation)
+    return CancelCheckoutMessageData.from(reservation)
   }
 
   @Transactional
@@ -181,7 +181,7 @@ class ReservationCheckoutService(
     )
   }
 
-  private fun existingCheckout(reservation: Reservation, groupId: String): StartCheckoutMessage {
+  private fun existingCheckout(reservation: Reservation, groupId: String): StartCheckoutMessageData {
     if (reservation.groupId != groupId) {
       throw CustomException(ErrorCode.FORBIDDEN, "다른 사용자의 결제 대기 예매입니다.")
     }
@@ -190,7 +190,7 @@ class ReservationCheckoutService(
       throw CustomException(ErrorCode.CONFLICT, "이미 종료된 예매입니다.")
     }
 
-    return StartCheckoutMessage.from(reservation)
+    return StartCheckoutMessageData.from(reservation)
   }
 
   private fun releaseHoldAfterCommit(groupId: String, performanceId: Long) {

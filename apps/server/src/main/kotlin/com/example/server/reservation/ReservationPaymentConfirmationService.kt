@@ -3,7 +3,7 @@ package com.example.server.reservation
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.RedisVenueSeatHoldService
-import com.example.server.reservation.dto.ConfirmPaymentMessage
+import com.example.server.reservation.dto.ConfirmPaymentMessageData
 import com.example.server.reservation.entity.ReservationSeat
 import com.example.server.reservation.payment.dto.ActiveHoldsSnapshot
 import com.example.server.reservation.payment.dto.PaymentConfirmationAttempt
@@ -45,7 +45,7 @@ class ReservationPaymentConfirmationService(
           reservation.amount == amount
         ) {
           return PaymentConfirmationStart.AlreadySucceeded(
-            ConfirmPaymentMessage.from(reservation),
+            ConfirmPaymentMessageData.from(reservation),
           )
         }
 
@@ -153,7 +153,7 @@ class ReservationPaymentConfirmationService(
 
     if (reservation.status == ReservationStatus.SUCCEEDED) {
       return PaymentConfirmationCompletion.Succeeded(
-        result = ConfirmPaymentMessage.from(reservation),
+        result = ConfirmPaymentMessageData.from(reservation),
         holds = null,
       )
     }
@@ -225,7 +225,7 @@ class ReservationPaymentConfirmationService(
     )
 
     return PaymentConfirmationCompletion.Succeeded(
-      result = ConfirmPaymentMessage.from(reservation),
+      result = ConfirmPaymentMessageData.from(reservation),
       holds = holds,
     )
   }
