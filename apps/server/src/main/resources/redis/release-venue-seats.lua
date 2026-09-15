@@ -21,6 +21,9 @@ local remainingJsonStartIndex = emptyHoldIdStartIndex + emptyHoldDetailKeyCount
 -- 다른 요청의 부분 해제나 결제 연장 결과를 덮어쓰지 않도록 변경 전에 모두 검증합니다.
 local checkCount = venueSeatKeyCount + emptyHoldDetailKeyCount + remainingHoldDetailKeyCount
 
+local now = redis.call('TIME')
+local nowMillis = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+
 for i = 0, checkCount - 1 do
   local currentValue = redis.call('GET', KEYS[i + 1])
   local expectedValue = ARGV[expectedValueStartIndex + i]
@@ -45,5 +48,6 @@ end
 for i = 0, remainingHoldDetailKeyCount - 1 do
   redis.call('SET', KEYS[remainingKeyStartIndex + i], ARGV[remainingJsonStartIndex + i], 'KEEPTTL')
 end
+redis.call('ZREMRANGEBYSCORE', holdGroupKey, '-inf', nowMillis)
 
 return 0

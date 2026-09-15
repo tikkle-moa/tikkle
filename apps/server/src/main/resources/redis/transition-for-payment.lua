@@ -45,5 +45,7 @@ for i = 0, holdDetailKeyCount - 1 do
   redis.call('SET', KEYS[holdDetailKeyStartIndex + i], ARGV[updatedJsonStartIndex + i], 'PXAT', expiresAt)
   redis.call('ZADD', holdGroupKey, expiresAt, ARGV[updatedHoldIdStartIndex + i])
 end
+redis.call('PEXPIREAT', holdGroupKey, expiresAt + 60000)
+redis.call('ZREMRANGEBYSCORE', holdGroupKey, '-inf', nowMillis)
 
 return 0

@@ -10,7 +10,7 @@ local holdDetailJson = ARGV[3]
 local expiresAt = tonumber(ARGV[2])
 
 local holdDetailKeyIndex = #KEYS - 1
-local holdGroupKeyIndex = #KEYS
+local holdGroupKey = KEYS[#KEYS]
 
 -- 이미 지난 만료 시각으로 점유가 생성되어 즉시 삭제되는 것을 방지합니다.
 local now = redis.call('TIME')
@@ -32,6 +32,8 @@ for i = 1, holdDetailKeyIndex - 1 do
 end
 
 redis.call('SET', KEYS[holdDetailKeyIndex], holdDetailJson, 'PXAT', expiresAt)
-redis.call('ZADD', KEYS[holdGroupKeyIndex], expiresAt, holdId)
+redis.call('ZADD', holdGroupKey, expiresAt, holdId)
+redis.call('PEXPIREAT', holdGroupKey, expiresAt + 60000)
+redis.call('ZREMRANGEBYSCORE', holdGroupKey, '-inf', nowMillis)
 
 return 0
