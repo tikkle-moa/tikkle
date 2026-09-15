@@ -4,20 +4,23 @@ import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.global.stomp.StompSuccessMessage
 import com.example.server.reservation.dto.CancelCheckoutMessage
+import com.example.server.reservation.dto.CancelCheckoutMessageData
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.CancelPaymentData
 import com.example.server.reservation.dto.ConfirmPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentData
 import com.example.server.reservation.dto.ConfirmPaymentMessage
+import com.example.server.reservation.dto.ConfirmPaymentMessageData
 import com.example.server.reservation.dto.GetPaymentOrderCommand
 import com.example.server.reservation.dto.GetPaymentOrderData
 import com.example.server.reservation.dto.PaymentOrderMessage
-import com.example.server.reservation.dto.PaymentOrderSeatMessage
+import com.example.server.reservation.dto.PaymentOrderMessageData
+import com.example.server.reservation.dto.PaymentOrderSeatData
 import com.example.server.reservation.dto.StartCheckoutCommand
 import com.example.server.reservation.dto.StartCheckoutData
 import com.example.server.reservation.dto.StartCheckoutMessage
+import com.example.server.reservation.dto.StartCheckoutMessageData
 import com.example.server.reservation.types.ReservationStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -66,7 +69,7 @@ class ReservationStompControllerTest {
         requestId = REQUEST_ID,
         data = StartCheckoutData(PERFORMANCE_ID),
       )
-      val result = startCheckoutMessage()
+      val result = startCheckoutMessageData()
 
       given(
         reservationCheckoutService.startCheckout(
@@ -81,7 +84,7 @@ class ReservationStompControllerTest {
       )
 
       assertThat(response)
-        .isEqualTo(StompSuccessMessage(REQUEST_ID, result))
+        .isEqualTo(StartCheckoutMessage(REQUEST_ID, result))
 
       then(reservationCheckoutService)
         .should()
@@ -108,7 +111,7 @@ class ReservationStompControllerTest {
         requestId = REQUEST_ID,
         data = GetPaymentOrderData(RESERVATION_ID),
       )
-      val result = paymentOrderMessage()
+      val result = paymentOrderMessageData()
 
       given(
         reservationPaymentOrderService.getPaymentOrder(
@@ -123,7 +126,7 @@ class ReservationStompControllerTest {
       )
 
       assertThat(response)
-        .isEqualTo(StompSuccessMessage(REQUEST_ID, result))
+        .isEqualTo(PaymentOrderMessage(REQUEST_ID, result))
 
       then(reservationCheckoutService)
         .shouldHaveNoInteractions()
@@ -156,7 +159,7 @@ class ReservationStompControllerTest {
           amount = AMOUNT,
         ),
       )
-      val result = ConfirmPaymentMessage(
+      val result = ConfirmPaymentMessageData(
         reservationId = RESERVATION_ID,
         status = ReservationStatus.SUCCEEDED,
       )
@@ -176,7 +179,7 @@ class ReservationStompControllerTest {
       )
 
       assertThat(response)
-        .isEqualTo(StompSuccessMessage(REQUEST_ID, result))
+        .isEqualTo(ConfirmPaymentMessage(REQUEST_ID, result))
 
       then(reservationCheckoutService)
         .shouldHaveNoInteractions()
@@ -223,7 +226,7 @@ class ReservationStompControllerTest {
         requestId = REQUEST_ID,
         data = CancelPaymentData(RESERVATION_ID),
       )
-      val result = CancelCheckoutMessage(
+      val result = CancelCheckoutMessageData(
         reservationId = RESERVATION_ID,
         status = ReservationStatus.CANCELLED,
       )
@@ -241,7 +244,7 @@ class ReservationStompControllerTest {
       )
 
       assertThat(response)
-        .isEqualTo(StompSuccessMessage(REQUEST_ID, result))
+        .isEqualTo(CancelCheckoutMessage(REQUEST_ID, result))
 
       then(reservationPaymentService)
         .shouldHaveNoInteractions()
@@ -279,7 +282,7 @@ class ReservationStompControllerTest {
       .isFalse()
   }
 
-  private fun startCheckoutMessage() = StartCheckoutMessage(
+  private fun startCheckoutMessageData() = StartCheckoutMessageData(
     reservationId = RESERVATION_ID,
     orderId = ORDER_ID,
     orderName = "아이유 콘서트 1회차 2석",
@@ -287,7 +290,7 @@ class ReservationStompControllerTest {
     paymentExpiresAt = LocalDateTime.of(2027, 1, 20, 19, 5),
   )
 
-  private fun paymentOrderMessage() = PaymentOrderMessage(
+  private fun paymentOrderMessageData() = PaymentOrderMessageData(
     reservationId = RESERVATION_ID,
     orderId = ORDER_ID,
     orderName = "아이유 콘서트 1회차 2석",
@@ -299,7 +302,7 @@ class ReservationStompControllerTest {
     performanceStartsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
     venueName = "티클홀",
     seats = listOf(
-      PaymentOrderSeatMessage(
+      PaymentOrderSeatData(
         venueSeatId = 101L,
         sectionName = "R석",
         seatLabel = "A-1",

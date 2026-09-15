@@ -1,6 +1,6 @@
 package com.example.server.global.exception
 
-import com.example.server.global.stomp.StompErrorMessage
+import com.example.server.global.stomp.StompError
 import com.example.server.global.stomp.StompFailureMessage
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -109,7 +109,7 @@ class StompExceptionHandlerTest {
         .isEqualTo(
           StompFailureMessage(
             requestId = requestId,
-            error = StompErrorMessage(
+            error = StompError(
               code = ErrorCode.CONFLICT.name,
               message = "이미 처리된 요청입니다.",
             ),
@@ -196,7 +196,7 @@ class StompExceptionHandlerTest {
         .isEqualTo(
           StompFailureMessage(
             requestId = requestId,
-            error = StompErrorMessage(
+            error = StompError(
               code = ErrorCode.BAD_REQUEST.name,
               message = "action: 지원하지 않는 공연 동기화 명령입니다.",
             ),

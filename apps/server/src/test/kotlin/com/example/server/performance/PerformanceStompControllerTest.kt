@@ -2,12 +2,14 @@ package com.example.server.performance
 
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
-import com.example.server.global.stomp.StompSuccessMessage
 import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.HoldVenueSeatsCommand
+import com.example.server.performance.dto.HoldVenueSeatsMessage
 import com.example.server.performance.dto.PerformanceSeatStatusCommand
 import com.example.server.performance.dto.PerformanceSeatStatusMessage
+import com.example.server.performance.dto.PerformanceSeatStatusMessageData
 import com.example.server.performance.dto.ReleaseVenueSeatsCommand
+import com.example.server.performance.dto.ReleaseVenueSeatsMessage
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -42,7 +44,7 @@ class PerformanceStompControllerTest {
     @Test
     fun `공연 좌석 상태를 조회해 성공 메시지로 반환한다`() {
       val command = PerformanceSeatStatusCommand(REQUEST_ID)
-      val result = PerformanceSeatStatusMessage(
+      val result = PerformanceSeatStatusMessageData(
         serverTime = LocalDateTime.of(2026, 9, 10, 12, 0),
         bookedSeats = listOf(1L),
         heldSeats = listOf(
@@ -63,7 +65,7 @@ class PerformanceStompControllerTest {
       )
 
       assertThat(response)
-        .isEqualTo(StompSuccessMessage(REQUEST_ID, result))
+        .isEqualTo(PerformanceSeatStatusMessage(REQUEST_ID, result))
 
       then(redisVenueSeatHoldService)
         .should()
@@ -130,7 +132,7 @@ class PerformanceStompControllerTest {
       )
 
       assertThat(response)
-        .isEqualTo(StompSuccessMessage(REQUEST_ID, result))
+        .isEqualTo(HoldVenueSeatsMessage(REQUEST_ID, result))
 
       then(redisVenueSeatHoldService)
         .should()
@@ -191,7 +193,7 @@ class PerformanceStompControllerTest {
       )
 
       assertThat(response)
-        .isEqualTo(StompSuccessMessage(REQUEST_ID, SEAT_IDS))
+        .isEqualTo(ReleaseVenueSeatsMessage(REQUEST_ID, SEAT_IDS))
 
       then(redisVenueSeatHoldService)
         .should()
