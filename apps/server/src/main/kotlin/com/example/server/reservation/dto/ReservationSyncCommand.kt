@@ -22,7 +22,7 @@ sealed interface ReservationSyncCommand<T : Any> : StompCommandRequest<T>
 data class StartCheckoutCommand(override val requestId: UUID, override val action: String = "START_CHECKOUT", override val data: StartCheckoutData) :
   ReservationSyncCommand<StartCheckoutData>
 
-data class StartCheckoutData(val holdId: String)
+data class StartCheckoutData(val performanceId: Long)
 
 data class GetPaymentOrderCommand(
   override val requestId: UUID,

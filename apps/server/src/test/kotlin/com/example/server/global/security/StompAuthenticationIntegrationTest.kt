@@ -177,7 +177,7 @@ class StompAuthenticationIntegrationTest {
           tokenIdFrameHandler(receivedProbeResponses),
         )
         session.subscribe(
-          "/user/queue/test-exception",
+          "/user/queue/test-exception/sync",
           tokenIdFrameHandler(receivedFailures),
         )
 

@@ -3,6 +3,7 @@ package com.example.server.reservation
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.anyLong
@@ -130,6 +131,21 @@ class ReservationPaymentReconciliationSchedulerTest {
     then(reservationPaymentService)
       .should()
       .reconcilePayment(NEXT_RESERVATION_ID)
+  }
+
+  @Test
+  fun `대사 상태 목록 companion getter를 초기화한다`() {
+    val companionField = ReservationPaymentReconciliationScheduler::class.java
+      .getDeclaredField("Companion")
+      .apply { isAccessible = true }
+    val companion = companionField.get(null)
+    val getter = companion.javaClass
+      .getDeclaredMethod("getRECONCILIATION_STATUSES")
+      .apply { isAccessible = true }
+
+    assertThat(getter.invoke(companion)).isEqualTo(
+      setOf(ReservationStatus.PAYMENT_CONFIRMING, ReservationStatus.REFUND_REQUIRED),
+    )
   }
 
   private fun givenReconciliationTargets(cursorId: Long = 0L, reservations: List<Reservation> = emptyList()) {

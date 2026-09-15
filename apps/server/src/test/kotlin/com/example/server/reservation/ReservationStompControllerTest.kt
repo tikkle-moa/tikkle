@@ -81,12 +81,12 @@ class ReservationStompControllerTest {
     fun `예매 checkout 서비스에 위임하고 성공 응답을 반환한다`() {
       val command = StartCheckoutCommand(
         requestId = REQUEST_ID,
-        data = StartCheckoutData(HOLD_ID),
+        data = StartCheckoutData(PERFORMANCE_ID),
       )
       val result = startCheckoutResult()
 
       given(
-        reservationCheckoutService.startCheckout(USER_ID, HOLD_ID),
+        reservationCheckoutService.startCheckout(USER_ID, PERFORMANCE_ID),
       ).willReturn(result)
 
       val response = reservationStompController.sync(
@@ -104,7 +104,7 @@ class ReservationStompControllerTest {
 
       then(reservationCheckoutService)
         .should()
-        .startCheckout(USER_ID, HOLD_ID)
+        .startCheckout(USER_ID, PERFORMANCE_ID)
     }
   }
 
@@ -286,7 +286,7 @@ class ReservationStompControllerTest {
 
   companion object {
     private const val USER_ID = 1L
-    private const val HOLD_ID = "hold-123"
+    private const val PERFORMANCE_ID = 10L
     private const val RESERVATION_ID = 501L
     private const val PAYMENT_KEY = "payment-key"
     private const val ORDER_ID = "order-id"

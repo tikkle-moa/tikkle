@@ -11,11 +11,18 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.CreationTimestamp
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "reservation_seats")
+@Table(
+  name = "reservation_seats",
+  uniqueConstraints = [
+    UniqueConstraint(name = "uq_reservation_performance_venue_seat", columnNames = ["performance_id", "venue_seat_id"]),
+    UniqueConstraint(name = "uq_reservation_venue_seat", columnNames = ["reservation_id", "venue_seat_id"]),
+  ],
+)
 class ReservationSeat(
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

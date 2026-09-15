@@ -33,8 +33,8 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
   fun findByIdForUpdate(reservationId: Long): Reservation?
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT r FROM Reservation r WHERE r.holdId = :holdId")
-  fun findByHoldIdForUpdate(holdId: String): Reservation?
+  @Query("SELECT r FROM Reservation r WHERE r.groupId = :groupId")
+  fun findByGroupIdForUpdate(groupId: String): Reservation?
 
   @Modifying(
     flushAutomatically = true,
@@ -45,7 +45,7 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
     INSERT INTO reservations (
       performance_id,
       booker_user_id,
-      hold_id,
+      group_id,
       order_id,
       order_name,
       amount,
@@ -56,7 +56,7 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
     VALUES (
       :performanceId,
       :bookerUserId,
-      :holdId,
+      :groupId,
       :orderId,
       :orderName,
       :amount,
@@ -71,7 +71,7 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
   fun insertPaymentPendingIfAbsent(
     @Param("performanceId") performanceId: Long,
     @Param("bookerUserId") bookerUserId: Long,
-    @Param("holdId") holdId: String,
+    @Param("groupId") groupId: String,
     @Param("orderId") orderId: String,
     @Param("orderName") orderName: String,
     @Param("amount") amount: Int,

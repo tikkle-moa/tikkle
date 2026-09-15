@@ -63,11 +63,11 @@ class ReservationRepositoryTest {
   lateinit var transactionManager: PlatformTransactionManager
 
   @Test
-  fun `동일 Hold upsert는 두 번째 요청을 대기시키고 기존 예매를 반환한다`() {
+  fun `동일 Hold 그룹 upsert는 두 번째 요청을 대기시키고 기존 예매를 반환한다`() {
     val fixture = createFixture()
     val performanceId = fixture.performanceId
     val userId = fixture.userId
-    val holdId = "hold-checkout-${UUID.randomUUID()}"
+    val groupId = "group-checkout-${UUID.randomUUID()}"
     val firstOrderId = "tikkle-first-${UUID.randomUUID()}"
     val secondOrderId = "tikkle-second-${UUID.randomUUID()}"
     val transactionTemplate = TransactionTemplate(transactionManager)
@@ -83,7 +83,7 @@ class ReservationRepositoryTest {
           insertPaymentPending(
             performanceId = performanceId,
             userId = userId,
-            holdId = holdId,
+            groupId = groupId,
             orderId = firstOrderId,
           )
 
@@ -101,11 +101,11 @@ class ReservationRepositoryTest {
           insertPaymentPending(
             performanceId = performanceId,
             userId = userId,
-            holdId = holdId,
+            groupId = groupId,
             orderId = secondOrderId,
           )
 
-          reservationRepository.findByHoldIdForUpdate(holdId)
+          reservationRepository.findByGroupIdForUpdate(groupId)
         }
       }
 
@@ -121,7 +121,7 @@ class ReservationRepositoryTest {
       val existingReservation = secondRequest.get(5, TimeUnit.SECONDS)
 
       assertThat(existingReservation).isNotNull
-      assertThat(existingReservation!!.holdId).isEqualTo(holdId)
+      assertThat(existingReservation!!.groupId).isEqualTo(groupId)
       assertThat(existingReservation.orderId).isEqualTo(firstOrderId)
     } finally {
       allowFirstCommit.countDown()
@@ -174,11 +174,11 @@ class ReservationRepositoryTest {
     assertThat(result).containsExactly(seats[0].id, seats[1].id)
   }
 
-  private fun insertPaymentPending(performanceId: Long, userId: Long, holdId: String, orderId: String) {
+  private fun insertPaymentPending(performanceId: Long, userId: Long, groupId: String, orderId: String) {
     reservationRepository.insertPaymentPendingIfAbsent(
       performanceId = performanceId,
       bookerUserId = userId,
-      holdId = holdId,
+      groupId = groupId,
       orderId = orderId,
       orderName = "동시성 테스트 공연 1회차 1석",
       amount = 66_000,
@@ -232,7 +232,7 @@ class ReservationRepositoryTest {
   private fun reservation(performance: Performance, user: User, status: ReservationStatus): Reservation = Reservation(
     performance = performance,
     booker = user,
-    holdId = "hold-${UUID.randomUUID()}",
+    groupId = "group-${UUID.randomUUID()}",
     orderId = "tikkle-${UUID.randomUUID()}",
     orderName = "좌석 조회 테스트 공연 1회차 1석",
     amount = 66_000,

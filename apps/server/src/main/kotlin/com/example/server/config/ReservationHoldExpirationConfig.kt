@@ -1,7 +1,7 @@
 package com.example.server.config
 
 import com.example.server.config.properties.ReservationHoldExpirationProperties
-import com.example.server.performance.RedisSeatHoldExpirationListener
+import com.example.server.performance.RedisVenueSeatHoldExpirationListener
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -40,11 +40,11 @@ class ReservationHoldExpirationConfig(private val holdExpirationProperties: Rese
   @Bean
   fun redisMessageListenerContainer(
     connectionFactory: RedisConnectionFactory,
-    redisSeatHoldExpirationListener: RedisSeatHoldExpirationListener,
+    redisVenueSeatHoldExpirationListener: RedisVenueSeatHoldExpirationListener,
   ): RedisMessageListenerContainer = RedisMessageListenerContainer().apply {
     setConnectionFactory(connectionFactory)
     addMessageListener(
-      redisSeatHoldExpirationListener,
+      redisVenueSeatHoldExpirationListener,
       PatternTopic("__keyevent@0__:expired"),
     )
   }
