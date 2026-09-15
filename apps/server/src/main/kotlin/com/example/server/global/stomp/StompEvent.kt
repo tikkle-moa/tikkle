@@ -1,4 +1,4 @@
-package com.example.server.global.stomp.dto
+package com.example.server.global.stomp
 
 import java.time.OffsetDateTime
 import java.util.UUID

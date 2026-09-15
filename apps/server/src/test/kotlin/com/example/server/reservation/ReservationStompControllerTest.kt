@@ -4,32 +4,36 @@ import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.global.stomp.dto.StompCommandSuccess
-import com.example.server.reservation.dto.CancelCheckoutResult
+import com.example.server.reservation.dto.CancelCheckoutMessage
+import com.example.server.reservation.dto.CancelCheckoutMessageData
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.CancelPaymentData
 import com.example.server.reservation.dto.ConfirmPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentData
+import com.example.server.reservation.dto.ConfirmPaymentMessage
+import com.example.server.reservation.dto.ConfirmPaymentMessageData
 import com.example.server.reservation.dto.GetPaymentOrderCommand
 import com.example.server.reservation.dto.GetPaymentOrderData
-import com.example.server.reservation.dto.PaymentOrderResult
-import com.example.server.reservation.dto.PaymentOrderSeatResult
-import com.example.server.reservation.dto.ReservationSyncCommand
+import com.example.server.reservation.dto.PaymentOrderMessage
+import com.example.server.reservation.dto.PaymentOrderMessageData
+import com.example.server.reservation.dto.PaymentOrderSeatData
 import com.example.server.reservation.dto.StartCheckoutCommand
 import com.example.server.reservation.dto.StartCheckoutData
-import com.example.server.reservation.dto.StartCheckoutResult
-import com.example.server.reservation.payment.dto.ConfirmPaymentResult
+import com.example.server.reservation.dto.StartCheckoutMessage
+import com.example.server.reservation.dto.StartCheckoutMessageData
 import com.example.server.reservation.types.ReservationStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.simp.annotation.SendToUser
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
@@ -48,63 +52,53 @@ class ReservationStompControllerTest {
   lateinit var reservationPaymentService: ReservationPaymentService
 
   @InjectMocks
-  lateinit var reservationStompController: ReservationStompController
+  lateinit var controller: ReservationStompController
 
-  private val loginUser = LoginUserResult(
-    userId = USER_ID,
-    role = UserRole.USER,
-  )
-  private val authentication: Authentication = UsernamePasswordAuthenticationToken(loginUser, null)
-
-  @Test
-  fun `예매 sync 응답은 요청 STOMP 세션에만 전송한다`() {
-    val syncMethod = ReservationStompController::class.java.getDeclaredMethod(
-      "sync",
-      ReservationSyncCommand::class.java,
-      Authentication::class.java,
+  private val authentication: Authentication =
+    UsernamePasswordAuthenticationToken(
+      LoginUserResult(USER_ID, UserRole.USER),
+      null,
     )
-
-    val sendToUser = requireNotNull(
-      syncMethod.getAnnotation(SendToUser::class.java),
-    )
-
-    assertThat(sendToUser.value)
-      .containsExactly("/queue/reservation")
-    assertThat(sendToUser.broadcast)
-      .isFalse()
-  }
 
   @Nested
   @DisplayName("START_CHECKOUT")
   inner class StartCheckout {
     @Test
-    fun `예매 checkout 서비스에 위임하고 성공 응답을 반환한다`() {
-      val command = StartCheckoutCommand(
+    fun `checkout 서비스에 위임하고 성공 메시지를 반환한다`() {
+      val request = StartCheckoutCommand(
         requestId = REQUEST_ID,
         data = StartCheckoutData(PERFORMANCE_ID),
       )
-      val result = startCheckoutResult()
+      val result = startCheckoutMessageData()
 
       given(
-        reservationCheckoutService.startCheckout(USER_ID, PERFORMANCE_ID),
+        reservationCheckoutService.startCheckout(
+          USER_ID,
+          PERFORMANCE_ID,
+        ),
       ).willReturn(result)
 
-      val response = reservationStompController.sync(
-        command = command,
-        authentication = authentication,
+      val response = controller.startCheckout(
+        request,
+        authentication,
       )
 
-      assertThat(response).isEqualTo(
-        StompCommandSuccess(
-          requestId = REQUEST_ID,
-          action = "START_CHECKOUT",
-          data = result,
-        ),
-      )
+      assertThat(response)
+        .isEqualTo(StartCheckoutMessage(REQUEST_ID, result))
 
       then(reservationCheckoutService)
         .should()
         .startCheckout(USER_ID, PERFORMANCE_ID)
+    }
+
+    @Test
+    fun `start-checkout destination과 개인 응답 queue를 사용한다`() {
+      assertEndpoint(
+        methodName = "startCheckout",
+        requestType = StartCheckoutCommand::class.java,
+        messageMapping = "/reservation/start-checkout",
+        responseDestination = "/queue/reservation/start-checkout",
+      )
     }
   }
 
@@ -112,72 +106,43 @@ class ReservationStompControllerTest {
   @DisplayName("GET_PAYMENT_ORDER")
   inner class GetPaymentOrder {
     @Test
-    fun `결제 주문 조회 서비스에 위임하고 성공 응답을 반환한다`() {
-      val command = GetPaymentOrderCommand(
+    fun `결제 주문 조회 서비스에 위임하고 성공 메시지를 반환한다`() {
+      val request = GetPaymentOrderCommand(
         requestId = REQUEST_ID,
-        data = GetPaymentOrderData(reservationId = RESERVATION_ID),
+        data = GetPaymentOrderData(RESERVATION_ID),
       )
-      val result = paymentOrderResult()
+      val result = paymentOrderMessageData()
 
       given(
-        reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID),
+        reservationPaymentOrderService.getPaymentOrder(
+          USER_ID,
+          RESERVATION_ID,
+        ),
       ).willReturn(result)
 
-      val response = reservationStompController.sync(
-        command = command,
-        authentication = authentication,
+      val response = controller.getPaymentOrder(
+        request,
+        authentication,
       )
 
-      assertThat(response).isEqualTo(
-        StompCommandSuccess(
-          requestId = REQUEST_ID,
-          action = "GET_PAYMENT_ORDER",
-          data = result,
-        ),
-      )
-
-      then(reservationPaymentOrderService)
-        .should()
-        .getPaymentOrder(USER_ID, RESERVATION_ID)
-      then(reservationCheckoutService).shouldHaveNoInteractions()
-      then(reservationPaymentService).shouldHaveNoInteractions()
-    }
-  }
-
-  @Nested
-  @DisplayName("CANCEL_PAYMENT")
-  inner class CancelPayment {
-    @Test
-    fun `예매 checkout 취소 서비스에 위임하고 성공 응답을 반환한다`() {
-      val command = CancelPaymentCommand(
-        requestId = REQUEST_ID,
-        data = CancelPaymentData(reservationId = RESERVATION_ID),
-      )
-      val result = CancelCheckoutResult(
-        reservationId = RESERVATION_ID,
-        status = ReservationStatus.CANCELLED,
-      )
-
-      given(
-        reservationCheckoutService.cancelCheckout(USER_ID, RESERVATION_ID),
-      ).willReturn(result)
-
-      val response = reservationStompController.sync(
-        command = command,
-        authentication = authentication,
-      )
-
-      assertThat(response).isEqualTo(
-        StompCommandSuccess(
-          requestId = REQUEST_ID,
-          action = "CANCEL_PAYMENT",
-          data = result,
-        ),
-      )
+      assertThat(response)
+        .isEqualTo(PaymentOrderMessage(REQUEST_ID, result))
 
       then(reservationCheckoutService)
-        .should()
-        .cancelCheckout(USER_ID, RESERVATION_ID)
+        .shouldHaveNoInteractions()
+
+      then(reservationPaymentService)
+        .shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `get-payment-order destination과 개인 응답 queue를 사용한다`() {
+      assertEndpoint(
+        methodName = "getPaymentOrder",
+        requestType = GetPaymentOrderCommand::class.java,
+        messageMapping = "/reservation/get-payment-order",
+        responseDestination = "/queue/reservation/get-payment-order",
+      )
     }
   }
 
@@ -185,8 +150,8 @@ class ReservationStompControllerTest {
   @DisplayName("CONFIRM_PAYMENT")
   inner class ConfirmPayment {
     @Test
-    fun `결제 승인 서비스에 위임하고 성공 응답을 반환한다`() {
-      val command = ConfirmPaymentCommand(
+    fun `결제 승인 서비스에 위임하고 성공 메시지를 반환한다`() {
+      val request = ConfirmPaymentCommand(
         requestId = REQUEST_ID,
         data = ConfirmPaymentData(
           paymentKey = PAYMENT_KEY,
@@ -194,7 +159,7 @@ class ReservationStompControllerTest {
           amount = AMOUNT,
         ),
       )
-      val result = ConfirmPaymentResult(
+      val result = ConfirmPaymentMessageData(
         reservationId = RESERVATION_ID,
         status = ReservationStatus.SUCCEEDED,
       )
@@ -208,33 +173,21 @@ class ReservationStompControllerTest {
         ),
       ).willReturn(result)
 
-      val response = reservationStompController.sync(
-        command = command,
-        authentication = authentication,
+      val response = controller.confirmPayment(
+        request,
+        authentication,
       )
 
-      assertThat(response).isEqualTo(
-        StompCommandSuccess(
-          requestId = REQUEST_ID,
-          action = "CONFIRM_PAYMENT",
-          data = result,
-        ),
-      )
+      assertThat(response)
+        .isEqualTo(ConfirmPaymentMessage(REQUEST_ID, result))
 
-      then(reservationPaymentService)
-        .should()
-        .confirmPayment(
-          userId = USER_ID,
-          paymentKey = PAYMENT_KEY,
-          orderId = ORDER_ID,
-          amount = AMOUNT,
-        )
-      then(reservationCheckoutService).shouldHaveNoInteractions()
+      then(reservationCheckoutService)
+        .shouldHaveNoInteractions()
     }
 
     @Test
-    fun `LoginUserResult가 아닌 인증 주체면 UNAUTHORIZED 예외를 던진다`() {
-      val command = ConfirmPaymentCommand(
+    fun `인증 주체가 올바르지 않으면 UNAUTHORIZED 예외를 던진다`() {
+      val request = ConfirmPaymentCommand(
         requestId = REQUEST_ID,
         data = ConfirmPaymentData(
           paymentKey = PAYMENT_KEY,
@@ -242,20 +195,94 @@ class ReservationStompControllerTest {
           amount = AMOUNT,
         ),
       )
+      val invalidAuthentication =
+        UsernamePasswordAuthenticationToken("invalid", null)
 
-      val exception = org.junit.jupiter.api.assertThrows<CustomException> {
-        reservationStompController.sync(
-          command = command,
-          authentication = UsernamePasswordAuthenticationToken("invalid", null),
-        )
+      val exception = assertThrows<CustomException> {
+        controller.confirmPayment(request, invalidAuthentication)
       }
 
-      assertThat(exception.errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
-      then(reservationPaymentService).shouldHaveNoInteractions()
+      assertThat(exception.errorCode)
+        .isEqualTo(ErrorCode.UNAUTHORIZED)
+    }
+
+    @Test
+    fun `confirm-payment destination과 개인 응답 queue를 사용한다`() {
+      assertEndpoint(
+        methodName = "confirmPayment",
+        requestType = ConfirmPaymentCommand::class.java,
+        messageMapping = "/reservation/confirm-payment",
+        responseDestination = "/queue/reservation/confirm-payment",
+      )
     }
   }
 
-  private fun startCheckoutResult() = StartCheckoutResult(
+  @Nested
+  @DisplayName("CANCEL_PAYMENT")
+  inner class CancelPayment {
+    @Test
+    fun `checkout 취소 서비스에 위임하고 성공 메시지를 반환한다`() {
+      val request = CancelPaymentCommand(
+        requestId = REQUEST_ID,
+        data = CancelPaymentData(RESERVATION_ID),
+      )
+      val result = CancelCheckoutMessageData(
+        reservationId = RESERVATION_ID,
+        status = ReservationStatus.CANCELLED,
+      )
+
+      given(
+        reservationCheckoutService.cancelCheckout(
+          USER_ID,
+          RESERVATION_ID,
+        ),
+      ).willReturn(result)
+
+      val response = controller.cancelPayment(
+        request,
+        authentication,
+      )
+
+      assertThat(response)
+        .isEqualTo(CancelCheckoutMessage(REQUEST_ID, result))
+
+      then(reservationPaymentService)
+        .shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `cancel-payment destination과 개인 응답 queue를 사용한다`() {
+      assertEndpoint(
+        methodName = "cancelPayment",
+        requestType = CancelPaymentCommand::class.java,
+        messageMapping = "/reservation/cancel-payment",
+        responseDestination = "/queue/reservation/cancel-payment",
+      )
+    }
+  }
+
+  private fun assertEndpoint(methodName: String, requestType: Class<*>, messageMapping: String, responseDestination: String) {
+    val method = ReservationStompController::class.java.getDeclaredMethod(
+      methodName,
+      requestType,
+      Authentication::class.java,
+    )
+
+    assertThat(method.getAnnotation(MessageMapping::class.java).value)
+      .containsExactly(messageMapping)
+
+    val sendToUser = requireNotNull(
+      method.getAnnotation(SendToUser::class.java),
+    )
+
+    assertThat(sendToUser.value)
+      .containsExactly(responseDestination)
+
+    assertThat(sendToUser.broadcast)
+      .isFalse()
+  }
+
+  private fun startCheckoutMessageData() = StartCheckoutMessageData(
     reservationId = RESERVATION_ID,
     orderId = ORDER_ID,
     orderName = "아이유 콘서트 1회차 2석",
@@ -263,7 +290,7 @@ class ReservationStompControllerTest {
     paymentExpiresAt = LocalDateTime.of(2027, 1, 20, 19, 5),
   )
 
-  private fun paymentOrderResult() = PaymentOrderResult(
+  private fun paymentOrderMessageData() = PaymentOrderMessageData(
     reservationId = RESERVATION_ID,
     orderId = ORDER_ID,
     orderName = "아이유 콘서트 1회차 2석",
@@ -275,7 +302,7 @@ class ReservationStompControllerTest {
     performanceStartsAt = LocalDateTime.of(2027, 1, 20, 19, 0),
     venueName = "티클홀",
     seats = listOf(
-      PaymentOrderSeatResult(
+      PaymentOrderSeatData(
         venueSeatId = 101L,
         sectionName = "R석",
         seatLabel = "A-1",
@@ -291,6 +318,9 @@ class ReservationStompControllerTest {
     private const val PAYMENT_KEY = "payment-key"
     private const val ORDER_ID = "order-id"
     private const val AMOUNT = 132_000
-    private val REQUEST_ID = UUID.fromString("2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a")
+
+    private val REQUEST_ID = UUID.fromString(
+      "2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a",
+    )
   }
 }

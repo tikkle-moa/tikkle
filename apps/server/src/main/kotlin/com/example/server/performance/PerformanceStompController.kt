@@ -1,10 +1,12 @@
 package com.example.server.performance
 
 import com.example.server.auth.dto.LoginUserResult
-import com.example.server.global.stomp.dto.StompCommandSuccess
-import com.example.server.performance.dto.PerformanceSeatHoldCommand
-import com.example.server.performance.dto.PerformanceSeatListResponse
-import com.example.server.performance.dto.PerformanceSyncCommand
+import com.example.server.performance.dto.HoldVenueSeatsCommand
+import com.example.server.performance.dto.HoldVenueSeatsMessage
+import com.example.server.performance.dto.PerformanceSeatStatusCommand
+import com.example.server.performance.dto.PerformanceSeatStatusMessage
+import com.example.server.performance.dto.ReleaseVenueSeatsCommand
+import com.example.server.performance.dto.ReleaseVenueSeatsMessage
 import jakarta.validation.Valid
 import org.springframework.messaging.handler.annotation.DestinationVariable
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -15,53 +17,64 @@ import org.springframework.stereotype.Controller
 
 @Controller
 @MessageMapping("/performances")
-class PerformanceStompController(
-  private val performanceService: PerformanceService,
-  private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
-) {
-  @MessageMapping("/{performanceId}/sync")
+class PerformanceStompController(private val redisVenueSeatHoldService: RedisVenueSeatHoldService) {
+  @MessageMapping("/{performanceId}/get-seat-status")
   @SendToUser(
-    value = ["/queue/performances/{performanceId}/sync"],
+    value = ["/queue/performances/{performanceId}/get-seat-status"],
     broadcast = false,
   )
-  fun sync(
+  fun getSeatStatus(
     @DestinationVariable("performanceId") performanceId: Long,
-    @Payload @Valid command: PerformanceSyncCommand,
-  ): StompCommandSuccess<PerformanceSeatListResponse> {
-    val result = performanceService.getSeatsStatus(performanceId)
+    @Payload @Valid command: PerformanceSeatStatusCommand,
+  ): PerformanceSeatStatusMessage {
+    val result = redisVenueSeatHoldService.getSeatStatus(performanceId)
 
-    return StompCommandSuccess(
+    return PerformanceSeatStatusMessage(
       requestId = command.requestId,
-      action = command.action,
       data = result,
     )
   }
 
-  @MessageMapping("/{performanceId}/seat-holds")
+  @MessageMapping("/{performanceId}/hold-seats")
   @SendToUser(
-    value = ["/queue/performances/{performanceId}/seat-holds"],
+    value = ["/queue/performances/{performanceId}/hold-seats"],
     broadcast = false,
   )
   fun hold(
     @DestinationVariable("performanceId") performanceId: Long,
-    @Payload @Valid command: PerformanceSeatHoldCommand<*>,
+    @Payload @Valid command: HoldVenueSeatsCommand,
     authentication: Authentication,
-  ): StompCommandSuccess<*> {
+  ): HoldVenueSeatsMessage {
     val loginUser = authentication.principal as LoginUserResult
-    return when (command) {
-      is PerformanceSeatHoldCommand.Hold -> StompCommandSuccess(
-        requestId = command.requestId,
-        action = command.action,
-        data = redisVenueSeatHoldService.holdVenueSeats(loginUser.userId, performanceId, command.data.venueSeatIds),
-      )
-      is PerformanceSeatHoldCommand.Release -> {
-        redisVenueSeatHoldService.releaseVenueSeats(loginUser.userId, performanceId, command.data.venueSeatIds)
-        StompCommandSuccess(
-          requestId = command.requestId,
-          action = command.action,
-          data = command.data,
-        )
-      }
-    }
+    return HoldVenueSeatsMessage(
+      requestId = command.requestId,
+      data = redisVenueSeatHoldService.holdVenueSeats(
+        loginUser.userId,
+        performanceId,
+        command.data,
+      ),
+    )
+  }
+
+  @MessageMapping("/{performanceId}/release-seats")
+  @SendToUser(
+    value = ["/queue/performances/{performanceId}/release-seats"],
+    broadcast = false,
+  )
+  fun release(
+    @DestinationVariable("performanceId") performanceId: Long,
+    @Payload @Valid command: ReleaseVenueSeatsCommand,
+    authentication: Authentication,
+  ): ReleaseVenueSeatsMessage {
+    val loginUser = authentication.principal as LoginUserResult
+    redisVenueSeatHoldService.releaseVenueSeats(
+      loginUser.userId,
+      performanceId,
+      command.data,
+    )
+    return ReleaseVenueSeatsMessage(
+      requestId = command.requestId,
+      data = command.data,
+    )
   }
 }

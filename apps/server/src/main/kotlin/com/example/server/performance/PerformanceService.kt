@@ -5,23 +5,15 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.CreatePerformanceRequest
 import com.example.server.performance.dto.PerformanceResponse
-import com.example.server.performance.dto.PerformanceSeatListResponse
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
-import com.example.server.reservation.repository.ReservationSeatRepository
-import com.example.server.reservation.types.ReservationStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 @Service
-class PerformanceService(
-  private val concertRepository: ConcertRepository,
-  private val performanceRepository: PerformanceRepository,
-  private val reservationSeatRepository: ReservationSeatRepository,
-  private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
-) {
+class PerformanceService(private val concertRepository: ConcertRepository, private val performanceRepository: PerformanceRepository) {
   @Transactional(readOnly = true)
   fun getPerformances(): List<PerformanceResponse> {
     val performances = performanceRepository.findAllUpcomingFirstOrderByStartsAtAsc()
@@ -35,21 +27,6 @@ class PerformanceService(
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
 
     return PerformanceResponse.from(performance)
-  }
-
-  @Transactional(readOnly = true)
-  fun getSeatsStatus(performanceId: Long): PerformanceSeatListResponse {
-    performanceRepository.findById(performanceId)
-      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
-
-    return PerformanceSeatListResponse(
-      serverTime = LocalDateTime.now(),
-      bookedSeats = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
-        performanceId = performanceId,
-        status = ReservationStatus.SUCCEEDED,
-      ),
-      heldSeats = redisVenueSeatHoldService.findHeldSeatsByPerformanceId(performanceId),
-    )
   }
 
   @Transactional

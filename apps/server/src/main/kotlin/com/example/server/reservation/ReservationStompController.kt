@@ -3,12 +3,15 @@ package com.example.server.reservation
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.global.stomp.dto.StompCommandSuccess
+import com.example.server.reservation.dto.CancelCheckoutMessage
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentCommand
+import com.example.server.reservation.dto.ConfirmPaymentMessage
 import com.example.server.reservation.dto.GetPaymentOrderCommand
-import com.example.server.reservation.dto.ReservationSyncCommand
+import com.example.server.reservation.dto.PaymentOrderMessage
 import com.example.server.reservation.dto.StartCheckoutCommand
+import com.example.server.reservation.dto.StartCheckoutMessage
+import jakarta.validation.Valid
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.messaging.simp.annotation.SendToUser
@@ -21,69 +24,76 @@ class ReservationStompController(
   private val reservationPaymentOrderService: ReservationPaymentOrderService,
   private val reservationPaymentService: ReservationPaymentService,
 ) {
-  @MessageMapping("/reservation/sync")
+  @MessageMapping("/reservation/start-checkout")
   @SendToUser(
-    value = ["/queue/reservation"],
+    value = ["/queue/reservation/start-checkout"],
     broadcast = false,
   )
-  fun sync(@Payload command: ReservationSyncCommand<*>, authentication: Authentication): StompCommandSuccess<out Any> {
-    val loginUser = authentication.principal as? LoginUserResult
-      ?: throw CustomException(ErrorCode.UNAUTHORIZED)
+  fun startCheckout(@Payload @Valid request: StartCheckoutCommand, authentication: Authentication): StartCheckoutMessage {
+    val user = loginUser(authentication)
 
-    return when (command) {
-      is StartCheckoutCommand -> {
-        val result = reservationCheckoutService.startCheckout(
-          userId = loginUser.userId,
-          performanceId = command.data.performanceId,
-        )
-
-        StompCommandSuccess(
-          requestId = command.requestId,
-          action = command.action,
-          data = result,
-        )
-      }
-
-      is GetPaymentOrderCommand -> {
-        val result = reservationPaymentOrderService.getPaymentOrder(
-          userId = loginUser.userId,
-          reservationId = command.data.reservationId,
-        )
-
-        StompCommandSuccess(
-          requestId = command.requestId,
-          action = command.action,
-          data = result,
-        )
-      }
-
-      is CancelPaymentCommand -> {
-        val result = reservationCheckoutService.cancelCheckout(
-          userId = loginUser.userId,
-          reservationId = command.data.reservationId,
-        )
-
-        StompCommandSuccess(
-          requestId = command.requestId,
-          action = command.action,
-          data = result,
-        )
-      }
-
-      is ConfirmPaymentCommand -> {
-        val result = reservationPaymentService.confirmPayment(
-          userId = loginUser.userId,
-          paymentKey = command.data.paymentKey,
-          orderId = command.data.orderId,
-          amount = command.data.amount,
-        )
-
-        StompCommandSuccess(
-          requestId = command.requestId,
-          action = command.action,
-          data = result,
-        )
-      }
-    }
+    return StartCheckoutMessage(
+      requestId = request.requestId,
+      data = reservationCheckoutService.startCheckout(
+        userId = user.userId,
+        performanceId = request.data.performanceId,
+      ),
+    )
   }
+
+  @MessageMapping("/reservation/get-payment-order")
+  @SendToUser(
+    value = ["/queue/reservation/get-payment-order"],
+    broadcast = false,
+  )
+  fun getPaymentOrder(@Payload @Valid request: GetPaymentOrderCommand, authentication: Authentication): PaymentOrderMessage {
+    val user = loginUser(authentication)
+
+    return PaymentOrderMessage(
+      requestId = request.requestId,
+      data = reservationPaymentOrderService.getPaymentOrder(
+        userId = user.userId,
+        reservationId = request.data.reservationId,
+      ),
+    )
+  }
+
+  @MessageMapping("/reservation/confirm-payment")
+  @SendToUser(
+    value = ["/queue/reservation/confirm-payment"],
+    broadcast = false,
+  )
+  fun confirmPayment(@Payload @Valid request: ConfirmPaymentCommand, authentication: Authentication): ConfirmPaymentMessage {
+    val user = loginUser(authentication)
+
+    return ConfirmPaymentMessage(
+      requestId = request.requestId,
+      data = reservationPaymentService.confirmPayment(
+        userId = user.userId,
+        paymentKey = request.data.paymentKey,
+        orderId = request.data.orderId,
+        amount = request.data.amount,
+      ),
+    )
+  }
+
+  @MessageMapping("/reservation/cancel-payment")
+  @SendToUser(
+    value = ["/queue/reservation/cancel-payment"],
+    broadcast = false,
+  )
+  fun cancelPayment(@Payload @Valid request: CancelPaymentCommand, authentication: Authentication): CancelCheckoutMessage {
+    val user = loginUser(authentication)
+
+    return CancelCheckoutMessage(
+      requestId = request.requestId,
+      data = reservationCheckoutService.cancelCheckout(
+        userId = user.userId,
+        reservationId = request.data.reservationId,
+      ),
+    )
+  }
+
+  private fun loginUser(authentication: Authentication): LoginUserResult = authentication.principal as? LoginUserResult
+    ?: throw CustomException(ErrorCode.UNAUTHORIZED)
 }

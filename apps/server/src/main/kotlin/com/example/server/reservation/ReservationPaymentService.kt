@@ -4,9 +4,9 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.performance.RedisVenueSeatHoldService
+import com.example.server.reservation.dto.ConfirmPaymentMessageData
 import com.example.server.reservation.payment.PaymentGateway
 import com.example.server.reservation.payment.dto.ActiveHoldsSnapshot
-import com.example.server.reservation.payment.dto.ConfirmPaymentResult
 import com.example.server.reservation.payment.dto.ExternalPayment
 import com.example.server.reservation.payment.dto.PaymentConfirmationAttempt
 import com.example.server.reservation.payment.dto.PaymentConfirmationCompletion
@@ -27,7 +27,7 @@ class ReservationPaymentService(
 ) {
   private val log = LoggerFactory.getLogger(ReservationPaymentService::class.java)
 
-  fun confirmPayment(userId: Long, paymentKey: String, orderId: String, amount: Int): ConfirmPaymentResult {
+  fun confirmPayment(userId: Long, paymentKey: String, orderId: String, amount: Int): ConfirmPaymentMessageData {
     val attempt = when (
       val started = paymentConfirmationService.begin(
         userId = userId,

@@ -5,10 +5,12 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.ActiveHoldData
 import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.HoldVenueSeatEntry
+import com.example.server.performance.dto.PerformanceSeatStatusMessageData
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
+import com.example.server.reservation.types.ReservationStatus
 import com.example.server.venue.repository.VenueSeatRepository
 import org.springframework.core.io.ClassPathResource
 import org.springframework.data.redis.core.ScanOptions
@@ -32,34 +34,19 @@ class RedisVenueSeatHoldService(
   private val stringRedisTemplate: StringRedisTemplate,
   private val objectMapper: ObjectMapper,
 ) {
-  fun findHeldSeatsByPerformanceId(performanceId: Long): List<HeldSeat> {
-    val now = LocalDateTime.now()
-    val holdIds = mutableSetOf<String>()
+  @Transactional(readOnly = true)
+  fun getSeatStatus(performanceId: Long): PerformanceSeatStatusMessageData {
+    performanceRepository.findById(performanceId)
+      .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "공연 회차를 찾을 수 없습니다.") }
 
-    stringRedisTemplate.scan(
-      ScanOptions.scanOptions()
-        .match("hold:venue-seat:$performanceId:*")
-        .count(100)
-        .build(),
-    ).use { cursor ->
-      while (cursor.hasNext()) {
-        stringRedisTemplate.opsForValue()
-          .get(cursor.next())
-          ?.let { holdIds += it }
-      }
-    }
-
-    return holdIds
-      .mapNotNull { holdId ->
-        stringRedisTemplate.opsForValue()
-          .get(holdDetailKey(holdId))
-          ?.let { objectMapper.readValue(it, VenueSeatHoldDetail::class.java) }
-      }
-      .filter { it.expiresAt.isAfter(now) }
-      .flatMap { hold ->
-        hold.venueSeatIds.map { seatId -> HeldSeat(id = seatId, expiresAt = hold.expiresAt) }
-      }
-      .sortedBy(HeldSeat::id)
+    return PerformanceSeatStatusMessageData(
+      serverTime = LocalDateTime.now(),
+      bookedSeats = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+        performanceId = performanceId,
+        status = ReservationStatus.SUCCEEDED,
+      ),
+      heldSeats = findHeldSeatsByPerformanceId(performanceId),
+    )
   }
 
   @Transactional
@@ -281,6 +268,36 @@ class RedisVenueSeatHoldService(
     // 추후 사용자 ID를 기반으로 그룹 ID를 가져오는 로직 구현 필요
     // 현재는 단순히 사용자 ID를 문자열로 변환하여 그룹 ID로 사용
     return "$userId:$performanceId"
+  }
+
+  private fun findHeldSeatsByPerformanceId(performanceId: Long): List<HeldSeat> {
+    val now = LocalDateTime.now()
+    val holdIds = mutableSetOf<String>()
+
+    stringRedisTemplate.scan(
+      ScanOptions.scanOptions()
+        .match("hold:venue-seat:$performanceId:*")
+        .count(100)
+        .build(),
+    ).use { cursor ->
+      while (cursor.hasNext()) {
+        stringRedisTemplate.opsForValue()
+          .get(cursor.next())
+          ?.let { holdIds += it }
+      }
+    }
+
+    return holdIds
+      .mapNotNull { holdId ->
+        stringRedisTemplate.opsForValue()
+          .get(holdDetailKey(holdId))
+          ?.let { objectMapper.readValue(it, VenueSeatHoldDetail::class.java) }
+      }
+      .filter { it.expiresAt.isAfter(now) }
+      .flatMap { hold ->
+        hold.venueSeatIds.map { seatId -> HeldSeat(id = seatId, expiresAt = hold.expiresAt) }
+      }
+      .sortedBy(HeldSeat::id)
   }
 
   private fun validateVenueSeatIds(venueSeatIds: List<Long>) {

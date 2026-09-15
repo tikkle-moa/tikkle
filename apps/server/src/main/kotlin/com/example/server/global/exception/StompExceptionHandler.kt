@@ -1,7 +1,7 @@
 package com.example.server.global.exception
 
-import com.example.server.global.stomp.dto.StompCommandError
-import com.example.server.global.stomp.dto.StompCommandFailure
+import com.example.server.global.stomp.StompError
+import com.example.server.global.stomp.StompFailureMessage
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.messaging.Message
@@ -18,20 +18,18 @@ import java.nio.charset.StandardCharsets
 import java.security.Principal
 import java.util.UUID
 
-data class StompRequestMetadata(val requestId: UUID, val action: String)
-
 @ControllerAdvice
 class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvider<SimpMessagingTemplate>, private val objectMapper: ObjectMapper) {
   private val log = LoggerFactory.getLogger(StompExceptionHandler::class.java)
 
   @MessageExceptionHandler(CustomException::class)
   fun handleCustomException(exception: CustomException, message: Message<*>, principal: Principal, headerAccessor: SimpMessageHeaderAccessor) {
-    val request = readRequestMetadata(message) ?: return
+    val requestId = readRequestId(message) ?: return
 
     log.warn(
-      "STOMP CustomException: requestId=[{}], action=[{}], code=[{}]",
-      request.requestId,
-      request.action,
+      "STOMP CustomException: destination=[{}], requestId=[{}], code=[{}]",
+      headerAccessor.destination,
+      requestId,
       exception.errorCode.name,
     )
 
@@ -39,7 +37,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       principal = principal,
       destination = headerAccessor.destination,
       sessionId = headerAccessor.sessionId,
-      request = request,
+      requestId = requestId,
       errorCode = exception.errorCode,
       message = exception.message,
     )
@@ -52,7 +50,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
     principal: Principal,
     headerAccessor: SimpMessageHeaderAccessor,
   ) {
-    val request = readRequestMetadata(message) ?: return
+    val requestId = readRequestId(message) ?: return
     val validationMessage = exception.bindingResult
       ?.fieldErrors
       ?.joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
@@ -60,9 +58,9 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       .ifBlank { ErrorCode.BAD_REQUEST.message }
 
     log.warn(
-      "STOMP MethodArgumentNotValidException: requestId=[{}], action=[{}], message=[{}]",
-      request.requestId,
-      request.action,
+      "STOMP MethodArgumentNotValidException: destination=[{}], requestId=[{}], message=[{}]",
+      headerAccessor.destination,
+      requestId,
       validationMessage,
     )
 
@@ -70,7 +68,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       principal = principal,
       destination = headerAccessor.destination,
       sessionId = headerAccessor.sessionId,
-      request = request,
+      requestId = requestId,
       errorCode = ErrorCode.BAD_REQUEST,
       message = validationMessage,
     )
@@ -83,7 +81,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
     principal: Principal,
     headerAccessor: SimpMessageHeaderAccessor,
   ) {
-    val request = readRequestMetadata(message) ?: return
+    val requestId = readRequestId(message) ?: return
     val conversionMessage =
       when (val cause = exception.cause) {
         is InvalidTypeIdException -> "action 값 '${cause.typeId}'은 올바르지 않습니다."
@@ -101,9 +99,9 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       }
 
     log.warn(
-      "STOMP MessageConversionException: requestId=[{}], action=[{}], message=[{}]",
-      request.requestId,
-      request.action,
+      "STOMP MessageConversionException: destination=[{}], requestId=[{}], message=[{}]",
+      headerAccessor.destination,
+      requestId,
       conversionMessage,
     )
 
@@ -111,7 +109,7 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       principal = principal,
       destination = headerAccessor.destination,
       sessionId = headerAccessor.sessionId,
-      request = request,
+      requestId = requestId,
       errorCode = ErrorCode.BAD_REQUEST,
       message = conversionMessage,
     )
@@ -119,12 +117,13 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
 
   @MessageExceptionHandler(Exception::class)
   fun handleException(exception: Exception, message: Message<*>, principal: Principal, headerAccessor: SimpMessageHeaderAccessor) {
-    val request = readRequestMetadata(message) ?: return
+    val requestId = readRequestId(message) ?: return
 
     log.error(
-      "Unhandled STOMP exception: requestId=[{}], action=[{}]",
-      request.requestId,
-      request.action,
+      "Unhandled STOMP exception: destination=[{}], requestId=[{}], message=[{}]",
+      headerAccessor.destination,
+      requestId,
+      exception.message,
       exception,
     )
 
@@ -132,41 +131,35 @@ class StompExceptionHandler(private val messagingTemplateProvider: ObjectProvide
       principal = principal,
       destination = headerAccessor.destination,
       sessionId = headerAccessor.sessionId,
-      request = request,
+      requestId = requestId,
       errorCode = ErrorCode.INTERNAL_SERVER_ERROR,
       message = ErrorCode.INTERNAL_SERVER_ERROR.message,
     )
   }
 
-  private fun readRequestMetadata(message: Message<*>): StompRequestMetadata? = runCatching {
+  private fun readRequestId(message: Message<*>): UUID? = runCatching {
     val payload = when (val value = message.payload) {
       is ByteArray -> String(value, StandardCharsets.UTF_8)
       is String -> value
       else -> objectMapper.writeValueAsString(value)
     }
 
-    objectMapper.readValue(payload, StompRequestMetadata::class.java)
+    objectMapper.readTree(payload)
+      .get("requestId")
+      .let { objectMapper.treeToValue(it, UUID::class.java) }
   }.onFailure { exception ->
-    log.warn("STOMP 요청 공통 필드 파싱 실패", exception)
+    log.warn("STOMP requestId 파싱 실패", exception)
   }.getOrNull()
 
-  private fun sendFailure(
-    principal: Principal,
-    destination: String?,
-    sessionId: String?,
-    request: StompRequestMetadata,
-    errorCode: ErrorCode,
-    message: String,
-  ) {
+  private fun sendFailure(principal: Principal, destination: String?, sessionId: String?, requestId: UUID, errorCode: ErrorCode, message: String) {
     if (destination == null || sessionId == null) {
       log.warn("STOMP destination or sessionId is null, cannot send failure message")
       return
     }
 
-    val failure = StompCommandFailure(
-      requestId = request.requestId,
-      action = request.action,
-      error = StompCommandError(
+    val failure = StompFailureMessage(
+      requestId = requestId,
+      error = StompError(
         code = errorCode.name,
         message = message,
       ),

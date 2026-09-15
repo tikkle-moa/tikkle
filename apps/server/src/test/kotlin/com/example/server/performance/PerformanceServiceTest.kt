@@ -6,13 +6,11 @@ import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.CreatePerformanceRequest
-import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.UpdatePerformanceRequest
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.performance.types.PerformanceStatus
 import com.example.server.reservation.repository.ReservationSeatRepository
-import com.example.server.reservation.types.ReservationStatus
 import com.example.server.venue.entity.Venue
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -177,37 +175,6 @@ class PerformanceServiceTest {
       val result = performanceService.getPerformances()
 
       assertThat(result).isEmpty()
-    }
-  }
-
-  @Nested
-  @DisplayName("getSeatsStatus")
-  inner class GetSeatsStatus {
-    @Test
-    fun `서버 시각과 좌석 상태 목록을 반환한다`() {
-      given(performanceRepository.findById(1L)).willReturn(Optional.of(performance()))
-      given(
-        reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
-          performanceId = 1L,
-          status = ReservationStatus.SUCCEEDED,
-        ),
-      ).willReturn(listOf(1L, 3L))
-      val heldSeatExpiresAt = LocalDateTime.of(2027, 1, 1, 12, 5)
-      given(redisVenueSeatHoldService.findHeldSeatsByPerformanceId(1L))
-        .willReturn(listOf(HeldSeat(id = 2L, expiresAt = heldSeatExpiresAt)))
-      val before = LocalDateTime.now()
-      val result = performanceService.getSeatsStatus(1L)
-      val after = LocalDateTime.now()
-      assertThat(result.serverTime).isBetween(before, after)
-      assertThat(result.bookedSeats).containsExactly(1L, 3L)
-      assertThat(result.heldSeats).containsExactly(HeldSeat(id = 2L, expiresAt = heldSeatExpiresAt))
-    }
-
-    @Test
-    fun `없는 공연 회차면 NOT_FOUND를 던진다`() {
-      given(performanceRepository.findById(99L)).willReturn(Optional.empty())
-      val exception = assertThrows<CustomException> { performanceService.getSeatsStatus(99L) }
-      assertEquals(ErrorCode.NOT_FOUND, exception.errorCode)
     }
   }
 
