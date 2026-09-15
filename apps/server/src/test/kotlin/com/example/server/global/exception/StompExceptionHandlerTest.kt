@@ -76,7 +76,7 @@ class StompExceptionHandlerTest {
   @Nested
   inner class HandleCustomException {
     @Test
-    fun `도메인별 개인 queue로 CustomException 실패 Envelope를 전송한다`() {
+    fun `요청 destination을 queue destination으로 변환해 CustomException 실패 Envelope를 전송한다`() {
       givenValidRequestMetadata()
       given(messagingTemplateProvider.getObject())
         .willReturn(messagingTemplate)
@@ -88,7 +88,7 @@ class StompExceptionHandlerTest {
         ),
         message = requestMessage,
         principal = principal,
-        headerAccessor = headerAccessor("/api/performance/sync"),
+        headerAccessor = headerAccessor("/api/performances/1/seat-holds"),
       )
 
       val responseCaptor = ArgumentCaptor.forClass(
@@ -100,7 +100,7 @@ class StompExceptionHandlerTest {
         .should()
         .convertAndSendToUser(
           eq("1"),
-          eq("/queue/performance"),
+          eq("/queue/performances/1/seat-holds"),
           responseCaptor.capture(),
           headersCaptor.capture(),
         )
@@ -188,7 +188,7 @@ class StompExceptionHandlerTest {
         .should()
         .convertAndSendToUser(
           eq("1"),
-          eq("/queue/performance"),
+          eq("/queue/performance/sync"),
           responseCaptor.capture(),
           any<Map<String, Any>>(),
         )
@@ -231,7 +231,7 @@ class StompExceptionHandlerTest {
         .should()
         .convertAndSendToUser(
           eq("1"),
-          eq("/queue/performance"),
+          eq("/queue/performance/sync"),
           responseCaptor.capture(),
           any<Map<String, Any>>(),
         )
@@ -415,7 +415,7 @@ class StompExceptionHandlerTest {
         .should()
         .convertAndSendToUser(
           eq("1"),
-          eq("/queue/performance"),
+          eq("/queue/performance/sync"),
           responseCaptor.capture(),
           any<Map<String, Any>>(),
         )
@@ -429,14 +429,29 @@ class StompExceptionHandlerTest {
   }
 
   @Test
-  fun `sync destination 형식이 아니면 메시지를 전송하지 않는다`() {
+  fun `destination이 없으면 실패 메시지를 전송하지 않는다`() {
     givenValidRequestMetadata()
 
     handler.handleCustomException(
       exception = CustomException(ErrorCode.BAD_REQUEST),
       message = requestMessage,
       principal = principal,
-      headerAccessor = headerAccessor("/invalid"),
+      headerAccessor = headerAccessor(destination = null),
+    )
+
+    then(messagingTemplateProvider)
+      .shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `sessionId가 없으면 실패 메시지를 전송하지 않는다`() {
+    givenValidRequestMetadata()
+
+    handler.handleCustomException(
+      exception = CustomException(ErrorCode.BAD_REQUEST),
+      message = requestMessage,
+      principal = principal,
+      headerAccessor = headerAccessor(sessionId = null),
     )
 
     then(messagingTemplateProvider)
@@ -466,7 +481,7 @@ class StompExceptionHandlerTest {
       .should()
       .convertAndSendToUser(
         eq("1"),
-        eq("/queue/performance"),
+        eq("/queue/performance/sync"),
         responseCaptor.capture(),
         any<Map<String, Any>>(),
       )
@@ -507,7 +522,7 @@ class StompExceptionHandlerTest {
       .should()
       .convertAndSendToUser(
         eq("1"),
-        eq("/queue/performance"),
+        eq("/queue/performance/sync"),
         ArgumentCaptor.forClass(StompCommandFailure::class.java).capture(),
         any<Map<String, Any>>(),
       )
@@ -551,7 +566,7 @@ class StompExceptionHandlerTest {
       .should()
       .convertAndSendToUser(
         eq("1"),
-        eq("/queue/performance"),
+        eq("/queue/performance/sync"),
         responseCaptor.capture(),
         any<Map<String, Any>>(),
       )
@@ -584,10 +599,11 @@ class StompExceptionHandlerTest {
     }
   }
 
-  private fun headerAccessor(destination: String): SimpMessageHeaderAccessor = SimpMessageHeaderAccessor.create().apply {
-    this.destination = destination
-    sessionId = "session-1"
-  }
+  private fun headerAccessor(destination: String? = "/api/performance/sync", sessionId: String? = "session-1"): SimpMessageHeaderAccessor =
+    SimpMessageHeaderAccessor.create().apply {
+      this.destination = destination
+      this.sessionId = sessionId
+    }
 
   @Suppress("unused")
   private fun validationTarget(command: ValidationTarget) = Unit
