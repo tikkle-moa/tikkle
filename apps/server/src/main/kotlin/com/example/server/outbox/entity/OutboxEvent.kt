@@ -62,8 +62,8 @@ class OutboxEvent(
   @Column(name = "next_attempt_at", nullable = false)
   var nextAttemptAt: LocalDateTime = LocalDateTime.now(),
 
-  @Column(name = "lock_token", length = 100)
-  var lockToken: String? = null,
+  @Column(name = "processing_owner", length = 100)
+  var processingOwner: String? = null,
 
   @Column(name = "locked_at")
   var lockedAt: LocalDateTime? = null,

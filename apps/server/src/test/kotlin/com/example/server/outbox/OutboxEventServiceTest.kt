@@ -93,7 +93,7 @@ class OutboxEventServiceTest {
     assertThat(claimed).isSameAs(event)
     assertThat(event.status).isEqualTo(OutboxEventStatus.PROCESSING)
     assertThat(event.attemptCount).isEqualTo(2)
-    assertThat(event.lockToken).isNotBlank()
+    assertThat(event.processingOwner).isNotBlank()
     assertThat(event.lockedAt).isNotNull()
     then(outboxEventRepository).should().saveAndFlush(event)
   }
@@ -121,18 +121,18 @@ class OutboxEventServiceTest {
         eventId = anyNonNull(Long::class.java, event.id),
         processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
         publishedStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PUBLISHED),
-        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
         publishedAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       ),
     ).willReturn(1)
 
-    service.markPublished(event.id, LOCK_TOKEN)
+    service.markPublished(event.id, PROCESSING_OWNER)
 
     then(outboxEventRepository).should().markPublishedIfOwned(
       eventId = anyNonNull(Long::class.java, event.id),
       processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
       publishedStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PUBLISHED),
-      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
       publishedAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
     )
     then(outboxEventRepository).should(org.mockito.Mockito.never()).save(any(OutboxEvent::class.java))
@@ -145,18 +145,18 @@ class OutboxEventServiceTest {
         eventId = anyNonNull(Long::class.java, RESERVATION_ID),
         processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
         publishedStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PUBLISHED),
-        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
         publishedAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       ),
     ).willReturn(0)
 
-    service.markPublished(RESERVATION_ID, LOCK_TOKEN)
+    service.markPublished(RESERVATION_ID, PROCESSING_OWNER)
 
     then(outboxEventRepository).should().markPublishedIfOwned(
       eventId = anyNonNull(Long::class.java, RESERVATION_ID),
       processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
       publishedStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PUBLISHED),
-      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
       publishedAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
     )
     then(outboxEventRepository).should(org.mockito.Mockito.never()).save(any(OutboxEvent::class.java))
@@ -172,7 +172,7 @@ class OutboxEventServiceTest {
         eventId = anyNonNull(Long::class.java, event.id),
         processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
         status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
-        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
         nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
         lastError = anyNonNull(String::class.java, exception.message!!),
       ),
@@ -180,7 +180,7 @@ class OutboxEventServiceTest {
 
     service.markFailed(
       eventId = event.id,
-      lockToken = LOCK_TOKEN,
+      processingOwner = PROCESSING_OWNER,
       exception = exception,
       maxAttempts = 5,
       retryDelayMillis = 1_000,
@@ -190,7 +190,7 @@ class OutboxEventServiceTest {
       eventId = anyNonNull(Long::class.java, event.id),
       processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
       status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
-      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
       nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       lastError = anyNonNull(String::class.java, exception.message!!),
     )
@@ -207,7 +207,7 @@ class OutboxEventServiceTest {
         eventId = anyNonNull(Long::class.java, event.id),
         processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
         status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.DEAD),
-        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
         nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
         lastError = anyNonNull(String::class.java, "RuntimeException"),
       ),
@@ -215,7 +215,7 @@ class OutboxEventServiceTest {
 
     service.markFailed(
       eventId = event.id,
-      lockToken = LOCK_TOKEN,
+      processingOwner = PROCESSING_OWNER,
       exception = exception,
       maxAttempts = 5,
       retryDelayMillis = 1_000,
@@ -225,7 +225,7 @@ class OutboxEventServiceTest {
       eventId = anyNonNull(Long::class.java, event.id),
       processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
       status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.DEAD),
-      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
       nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       lastError = anyNonNull(String::class.java, "RuntimeException"),
     )
@@ -241,7 +241,7 @@ class OutboxEventServiceTest {
         eventId = anyNonNull(Long::class.java, event.id),
         processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
         status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
-        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
         nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
         lastError = anyNonNull(String::class.java, "redis failed"),
       ),
@@ -249,7 +249,7 @@ class OutboxEventServiceTest {
 
     service.markFailed(
       eventId = event.id,
-      lockToken = LOCK_TOKEN,
+      processingOwner = PROCESSING_OWNER,
       exception = IllegalStateException("redis failed"),
       maxAttempts = 5,
       retryDelayMillis = 1_000,
@@ -259,7 +259,7 @@ class OutboxEventServiceTest {
       eventId = anyNonNull(Long::class.java, event.id),
       processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
       status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
-      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      processingOwner = anyNonNull(String::class.java, PROCESSING_OWNER),
       nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       lastError = anyNonNull(String::class.java, "redis failed"),
     )
@@ -272,7 +272,7 @@ class OutboxEventServiceTest {
 
     service.markFailed(
       eventId = RESERVATION_ID,
-      lockToken = LOCK_TOKEN,
+      processingOwner = PROCESSING_OWNER,
       exception = IllegalStateException("redis failed"),
       maxAttempts = 5,
       retryDelayMillis = 1_000,
@@ -286,7 +286,7 @@ class OutboxEventServiceTest {
 
     service.markFailed(
       eventId = wrongStatusEvent.id,
-      lockToken = LOCK_TOKEN,
+      processingOwner = PROCESSING_OWNER,
       exception = IllegalStateException("redis failed"),
       maxAttempts = 5,
       retryDelayMillis = 1_000,
@@ -294,13 +294,13 @@ class OutboxEventServiceTest {
 
     val event = processingEvent().also {
       it.id = RESERVATION_ID + 2
-      it.lockToken = "another-lock-token"
+      it.processingOwner = "another-processing-owner"
     }
     given(outboxEventRepository.findById(event.id)).willReturn(Optional.of(event))
 
     service.markFailed(
       eventId = event.id,
-      lockToken = LOCK_TOKEN,
+      processingOwner = PROCESSING_OWNER,
       exception = IllegalStateException("redis failed"),
       maxAttempts = 5,
       retryDelayMillis = 1_000,
@@ -326,7 +326,7 @@ class OutboxEventServiceTest {
     payload = PAYLOAD,
     status = OutboxEventStatus.PROCESSING,
     attemptCount = attemptCount,
-    lockToken = LOCK_TOKEN,
+    processingOwner = PROCESSING_OWNER,
     lockedAt = LocalDateTime.now(),
   )
 
@@ -335,6 +335,6 @@ class OutboxEventServiceTest {
     private const val PERFORMANCE_ID = 10L
     private const val GROUP_ID = "1:10"
     private const val PAYLOAD = "{}"
-    private const val LOCK_TOKEN = "lock-token"
+    private const val PROCESSING_OWNER = "processing-owner"
   }
 }

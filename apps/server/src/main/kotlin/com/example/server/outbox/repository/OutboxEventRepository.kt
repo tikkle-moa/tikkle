@@ -56,20 +56,20 @@ interface OutboxEventRepository : JpaRepository<OutboxEvent, Long> {
     """
     UPDATE OutboxEvent event
     SET event.status = :publishedStatus,
-        event.lockToken = null,
+        event.processingOwner = null,
         event.lockedAt = null,
         event.publishedAt = :publishedAt,
         event.nextAttemptAt = :publishedAt
     WHERE event.id = :eventId
       AND event.status = :processingStatus
-      AND event.lockToken = :lockToken
+      AND event.processingOwner = :processingOwner
     """,
   )
   fun markPublishedIfOwned(
     @Param("eventId") eventId: Long,
     @Param("processingStatus") processingStatus: OutboxEventStatus,
     @Param("publishedStatus") publishedStatus: OutboxEventStatus,
-    @Param("lockToken") lockToken: String,
+    @Param("processingOwner") processingOwner: String,
     @Param("publishedAt") publishedAt: LocalDateTime,
   ): Int
 
@@ -79,19 +79,19 @@ interface OutboxEventRepository : JpaRepository<OutboxEvent, Long> {
     UPDATE OutboxEvent event
     SET event.status = :status,
         event.nextAttemptAt = :nextAttemptAt,
-        event.lockToken = null,
+        event.processingOwner = null,
         event.lockedAt = null,
         event.lastError = :lastError
     WHERE event.id = :eventId
       AND event.status = :processingStatus
-      AND event.lockToken = :lockToken
+      AND event.processingOwner = :processingOwner
     """,
   )
   fun markFailedIfOwned(
     @Param("eventId") eventId: Long,
     @Param("processingStatus") processingStatus: OutboxEventStatus,
     @Param("status") status: OutboxEventStatus,
-    @Param("lockToken") lockToken: String,
+    @Param("processingOwner") processingOwner: String,
     @Param("nextAttemptAt") nextAttemptAt: LocalDateTime,
     @Param("lastError") lastError: String?,
   ): Int

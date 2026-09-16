@@ -13,7 +13,7 @@ CREATE TABLE outbox_events (
     status ENUM('PENDING', 'PROCESSING', 'PUBLISHED', 'DEAD') NOT NULL DEFAULT 'PENDING',
     attempt_count INT NOT NULL DEFAULT 0,
     next_attempt_at DATETIME NOT NULL,
-    lock_token VARCHAR(100) NULL,
+    processing_owner VARCHAR(100) NULL,
     locked_at DATETIME NULL,
     last_error TEXT NULL,
     occurred_at DATETIME NOT NULL,

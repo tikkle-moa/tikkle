@@ -39,7 +39,7 @@ class OutboxEventDispatcher(
   }
 
   private fun dispatch(event: OutboxEvent) {
-    val lockToken = requireNotNull(event.lockToken) { "Outbox 이벤트 점유 토큰이 없습니다." }
+    val processingOwner = requireNotNull(event.processingOwner) { "Outbox 이벤트 처리 소유자가 없습니다." }
 
     runCatching {
       process(event)
@@ -47,7 +47,7 @@ class OutboxEventDispatcher(
       runCatching {
         outboxEventService.markPublished(
           eventId = event.id,
-          lockToken = lockToken,
+          processingOwner = processingOwner,
         )
       }.onFailure { exception ->
         log.error("Outbox 이벤트를 발행 완료 상태로 변경하지 못했습니다. eventId={}", event.eventId, exception)
@@ -62,7 +62,7 @@ class OutboxEventDispatcher(
       runCatching {
         outboxEventService.markFailed(
           eventId = event.id,
-          lockToken = lockToken,
+          processingOwner = processingOwner,
           exception = exception,
           maxAttempts = properties.maxAttempts,
           retryDelayMillis = properties.retryDelayMillis,

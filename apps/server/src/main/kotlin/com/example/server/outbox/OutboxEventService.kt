@@ -49,7 +49,7 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
 
     event.status = OutboxEventStatus.PROCESSING
     event.attemptCount += 1
-    event.lockToken = UUID.randomUUID().toString()
+    event.processingOwner = UUID.randomUUID().toString()
     event.lockedAt = now
     event.lastError = null
     outboxEventRepository.saveAndFlush(event)
@@ -57,21 +57,21 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
   }
 
   @Transactional
-  fun markPublished(eventId: Long, lockToken: String) {
+  fun markPublished(eventId: Long, processingOwner: String) {
     val now = LocalDateTime.now()
     outboxEventRepository.markPublishedIfOwned(
       eventId = eventId,
       processingStatus = OutboxEventStatus.PROCESSING,
       publishedStatus = OutboxEventStatus.PUBLISHED,
-      lockToken = lockToken,
+      processingOwner = processingOwner,
       publishedAt = now,
     )
   }
 
   @Transactional
-  fun markFailed(eventId: Long, lockToken: String, exception: Throwable, maxAttempts: Int, retryDelayMillis: Long) {
+  fun markFailed(eventId: Long, processingOwner: String, exception: Throwable, maxAttempts: Int, retryDelayMillis: Long) {
     val event = outboxEventRepository.findById(eventId).orElse(null) ?: return
-    if (event.status != OutboxEventStatus.PROCESSING || event.lockToken != lockToken) return
+    if (event.status != OutboxEventStatus.PROCESSING || event.processingOwner != processingOwner) return
 
     val now = LocalDateTime.now()
     val dead = event.attemptCount >= maxAttempts
@@ -82,7 +82,7 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
       eventId = eventId,
       processingStatus = OutboxEventStatus.PROCESSING,
       status = status,
-      lockToken = lockToken,
+      processingOwner = processingOwner,
       nextAttemptAt = nextAttemptAt,
       lastError = lastError,
     )

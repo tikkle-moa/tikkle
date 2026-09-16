@@ -66,7 +66,7 @@ class OutboxEventDispatcherTest {
       performanceId = payload.performanceId,
       venueSeatIds = payload.seatIds,
     )
-    then(outboxEventService).should().markPublished(event.id, event.lockToken!!)
+    then(outboxEventService).should().markPublished(event.id, event.processingOwner!!)
   }
 
   @Test
@@ -88,7 +88,7 @@ class OutboxEventDispatcherTest {
 
     then(outboxEventService).should().markFailed(
       eventId = event.id,
-      lockToken = event.lockToken!!,
+      processingOwner = event.processingOwner!!,
       exception = failure,
       maxAttempts = PROPERTIES.maxAttempts,
       retryDelayMillis = PROPERTIES.retryDelayMillis,
@@ -103,7 +103,7 @@ class OutboxEventDispatcherTest {
     performanceId = 10L,
     eventType = type,
     payload = PAYLOAD,
-  ).also { it.lockToken = LOCK_TOKEN }
+  ).also { it.processingOwner = PROCESSING_OWNER }
 
   private fun payload() = ReservationSeatEventPayload(
     reservationId = 501L,
@@ -115,7 +115,7 @@ class OutboxEventDispatcherTest {
 
   companion object {
     private const val PAYLOAD = "{}"
-    private const val LOCK_TOKEN = "lock-token"
+    private const val PROCESSING_OWNER = "processing-owner"
     private val PROPERTIES = OutboxDispatcherProperties(
       batchSize = 1,
       leaseMillis = 30_000,
