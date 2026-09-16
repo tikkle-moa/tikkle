@@ -393,18 +393,17 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
-  fun `결제 전환과 최종 해제 스크립트의 성공 및 충돌을 처리한다`() {
+  fun `결제 전환과 전체 해제 스크립트의 성공을 처리한다`() {
     val detail = VenueSeatHoldDetail(HOLD_ID, "$USER_ID:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
     executeResult = 0L
 
     assertThat(service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10))).hasSize(1)
-    assertThat(service.finalizeForPayment("$USER_ID:$PERFORMANCE_ID")).containsExactly(101L)
     assertThat(service.releaseAllVenueSeats("$USER_ID:$PERFORMANCE_ID")).containsExactly(101L)
   }
 
   @Test
-  fun `결제 전환과 최종 해제 스크립트 충돌은 CONFLICT로 반환한다`() {
+  fun `결제 전환과 전체 해제 스크립트 충돌은 CONFLICT로 반환한다`() {
     val detail = VenueSeatHoldDetail(HOLD_ID, "$USER_ID:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
     executeResult = 1L
@@ -412,11 +411,6 @@ class RedisVenueSeatHoldServiceTest {
     assertThat(
       assertThrows<CustomException> {
         service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10))
-      }.errorCode,
-    ).isEqualTo(ErrorCode.CONFLICT)
-    assertThat(
-      assertThrows<CustomException> {
-        service.finalizeForPayment("$USER_ID:$PERFORMANCE_ID")
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
     assertThat(
@@ -440,16 +434,11 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
-  fun `최종 확정과 전체 해제 스크립트가 결과 없이 끝나면 충돌을 반환한다`() {
+  fun `전체 해제 스크립트가 결과 없이 끝나면 충돌을 반환한다`() {
     val detail = VenueSeatHoldDetail(HOLD_ID, "$USER_ID:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
     executeResult = null
 
-    assertThat(
-      assertThrows<CustomException> {
-        service.finalizeForPayment("$USER_ID:$PERFORMANCE_ID")
-      }.errorCode,
-    ).isEqualTo(ErrorCode.CONFLICT)
     assertThat(
       assertThrows<CustomException> {
         service.releaseAllVenueSeats("$USER_ID:$PERFORMANCE_ID")
