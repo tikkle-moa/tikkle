@@ -108,6 +108,15 @@ reservation:
     enabled: ${RESERVATION_PAYMENT_RECONCILIATION_ENABLED:true}
     fixed-delay: ${RESERVATION_PAYMENT_RECONCILIATION_FIXED_DELAY:60000}
 
+outbox:
+  dispatcher:
+    enabled: ${OUTBOX_DISPATCHER_ENABLED:true}
+    fixed-delay: ${OUTBOX_DISPATCHER_FIXED_DELAY:1000}
+    batch-size: ${OUTBOX_DISPATCHER_BATCH_SIZE:100}
+    lease-millis: ${OUTBOX_DISPATCHER_LEASE_MILLIS:30000}
+    max-attempts: ${OUTBOX_DISPATCHER_MAX_ATTEMPTS:5}
+    retry-delay-millis: ${OUTBOX_DISPATCHER_RETRY_DELAY_MILLIS:5000}
+
 toss:
   payments:
     base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}

@@ -68,6 +68,10 @@ reservation:
   payment-reconciliation:
     enabled: false
 
+outbox:
+  dispatcher:
+    enabled: false
+
 toss:
   payments:
     base-url: https://api.tosspayments.com
