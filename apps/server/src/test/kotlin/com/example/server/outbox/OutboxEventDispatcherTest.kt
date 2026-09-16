@@ -100,6 +100,7 @@ class OutboxEventDispatcherTest {
     eventKey = "reservation:501:${type.name.lowercase()}:hold-1",
     aggregateType = "RESERVATION",
     aggregateId = 501L,
+    performanceId = 10L,
     eventType = type,
     payload = PAYLOAD,
   ).also { it.lockToken = LOCK_TOKEN }

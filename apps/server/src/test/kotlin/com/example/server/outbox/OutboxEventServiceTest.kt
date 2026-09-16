@@ -50,6 +50,7 @@ class OutboxEventServiceTest {
       eventKey = "reservation:$RESERVATION_ID:hold-released:${hold().holdId}",
       aggregateType = "RESERVATION",
       aggregateId = RESERVATION_ID,
+      performanceId = PERFORMANCE_ID,
       eventType = com.example.server.outbox.types.OutboxEventType.HOLD_RELEASED,
       payload = PAYLOAD,
       status = OutboxEventStatus.PROCESSING,
