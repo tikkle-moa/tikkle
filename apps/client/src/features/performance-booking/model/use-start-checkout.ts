@@ -4,7 +4,7 @@ import { useStompStore } from "@shared/realtime/stomp.store";
 import { useStompSubscription } from "@shared/realtime/use-stomp-subscription";
 
 import { PERFORMANCE_BOOKING_DESTINATIONS } from "./performance-booking.constants";
-import { isStartCheckoutData, parseBookingCommandResponse } from "./performance-booking.utils";
+import { isStartCheckoutData, parseBookingMessage } from "./performance-booking.utils";
 
 interface UseStartCheckoutProps {
   performanceId: number;
@@ -25,7 +25,7 @@ export const useStartCheckout = ({ performanceId, onSuccess }: UseStartCheckoutP
 
   const handleMessage = useCallback(
     (message: { body: string }) => {
-      const response = parseBookingCommandResponse(message.body);
+      const response = parseBookingMessage(message.body);
       if (!response || response.requestId !== requestIdRef.current) return;
 
       setIsStarting(false);

@@ -1,10 +1,10 @@
 import type { StartCheckoutMessageData } from "@tikkle/api-types";
 
-import type { BookingCommandResponse } from "./performance-booking.types";
+import type { BookingMessage } from "./performance-booking.types";
 
 export const formatBookingAmount = (amount: number) => `${new Intl.NumberFormat("ko-KR").format(amount)}원`;
 
-export const parseBookingCommandResponse = (body: string) => {
+export const parseBookingMessage = (body: string) => {
   try {
     const response = JSON.parse(body) as unknown;
 
@@ -16,7 +16,7 @@ export const parseBookingCommandResponse = (body: string) => {
       return null;
     }
 
-    return response as BookingCommandResponse;
+    return response as BookingMessage;
   } catch {
     return null;
   }

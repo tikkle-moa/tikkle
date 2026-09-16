@@ -10,4 +10,4 @@ export interface PerformanceCheckoutLocationState {
   hold: VenueSeatHoldDetail;
 }
 
-export type BookingCommandResponse = StartCheckoutMessage | StompFailureMessage;
+export type BookingMessage = StartCheckoutMessage | StompFailureMessage;

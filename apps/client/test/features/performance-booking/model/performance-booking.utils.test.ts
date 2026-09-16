@@ -2,7 +2,7 @@ import {
   formatBookingAmount,
   getRemainingSeconds,
   isStartCheckoutData,
-  parseBookingCommandResponse,
+  parseBookingMessage,
 } from "@features/performance-booking/model/performance-booking.utils";
 
 describe("performance-booking.utils", () => {
@@ -14,11 +14,11 @@ describe("performance-booking.utils", () => {
   });
 
   it("예매 STOMP 응답을 검증하고 파싱한다", () => {
-    const valid = parseBookingCommandResponse(JSON.stringify({ requestId: "req-1", success: true, data: {} }));
+    const valid = parseBookingMessage(JSON.stringify({ requestId: "req-1", success: true, data: {} }));
     expect(valid).toMatchObject({ requestId: "req-1", success: true });
-    expect(parseBookingCommandResponse("not-json")).toBeNull();
-    expect(parseBookingCommandResponse("null")).toBeNull();
-    expect(parseBookingCommandResponse(JSON.stringify({ requestId: "req-1" }))).toBeNull();
+    expect(parseBookingMessage("not-json")).toBeNull();
+    expect(parseBookingMessage("null")).toBeNull();
+    expect(parseBookingMessage(JSON.stringify({ requestId: "req-1" }))).toBeNull();
   });
 
   it("START_CHECKOUT 응답 데이터를 생성 계약대로 검증한다", () => {
