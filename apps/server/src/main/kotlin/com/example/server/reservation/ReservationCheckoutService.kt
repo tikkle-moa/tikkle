@@ -3,7 +3,7 @@ package com.example.server.reservation
 import com.example.server.auth.repository.UserRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.performance.PerformanceVenueSeatStompPublisher
+import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.dto.CancelCheckoutMessageData
@@ -12,11 +12,8 @@ import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
 import com.example.server.venue.repository.VenueSeatRepository
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.transaction.support.TransactionSynchronization
-import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
@@ -28,10 +25,8 @@ class ReservationCheckoutService(
   private val venueSeatRepository: VenueSeatRepository,
   private val reservationRepository: ReservationRepository,
   private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
-  private val performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher,
+  private val outboxEventService: OutboxEventService,
 ) {
-  private val log = LoggerFactory.getLogger(ReservationCheckoutService::class.java)
-
   @Transactional
   fun startCheckout(userId: Long, performanceId: Long): StartCheckoutMessageData {
     val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId)
@@ -153,10 +148,7 @@ class ReservationCheckoutService(
       ReservationStatus.EXPIRED
     }
 
-    releaseHoldAfterCommit(
-      groupId = reservation.groupId,
-      performanceId = reservation.performance.id,
-    )
+    recordHoldReleasedEvents(reservation)
 
     return CancelCheckoutMessageData.from(reservation)
   }
@@ -175,10 +167,7 @@ class ReservationCheckoutService(
 
     reservation.status = ReservationStatus.EXPIRED
 
-    releaseHoldAfterCommit(
-      groupId = reservation.groupId,
-      performanceId = reservation.performance.id,
-    )
+    recordHoldReleasedEvents(reservation)
   }
 
   private fun existingCheckout(reservation: Reservation, groupId: String): StartCheckoutMessageData {
@@ -193,40 +182,20 @@ class ReservationCheckoutService(
     return StartCheckoutMessageData.from(reservation)
   }
 
-  private fun releaseHoldAfterCommit(groupId: String, performanceId: Long) {
-    val release = {
-      try {
-        val releasedVenueSeatIds = redisVenueSeatHoldService.releaseAllVenueSeats(groupId)
-
-        if (releasedVenueSeatIds.isNotEmpty()) {
-          performanceVenueSeatStompPublisher.publishHoldReleased(
-            performanceId = performanceId,
-            venueSeatIds = releasedVenueSeatIds,
-          )
-        }
-      } catch (e: Exception) {
-        if (e !is CustomException || e.errorCode != ErrorCode.NOT_FOUND) {
-          log.error(
-            "결제 대기 취소 후 Hold 해제에 실패했습니다. groupId={}",
-            groupId,
-            e,
-          )
-        }
-      }
+  private fun recordHoldReleasedEvents(reservation: Reservation) {
+    val activeHoldData = try {
+      redisVenueSeatHoldService.findActiveHoldDataByGroupId(reservation.groupId)
+    } catch (exception: CustomException) {
+      if (exception.errorCode == ErrorCode.NOT_FOUND) return
+      throw exception
     }
 
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      release()
-      return
+    activeHoldData.holdDetails.forEach { hold ->
+      outboxEventService.recordHoldReleased(
+        reservationId = reservation.id,
+        hold = hold,
+      )
     }
-
-    TransactionSynchronizationManager.registerSynchronization(
-      object : TransactionSynchronization {
-        override fun afterCommit() {
-          release()
-        }
-      },
-    )
   }
 
   companion object {
