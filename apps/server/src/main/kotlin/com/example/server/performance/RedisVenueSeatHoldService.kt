@@ -232,6 +232,52 @@ class RedisVenueSeatHoldService(
     return activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
   }
 
+  fun releaseVenueSeats(holdId: String, groupId: String, performanceId: Long, venueSeatIds: List<Long>, eventId: UUID): OutboxHoldActionResult {
+    validateVenueSeatIds(venueSeatIds)
+
+    val keys = venueSeatIds.map { holdVenueSeatKey(performanceId, it) } +
+      holdDetailKey(holdId) +
+      holdGroupKey(groupId) +
+      outboxHoldActionKey(eventId)
+    val result = stringRedisTemplate.execute(
+      releaseHoldByIdScript,
+      keys,
+      holdId,
+      venueSeatIds.size.toString(),
+    ) ?: throw IllegalStateException("Hold 해제 결과를 확인하지 못했습니다.")
+
+    return when (result) {
+      0L -> OutboxHoldActionResult.APPLIED
+      1L -> OutboxHoldActionResult.REPLACED
+      2L -> OutboxHoldActionResult.EXPIRED
+      3L -> OutboxHoldActionResult.ALREADY_APPLIED
+      else -> throw IllegalStateException("알 수 없는 Hold 해제 결과입니다: $result")
+    }
+  }
+
+  fun finalizeVenueSeats(holdId: String, groupId: String, performanceId: Long, venueSeatIds: List<Long>): OutboxHoldActionResult {
+    validateVenueSeatIds(venueSeatIds)
+
+    val finalizingKeys = venueSeatIds.map { finalizingVenueSeatKey(performanceId, it) }
+    val keys = venueSeatIds.map { holdVenueSeatKey(performanceId, it) } +
+      finalizingKeys +
+      holdDetailKey(holdId) +
+      holdGroupKey(groupId)
+    val result = stringRedisTemplate.execute(
+      finalizeHoldByIdScript,
+      keys,
+      holdId,
+      venueSeatIds.size.toString(),
+    ) ?: throw IllegalStateException("Hold 확정 결과를 확인하지 못했습니다.")
+
+    return when (result) {
+      0L -> OutboxHoldActionResult.APPLIED
+      1L -> OutboxHoldActionResult.REPLACED
+      2L -> OutboxHoldActionResult.ALREADY_APPLIED
+      else -> throw IllegalStateException("알 수 없는 Hold 확정 결과입니다: $result")
+    }
+  }
+
   fun findActiveHoldDataByGroupId(groupId: String): ActiveHoldData {
     val holdGroupKey = holdGroupKey(groupId)
     val holdIds = stringRedisTemplate.opsForZSet()
@@ -320,6 +366,7 @@ class RedisVenueSeatHoldService(
   private fun holdDetailKey(holdId: String) = "hold:detail:$holdId"
   private fun holdVenueSeatKey(performanceId: Long, venueSeatId: Long) = "hold:venue-seat:$performanceId:$venueSeatId"
   private fun finalizingVenueSeatKey(performanceId: Long, venueSeatId: Long) = "hold:venue-seat-finalizing:$performanceId:$venueSeatId"
+  private fun outboxHoldActionKey(eventId: UUID) = "hold:outbox-action:$eventId"
 
   private fun LocalDateTime.toEpochMillis(): Long = atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
@@ -348,6 +395,16 @@ class RedisVenueSeatHoldService(
 
     private val releaseAllVenueSeatsScript = DefaultRedisScript<Long>().apply {
       setLocation(ClassPathResource("redis/release-all-venue-seats.lua"))
+      resultType = Long::class.java
+    }
+
+    private val releaseHoldByIdScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/release-hold-by-id.lua"))
+      resultType = Long::class.java
+    }
+
+    private val finalizeHoldByIdScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/finalize-hold-by-id.lua"))
       resultType = Long::class.java
     }
   }

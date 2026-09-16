@@ -14,7 +14,16 @@ import java.util.UUID
 @Component
 class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate, private val stringRedisTemplate: StringRedisTemplate) {
   fun publishReservationConfirmed(performanceId: Long, venueSeatIds: List<Long>) {
+    publishReservationConfirmed(
+      eventId = UUID.randomUUID(),
+      performanceId = performanceId,
+      venueSeatIds = venueSeatIds,
+    )
+  }
+
+  fun publishReservationConfirmed(eventId: UUID, performanceId: Long, venueSeatIds: List<Long>) {
     publish(
+      eventId = eventId,
       performanceId = performanceId,
       type = PerformanceSeatEvent.RESERVATION_CONFIRMED,
       data = ReservationConfirmedEventData(venueSeatIds),
@@ -22,14 +31,23 @@ class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMess
   }
 
   fun publishHoldReleased(performanceId: Long, venueSeatIds: List<Long>) {
+    publishHoldReleased(
+      eventId = UUID.randomUUID(),
+      performanceId = performanceId,
+      venueSeatIds = venueSeatIds,
+    )
+  }
+
+  fun publishHoldReleased(eventId: UUID, performanceId: Long, venueSeatIds: List<Long>) {
     publish(
+      eventId = eventId,
       performanceId = performanceId,
       type = PerformanceSeatEvent.HOLD_RELEASED,
       data = HoldReleasedEventData(venueSeatIds),
     )
   }
 
-  private fun publish(performanceId: Long, type: PerformanceSeatEvent, data: Any) {
+  private fun publish(eventId: UUID, performanceId: Long, type: PerformanceSeatEvent, data: Any) {
     val version = requireNotNull(
       stringRedisTemplate.opsForValue().increment(versionKey(performanceId)),
     ) {
@@ -39,7 +57,7 @@ class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMess
     messagingTemplate.convertAndSend(
       "/topic/performances/$performanceId",
       StompEvent(
-        eventId = UUID.randomUUID(),
+        eventId = eventId,
         version = version,
         occurredAt = OffsetDateTime.now(ZoneOffset.UTC),
         type = type.name,
