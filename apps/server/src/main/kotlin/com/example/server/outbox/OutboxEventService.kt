@@ -58,16 +58,14 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
 
   @Transactional
   fun markPublished(eventId: Long, lockToken: String) {
-    val event = outboxEventRepository.findById(eventId).orElse(null) ?: return
-    if (event.status != OutboxEventStatus.PROCESSING || event.lockToken != lockToken) return
-
     val now = LocalDateTime.now()
-    event.status = OutboxEventStatus.PUBLISHED
-    event.lockToken = null
-    event.lockedAt = null
-    event.publishedAt = now
-    event.nextAttemptAt = now
-    outboxEventRepository.save(event)
+    outboxEventRepository.markPublishedIfOwned(
+      eventId = eventId,
+      processingStatus = OutboxEventStatus.PROCESSING,
+      publishedStatus = OutboxEventStatus.PUBLISHED,
+      lockToken = lockToken,
+      publishedAt = now,
+    )
   }
 
   @Transactional
@@ -77,12 +75,17 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
 
     val now = LocalDateTime.now()
     val dead = event.attemptCount >= maxAttempts
-    event.status = if (dead) OutboxEventStatus.DEAD else OutboxEventStatus.PENDING
-    event.nextAttemptAt = now.plusNanos(retryDelayMillis * NANOS_PER_MILLISECOND)
-    event.lockToken = null
-    event.lockedAt = null
-    event.lastError = exception.message?.take(MAX_ERROR_LENGTH) ?: exception::class.simpleName
-    outboxEventRepository.save(event)
+    val status = if (dead) OutboxEventStatus.DEAD else OutboxEventStatus.PENDING
+    val nextAttemptAt = now.plusNanos(retryDelayMillis * NANOS_PER_MILLISECOND)
+    val lastError = exception.message?.take(MAX_ERROR_LENGTH) ?: exception::class.simpleName
+    outboxEventRepository.markFailedIfOwned(
+      eventId = eventId,
+      processingStatus = OutboxEventStatus.PROCESSING,
+      status = status,
+      lockToken = lockToken,
+      nextAttemptAt = nextAttemptAt,
+      lastError = lastError,
+    )
   }
 
   private fun record(reservationId: Long, hold: VenueSeatHoldDetail, eventType: OutboxEventType, eventKey: String) {

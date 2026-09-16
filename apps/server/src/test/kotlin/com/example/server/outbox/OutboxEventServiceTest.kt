@@ -116,35 +116,49 @@ class OutboxEventServiceTest {
   @Test
   fun `처리 중 이벤트를 PUBLISHED로 변경한다`() {
     val event = processingEvent()
-    given(outboxEventRepository.findById(event.id)).willReturn(Optional.of(event))
+    given(
+      outboxEventRepository.markPublishedIfOwned(
+        eventId = anyNonNull(Long::class.java, event.id),
+        processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+        publishedStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PUBLISHED),
+        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        publishedAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+      ),
+    ).willReturn(1)
 
     service.markPublished(event.id, LOCK_TOKEN)
 
-    assertThat(event.status).isEqualTo(OutboxEventStatus.PUBLISHED)
-    assertThat(event.lockToken).isNull()
-    assertThat(event.lockedAt).isNull()
-    assertThat(event.publishedAt).isNotNull()
-    assertThat(event.nextAttemptAt).isNotNull()
-    then(outboxEventRepository).should().save(event)
+    then(outboxEventRepository).should().markPublishedIfOwned(
+      eventId = anyNonNull(Long::class.java, event.id),
+      processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+      publishedStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PUBLISHED),
+      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      publishedAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+    )
+    then(outboxEventRepository).should(org.mockito.Mockito.never()).save(any(OutboxEvent::class.java))
   }
 
   @Test
-  fun `없는 이벤트나 점유 정보가 다르면 발행 완료 처리를 무시한다`() {
-    given(outboxEventRepository.findById(RESERVATION_ID)).willReturn(Optional.empty())
+  fun `lease 재점유 후 오래된 작업자의 발행 완료 갱신을 무시한다`() {
+    given(
+      outboxEventRepository.markPublishedIfOwned(
+        eventId = anyNonNull(Long::class.java, RESERVATION_ID),
+        processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+        publishedStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PUBLISHED),
+        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        publishedAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+      ),
+    ).willReturn(0)
 
     service.markPublished(RESERVATION_ID, LOCK_TOKEN)
 
-    val event = processingEvent().also {
-      it.status = OutboxEventStatus.PENDING
-    }
-    given(outboxEventRepository.findById(event.id)).willReturn(Optional.of(event))
-
-    service.markPublished(event.id, LOCK_TOKEN)
-
-    event.status = OutboxEventStatus.PROCESSING
-    event.lockToken = "another-lock-token"
-    service.markPublished(event.id, LOCK_TOKEN)
-
+    then(outboxEventRepository).should().markPublishedIfOwned(
+      eventId = anyNonNull(Long::class.java, RESERVATION_ID),
+      processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+      publishedStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PUBLISHED),
+      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      publishedAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+    )
     then(outboxEventRepository).should(org.mockito.Mockito.never()).save(any(OutboxEvent::class.java))
   }
 
@@ -153,6 +167,16 @@ class OutboxEventServiceTest {
     val event = processingEvent(attemptCount = 1)
     val exception = IllegalStateException("redis failed")
     given(outboxEventRepository.findById(event.id)).willReturn(Optional.of(event))
+    given(
+      outboxEventRepository.markFailedIfOwned(
+        eventId = anyNonNull(Long::class.java, event.id),
+        processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+        status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
+        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        lastError = anyNonNull(String::class.java, exception.message!!),
+      ),
+    ).willReturn(1)
 
     service.markFailed(
       eventId = event.id,
@@ -162,12 +186,15 @@ class OutboxEventServiceTest {
       retryDelayMillis = 1_000,
     )
 
-    assertThat(event.status).isEqualTo(OutboxEventStatus.PENDING)
-    assertThat(event.lockToken).isNull()
-    assertThat(event.lockedAt).isNull()
-    assertThat(event.lastError).isEqualTo("redis failed")
-    assertThat(event.nextAttemptAt).isAfter(LocalDateTime.now().minusSeconds(1))
-    then(outboxEventRepository).should().save(event)
+    then(outboxEventRepository).should().markFailedIfOwned(
+      eventId = anyNonNull(Long::class.java, event.id),
+      processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+      status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
+      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+      lastError = anyNonNull(String::class.java, exception.message!!),
+    )
+    then(outboxEventRepository).should(org.mockito.Mockito.never()).save(any(OutboxEvent::class.java))
   }
 
   @Test
@@ -175,6 +202,16 @@ class OutboxEventServiceTest {
     val event = processingEvent(attemptCount = 5)
     val exception = RuntimeException()
     given(outboxEventRepository.findById(event.id)).willReturn(Optional.of(event))
+    given(
+      outboxEventRepository.markFailedIfOwned(
+        eventId = anyNonNull(Long::class.java, event.id),
+        processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+        status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.DEAD),
+        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        lastError = anyNonNull(String::class.java, "RuntimeException"),
+      ),
+    ).willReturn(1)
 
     service.markFailed(
       eventId = event.id,
@@ -184,9 +221,49 @@ class OutboxEventServiceTest {
       retryDelayMillis = 1_000,
     )
 
-    assertThat(event.status).isEqualTo(OutboxEventStatus.DEAD)
-    assertThat(event.lastError).isEqualTo("RuntimeException")
-    then(outboxEventRepository).should().save(event)
+    then(outboxEventRepository).should().markFailedIfOwned(
+      eventId = anyNonNull(Long::class.java, event.id),
+      processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+      status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.DEAD),
+      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+      lastError = anyNonNull(String::class.java, "RuntimeException"),
+    )
+    then(outboxEventRepository).should(org.mockito.Mockito.never()).save(any(OutboxEvent::class.java))
+  }
+
+  @Test
+  fun `lease 재점유 후 오래된 작업자의 실패 상태 갱신을 무시한다`() {
+    val event = processingEvent()
+    given(outboxEventRepository.findById(event.id)).willReturn(Optional.of(event))
+    given(
+      outboxEventRepository.markFailedIfOwned(
+        eventId = anyNonNull(Long::class.java, event.id),
+        processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+        status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
+        lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+        nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        lastError = anyNonNull(String::class.java, "redis failed"),
+      ),
+    ).willReturn(0)
+
+    service.markFailed(
+      eventId = event.id,
+      lockToken = LOCK_TOKEN,
+      exception = IllegalStateException("redis failed"),
+      maxAttempts = 5,
+      retryDelayMillis = 1_000,
+    )
+
+    then(outboxEventRepository).should().markFailedIfOwned(
+      eventId = anyNonNull(Long::class.java, event.id),
+      processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+      status = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
+      lockToken = anyNonNull(String::class.java, LOCK_TOKEN),
+      nextAttemptAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+      lastError = anyNonNull(String::class.java, "redis failed"),
+    )
+    then(outboxEventRepository).should(org.mockito.Mockito.never()).save(any(OutboxEvent::class.java))
   }
 
   @Test
