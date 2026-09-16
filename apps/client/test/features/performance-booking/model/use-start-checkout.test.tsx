@@ -125,4 +125,15 @@ describe("useStartCheckout", () => {
     expect(publish).not.toHaveBeenCalled();
     expect(result.current.errorMessage).toBe("서버 연결 후 다시 시도해 주세요.");
   });
+
+  it("비활성화된 checkout은 STOMP 요청을 보내지 않는다", () => {
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess, enabled: false }));
+
+    act(() => result.current.startCheckout());
+
+    expect(publish).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(result.current.isStarting).toBe(false);
+  });
 });

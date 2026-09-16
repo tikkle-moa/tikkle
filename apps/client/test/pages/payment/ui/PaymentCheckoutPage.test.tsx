@@ -4,16 +4,19 @@ import userEvent from "@testing-library/user-event";
 import PaymentCheckoutPage from "@pages/payment/ui/PaymentCheckoutPage";
 
 const navigate = vi.hoisted(() => vi.fn());
+const mockUseLocation = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUsePaymentOrder = vi.hoisted(() => vi.fn());
 const mockPaymentOrderSummary = vi.hoisted(() => vi.fn());
+const mockIsPaymentOrder = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
-  return { ...actual, useNavigate: () => navigate, useParams: mockUseParams };
+  return { ...actual, useLocation: mockUseLocation, useNavigate: () => navigate, useParams: mockUseParams };
 });
 
 vi.mock("@features/payment", () => ({
+  isPaymentOrder: mockIsPaymentOrder,
   PaymentOrderSummary: mockPaymentOrderSummary,
   usePaymentOrder: mockUsePaymentOrder,
 }));
@@ -36,6 +39,8 @@ describe("PaymentCheckoutPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseParams.mockReturnValue({ reservationId: "501" });
+    mockUseLocation.mockReturnValue({ state: null });
+    mockIsPaymentOrder.mockReturnValue(false);
     mockUsePaymentOrder.mockReturnValue({ order, errorMessage: null, isLoading: false });
     mockPaymentOrderSummary.mockImplementation(({ order: summaryOrder }: { order: typeof order }) => (
       <output data-testid="payment-order-summary">{summaryOrder.orderId}</output>
@@ -50,7 +55,17 @@ describe("PaymentCheckoutPage", () => {
     expect(screen.getByTestId("payment-order-summary")).toHaveTextContent("tikkle-501");
 
     await user.click(screen.getByRole("button", { name: "결제하러 가기" }));
-    expect(navigate).toHaveBeenCalledWith("/payments/501");
+    expect(navigate).toHaveBeenCalledWith("/payments/501", { state: order });
+  });
+
+  it("예매 정보 확인에서 전달한 fixture 주문을 결제 준비 화면에 표시한다", () => {
+    mockIsPaymentOrder.mockReturnValue(true);
+    mockUseLocation.mockReturnValue({ state: order });
+
+    render(<PaymentCheckoutPage />);
+
+    expect(mockUsePaymentOrder).toHaveBeenCalledWith({ reservationId: 501, initialOrder: order });
+    expect(screen.getByTestId("payment-order-summary")).toHaveTextContent("tikkle-501");
   });
 
   it("주문 조회 중이면 로딩 안내를 표시한다", () => {

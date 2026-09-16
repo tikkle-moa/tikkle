@@ -120,6 +120,23 @@ describe("PerformanceCheckoutPage", () => {
     expect(mockUseStartCheckout.mock.results[0].value.startCheckout).toHaveBeenCalledOnce();
   });
 
+  it("fixture 예매 정보 확정은 결제 준비 페이지로 이동한다", async () => {
+    const user = userEvent.setup();
+
+    render(<PerformanceCheckoutPage fixture />);
+
+    expect(screen.getByText("테스트 좌석 선택 정보")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "예매 정보 확정하기" }));
+
+    expect(navigate).toHaveBeenCalledWith("/payments/501/checkout", {
+      state: expect.objectContaining({
+        reservationId: 501,
+        orderId: "tikkle-fixture-501",
+      }),
+    });
+    expect(mockUseStartCheckout).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+  });
+
   it("START_CHECKOUT 성공 시 결제 준비 화면으로 이동한다", () => {
     let onSuccess: ((reservationId: number) => void) | undefined;
     mockUseStartCheckout.mockImplementation(({ onSuccess: callback }: { onSuccess: (reservationId: number) => void }) => {
