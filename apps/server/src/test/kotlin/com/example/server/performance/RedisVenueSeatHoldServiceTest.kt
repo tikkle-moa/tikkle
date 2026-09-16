@@ -37,6 +37,7 @@ import tools.jackson.databind.ObjectMapper
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.Optional
+import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class RedisVenueSeatHoldServiceTest {
@@ -390,6 +391,101 @@ class RedisVenueSeatHoldServiceTest {
         service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
+  }
+
+  @Test
+  fun `Outbox Hold 해제 결과를 상태로 변환한다`() {
+    val eventId = UUID.fromString("f2d0a95a-bc20-4f1b-9ac6-7ac89a2e0b73")
+    mapOf(
+      0L to OutboxHoldActionResult.APPLIED,
+      1L to OutboxHoldActionResult.REPLACED,
+      2L to OutboxHoldActionResult.EXPIRED,
+      3L to OutboxHoldActionResult.ALREADY_APPLIED,
+    ).forEach { (result, expected) ->
+      executeResult = result
+
+      assertThat(
+        service.releaseVenueSeats(
+          holdId = HOLD_ID,
+          groupId = GROUP_ID,
+          performanceId = PERFORMANCE_ID,
+          venueSeatIds = listOf(101L),
+          eventId = eventId,
+        ),
+      ).isEqualTo(expected)
+    }
+  }
+
+  @Test
+  fun `Outbox Hold 해제 결과가 없거나 알 수 없으면 예외를 던진다`() {
+    executeResult = null
+
+    assertThrows<IllegalStateException> {
+      service.releaseVenueSeats(
+        holdId = HOLD_ID,
+        groupId = GROUP_ID,
+        performanceId = PERFORMANCE_ID,
+        venueSeatIds = listOf(101L),
+        eventId = UUID.randomUUID(),
+      )
+    }
+
+    executeResult = 4L
+
+    assertThrows<IllegalStateException> {
+      service.releaseVenueSeats(
+        holdId = HOLD_ID,
+        groupId = GROUP_ID,
+        performanceId = PERFORMANCE_ID,
+        venueSeatIds = listOf(101L),
+        eventId = UUID.randomUUID(),
+      )
+    }
+  }
+
+  @Test
+  fun `Outbox Hold 확정 결과를 상태로 변환한다`() {
+    mapOf(
+      0L to OutboxHoldActionResult.APPLIED,
+      1L to OutboxHoldActionResult.REPLACED,
+      2L to OutboxHoldActionResult.ALREADY_APPLIED,
+    ).forEach { (result, expected) ->
+      executeResult = result
+
+      assertThat(
+        service.finalizeVenueSeats(
+          holdId = HOLD_ID,
+          groupId = GROUP_ID,
+          performanceId = PERFORMANCE_ID,
+          venueSeatIds = listOf(101L),
+        ),
+      ).isEqualTo(expected)
+    }
+  }
+
+  @Test
+  fun `Outbox Hold 확정 결과가 없거나 알 수 없으면 예외를 던진다`() {
+    executeResult = null
+
+    assertThrows<IllegalStateException> {
+      service.finalizeVenueSeats(
+        holdId = HOLD_ID,
+        groupId = GROUP_ID,
+        performanceId = PERFORMANCE_ID,
+        venueSeatIds = listOf(101L),
+      )
+    }
+
+    executeResult = 3L
+
+    assertThrows<IllegalStateException> {
+      service.finalizeVenueSeats(
+        holdId = HOLD_ID,
+        groupId = GROUP_ID,
+        performanceId = PERFORMANCE_ID,
+        venueSeatIds = listOf(101L),
+      )
+    }
   }
 
   @Test
