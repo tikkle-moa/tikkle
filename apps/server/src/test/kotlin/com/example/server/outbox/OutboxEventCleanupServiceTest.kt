@@ -3,6 +3,7 @@ package com.example.server.outbox
 import com.example.server.outbox.repository.OutboxEventRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
@@ -55,5 +56,14 @@ class OutboxEventCleanupServiceTest {
       pageable = PageRequest.of(0, 100),
     )
     then(outboxEventRepository).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `batch size가 0 이하면 예외를 던진다`() {
+    val exception = assertThrows<IllegalArgumentException> {
+      service.deletePublishedBefore(LocalDateTime.of(2026, 7, 16, 0, 0), 0)
+    }
+
+    assertThat(exception).hasMessage("Outbox 정리 batchSize는 0보다 커야 합니다.")
   }
 }
