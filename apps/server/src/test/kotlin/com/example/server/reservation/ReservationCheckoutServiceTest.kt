@@ -6,7 +6,7 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.performance.PerformanceVenueSeatStompPublisher
+import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.dto.ActiveHoldData
 import com.example.server.performance.dto.HoldVenueSeatEntry
@@ -20,7 +20,6 @@ import com.example.server.venue.entity.Venue
 import com.example.server.venue.entity.VenueSeat
 import com.example.server.venue.repository.VenueSeatRepository
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
@@ -32,7 +31,6 @@ import org.mockito.BDDMockito.willThrow
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.Optional
@@ -49,16 +47,9 @@ class ReservationCheckoutServiceTest {
 
   @Mock lateinit var redisVenueSeatHoldService: RedisVenueSeatHoldService
 
-  @Mock lateinit var performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher
+  @Mock lateinit var outboxEventService: OutboxEventService
 
   @InjectMocks lateinit var service: ReservationCheckoutService
-
-  @AfterEach
-  fun clearTransactionSynchronization() {
-    if (TransactionSynchronizationManager.isSynchronizationActive()) {
-      TransactionSynchronizationManager.clearSynchronization()
-    }
-  }
 
   @Test
   fun `여러 Hold detail의 좌석을 합산해 결제 대기 예매를 생성하고 결제용으로 전환한다`() {
@@ -195,19 +186,16 @@ class ReservationCheckoutServiceTest {
   }
 
   @Test
-  fun `결제 대기 예매를 취소하면 커밋 후 모든 Hold를 해제하고 이벤트를 발행한다`() {
+  fun `결제 대기 예매를 취소하면 Hold별 Outbox 이벤트를 기록한다`() {
     val reservation = reservation()
+    val active = activeHoldData()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(listOf(101L, 102L))
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
 
-    TransactionSynchronizationManager.initSynchronization()
     val result = service.cancelCheckout(USER_ID, RESERVATION_ID)
 
     assertThat(result.status).isEqualTo(ReservationStatus.CANCELLED)
-    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
-    TransactionSynchronizationManager.getSynchronizations().forEach { it.afterCommit() }
-    then(redisVenueSeatHoldService).should().releaseAllVenueSeats(GROUP_ID)
-    then(performanceVenueSeatStompPublisher).should().publishHoldReleased(PERFORMANCE_ID, listOf(101L, 102L))
+    then(outboxEventService).should().recordHoldReleased(RESERVATION_ID, active.holdDetails.single())
   }
 
   @Test
@@ -223,13 +211,14 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `만료된 결제 대기 예매는 EXPIRED로 바꾸고 Hold를 해제한다`() {
     val reservation = reservation(paymentExpiresAt = LocalDateTime.now().minusSeconds(1))
+    val active = activeHoldData()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(emptyList())
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
 
     service.expireCheckout(RESERVATION_ID)
 
     assertThat(reservation.status).isEqualTo(ReservationStatus.EXPIRED)
-    then(redisVenueSeatHoldService).should().releaseAllVenueSeats(GROUP_ID)
+    then(outboxEventService).should().recordHoldReleased(RESERVATION_ID, active.holdDetails.single())
   }
 
   @Test
@@ -512,8 +501,9 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `만료된 결제 대기를 취소하면 EXPIRED가 된다`() {
     val reservation = reservation(paymentExpiresAt = LocalDateTime.now().minusSeconds(1))
+    val active = activeHoldData()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID)).willReturn(emptyList())
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
 
     val result = service.cancelCheckout(USER_ID, RESERVATION_ID)
 
@@ -525,19 +515,20 @@ class ReservationCheckoutServiceTest {
   fun `Hold 해제 중 NOT_FOUND는 조용히 무시한다`() {
     val reservation = reservation()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.releaseAllVenueSeats(GROUP_ID))
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
       .willThrow(CustomException(ErrorCode.NOT_FOUND, "already released"))
 
     service.cancelCheckout(USER_ID, RESERVATION_ID)
   }
 
   @Test
-  fun `Hold 해제 중 일반 예외가 발생해도 취소 결과를 반환한다`() {
+  fun `Hold 조회 중 일반 예외는 취소와 함께 실패한다`() {
     val reservation = reservation()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    willThrow(IllegalStateException("redis failed")).given(redisVenueSeatHoldService).releaseAllVenueSeats(GROUP_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
+      .willThrow(IllegalStateException("redis failed"))
 
-    assertThat(service.cancelCheckout(USER_ID, RESERVATION_ID).status).isEqualTo(ReservationStatus.CANCELLED)
+    assertThrows<IllegalStateException> { service.cancelCheckout(USER_ID, RESERVATION_ID) }
   }
 
   @Test
@@ -567,14 +558,13 @@ class ReservationCheckoutServiceTest {
   }
 
   @Test
-  fun `결제 대기 취소에서 다른 CustomException도 삼켜 처리한다`() {
+  fun `결제 대기 취소에서 다른 CustomException은 전파한다`() {
     val reservation = reservation()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    willThrow(CustomException(ErrorCode.CONFLICT, "changed"))
-      .given(redisVenueSeatHoldService)
-      .releaseAllVenueSeats(GROUP_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
+      .willThrow(CustomException(ErrorCode.CONFLICT, "changed"))
 
-    service.cancelCheckout(USER_ID, RESERVATION_ID)
+    assertThrows<CustomException> { service.cancelCheckout(USER_ID, RESERVATION_ID) }
   }
 
   private fun activeHoldData(
