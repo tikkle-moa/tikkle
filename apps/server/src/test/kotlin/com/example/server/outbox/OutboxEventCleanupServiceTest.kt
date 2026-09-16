@@ -49,6 +49,11 @@ class OutboxEventCleanupServiceTest {
     ).willReturn(emptyList())
 
     assertThat(service.deletePublishedBefore(performanceStartedBefore, 100)).isZero()
+    then(outboxEventRepository).should().findPublishedIdsForCleanup(
+      status = "PUBLISHED",
+      performanceStartedBefore = performanceStartedBefore,
+      pageable = PageRequest.of(0, 100),
+    )
     then(outboxEventRepository).shouldHaveNoMoreInteractions()
   }
 }

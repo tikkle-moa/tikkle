@@ -35,12 +35,12 @@ interface OutboxEventRepository : JpaRepository<OutboxEvent, Long> {
 
   @Query(
     value = """
-      SELECT event.id
-      FROM outbox_events event
-      JOIN performances performance ON performance.id = event.performance_id
-      WHERE event.status = :status
-        AND performance.starts_at <= :performanceStartedBefore
-      ORDER BY event.id
+      SELECT oe.id
+      FROM outbox_events oe
+      JOIN performances p ON p.id = oe.performance_id
+      WHERE oe.status = :status
+        AND p.starts_at <= :performanceStartedBefore
+      ORDER BY oe.id
     """,
     nativeQuery = true,
   )
