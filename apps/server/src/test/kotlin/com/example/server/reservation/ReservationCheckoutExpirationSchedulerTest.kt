@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
+import org.mockito.BDDMockito.willThrow
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.mock
@@ -58,6 +59,27 @@ class ReservationCheckoutExpirationSchedulerTest {
     then(reservationCheckoutService)
       .should()
       .expireCheckout(FIRST_RESERVATION_ID)
+    then(reservationCheckoutService)
+      .should()
+      .expireCheckout(SECOND_RESERVATION_ID)
+  }
+
+  @Test
+  fun `한 예매의 만료 처리 실패가 다음 예매 처리를 막지 않는다`() {
+    val firstReservation = reservation(FIRST_RESERVATION_ID)
+    val secondReservation = reservation(SECOND_RESERVATION_ID)
+    given(
+      reservationRepository.findAllByStatusAndPaymentExpiresAtBefore(
+        anyNonNull(ReservationStatus::class.java, ReservationStatus.PAYMENT_PENDING),
+        anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+      ),
+    ).willReturn(listOf(firstReservation, secondReservation))
+    willThrow(IllegalStateException("redis failed"))
+      .given(reservationCheckoutService)
+      .expireCheckout(FIRST_RESERVATION_ID)
+
+    scheduler.expirePendingReservations()
+
     then(reservationCheckoutService)
       .should()
       .expireCheckout(SECOND_RESERVATION_ID)
