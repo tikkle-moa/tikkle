@@ -16,6 +16,7 @@ import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
+import com.example.server.support.anyNonNull
 import com.example.server.venue.entity.Venue
 import com.example.server.venue.entity.VenueSeat
 import com.example.server.venue.repository.VenueSeatRepository
@@ -82,9 +83,9 @@ class ReservationCheckoutServiceTest {
       orderId = org.mockito.ArgumentMatchers.anyString(),
       orderName = org.mockito.ArgumentMatchers.anyString(),
       amount = org.mockito.ArgumentMatchers.anyInt(),
-      paymentExpiresAt = anyLocalDateTime(),
+      paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
     )
-    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyLocalDateTime()))
+    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN)))
       .willReturn(active.holdDetails)
 
     val result = service.startCheckout(USER_ID, PERFORMANCE_ID)
@@ -100,9 +101,9 @@ class ReservationCheckoutServiceTest {
       orderId = org.mockito.ArgumentMatchers.anyString(),
       orderName = org.mockito.ArgumentMatchers.anyString(),
       amount = org.mockito.ArgumentMatchers.anyInt(),
-      paymentExpiresAt = anyLocalDateTime(),
+      paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
     )
-    then(redisVenueSeatHoldService).should().transitionForPayment(eqGroupId(), anyLocalDateTime())
+    then(redisVenueSeatHoldService).should().transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN))
   }
 
   @Test
@@ -174,9 +175,9 @@ class ReservationCheckoutServiceTest {
       orderId = org.mockito.ArgumentMatchers.anyString(),
       orderName = org.mockito.ArgumentMatchers.anyString(),
       amount = org.mockito.ArgumentMatchers.anyInt(),
-      paymentExpiresAt = anyLocalDateTime(),
+      paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
     )
-    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyLocalDateTime()))
+    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN)))
       .willThrow(CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 결제 전환을 할 수 없습니다."))
 
     val exception = assertThrows<CustomException> { service.startCheckout(USER_ID, PERFORMANCE_ID) }
@@ -351,7 +352,7 @@ class ReservationCheckoutServiceTest {
         orderId = org.mockito.ArgumentMatchers.anyString(),
         orderName = org.mockito.ArgumentMatchers.anyString(),
         amount = org.mockito.ArgumentMatchers.anyInt(),
-        paymentExpiresAt = anyLocalDateTime(),
+        paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       ),
     ).willReturn(1)
 
@@ -382,13 +383,13 @@ class ReservationCheckoutServiceTest {
         orderId = org.mockito.ArgumentMatchers.anyString(),
         orderName = org.mockito.ArgumentMatchers.anyString(),
         amount = org.mockito.ArgumentMatchers.anyInt(),
-        paymentExpiresAt = anyLocalDateTime(),
+        paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       ),
     ).willAnswer { invocation ->
       created.orderId = invocation.getArgument(3)
       1
     }
-    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyLocalDateTime()))
+    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN)))
       .willThrow(CustomException(ErrorCode.NOT_FOUND, "expired"))
 
     val exception = assertThrows<CustomException> {
@@ -419,14 +420,14 @@ class ReservationCheckoutServiceTest {
         orderId = org.mockito.ArgumentMatchers.anyString(),
         orderName = org.mockito.ArgumentMatchers.anyString(),
         amount = org.mockito.ArgumentMatchers.anyInt(),
-        paymentExpiresAt = anyLocalDateTime(),
+        paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       ),
     ).willAnswer { invocation ->
       created.orderId = invocation.getArgument(3)
       1
     }
     val exception = CustomException(ErrorCode.CONFLICT, "changed")
-    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyLocalDateTime())).willThrow(exception)
+    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN))).willThrow(exception)
 
     assertThat(
       assertThrows<CustomException> {
@@ -624,11 +625,6 @@ class ReservationCheckoutServiceTest {
   )
   private fun venueSeat(id: Long, price: Int) = VenueSeat(id, venue(), "A", id.toInt(), "A-$id", price, BigDecimal("10"), BigDecimal("10"))
   private fun user(id: Long = USER_ID) = User(id, "user-$id@example.com", "사용자$id")
-
-  private fun anyLocalDateTime(): LocalDateTime {
-    org.mockito.ArgumentMatchers.any(LocalDateTime::class.java)
-    return LocalDateTime.MIN
-  }
 
   private fun eqGroupId(): String {
     org.mockito.ArgumentMatchers.eq(GROUP_ID)

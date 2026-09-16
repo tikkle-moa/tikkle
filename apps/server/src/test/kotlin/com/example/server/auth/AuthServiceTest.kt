@@ -21,6 +21,7 @@ import com.example.server.config.properties.OAuthProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.global.security.WebSocketSessionRegistry
+import com.example.server.support.any
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -1625,6 +1626,4 @@ class AuthServiceTest {
         .delete("oauth:state:$testState")
     }
   }
-
-  private fun <T> any(type: Class<T>): T = org.mockito.ArgumentMatchers.any(type)
 }

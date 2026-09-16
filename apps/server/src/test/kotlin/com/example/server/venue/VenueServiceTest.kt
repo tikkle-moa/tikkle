@@ -4,6 +4,7 @@ import com.example.server.concert.repository.ConcertRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.projection.VenueCountProjection
+import com.example.server.support.any
 import com.example.server.venue.dto.CreateVenueDetailRequest
 import com.example.server.venue.dto.CreateVenueRequest
 import com.example.server.venue.dto.CreateVenueSeatRequest
@@ -20,7 +21,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks

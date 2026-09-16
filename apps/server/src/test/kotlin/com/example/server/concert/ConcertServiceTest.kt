@@ -13,6 +13,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.PerformanceResponse
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.support.any
 import com.example.server.venue.entity.Venue
 import com.example.server.venue.repository.VenueRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -21,7 +22,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks

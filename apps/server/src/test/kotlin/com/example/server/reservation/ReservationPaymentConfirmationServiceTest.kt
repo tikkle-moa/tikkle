@@ -20,6 +20,7 @@ import com.example.server.reservation.payment.dto.PaymentConfirmationStart
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus
+import com.example.server.support.any
 import com.example.server.venue.entity.Venue
 import com.example.server.venue.entity.VenueSeat
 import com.example.server.venue.repository.VenueSeatRepository
@@ -309,7 +310,7 @@ class ReservationPaymentConfirmationServiceTest {
       .isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L), active.holdDetails))
     assertThat(reservation.status).isEqualTo(ReservationStatus.SUCCEEDED)
     assertThat(reservation.paymentKey).isEqualTo(PAYMENT_KEY)
-    then(reservationSeatRepository).should().saveAll(org.mockito.ArgumentMatchers.any<Iterable<ReservationSeat>>())
+    then(reservationSeatRepository).should().saveAll(any<Iterable<ReservationSeat>>())
     then(outboxEventService).should().recordReservationConfirmed(RESERVATION_ID, active.holdDetails.single())
   }
 

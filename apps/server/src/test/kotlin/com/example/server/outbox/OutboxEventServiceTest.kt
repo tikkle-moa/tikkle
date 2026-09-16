@@ -4,6 +4,8 @@ import com.example.server.outbox.entity.OutboxEvent
 import com.example.server.outbox.repository.OutboxEventRepository
 import com.example.server.outbox.types.OutboxEventStatus
 import com.example.server.performance.dto.VenueSeatHoldDetail
+import com.example.server.support.any
+import com.example.server.support.anyNonNull
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -31,7 +33,7 @@ class OutboxEventServiceTest {
   @Test
   fun `예매 확정 이벤트는 Hold 식별자와 좌석 목록을 Outbox payload로 저장한다`() {
     val hold = hold()
-    given(objectMapper.writeValueAsString(org.mockito.ArgumentMatchers.any<Any>())).willReturn(PAYLOAD)
+    given(objectMapper.writeValueAsString(any<Any>())).willReturn(PAYLOAD)
 
     service.recordReservationConfirmed(RESERVATION_ID, hold)
 
@@ -60,11 +62,11 @@ class OutboxEventServiceTest {
     )
     given(
       outboxEventRepository.findNextClaimableForUpdate(
-        pendingStatus = anyStatus(),
-        processingStatus = anyStatus(),
-        now = anyLocalDateTime(),
-        leaseExpiredAt = anyLocalDateTime(),
-        pageable = anyPageable(),
+        pendingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PENDING),
+        processingStatus = anyNonNull(OutboxEventStatus::class.java, OutboxEventStatus.PROCESSING),
+        now = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        leaseExpiredAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        pageable = anyNonNull(Pageable::class.java, Pageable.unpaged()),
       ),
     ).willReturn(listOf(event))
 
@@ -85,21 +87,6 @@ class OutboxEventServiceTest {
     venueSeatIds = listOf(101L, 102L),
     expiresAt = LocalDateTime.now().plusMinutes(5),
   )
-
-  private fun anyStatus(): OutboxEventStatus {
-    org.mockito.ArgumentMatchers.any(OutboxEventStatus::class.java)
-    return OutboxEventStatus.PENDING
-  }
-
-  private fun anyLocalDateTime(): LocalDateTime {
-    org.mockito.ArgumentMatchers.any(LocalDateTime::class.java)
-    return LocalDateTime.MIN
-  }
-
-  private fun anyPageable(): Pageable {
-    org.mockito.ArgumentMatchers.any(Pageable::class.java)
-    return Pageable.unpaged()
-  }
 
   companion object {
     private const val RESERVATION_ID = 501L
