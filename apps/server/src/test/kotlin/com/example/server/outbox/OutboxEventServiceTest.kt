@@ -201,7 +201,22 @@ class OutboxEventServiceTest {
       retryDelayMillis = 1_000,
     )
 
+    val wrongStatusEvent = processingEvent().also {
+      it.id = RESERVATION_ID + 1
+      it.status = OutboxEventStatus.PENDING
+    }
+    given(outboxEventRepository.findById(wrongStatusEvent.id)).willReturn(Optional.of(wrongStatusEvent))
+
+    service.markFailed(
+      eventId = wrongStatusEvent.id,
+      lockToken = LOCK_TOKEN,
+      exception = IllegalStateException("redis failed"),
+      maxAttempts = 5,
+      retryDelayMillis = 1_000,
+    )
+
     val event = processingEvent().also {
+      it.id = RESERVATION_ID + 2
       it.lockToken = "another-lock-token"
     }
     given(outboxEventRepository.findById(event.id)).willReturn(Optional.of(event))
