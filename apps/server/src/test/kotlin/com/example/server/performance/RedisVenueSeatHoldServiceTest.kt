@@ -4,11 +4,11 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.outbox.types.OutboxHoldActionResult
 import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
-import com.example.server.performance.types.OutboxHoldActionResult
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus

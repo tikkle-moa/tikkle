@@ -1,4 +1,4 @@
-package com.example.server.performance.types
+package com.example.server.outbox.types
 
 enum class OutboxHoldActionResult {
   APPLIED,

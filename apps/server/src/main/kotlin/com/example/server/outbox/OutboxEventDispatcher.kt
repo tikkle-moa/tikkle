@@ -4,9 +4,9 @@ import com.example.server.config.properties.OutboxDispatcherProperties
 import com.example.server.outbox.dto.ReservationSeatEventPayload
 import com.example.server.outbox.entity.OutboxEvent
 import com.example.server.outbox.types.OutboxEventType
+import com.example.server.outbox.types.OutboxHoldActionResult
 import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.performance.RedisVenueSeatHoldService
-import com.example.server.performance.types.OutboxHoldActionResult
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
