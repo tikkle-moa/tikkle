@@ -1,4 +1,4 @@
-package com.example.server.outbox.config
+package com.example.server.config.properties
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 

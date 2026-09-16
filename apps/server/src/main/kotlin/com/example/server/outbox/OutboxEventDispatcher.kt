@@ -1,6 +1,6 @@
 package com.example.server.outbox
 
-import com.example.server.outbox.config.OutboxDispatcherProperties
+import com.example.server.config.properties.OutboxDispatcherProperties
 import com.example.server.outbox.dto.ReservationSeatEventPayload
 import com.example.server.outbox.entity.OutboxEvent
 import com.example.server.outbox.types.OutboxEventType

@@ -1,6 +1,6 @@
 package com.example.server.outbox
 
-import com.example.server.outbox.config.OutboxCleanupProperties
+import com.example.server.config.properties.OutboxCleanupProperties
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
