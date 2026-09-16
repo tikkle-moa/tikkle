@@ -374,6 +374,42 @@ class ReservationPaymentConfirmationServiceTest {
   }
 
   @Test
+  fun `승인 중 결제 실패 시 활성 Hold가 없으면 해제 이벤트를 저장하지 않는다`() {
+    val reservation = reservation(status = ReservationStatus.PAYMENT_CONFIRMING).also { it.paymentAttemptKey = PAYMENT_KEY }
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
+      .willThrow(CustomException(ErrorCode.NOT_FOUND, "점유된 좌석이 없습니다."))
+
+    val result = service.markPaymentFailed(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))
+
+    assertThat(result).isNull()
+    assertThat(reservation.status).isEqualTo(ReservationStatus.FAILED)
+    then(outboxEventService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `승인 중 결제 실패 시 Hold 상세 목록이 비어 있으면 해제 이벤트를 저장하지 않는다`() {
+    val reservation = reservation(status = ReservationStatus.PAYMENT_CONFIRMING).also { it.paymentAttemptKey = PAYMENT_KEY }
+    val active = ActiveHoldData(
+      groupId = GROUP_ID,
+      performanceId = PERFORMANCE_ID,
+      holdGroupKey = "hold:group:$GROUP_ID",
+      storedHoldDetailJsons = emptyList(),
+      holdDetailKeys = emptyList(),
+      holdDetails = emptyList(),
+      holdVenueSeatEntries = emptyList(),
+    )
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
+
+    val result = service.markPaymentFailed(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))
+
+    assertThat(result).isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, emptyList()))
+    assertThat(reservation.status).isEqualTo(ReservationStatus.FAILED)
+    then(outboxEventService).shouldHaveNoInteractions()
+  }
+
+  @Test
   fun `승인 완료 대상 예매가 없으면 NOT_FOUND를 반환한다`() {
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(null)
 
