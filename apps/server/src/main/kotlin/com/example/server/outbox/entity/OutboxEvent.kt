@@ -22,6 +22,7 @@ import java.util.UUID
   indexes = [
     Index(name = "idx_outbox_pending", columnList = "status,next_attempt_at,id"),
     Index(name = "idx_outbox_lock", columnList = "status,locked_at,id"),
+    Index(name = "idx_outbox_cleanup", columnList = "status,performance_id,id"),
   ],
 )
 class OutboxEvent(
@@ -40,6 +41,9 @@ class OutboxEvent(
 
   @Column(name = "aggregate_id", nullable = false)
   var aggregateId: Long,
+
+  @Column(name = "performance_id", nullable = false)
+  var performanceId: Long,
 
   @Enumerated(EnumType.STRING)
   @Column(name = "event_type", nullable = false, length = 100)

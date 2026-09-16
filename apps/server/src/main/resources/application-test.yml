@@ -71,6 +71,8 @@ reservation:
 outbox:
   dispatcher:
     enabled: false
+  cleanup:
+    enabled: false
 
 toss:
   payments:

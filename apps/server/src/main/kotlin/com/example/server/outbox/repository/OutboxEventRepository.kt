@@ -32,4 +32,21 @@ interface OutboxEventRepository : JpaRepository<OutboxEvent, Long> {
     leaseExpiredAt: LocalDateTime,
     pageable: Pageable,
   ): List<OutboxEvent>
+
+  @Query(
+    value = """
+      SELECT event.id
+      FROM outbox_events event
+      JOIN performances performance ON performance.id = event.performance_id
+      WHERE event.status = :status
+        AND performance.starts_at <= :performanceStartedBefore
+      ORDER BY event.id
+    """,
+    nativeQuery = true,
+  )
+  fun findPublishedIdsForCleanup(
+    @Param("status") status: String,
+    @Param("performanceStartedBefore") performanceStartedBefore: LocalDateTime,
+    pageable: Pageable,
+  ): List<Long>
 }

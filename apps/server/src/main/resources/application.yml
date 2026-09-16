@@ -116,6 +116,11 @@ outbox:
     lease-millis: ${OUTBOX_DISPATCHER_LEASE_MILLIS:30000}
     max-attempts: ${OUTBOX_DISPATCHER_MAX_ATTEMPTS:5}
     retry-delay-millis: ${OUTBOX_DISPATCHER_RETRY_DELAY_MILLIS:5000}
+  cleanup:
+    enabled: ${OUTBOX_CLEANUP_ENABLED:true}
+    fixed-delay: ${OUTBOX_CLEANUP_FIXED_DELAY:86400000}
+    batch-size: ${OUTBOX_CLEANUP_BATCH_SIZE:1000}
+    retention-months: ${OUTBOX_CLEANUP_RETENTION_MONTHS:2}
 
 toss:
   payments:

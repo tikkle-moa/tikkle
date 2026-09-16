@@ -4,5 +4,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@EnableConfigurationProperties(OutboxDispatcherProperties::class)
+@EnableConfigurationProperties(
+  OutboxDispatcherProperties::class,
+  OutboxCleanupProperties::class,
+)
 class OutboxConfig

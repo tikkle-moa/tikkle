@@ -100,6 +100,7 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
         eventKey = eventKey,
         aggregateType = AGGREGATE_TYPE_RESERVATION,
         aggregateId = reservationId,
+        performanceId = hold.performanceId,
         eventType = eventType,
         payload = objectMapper.writeValueAsString(payload),
         occurredAt = occurredAt,
