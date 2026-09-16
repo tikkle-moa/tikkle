@@ -8,6 +8,7 @@ import com.example.server.performance.dto.HoldVenueSeatEntry
 import com.example.server.performance.dto.PerformanceSeatStatusMessageData
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.performance.types.OutboxHoldActionResult
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus
