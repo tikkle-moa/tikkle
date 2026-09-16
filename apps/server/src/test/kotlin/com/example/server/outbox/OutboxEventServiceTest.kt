@@ -13,6 +13,7 @@ import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.data.domain.Pageable
 import tools.jackson.databind.ObjectMapper
 import java.time.LocalDateTime
 
@@ -59,11 +60,11 @@ class OutboxEventServiceTest {
     )
     given(
       outboxEventRepository.findNextClaimableForUpdate(
-        pendingStatus = org.mockito.ArgumentMatchers.any(),
-        processingStatus = org.mockito.ArgumentMatchers.any(),
-        now = org.mockito.ArgumentMatchers.any(),
-        leaseExpiredAt = org.mockito.ArgumentMatchers.any(),
-        pageable = org.mockito.ArgumentMatchers.any(),
+        pendingStatus = anyStatus(),
+        processingStatus = anyStatus(),
+        now = anyLocalDateTime(),
+        leaseExpiredAt = anyLocalDateTime(),
+        pageable = anyPageable(),
       ),
     ).willReturn(listOf(event))
 
@@ -84,6 +85,21 @@ class OutboxEventServiceTest {
     venueSeatIds = listOf(101L, 102L),
     expiresAt = LocalDateTime.now().plusMinutes(5),
   )
+
+  private fun anyStatus(): OutboxEventStatus {
+    org.mockito.ArgumentMatchers.any(OutboxEventStatus::class.java)
+    return OutboxEventStatus.PENDING
+  }
+
+  private fun anyLocalDateTime(): LocalDateTime {
+    org.mockito.ArgumentMatchers.any(LocalDateTime::class.java)
+    return LocalDateTime.MIN
+  }
+
+  private fun anyPageable(): Pageable {
+    org.mockito.ArgumentMatchers.any(Pageable::class.java)
+    return Pageable.unpaged()
+  }
 
   companion object {
     private const val RESERVATION_ID = 501L
