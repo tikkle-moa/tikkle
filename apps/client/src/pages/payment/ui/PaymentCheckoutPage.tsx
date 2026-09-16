@@ -1,18 +1,20 @@
-import { generatePath, useNavigate, useParams } from "react-router";
+import { generatePath, useLocation, useNavigate, useParams } from "react-router";
 
 import { ArrowRight } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentOrderSummary, usePaymentOrder } from "@features/payment";
+import { PaymentOrderSummary, isPaymentOrder, usePaymentOrder } from "@features/payment";
 
 const PaymentCheckoutPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { reservationId } = useParams();
   const id = Number(reservationId);
   const isReservationIdValid = Number.isInteger(id) && id > 0;
-  const { order, errorMessage, isLoading } = usePaymentOrder({ reservationId: id });
+  const initialOrder = isPaymentOrder(location.state) ? location.state : undefined;
+  const { order, errorMessage, isLoading } = usePaymentOrder({ reservationId: id, initialOrder });
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;
@@ -39,7 +41,7 @@ const PaymentCheckoutPage = () => {
       <button
         type="button"
         className="bg-brand-primary mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-bold text-white"
-        onClick={() => navigate(generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) }))}
+        onClick={() => navigate(generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) }), { state: order })}
       >
         결제하러 가기
         <ArrowRight className="size-4" aria-hidden />

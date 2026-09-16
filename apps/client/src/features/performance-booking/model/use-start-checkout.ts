@@ -9,9 +9,10 @@ import { isStartCheckoutData, parseBookingMessage } from "./performance-booking.
 interface UseStartCheckoutProps {
   performanceId: number;
   onSuccess: (reservationId: number) => void;
+  enabled?: boolean;
 }
 
-export const useStartCheckout = ({ performanceId, onSuccess }: UseStartCheckoutProps) => {
+export const useStartCheckout = ({ performanceId, onSuccess, enabled = true }: UseStartCheckoutProps) => {
   const client = useStompStore((state) => state.client);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getClient = useStompStore((state) => state.getClient);
@@ -20,8 +21,10 @@ export const useStartCheckout = ({ performanceId, onSuccess }: UseStartCheckoutP
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
+
     getClient();
-  }, [getClient]);
+  }, [enabled, getClient]);
 
   const handleMessage = useCallback(
     (message: { body: string }) => {
@@ -42,11 +45,13 @@ export const useStartCheckout = ({ performanceId, onSuccess }: UseStartCheckoutP
 
   useStompSubscription({
     destination: PERFORMANCE_BOOKING_DESTINATIONS.checkoutResponse,
-    enabled: performanceId > 0,
+    enabled: enabled && performanceId > 0,
     onMessage: handleMessage,
   });
 
   const startCheckout = () => {
+    if (!enabled) return;
+
     if (isStarting || !client || connectionStatus !== "connected" || !client.connected) {
       if (!isStarting) setErrorMessage("서버 연결 후 다시 시도해 주세요.");
       return;

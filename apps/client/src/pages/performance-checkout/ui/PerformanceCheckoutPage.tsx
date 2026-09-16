@@ -14,6 +14,8 @@ import type { PerformanceCheckoutLocationState } from "@features/performance-boo
 import { formatBookingAmount, getRemainingSeconds } from "@features/performance-booking/model/performance-booking.utils";
 import { useStartCheckout } from "@features/performance-booking/model/use-start-checkout";
 
+import { createPerformanceCheckoutFixture } from "../model/performance-checkout.fixtures";
+
 const isVenueSeatHold = (value: unknown): value is VenueSeatHoldDetail => {
   if (!value || typeof value !== "object") return false;
 
@@ -68,39 +70,63 @@ const isCheckoutLocationState = (state: unknown): state is PerformanceCheckoutLo
   );
 };
 
-const PerformanceCheckoutPage = () => {
+interface PerformanceCheckoutPageProps {
+  fixture?: boolean;
+}
+
+const PerformanceCheckoutPage = ({ fixture = false }: PerformanceCheckoutPageProps) => {
   const { performanceId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [now, setNow] = useState(() => Date.now());
   const user = useSessionStore((store) => store.user);
-  const state = isCheckoutLocationState(location.state) ? location.state : null;
-  const id = Number(performanceId);
-  const selectedSeats = state ? state.venueSeats.filter((seat) => state.hold.venueSeatIds.includes(seat.id)) : [];
+  const fixtureState = fixture ? createPerformanceCheckoutFixture() : null;
+  const state = !fixture && isCheckoutLocationState(location.state) ? location.state : null;
+  const performance = fixtureState?.performance ?? state?.performance;
+  const venue = fixtureState?.venue ?? state?.venue;
+  const venueSeats = fixtureState?.venueSeats ?? state?.venueSeats ?? [];
+  const selectedSeatIds = fixtureState?.selectedSeatIds ?? (state ? state.hold.venueSeatIds : []);
+  const id = fixtureState?.performance.id ?? Number(performanceId);
+  const selectedSeats = venueSeats.filter((seat) => selectedSeatIds.includes(seat.id));
 
   useEffect(() => {
+    if (fixture) return;
+
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [fixture]);
 
   const { errorMessage, isStarting, startCheckout } = useStartCheckout({
     performanceId: id,
+    enabled: !fixture,
     onSuccess: (reservationId) => navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) })),
   });
 
+  const handleConfirm = () => {
+    if (fixtureState) {
+      navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(fixtureState.paymentOrder.reservationId) }), {
+        state: fixtureState.paymentOrder,
+      });
+      return;
+    }
+
+    startCheckout();
+  };
+
   if (
-    !state ||
+    (!fixture && !state) ||
+    !performance ||
+    !venue ||
     !Number.isInteger(id) ||
     id <= 0 ||
-    state.performance.id !== id ||
-    state.hold.performanceId !== id ||
-    state.performance.venueId !== state.venue.id ||
-    selectedSeats.length !== state.hold.venueSeatIds.length
+    performance.id !== id ||
+    performance.venueId !== venue.id ||
+    selectedSeats.length !== selectedSeatIds.length
   ) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="공연 상세에서 좌석을 다시 선택해 주세요." />;
   }
 
-  const remainingSeconds = getRemainingSeconds(state.hold.expiresAt, now);
+  const remainingSeconds = state ? getRemainingSeconds(state.hold.expiresAt, now) : null;
   const totalAmount = selectedSeats.reduce((total, seat) => total + seat.price, 0);
   return (
     <div className="mx-auto w-full max-w-3xl pb-6">
@@ -116,20 +142,20 @@ const PerformanceCheckoutPage = () => {
       <section className="mt-7 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="bg-linear-to-br from-violet-950 via-violet-900 to-fuchsia-900 px-5 py-6 text-white sm:px-7">
           <p className="text-sm font-semibold text-violet-200">공연 정보</p>
-          <h2 className="mt-2 text-2xl font-bold">{state.performance.name}</h2>
+          <h2 className="mt-2 text-2xl font-bold">{performance.name}</h2>
           <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
             <div className="flex items-start gap-2 rounded-xl bg-white/10 p-3">
               <CalendarDays className="mt-0.5 size-4 shrink-0 text-violet-200" aria-hidden />
               <div>
                 <dt className="text-xs text-violet-200">공연 일시</dt>
-                <dd className="mt-1 font-semibold">{formatDateTime(state.performance.startsAt)}</dd>
+                <dd className="mt-1 font-semibold">{formatDateTime(performance.startsAt)}</dd>
               </div>
             </div>
             <div className="flex items-start gap-2 rounded-xl bg-white/10 p-3">
               <MapPin className="mt-0.5 size-4 shrink-0 text-violet-200" aria-hidden />
               <div>
                 <dt className="text-xs text-violet-200">공연장</dt>
-                <dd className="mt-1 font-semibold">{state.venue.name}</dd>
+                <dd className="mt-1 font-semibold">{venue.name}</dd>
               </div>
             </div>
           </dl>
@@ -141,7 +167,9 @@ const PerformanceCheckoutPage = () => {
           </dl>
           <p className="flex items-center gap-1.5 rounded-xl bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-950">
             <Clock3 className="size-4" aria-hidden />
-            좌석 점유 남은 시간 {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:{String(remainingSeconds % 60).padStart(2, "0")}
+            {remainingSeconds === null
+              ? "테스트 좌석 선택 정보"
+              : `좌석 점유 남은 시간 ${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`}
           </p>
           <ul className="mt-5 divide-y divide-gray-100 rounded-xl border border-gray-100">
             {selectedSeats.map((seat) => (
@@ -162,7 +190,7 @@ const PerformanceCheckoutPage = () => {
             type="button"
             className="bg-brand-primary mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300"
             disabled={remainingSeconds === 0 || isStarting || !user}
-            onClick={startCheckout}
+            onClick={handleConfirm}
           >
             {isStarting ? "예매 정보 확정 중..." : "예매 정보 확정하기"}
             <ArrowRight className="size-4" aria-hidden />

@@ -7,12 +7,8 @@ import { PaymentOrderSummary, TossPaymentWidget } from "@features/payment";
 
 import { usePaymentPage } from "../model/use-payment-page";
 
-interface PaymentPageProps {
-  fixture?: boolean;
-}
-
-const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
-  const { handleBack, order, errorMessage, isLoading, isReservationIdValid, user } = usePaymentPage({ fixture });
+const PaymentPage = () => {
+  const { handleBack, order, errorMessage, isLoading, isReservationIdValid, user } = usePaymentPage();
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;

@@ -1,23 +1,19 @@
 import { useCallback } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 
 import { useSessionStore } from "@entities/session";
 
-import { PAYMENT_FIXTURE_RESERVATION_ID } from "@features/payment";
+import { isPaymentOrder, usePaymentOrder } from "@features/payment";
 
-import { usePaymentOrder } from "./use-payment-order";
-
-interface UsePaymentPageProps {
-  fixture?: boolean;
-}
-
-export const usePaymentPage = ({ fixture = false }: UsePaymentPageProps = {}) => {
+export const usePaymentPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useSessionStore((state) => state.user);
   const { reservationId } = useParams();
-  const id = fixture ? PAYMENT_FIXTURE_RESERVATION_ID : Number(reservationId);
-  const isReservationIdValid = fixture || (Number.isInteger(id) && id > 0);
-  const paymentOrder = usePaymentOrder({ reservationId: id, fixture });
+  const initialOrder = isPaymentOrder(location.state) ? location.state : undefined;
+  const id = Number(reservationId);
+  const isReservationIdValid = Number.isInteger(id) && id > 0;
+  const paymentOrder = usePaymentOrder({ reservationId: id, initialOrder });
   const handleBack = useCallback(() => navigate(-1), [navigate]);
 
   return {
