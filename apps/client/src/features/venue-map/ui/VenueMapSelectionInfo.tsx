@@ -42,7 +42,11 @@ const VenueMapSelectionInfo = ({ selectedSeat, selectedSeatIds, selectedSeatStat
         <div>
           <p>좌석을 탭하거나 클릭하여 선택하세요.</p>
           <p>Alt/Option + 스크롤 또는 두 손가락으로 확대하고, 확대된 상태에서 드래그하여 이동할 수 있어요.</p>
-          {selectedSeatIds && <p className="hidden pointer-fine:block">Alt/Option + 드래그로 여러 좌석을 한 번에 선택할 수 있어요.</p>}
+          {selectedSeatIds && (
+            <p className="hidden pointer-fine:block">
+              Alt/Option + 드래그로 여러 좌석을 한 번에 선택할 수 있어요. Shift 키를 함께 누르면 기존 선택을 유지하면서 선택할 수 있어요.
+            </p>
+          )}
         </div>
       )}
     </div>
