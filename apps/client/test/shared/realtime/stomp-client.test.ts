@@ -100,17 +100,23 @@ describe("StompClient", () => {
     const client = new StompClient({ onConnect: vi.fn(), onWebSocketClose: vi.fn() });
     const callback = vi.fn();
     const errorCallback = vi.fn();
-    const subscription = { unsubscribe: vi.fn() };
+    const subscription = { id: "subscription-id", unsubscribe: vi.fn() };
     subscribe.mockImplementation((_destination, handler) => {
       handler({ body: JSON.stringify({ requestId: "ok", success: true }) });
       handler({ body: JSON.stringify({ requestId: "error", error: { code: "ERROR", message: "failed" } }) });
       return subscription;
     });
 
-    expect(client.subscribe({ path: "/orders", callback, errorCallback } as never)).toBe(subscription);
+    expect(client.subscribe({ path: "/orders", callback, errorCallback } as never)).toEqual({
+      id: "subscription-id",
+      unsubscribe: expect.any(Function),
+    });
     expect(
       client.subscribeEvent({ path: "/performances/{performanceId}", pathParams: { performanceId: 10 }, callback, errorCallback } as never),
-    ).toBe(subscription);
+    ).toEqual({
+      id: "subscription-id",
+      unsubscribe: expect.any(Function),
+    });
 
     expect(subscribe).toHaveBeenCalledWith("/user/queue/orders", expect.any(Function), undefined);
     expect(subscribe).toHaveBeenCalledWith("/topic/performances/10", expect.any(Function), undefined);
@@ -148,5 +154,75 @@ describe("StompClient", () => {
     client.subscribe({ path: "/orders", callback } as never);
 
     expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("연결이 끊긴 상태에서는 구독 해제를 client에 위임하지 않는다", () => {
+    const unsubscribe = vi.fn(() => {
+      throw new Error("Already disconnected");
+    });
+    const subscribe = vi.fn(() => ({ id: "subscription-id", unsubscribe }));
+    mockClientConstructor.mockImplementationOnce(function (this: Record<string, unknown>) {
+      Object.assign(this, { connected: false, subscribe });
+    });
+    const client = new StompClient({ onConnect: vi.fn(), onWebSocketClose: vi.fn() });
+    const subscription = client.subscribe({ path: "/orders", callback: vi.fn() } as never);
+
+    expect(() => subscription.unsubscribe()).not.toThrow();
+    expect(unsubscribe).not.toHaveBeenCalled();
+  });
+
+  it("연결된 상태에서는 구독 해제를 원본 구독에 위임한다", () => {
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn(() => ({ id: "subscription-id", unsubscribe }));
+    const headers = { receipt: "receipt-1" };
+    mockClientConstructor.mockImplementationOnce(function (this: Record<string, unknown>) {
+      Object.assign(this, { connected: true, subscribe });
+    });
+    const client = new StompClient({ onConnect: vi.fn(), onWebSocketClose: vi.fn() });
+    const subscription = client.subscribe({ path: "/orders", callback: vi.fn() } as never);
+
+    subscription.unsubscribe(headers);
+
+    expect(unsubscribe).toHaveBeenCalledWith(headers);
+  });
+
+  it("구독 해제 중 오류가 발생하면 예외를 전파하지 않는다", () => {
+    const error = new Error("Already disconnected");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const unsubscribe = vi.fn(() => {
+      throw error;
+    });
+    const subscribe = vi.fn(() => ({ id: "subscription-id", unsubscribe }));
+    mockClientConstructor.mockImplementationOnce(function (this: Record<string, unknown>) {
+      Object.assign(this, { connected: true, subscribe });
+    });
+    const client = new StompClient({ onConnect: vi.fn(), onWebSocketClose: vi.fn() });
+    const subscription = client.subscribe({ path: "/orders", callback: vi.fn() } as never);
+
+    expect(() => subscription.unsubscribe()).not.toThrow();
+
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("구독 해제 중 연결이 끊긴 경우에도 예외를 전파하지 않는다", () => {
+    const error = new Error("Already disconnected");
+    const stompClientState = { connected: true };
+    const unsubscribe = vi.fn(() => {
+      stompClientState.connected = false;
+      throw error;
+    });
+    const subscribe = vi.fn(() => ({ id: "subscription-id", unsubscribe }));
+    mockClientConstructor.mockImplementationOnce(function (this: Record<string, unknown>) {
+      Object.assign(this, { ...stompClientState, subscribe });
+      Object.defineProperty(this, "connected", {
+        get: () => stompClientState.connected,
+      });
+    });
+    const client = new StompClient({ onConnect: vi.fn(), onWebSocketClose: vi.fn() });
+    const subscription = client.subscribe({ path: "/orders", callback: vi.fn() } as never);
+
+    expect(() => subscription.unsubscribe()).not.toThrow();
+
+    expect(unsubscribe).toHaveBeenCalledOnce();
   });
 });

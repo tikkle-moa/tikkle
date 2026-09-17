@@ -1,4 +1,4 @@
-import { Client, type IMessage, type StompSubscription } from "@stomp/stompjs";
+import { Client, type IMessage, type StompHeaders, type StompSubscription } from "@stomp/stompjs";
 import type { StompFailureMessage } from "@tikkle/api-types";
 
 import { STOMP_BROKER_URL, STOMP_HEARTBEAT_INTERVAL_MS } from "./stomp.constants";
@@ -59,7 +59,8 @@ class StompClient {
     const pathParams = "pathParams" in props ? props.pathParams : undefined;
     const destination = this.buildDestination(StompClient.SUBSCRIBE_PREFIX, path, pathParams);
 
-    return this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback, errorCallback), headers);
+    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback, errorCallback), headers);
+    return this.createSafeSubscription(subscription);
   }
 
   subscribeEvent<TPath extends EventPath>(props: StompEventSubscribeProps<TPath>): StompSubscription {
@@ -67,7 +68,8 @@ class StompClient {
     const pathParams = "pathParams" in props ? props.pathParams : undefined;
     const destination = this.buildDestination(StompClient.EVENT_PREFIX, path, pathParams);
 
-    return this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback, errorCallback), headers);
+    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback, errorCallback), headers);
+    return this.createSafeSubscription(subscription);
   }
 
   private buildDestination(prefix: string, path: string, pathParams?: PathParams) {
@@ -92,6 +94,23 @@ class StompClient {
 
   private isStompFailureMessage(message: unknown): message is StompFailureMessage {
     return typeof message === "object" && message !== null && "error" in message;
+  }
+
+  private createSafeSubscription(subscription: StompSubscription): StompSubscription {
+    return {
+      id: subscription.id,
+      unsubscribe: (headers?: StompHeaders) => {
+        if (!this.client.connected) return;
+
+        try {
+          subscription.unsubscribe(headers);
+        } catch (error) {
+          if (!this.client.connected) return;
+
+          console.error("STOMP 구독 해제 중 오류가 발생했습니다:", error);
+        }
+      },
+    };
   }
 }
 
