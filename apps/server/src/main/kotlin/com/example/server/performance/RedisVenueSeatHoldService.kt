@@ -54,7 +54,7 @@ class RedisVenueSeatHoldService(
     val groupId = getGroupId(userId, performanceId)
 
     val heldSeatsJson = stringRedisTemplate.execute(
-      getMyHeldSeatsScript,
+      getMyGroupHoldsScript,
       listOf(holdGroupKey(groupId)),
       HOLD_DETAIL_KEY_PREFIX,
     )
@@ -374,8 +374,8 @@ class RedisVenueSeatHoldService(
       resultType = Long::class.java
     }
 
-    private val getMyHeldSeatsScript = DefaultRedisScript<String>().apply {
-      setLocation(ClassPathResource("redis/get-my-held-seats.lua"))
+    private val getMyGroupHoldsScript = DefaultRedisScript<String>().apply {
+      setLocation(ClassPathResource("redis/get-my-group-holds.lua"))
       resultType = String::class.java
     }
 
