@@ -42,7 +42,7 @@ class RedisVenueSeatHoldService(
 
     return PerformanceSeatStatusMessageData(
       serverTime = LocalDateTime.now(),
-      bookedSeats = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+      bookedSeatIds = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
         performanceId = performanceId,
         status = ReservationStatus.SUCCEEDED,
       ),
@@ -65,7 +65,7 @@ class RedisVenueSeatHoldService(
   }
 
   @Transactional
-  fun holdVenueSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): VenueSeatHoldDetail {
+  fun holdSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): VenueSeatHoldDetail {
     validateVenueSeatIds(venueSeatIds)
 
     val groupId = getGroupId(userId, performanceId)
@@ -115,7 +115,7 @@ class RedisVenueSeatHoldService(
   }
 
   @Transactional
-  fun releaseVenueSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): List<Long> {
+  fun releaseSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): List<Long> {
     validateVenueSeatIds(venueSeatIds)
 
     val groupId = getGroupId(userId, performanceId)
@@ -289,6 +289,7 @@ class RedisVenueSeatHoldService(
         )
       }
     }
+
     return ActiveHoldData(
       groupId = groupId,
       performanceId = holdDetails.first().performanceId,
@@ -306,7 +307,7 @@ class RedisVenueSeatHoldService(
     return "$userId:$performanceId"
   }
 
-  private fun findHeldSeatsByPerformanceId(performanceId: Long): List<HeldSeat> {
+  private fun findHeldSeatsByPerformanceId(performanceId: Long): List<PerformanceSeatStatusMessageData.HeldSeat> {
     val now = LocalDateTime.now()
     val holdIds = mutableSetOf<String>()
 
@@ -331,9 +332,9 @@ class RedisVenueSeatHoldService(
       }
       .filter { it.expiresAt.isAfter(now) }
       .flatMap { hold ->
-        hold.venueSeatIds.map { seatId -> HeldSeat(id = seatId, expiresAt = hold.expiresAt) }
+        hold.venueSeatIds.map { seatId -> PerformanceSeatStatusMessageData.HeldSeat(id = seatId, expiresAt = hold.expiresAt) }
       }
-      .sortedBy(HeldSeat::id)
+      .sortedBy(PerformanceSeatStatusMessageData.HeldSeat::id)
   }
 
   private fun validateVenueSeatIds(venueSeatIds: List<Long>) {

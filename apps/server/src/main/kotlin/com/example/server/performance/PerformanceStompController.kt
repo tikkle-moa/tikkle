@@ -1,6 +1,8 @@
 package com.example.server.performance
 
 import com.example.server.auth.dto.LoginUserResult
+import com.example.server.global.exception.CustomException
+import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.dto.HoldVenueSeatsCommand
 import com.example.server.performance.dto.HoldVenueSeatsMessage
 import com.example.server.performance.dto.PerformanceSeatStatusCommand
@@ -40,19 +42,17 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
     value = ["/queue/performances/{performanceId}/hold-seats"],
     broadcast = false,
   )
-  fun hold(
+  fun holdSeats(
     @DestinationVariable("performanceId") performanceId: Long,
     @Payload @Valid command: HoldVenueSeatsCommand,
     authentication: Authentication,
   ): HoldVenueSeatsMessage {
-    val loginUser = authentication.principal as LoginUserResult
+    val user = loginUser(authentication)
+    val result = redisVenueSeatHoldService.holdSeats(user.userId, performanceId, command.data)
+
     return HoldVenueSeatsMessage(
       requestId = command.requestId,
-      data = redisVenueSeatHoldService.holdVenueSeats(
-        loginUser.userId,
-        performanceId,
-        command.data,
-      ),
+      data = result,
     )
   }
 
@@ -61,20 +61,20 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
     value = ["/queue/performances/{performanceId}/release-seats"],
     broadcast = false,
   )
-  fun release(
+  fun releaseSeats(
     @DestinationVariable("performanceId") performanceId: Long,
     @Payload @Valid command: ReleaseVenueSeatsCommand,
     authentication: Authentication,
   ): ReleaseVenueSeatsMessage {
-    val loginUser = authentication.principal as LoginUserResult
-    redisVenueSeatHoldService.releaseVenueSeats(
-      loginUser.userId,
-      performanceId,
-      command.data,
-    )
+    val user = loginUser(authentication)
+    redisVenueSeatHoldService.releaseSeats(user.userId, performanceId, command.data)
+
     return ReleaseVenueSeatsMessage(
       requestId = command.requestId,
       data = command.data,
     )
   }
+
+  private fun loginUser(authentication: Authentication): LoginUserResult = authentication.principal as? LoginUserResult
+    ?: throw CustomException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.")
 }
