@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { TypeScriptGenerator, typeScriptDefaultModelNameConstraints, typeScriptDefaultPropertyKeyConstraints } from "@asyncapi/modelina";
+import { TypeScriptGenerator, typeScriptDefaultModelNameConstraints } from "@asyncapi/modelina";
 import { DiagnosticSeverity, Parser } from "@asyncapi/parser";
 import { format, resolveConfig } from "prettier";
 
@@ -186,7 +186,6 @@ const asyncApi = normalizeSpringwolfDocument(await response.json());
 await validateAsyncApi(asyncApi, "Springwolf AsyncAPI 문서");
 
 const constrainModelName = typeScriptDefaultModelNameConstraints();
-const constrainPropertyKey = typeScriptDefaultPropertyKeyConstraints();
 const generator = new TypeScriptGenerator({
   modelType: "interface",
   enumType: "union",
@@ -202,14 +201,10 @@ const generator = new TypeScriptGenerator({
         modelName: context.modelName.split(".").at(-1) ?? context.modelName,
       }),
 
-    propertyKey: (context) =>
-      constrainPropertyKey({
-        ...context,
-        options: {
-          ...context.options,
-          useJavascriptReservedKeywords: false,
-        },
-      }),
+    propertyKey: (context) => {
+      const propertyName = context.objectPropertyModel.propertyName;
+      return propertyName;
+    },
   },
 });
 
@@ -235,11 +230,27 @@ const normalizeRequiredProperties = (result, modelName) => {
 
 const modelSources = models
   .map(({ result, modelName }) => normalizeRequiredProperties(result, modelName).trim())
-  .filter((result) => !/^type Root = any;?$/.test(result));
+  .filter((result) => !/^type (?:Root = any|Performances = );?/.test(result));
 
 if (modelSources.length === 0) {
   throw new Error("Springwolf 문서에서 생성할 STOMP 메시지 모델을 찾지 못했습니다.");
 }
+
+const generatedModelNames = new Set(models.map(({ modelName }) => getSimpleModelName(modelName)));
+const discriminatorTypeSources = Object.entries(asyncApi.components?.schemas ?? {}).flatMap(([name, schema]) => {
+  const componentSchema = schema.schema ?? schema;
+  const propertyName =
+    typeof componentSchema.discriminator === "string" ? componentSchema.discriminator : componentSchema.discriminator?.propertyName;
+
+  if (!componentSchema.oneOf?.length || !propertyName) {
+    return [];
+  }
+
+  const modelName = getSimpleModelName(name);
+  const typeName = `${modelName}${propertyName[0].toUpperCase()}${propertyName.slice(1)}`;
+
+  return generatedModelNames.has(typeName) ? [] : [`type ${typeName} = ${modelName}[${JSON.stringify(propertyName)}];`];
+});
 
 const unformattedSource = [
   "/**",
@@ -248,7 +259,8 @@ const unformattedSource = [
   " * Do not make direct changes to this file.",
   " */",
   "",
-  ...modelSources.map((result) => `export ${result}`),
+  ...modelSources.map((result) => `export ${result}\n`),
+  ...discriminatorTypeSources.map((result) => `export ${result}\n`),
   "",
 ].join("\n");
 
