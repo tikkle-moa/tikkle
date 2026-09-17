@@ -1,12 +1,11 @@
+import type { PaymentOrderMessageData } from "@tikkle/api-types";
 import { CalendarDays, MapPin, Ticket } from "lucide-react";
 
 import { formatDateTime } from "@shared/lib/date.utils";
-
-import type { PaymentOrder } from "../model/payment.types";
-import { formatPaymentAmount } from "../model/payment.utils";
+import { formatPrice } from "@shared/lib/number.utils";
 
 interface PaymentOrderSummaryProps {
-  order: PaymentOrder;
+  order: PaymentOrderMessageData;
 }
 
 const PaymentOrderSummary = ({ order }: PaymentOrderSummaryProps) => (
@@ -59,14 +58,14 @@ const PaymentOrderSummary = ({ order }: PaymentOrderSummaryProps) => (
               <Ticket className="text-brand-primary size-4" aria-hidden />
               {seat.sectionName} {seat.seatLabel}
             </span>
-            <span className="text-sm font-medium text-gray-600">{formatPaymentAmount(seat.price)}</span>
+            <span className="text-sm font-medium text-gray-600">{formatPrice(seat.price)}</span>
           </li>
         ))}
       </ul>
 
       <dl className="mt-6 flex items-end justify-between border-t border-gray-200 pt-5">
         <dt className="font-bold text-gray-900">총 결제 금액</dt>
-        <dd className="text-brand-primary text-2xl font-extrabold tracking-tight">{formatPaymentAmount(order.amount)}</dd>
+        <dd className="text-brand-primary text-2xl font-extrabold tracking-tight">{formatPrice(order.amount)}</dd>
       </dl>
     </div>
   </section>

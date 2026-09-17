@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState } from "react";
 
+import type { PaymentOrderMessageData } from "@tikkle/api-types";
 import {
   type TossPaymentsWidgets,
   type WidgetAgreementWidget,
@@ -7,14 +8,14 @@ import {
   loadTossPayments,
 } from "@tosspayments/tosspayments-sdk";
 
+import { ROUTE_PATHS } from "@shared/config/router.config";
+
 import type { User } from "@entities/session";
 
-import { PAYMENT_ROUTES } from "./payment.constants";
-import type { PaymentOrder } from "./payment.types";
 import { getPaymentCustomerKey } from "./payment.utils";
 
 interface UseTossPaymentWidgetProps {
-  order: PaymentOrder;
+  order: PaymentOrderMessageData;
   user: User;
 }
 
@@ -125,13 +126,13 @@ export const useTossPaymentWidget = ({ order, user }: UseTossPaymentWidgetProps)
 
     try {
       const origin = window.location.origin;
-      const failUrl = new URL(PAYMENT_ROUTES.fail, origin);
+      const failUrl = new URL(ROUTE_PATHS.PAYMENT_FAIL, origin);
       failUrl.searchParams.set("reservationId", String(order.reservationId));
 
       await widgets.requestPayment({
         orderId: order.orderId,
         orderName: order.orderName,
-        successUrl: new URL(PAYMENT_ROUTES.success, origin).toString(),
+        successUrl: new URL(ROUTE_PATHS.PAYMENT_SUCCESS, origin).toString(),
         failUrl: failUrl.toString(),
         customerEmail: user.email,
         customerName: user.nickname,

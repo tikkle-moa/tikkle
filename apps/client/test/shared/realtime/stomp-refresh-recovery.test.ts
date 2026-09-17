@@ -1,7 +1,6 @@
-import type { Client } from "@stomp/stompjs";
-
 import { createRefreshTokenMiddleware } from "@shared/api/refresh-token-middleware";
 import type { getCookie } from "@shared/lib/cookie.utils";
+import type StompClient from "@shared/realtime/stomp-client";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
 const { mockActivate, mockCreateStompClient, mockDeactivate, mockGetCookie } = vi.hoisted(() => ({
@@ -16,7 +15,11 @@ vi.mock("@shared/lib/cookie.utils", () => ({
 }));
 
 vi.mock("@shared/realtime/stomp-client", () => ({
-  createStompClient: mockCreateStompClient,
+  default: class MockStompClient {
+    constructor(callbacks: unknown) {
+      return mockCreateStompClient(callbacks);
+    }
+  },
 }));
 
 const createMockClient = () =>
@@ -24,7 +27,7 @@ const createMockClient = () =>
     activate: mockActivate,
     deactivate: mockDeactivate,
     publish: vi.fn(),
-  }) as unknown as Client;
+  }) as unknown as StompClient;
 
 function callOnResponse(middleware: ReturnType<typeof createRefreshTokenMiddleware>, request: Request, response: Response) {
   return middleware.onResponse!({
@@ -44,7 +47,7 @@ describe("STOMP refresh recovery", () => {
     vi.spyOn(globalThis, "fetch");
 
     useStompStore.setState({
-      client: null,
+      stompClient: null,
       connectionStatus: "disconnected",
       sessionExpiredHandler: null,
     });
@@ -79,7 +82,7 @@ describe("STOMP refresh recovery", () => {
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
 
     useStompStore.getState().setSessionExpiredHandler(sessionExpiredHandler);
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const httpRecovery = callOnResponse(middleware, new Request("https://example.com/api/data"), new Response(null, { status: 401 }));
 
@@ -99,17 +102,16 @@ describe("STOMP refresh recovery", () => {
     expect(clearSession).not.toHaveBeenCalled();
     expect(sessionExpiredHandler).not.toHaveBeenCalled();
 
-    const currentClient = useStompStore.getState().client;
+    const currentClient = useStompStore.getState().stompClient;
 
     expect(currentClient).toBe(secondClient);
 
     currentClient?.publish({
-      destination: "/app/performance/sync",
-      body: JSON.stringify({
+      path: "/reservation/start-checkout",
+      command: {
         requestId: "request-id",
-        action: "START_CHECKOUT",
-        data: {},
-      }),
+        data: { performanceId: 10 },
+      },
     });
 
     expect(secondClient.publish).toHaveBeenCalledOnce();

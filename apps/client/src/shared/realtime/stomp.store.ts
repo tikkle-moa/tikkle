@@ -1,9 +1,8 @@
-import type { Client } from "@stomp/stompjs";
 import { create } from "zustand";
 
 import { refreshAccessToken, subscribeAccessTokenRefresh } from "@shared/api/refresh-token";
 
-import { createStompClient } from "./stomp-client";
+import StompClient from "./stomp-client";
 import { STOMP_MAX_RETRY_DELAY_MS, STOMP_RETRY_DELAY_MS } from "./stomp.constants";
 import type { StompConnectionStatus, StompRecoveryPhase } from "./stomp.types";
 
@@ -15,11 +14,11 @@ let lifecycleVersion = 0;
 let recoveryPhase: StompRecoveryPhase = "idle";
 
 interface StompStore {
-  client: Client | null;
+  stompClient: StompClient | null;
   connectionStatus: StompConnectionStatus;
   sessionExpiredHandler: (() => void) | null;
 
-  getClient: () => Client;
+  getStompClient: () => StompClient;
   disconnect: () => Promise<void>;
   recover: () => Promise<void>;
   reconnectAfterRefresh: () => Promise<void>;
@@ -35,12 +34,12 @@ export const useStompStore = create<StompStore>((set, get) => {
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
 
-      if (version !== lifecycleVersion || get().client) {
+      if (version !== lifecycleVersion || get().stompClient) {
         return;
       }
 
       try {
-        get().getClient();
+        get().getStompClient();
       } catch (error) {
         console.error("STOMP Client 재연결 실패:", error);
 
@@ -49,7 +48,7 @@ export const useStompStore = create<StompStore>((set, get) => {
         }
 
         set({
-          client: null,
+          stompClient: null,
           connectionStatus: "disconnected",
         });
 
@@ -81,20 +80,20 @@ export const useStompStore = create<StompStore>((set, get) => {
   };
 
   return {
-    client: null,
+    stompClient: null,
     connectionStatus: "disconnected",
     sessionExpiredHandler: null,
 
-    getClient: () => {
-      const currentClient = get().client;
+    getStompClient: () => {
+      const currentStompClient = get().stompClient;
 
-      if (currentClient) {
-        return currentClient;
+      if (currentStompClient) {
+        return currentStompClient;
       }
 
-      const client = createStompClient({
+      const stompClient = new StompClient({
         onConnect: () => {
-          if (get().client !== client) {
+          if (get().stompClient !== stompClient) {
             return;
           }
 
@@ -105,7 +104,7 @@ export const useStompStore = create<StompStore>((set, get) => {
         },
 
         onWebSocketClose: () => {
-          if (get().client !== client) {
+          if (get().stompClient !== stompClient) {
             return;
           }
 
@@ -121,7 +120,7 @@ export const useStompStore = create<StompStore>((set, get) => {
           }
 
           set({
-            client: null,
+            stompClient: null,
             connectionStatus: "disconnected",
           });
 
@@ -130,36 +129,36 @@ export const useStompStore = create<StompStore>((set, get) => {
       });
 
       set({
-        client,
+        stompClient,
         connectionStatus: "connecting",
       });
 
-      client.activate();
+      stompClient.activate();
 
-      return client;
+      return stompClient;
     },
 
     disconnect: async () => {
       invalidateLifecycle();
 
-      const client = get().client;
+      const stompClient = get().stompClient;
 
-      if (!client) {
+      if (!stompClient) {
         return;
       }
 
       set({
-        client: null,
+        stompClient: null,
         connectionStatus: "disconnected",
       });
 
-      await client.deactivate();
+      await stompClient.deactivate();
     },
 
     reconnectAfterRefresh: async () => {
-      const client = get().client;
+      const stompClient = get().stompClient;
 
-      if (!client) {
+      if (!stompClient) {
         return;
       }
 
@@ -168,12 +167,12 @@ export const useStompStore = create<StompStore>((set, get) => {
       recoveryPhase = "reconnect-only";
 
       set({
-        client: null,
+        stompClient: null,
         connectionStatus: "disconnected",
       });
 
       try {
-        await client.deactivate();
+        await stompClient.deactivate();
       } catch (error) {
         console.error("STOMP reconnect 종료 실패:", error);
 
@@ -182,7 +181,7 @@ export const useStompStore = create<StompStore>((set, get) => {
         }
 
         set({
-          client: null,
+          stompClient: null,
           connectionStatus: "disconnected",
         });
 
@@ -190,12 +189,12 @@ export const useStompStore = create<StompStore>((set, get) => {
         return;
       }
 
-      if (version !== lifecycleVersion || get().client !== null) {
+      if (version !== lifecycleVersion || get().stompClient !== null) {
         return;
       }
 
       try {
-        get().getClient();
+        get().getStompClient();
       } catch (error) {
         console.error("STOMP Client 재생성 실패:", error);
 
@@ -204,7 +203,7 @@ export const useStompStore = create<StompStore>((set, get) => {
         }
 
         set({
-          client: null,
+          stompClient: null,
           connectionStatus: "disconnected",
         });
 
@@ -217,9 +216,9 @@ export const useStompStore = create<StompStore>((set, get) => {
         return recoveryPromise;
       }
 
-      const client = get().client;
+      const stompClient = get().stompClient;
 
-      if (!client) {
+      if (!stompClient) {
         return;
       }
 
@@ -234,24 +233,24 @@ export const useStompStore = create<StompStore>((set, get) => {
             console.error("STOMP recover 실패:", error);
           }
 
-          if (version !== lifecycleVersion || get().client !== client) {
+          if (version !== lifecycleVersion || get().stompClient !== stompClient) {
             return;
           }
 
           recoveryPhase = "refresh-on-next-failure";
 
           set({
-            client: null,
+            stompClient: null,
             connectionStatus: "disconnected",
           });
 
           try {
-            await client.deactivate();
+            await stompClient.deactivate();
           } catch (deactivateError) {
             console.error("STOMP recover 종료 실패:", deactivateError);
           }
 
-          if (version !== lifecycleVersion || get().client !== null) {
+          if (version !== lifecycleVersion || get().stompClient !== null) {
             return;
           }
 
@@ -263,7 +262,7 @@ export const useStompStore = create<StompStore>((set, get) => {
         try {
           const refreshResult = await refreshAccessToken();
 
-          if (get().client !== client || lifecycleVersion !== version) {
+          if (get().stompClient !== stompClient || lifecycleVersion !== version) {
             return;
           }
 
