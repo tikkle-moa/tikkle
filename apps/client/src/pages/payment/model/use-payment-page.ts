@@ -3,7 +3,9 @@ import { useNavigate, useParams } from "react-router";
 
 import { useSessionStore } from "@entities/session";
 
-import { PAYMENT_FIXTURE_RESERVATION_ID, usePaymentOrder } from "@features/payment";
+import { PAYMENT_FIXTURE_RESERVATION_ID } from "@features/payment";
+
+import { usePaymentOrder } from "./use-payment-order";
 
 interface UsePaymentPageProps {
   fixture?: boolean;

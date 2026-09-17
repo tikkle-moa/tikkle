@@ -1,4 +1,4 @@
-import type { PaymentOrder } from "./payment.types";
+import type { PaymentOrderMessageData } from "@tikkle/api-types";
 
 export const PAYMENT_FIXTURE_RESERVATION_ID = 501;
 
@@ -22,7 +22,7 @@ export const createPaymentCheckoutFixture = (): PaymentCheckoutFixture => ({
   status: "PAYMENT_PENDING",
 });
 
-export const createPaymentOrderFixture = (reservationId: number): PaymentOrder => ({
+export const createPaymentOrderFixture = (reservationId: number): PaymentOrderMessageData => ({
   reservationId,
   orderId: `tikkle-fixture-${reservationId}`,
   orderName: "2026 Summer Festival 2석",

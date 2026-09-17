@@ -1,87 +1,108 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useStompStore } from "@shared/realtime/stomp.store";
-import { useStompSubscription } from "@shared/realtime/use-stomp-subscription";
+import type { StompFailureMessage } from "@tikkle/api-types";
 
-import { PAYMENT_STOMP_DESTINATIONS } from "./payment.constants";
+import { useStompStore } from "@shared/realtime/stomp.store";
+
 import type { PaymentResultRequest, PaymentResultStatus } from "./payment.types";
-import { parsePaymentCommandResponse } from "./payment.utils";
 
 interface UsePaymentResultProps {
   request: PaymentResultRequest | null;
 }
 
 export const usePaymentResult = ({ request }: UsePaymentResultProps) => {
-  const client = useStompStore((state) => state.client);
-  const connectionStatus = useStompStore((state) => state.connectionStatus);
-  const getClient = useStompStore((state) => state.getClient);
-  const requestIdRef = useRef<string | null>(null);
+  const stompClient = useStompStore((state) => state.stompClient);
+  const isConnected = useStompStore((state) => state.connectionStatus === "connected");
+  const getStompClient = useStompStore((state) => state.getStompClient);
+
   const requestKey = request ? JSON.stringify(request) : null;
-  const requestRef = useRef<PaymentResultRequest | null>(request);
-  const requestKeyRef = useRef<string | null>(requestKey);
+
+  const requestIdRef = useRef<string | null>(null);
+  const requestRef = useRef(request);
+  const requestKeyRef = useRef(requestKey);
   const hasPublishedRequestRef = useRef(false);
   const statusRef = useRef<PaymentResultStatus>("pending");
+
   const [status, setStatus] = useState<PaymentResultStatus>("pending");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    getClient();
-  }, [getClient]);
+    getStompClient();
+  }, [getStompClient]);
 
-  const handleMessage = useCallback((message: { body: string }) => {
-    const response = parsePaymentCommandResponse(message.body);
+  useEffect(() => {
+    if (requestKeyRef.current === requestKey) return;
 
-    if (!response || response.requestId !== requestIdRef.current) {
-      return;
-    }
+    requestKeyRef.current = requestKey;
+    requestRef.current = request;
+    requestIdRef.current = null;
+    hasPublishedRequestRef.current = false;
+    statusRef.current = "pending";
 
-    if (!response.success) {
-      setErrorMessage(response.error?.message ?? "결제 처리 결과를 확인하지 못했습니다.");
-      statusRef.current = "failed";
-      setStatus("failed");
-      return;
-    }
+    setStatus("pending");
+    setErrorMessage(null);
+  }, [request, requestKey]);
+
+  const handleMessage = useCallback((message: { requestId: string }) => {
+    if (message.requestId !== requestIdRef.current) return;
 
     statusRef.current = "succeeded";
     setStatus("succeeded");
   }, []);
 
-  useStompSubscription({
-    destination: PAYMENT_STOMP_DESTINATIONS.response,
-    onMessage: handleMessage,
-    enabled: request !== null,
-  });
+  const handleError = useCallback((message: StompFailureMessage) => {
+    if (message.requestId !== requestIdRef.current) return;
+
+    setErrorMessage(message.error.message);
+    statusRef.current = "failed";
+    setStatus("failed");
+  }, []);
 
   useEffect(() => {
-    if (requestKeyRef.current !== requestKey) {
-      requestKeyRef.current = requestKey;
-      requestRef.current = request;
-      requestIdRef.current = null;
-      hasPublishedRequestRef.current = false;
-      statusRef.current = "pending";
-      setStatus("pending");
-      setErrorMessage(null);
-    }
+    if (!request || !stompClient || !isConnected) return;
 
-    if (!requestRef.current || !client || connectionStatus !== "connected" || !client.connected) {
-      return;
-    }
+    const subscription =
+      request.action === "CONFIRM_PAYMENT"
+        ? stompClient.subscribe({
+            path: "/reservation/confirm-payment",
+            callback: handleMessage,
+            errorCallback: handleError,
+          })
+        : stompClient.subscribe({
+            path: "/reservation/cancel-payment",
+            callback: handleMessage,
+            errorCallback: handleError,
+          });
 
-    if (statusRef.current !== "pending" || hasPublishedRequestRef.current) {
-      return;
-    }
+    return () => subscription.unsubscribe();
+  }, [handleError, handleMessage, isConnected, request, stompClient]);
+
+  useEffect(() => {
+    const currentRequest = requestRef.current;
+
+    if (!currentRequest || !stompClient || !isConnected) return;
+    if (statusRef.current !== "pending" || hasPublishedRequestRef.current) return;
 
     const requestId = requestIdRef.current ?? crypto.randomUUID();
+
     requestIdRef.current = requestId;
     hasPublishedRequestRef.current = true;
+
     setStatus("pending");
     setErrorMessage(null);
 
-    client.publish({
-      destination: PAYMENT_STOMP_DESTINATIONS.request,
-      body: JSON.stringify({ requestId, ...requestRef.current }),
-    });
-  }, [client, connectionStatus, request, requestKey]);
+    if (currentRequest.action === "CONFIRM_PAYMENT") {
+      stompClient.publish({
+        path: "/reservation/confirm-payment",
+        command: { requestId, data: currentRequest.data },
+      });
+    } else {
+      stompClient.publish({
+        path: "/reservation/cancel-payment",
+        command: { requestId, data: currentRequest.data },
+      });
+    }
+  }, [isConnected, request, requestKey, stompClient]);
 
-  return { errorMessage, status };
+  return { status, errorMessage };
 };

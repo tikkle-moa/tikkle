@@ -3,8 +3,9 @@ import { useNavigate } from "react-router";
 import { ArrowRight, CalendarDays, MapPin, Ticket } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
+import { formatPrice } from "@shared/lib/number.utils";
 
-import { PAYMENT_FIXTURE_RESERVATION_ID, createPaymentCheckoutFixture, createPaymentOrderFixture, formatPaymentAmount } from "@features/payment";
+import { PAYMENT_FIXTURE_RESERVATION_ID, createPaymentCheckoutFixture, createPaymentOrderFixture } from "@features/payment";
 
 const PaymentFixtureCheckoutPage = () => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const PaymentFixtureCheckoutPage = () => {
         <div className="bg-linear-to-br from-violet-950 via-violet-900 to-fuchsia-900 px-5 py-6 text-white sm:px-7">
           <div className="flex flex-col gap-5 sm:flex-row">
             <img
-              src={order.posterUrl}
+              src={order.posterUrl ?? undefined}
               alt={`${order.concertTitle} 포스터`}
               className="h-40 w-28 rounded-xl object-cover shadow-lg ring-1 ring-white/20"
             />
@@ -62,14 +63,14 @@ const PaymentFixtureCheckoutPage = () => {
                   <Ticket className="text-brand-primary size-4" aria-hidden />
                   {seat.sectionName} {seat.seatLabel}
                 </span>
-                <span className="text-sm font-medium text-gray-600">{formatPaymentAmount(seat.price)}</span>
+                <span className="text-sm font-medium text-gray-600">{formatPrice(seat.price)}</span>
               </li>
             ))}
           </ul>
 
           <div className="mt-6 flex items-end justify-between border-t border-gray-200 pt-5">
             <span className="font-bold text-gray-900">결제 예정 금액</span>
-            <span className="text-brand-primary text-2xl font-extrabold">{formatPaymentAmount(order.amount)}</span>
+            <span className="text-brand-primary text-2xl font-extrabold">{formatPrice(order.amount)}</span>
           </div>
 
           <button

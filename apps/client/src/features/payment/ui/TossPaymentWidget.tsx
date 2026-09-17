@@ -1,11 +1,13 @@
+import type { PaymentOrderMessageData } from "@tikkle/api-types";
+
+import { formatPrice } from "@shared/lib/number.utils";
+
 import type { User } from "@entities/session";
 
-import type { PaymentOrder } from "../model/payment.types";
-import { formatPaymentAmount } from "../model/payment.utils";
 import { useTossPaymentWidget } from "../model/use-toss-payment-widget";
 
 interface TossPaymentWidgetProps {
-  order: PaymentOrder;
+  order: PaymentOrderMessageData;
   user: User;
 }
 
@@ -34,7 +36,7 @@ const TossPaymentWidget = ({ order, user }: TossPaymentWidgetProps) => {
           disabled={!widgets || isRequesting || isExpired}
           className="bg-brand-primary w-full rounded-xl px-5 py-4 text-base font-bold text-white transition hover:bg-violet-700 disabled:bg-gray-300"
         >
-          {isRequesting ? "결제창을 여는 중..." : `${formatPaymentAmount(order.amount)} 결제하기`}
+          {isRequesting ? "결제창을 여는 중..." : `${formatPrice(order.amount)} 결제하기`}
         </button>
       </div>
     </section>
