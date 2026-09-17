@@ -2,6 +2,7 @@ package com.example.server.performance
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.outbox.types.OutboxHoldActionResult
 import com.example.server.performance.dto.ActiveHoldData
 import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.HoldVenueSeatEntry
@@ -184,31 +185,6 @@ class RedisVenueSeatHoldService(
     return transitionedHoldDetails
   }
 
-  fun finalizeForPayment(groupId: String): List<Long> {
-    val activeHoldData = findActiveHoldDataByGroupId(groupId)
-    val finalizingVenueSeatKeys = activeHoldData.holdVenueSeatEntries.map { finalizingVenueSeatKey(activeHoldData.performanceId, it.venueSeatId) }
-
-    val keys = activeHoldData.holdVenueSeatEntries.map { it.key } +
-      finalizingVenueSeatKeys +
-      activeHoldData.holdDetailKeys +
-      activeHoldData.holdGroupKey
-
-    val finalized = stringRedisTemplate.execute(
-      finalizeForPaymentScript,
-      keys,
-      activeHoldData.holdVenueSeatEntries.size.toString(),
-      activeHoldData.holdDetails.size.toString(),
-      *activeHoldData.holdVenueSeatEntries.map { it.holdId }.toTypedArray(),
-      *activeHoldData.storedHoldDetailJsons.toTypedArray(),
-    ) == 0L
-
-    if (!finalized) {
-      throw CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 결제를 완료할 수 없습니다.")
-    }
-
-    return activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
-  }
-
   fun releaseAllVenueSeats(groupId: String): List<Long> {
     val activeHoldData = findActiveHoldDataByGroupId(groupId)
 
@@ -230,6 +206,52 @@ class RedisVenueSeatHoldService(
     }
 
     return activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
+  }
+
+  fun releaseVenueSeats(holdId: String, groupId: String, performanceId: Long, venueSeatIds: List<Long>, eventId: UUID): OutboxHoldActionResult {
+    validateVenueSeatIds(venueSeatIds)
+
+    val keys = venueSeatIds.map { holdVenueSeatKey(performanceId, it) } +
+      holdDetailKey(holdId) +
+      holdGroupKey(groupId) +
+      outboxHoldActionKey(eventId)
+    val result = stringRedisTemplate.execute(
+      releaseHoldByIdScript,
+      keys,
+      holdId,
+      venueSeatIds.size.toString(),
+    ) ?: throw IllegalStateException("Hold 해제 결과를 확인하지 못했습니다.")
+
+    return when (result) {
+      0L -> OutboxHoldActionResult.APPLIED
+      1L -> OutboxHoldActionResult.REPLACED
+      2L -> OutboxHoldActionResult.EXPIRED
+      3L -> OutboxHoldActionResult.ALREADY_APPLIED
+      else -> throw IllegalStateException("알 수 없는 Hold 해제 결과입니다: $result")
+    }
+  }
+
+  fun finalizeVenueSeats(holdId: String, groupId: String, performanceId: Long, venueSeatIds: List<Long>): OutboxHoldActionResult {
+    validateVenueSeatIds(venueSeatIds)
+
+    val finalizingKeys = venueSeatIds.map { finalizingVenueSeatKey(performanceId, it) }
+    val keys = venueSeatIds.map { holdVenueSeatKey(performanceId, it) } +
+      finalizingKeys +
+      holdDetailKey(holdId) +
+      holdGroupKey(groupId)
+    val result = stringRedisTemplate.execute(
+      finalizeHoldByIdScript,
+      keys,
+      holdId,
+      venueSeatIds.size.toString(),
+    ) ?: throw IllegalStateException("Hold 확정 결과를 확인하지 못했습니다.")
+
+    return when (result) {
+      0L -> OutboxHoldActionResult.APPLIED
+      1L -> OutboxHoldActionResult.REPLACED
+      2L -> OutboxHoldActionResult.ALREADY_APPLIED
+      else -> throw IllegalStateException("알 수 없는 Hold 확정 결과입니다: $result")
+    }
   }
 
   fun findActiveHoldDataByGroupId(groupId: String): ActiveHoldData {
@@ -320,6 +342,7 @@ class RedisVenueSeatHoldService(
   private fun holdDetailKey(holdId: String) = "hold:detail:$holdId"
   private fun holdVenueSeatKey(performanceId: Long, venueSeatId: Long) = "hold:venue-seat:$performanceId:$venueSeatId"
   private fun finalizingVenueSeatKey(performanceId: Long, venueSeatId: Long) = "hold:venue-seat-finalizing:$performanceId:$venueSeatId"
+  private fun outboxHoldActionKey(eventId: UUID) = "hold:outbox-action:$eventId"
 
   private fun LocalDateTime.toEpochMillis(): Long = atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
@@ -341,13 +364,18 @@ class RedisVenueSeatHoldService(
       resultType = Long::class.java
     }
 
-    private val finalizeForPaymentScript = DefaultRedisScript<Long>().apply {
-      setLocation(ClassPathResource("redis/finalize-for-payment.lua"))
+    private val releaseAllVenueSeatsScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/release-all-venue-seats.lua"))
       resultType = Long::class.java
     }
 
-    private val releaseAllVenueSeatsScript = DefaultRedisScript<Long>().apply {
-      setLocation(ClassPathResource("redis/release-all-venue-seats.lua"))
+    private val releaseHoldByIdScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/release-hold-by-id.lua"))
+      resultType = Long::class.java
+    }
+
+    private val finalizeHoldByIdScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/finalize-hold-by-id.lua"))
       resultType = Long::class.java
     }
   }

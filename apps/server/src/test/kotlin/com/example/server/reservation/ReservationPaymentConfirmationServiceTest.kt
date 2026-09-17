@@ -5,6 +5,7 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.dto.ActiveHoldData
 import com.example.server.performance.dto.HoldVenueSeatEntry
@@ -19,6 +20,7 @@ import com.example.server.reservation.payment.dto.PaymentConfirmationStart
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus
+import com.example.server.support.any
 import com.example.server.venue.entity.Venue
 import com.example.server.venue.entity.VenueSeat
 import com.example.server.venue.repository.VenueSeatRepository
@@ -46,6 +48,8 @@ class ReservationPaymentConfirmationServiceTest {
   @Mock lateinit var venueSeatRepository: VenueSeatRepository
 
   @Mock lateinit var redisVenueSeatHoldService: RedisVenueSeatHoldService
+
+  @Mock lateinit var outboxEventService: OutboxEventService
 
   @InjectMocks lateinit var service: ReservationPaymentConfirmationService
 
@@ -303,10 +307,11 @@ class ReservationPaymentConfirmationServiceTest {
 
     assertThat(result).isInstanceOf(PaymentConfirmationCompletion.Succeeded::class.java)
     assertThat((result as PaymentConfirmationCompletion.Succeeded).holds)
-      .isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L)))
+      .isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L), active.holdDetails))
     assertThat(reservation.status).isEqualTo(ReservationStatus.SUCCEEDED)
     assertThat(reservation.paymentKey).isEqualTo(PAYMENT_KEY)
-    then(reservationSeatRepository).should().saveAll(org.mockito.ArgumentMatchers.any<Iterable<ReservationSeat>>())
+    then(reservationSeatRepository).should().saveAll(any<Iterable<ReservationSeat>>())
+    then(outboxEventService).should().recordReservationConfirmed(RESERVATION_ID, active.holdDetails.single())
   }
 
   @Test
@@ -315,12 +320,15 @@ class ReservationPaymentConfirmationServiceTest {
       status = ReservationStatus.PAYMENT_CONFIRMING,
       paymentExpiresAt = LocalDateTime.now().minusSeconds(1),
     ).also { it.paymentAttemptKey = PAYMENT_KEY }
+    val active = activeHoldData()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
 
     val result = service.complete(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))
 
-    assertThat(result).isEqualTo(PaymentConfirmationCompletion.RefundRequired(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L))))
+    assertThat(
+      result,
+    ).isEqualTo(PaymentConfirmationCompletion.RefundRequired(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L), active.holdDetails)))
     assertThat(reservation.status).isEqualTo(ReservationStatus.REFUND_REQUIRED)
   }
 
@@ -340,25 +348,65 @@ class ReservationPaymentConfirmationServiceTest {
   @Test
   fun `환불 필요 상태를 확정하면 REFUNDED와 Hold 스냅샷을 반환한다`() {
     val reservation = reservation(status = ReservationStatus.REFUND_REQUIRED).also { it.paymentAttemptKey = PAYMENT_KEY }
+    val active = activeHoldData()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
 
     val result = service.completeRefund(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))
 
-    assertThat(result).isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L)))
+    assertThat(result).isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L), active.holdDetails))
     assertThat(reservation.status).isEqualTo(ReservationStatus.REFUNDED)
+    then(outboxEventService).should().recordHoldReleased(RESERVATION_ID, active.holdDetails.single())
   }
 
   @Test
   fun `승인 중 결제 실패를 기록하고 Hold 스냅샷을 반환한다`() {
     val reservation = reservation(status = ReservationStatus.PAYMENT_CONFIRMING).also { it.paymentAttemptKey = PAYMENT_KEY }
+    val active = activeHoldData()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
 
     val result = service.markPaymentFailed(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))
 
-    assertThat(result).isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L)))
+    assertThat(result).isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L), active.holdDetails))
     assertThat(reservation.status).isEqualTo(ReservationStatus.FAILED)
+    then(outboxEventService).should().recordHoldReleased(RESERVATION_ID, active.holdDetails.single())
+  }
+
+  @Test
+  fun `승인 중 결제 실패 시 활성 Hold가 없으면 해제 이벤트를 저장하지 않는다`() {
+    val reservation = reservation(status = ReservationStatus.PAYMENT_CONFIRMING).also { it.paymentAttemptKey = PAYMENT_KEY }
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
+      .willThrow(CustomException(ErrorCode.NOT_FOUND, "점유된 좌석이 없습니다."))
+
+    val result = service.markPaymentFailed(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))
+
+    assertThat(result).isNull()
+    assertThat(reservation.status).isEqualTo(ReservationStatus.FAILED)
+    then(outboxEventService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `승인 중 결제 실패 시 Hold 상세 목록이 비어 있으면 해제 이벤트를 저장하지 않는다`() {
+    val reservation = reservation(status = ReservationStatus.PAYMENT_CONFIRMING).also { it.paymentAttemptKey = PAYMENT_KEY }
+    val active = ActiveHoldData(
+      groupId = GROUP_ID,
+      performanceId = PERFORMANCE_ID,
+      holdGroupKey = "hold:group:$GROUP_ID",
+      storedHoldDetailJsons = emptyList(),
+      holdDetailKeys = emptyList(),
+      holdDetails = emptyList(),
+      holdVenueSeatEntries = emptyList(),
+    )
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
+
+    val result = service.markPaymentFailed(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))
+
+    assertThat(result).isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, emptyList()))
+    assertThat(reservation.status).isEqualTo(ReservationStatus.FAILED)
+    then(outboxEventService).shouldHaveNoInteractions()
   }
 
   @Test

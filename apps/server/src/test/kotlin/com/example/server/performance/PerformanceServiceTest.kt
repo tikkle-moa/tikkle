@@ -11,6 +11,7 @@ import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.performance.types.PerformanceStatus
 import com.example.server.reservation.repository.ReservationSeatRepository
+import com.example.server.support.any
 import com.example.server.venue.entity.Venue
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -193,7 +194,7 @@ class PerformanceServiceTest {
       val savedPerformance = performance(concert = concert)
 
       given(concertRepository.findById(request.concertId)).willReturn(Optional.of(concert))
-      given(performanceRepository.save(org.mockito.ArgumentMatchers.any(Performance::class.java)))
+      given(performanceRepository.save(any(Performance::class.java)))
         .willReturn(savedPerformance)
 
       val result = performanceService.create(request)
@@ -221,7 +222,7 @@ class PerformanceServiceTest {
       )
 
       given(concertRepository.findById(1L)).willReturn(Optional.of(concert))
-      given(performanceRepository.save(org.mockito.ArgumentMatchers.any(Performance::class.java)))
+      given(performanceRepository.save(any(Performance::class.java)))
         .willReturn(savedPerformance)
 
       val result = performanceService.create(request)

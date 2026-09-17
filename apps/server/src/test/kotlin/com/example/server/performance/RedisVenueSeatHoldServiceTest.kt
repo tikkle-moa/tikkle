@@ -4,6 +4,7 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.outbox.types.OutboxHoldActionResult
 import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.entity.Performance
@@ -11,6 +12,7 @@ import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus
+import com.example.server.support.any
 import com.example.server.venue.entity.Venue
 import com.example.server.venue.entity.VenueSeat
 import com.example.server.venue.repository.VenueSeatRepository
@@ -20,7 +22,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Answers
-import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyDouble
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.BDDMockito.given
@@ -37,6 +38,7 @@ import tools.jackson.databind.ObjectMapper
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.Optional
+import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class RedisVenueSeatHoldServiceTest {
@@ -393,18 +395,112 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
-  fun `결제 전환과 최종 해제 스크립트의 성공 및 충돌을 처리한다`() {
+  fun `Outbox Hold 해제 결과를 상태로 변환한다`() {
+    val eventId = UUID.fromString("f2d0a95a-bc20-4f1b-9ac6-7ac89a2e0b73")
+    mapOf(
+      0L to OutboxHoldActionResult.APPLIED,
+      1L to OutboxHoldActionResult.REPLACED,
+      2L to OutboxHoldActionResult.EXPIRED,
+      3L to OutboxHoldActionResult.ALREADY_APPLIED,
+    ).forEach { (result, expected) ->
+      executeResult = result
+
+      assertThat(
+        service.releaseVenueSeats(
+          holdId = HOLD_ID,
+          groupId = GROUP_ID,
+          performanceId = PERFORMANCE_ID,
+          venueSeatIds = listOf(101L),
+          eventId = eventId,
+        ),
+      ).isEqualTo(expected)
+    }
+  }
+
+  @Test
+  fun `Outbox Hold 해제 결과가 없거나 알 수 없으면 예외를 던진다`() {
+    executeResult = null
+
+    assertThrows<IllegalStateException> {
+      service.releaseVenueSeats(
+        holdId = HOLD_ID,
+        groupId = GROUP_ID,
+        performanceId = PERFORMANCE_ID,
+        venueSeatIds = listOf(101L),
+        eventId = UUID.randomUUID(),
+      )
+    }
+
+    executeResult = 4L
+
+    assertThrows<IllegalStateException> {
+      service.releaseVenueSeats(
+        holdId = HOLD_ID,
+        groupId = GROUP_ID,
+        performanceId = PERFORMANCE_ID,
+        venueSeatIds = listOf(101L),
+        eventId = UUID.randomUUID(),
+      )
+    }
+  }
+
+  @Test
+  fun `Outbox Hold 확정 결과를 상태로 변환한다`() {
+    mapOf(
+      0L to OutboxHoldActionResult.APPLIED,
+      1L to OutboxHoldActionResult.REPLACED,
+      2L to OutboxHoldActionResult.ALREADY_APPLIED,
+    ).forEach { (result, expected) ->
+      executeResult = result
+
+      assertThat(
+        service.finalizeVenueSeats(
+          holdId = HOLD_ID,
+          groupId = GROUP_ID,
+          performanceId = PERFORMANCE_ID,
+          venueSeatIds = listOf(101L),
+        ),
+      ).isEqualTo(expected)
+    }
+  }
+
+  @Test
+  fun `Outbox Hold 확정 결과가 없거나 알 수 없으면 예외를 던진다`() {
+    executeResult = null
+
+    assertThrows<IllegalStateException> {
+      service.finalizeVenueSeats(
+        holdId = HOLD_ID,
+        groupId = GROUP_ID,
+        performanceId = PERFORMANCE_ID,
+        venueSeatIds = listOf(101L),
+      )
+    }
+
+    executeResult = 3L
+
+    assertThrows<IllegalStateException> {
+      service.finalizeVenueSeats(
+        holdId = HOLD_ID,
+        groupId = GROUP_ID,
+        performanceId = PERFORMANCE_ID,
+        venueSeatIds = listOf(101L),
+      )
+    }
+  }
+
+  @Test
+  fun `결제 전환과 전체 해제 스크립트의 성공을 처리한다`() {
     val detail = VenueSeatHoldDetail(HOLD_ID, "$USER_ID:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
     executeResult = 0L
 
     assertThat(service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10))).hasSize(1)
-    assertThat(service.finalizeForPayment("$USER_ID:$PERFORMANCE_ID")).containsExactly(101L)
     assertThat(service.releaseAllVenueSeats("$USER_ID:$PERFORMANCE_ID")).containsExactly(101L)
   }
 
   @Test
-  fun `결제 전환과 최종 해제 스크립트 충돌은 CONFLICT로 반환한다`() {
+  fun `결제 전환과 전체 해제 스크립트 충돌은 CONFLICT로 반환한다`() {
     val detail = VenueSeatHoldDetail(HOLD_ID, "$USER_ID:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
     executeResult = 1L
@@ -412,11 +508,6 @@ class RedisVenueSeatHoldServiceTest {
     assertThat(
       assertThrows<CustomException> {
         service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10))
-      }.errorCode,
-    ).isEqualTo(ErrorCode.CONFLICT)
-    assertThat(
-      assertThrows<CustomException> {
-        service.finalizeForPayment("$USER_ID:$PERFORMANCE_ID")
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
     assertThat(
@@ -440,16 +531,11 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
-  fun `최종 확정과 전체 해제 스크립트가 결과 없이 끝나면 충돌을 반환한다`() {
+  fun `전체 해제 스크립트가 결과 없이 끝나면 충돌을 반환한다`() {
     val detail = VenueSeatHoldDetail(HOLD_ID, "$USER_ID:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
     executeResult = null
 
-    assertThat(
-      assertThrows<CustomException> {
-        service.finalizeForPayment("$USER_ID:$PERFORMANCE_ID")
-      }.errorCode,
-    ).isEqualTo(ErrorCode.CONFLICT)
     assertThat(
       assertThrows<CustomException> {
         service.releaseAllVenueSeats("$USER_ID:$PERFORMANCE_ID")

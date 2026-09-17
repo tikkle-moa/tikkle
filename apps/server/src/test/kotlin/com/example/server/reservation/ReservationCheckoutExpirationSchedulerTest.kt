@@ -3,11 +3,12 @@ package com.example.server.reservation
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
+import com.example.server.support.anyNonNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
+import org.mockito.BDDMockito.willThrow
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.mock
@@ -29,8 +30,8 @@ class ReservationCheckoutExpirationSchedulerTest {
   fun `만료된 결제 대기 예매가 없으면 만료 처리를 호출하지 않는다`() {
     given(
       reservationRepository.findAllByStatusAndPaymentExpiresAtBefore(
-        anyReservationStatus(),
-        anyLocalDateTime(),
+        anyNonNull(ReservationStatus::class.java, ReservationStatus.PAYMENT_PENDING),
+        anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       ),
     ).willReturn(emptyList())
 
@@ -46,8 +47,8 @@ class ReservationCheckoutExpirationSchedulerTest {
 
     given(
       reservationRepository.findAllByStatusAndPaymentExpiresAtBefore(
-        anyReservationStatus(),
-        anyLocalDateTime(),
+        anyNonNull(ReservationStatus::class.java, ReservationStatus.PAYMENT_PENDING),
+        anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
       ),
     ).willReturn(
       listOf(firstReservation, secondReservation),
@@ -63,18 +64,29 @@ class ReservationCheckoutExpirationSchedulerTest {
       .expireCheckout(SECOND_RESERVATION_ID)
   }
 
+  @Test
+  fun `한 예매의 만료 처리 실패가 다음 예매 처리를 막지 않는다`() {
+    val firstReservation = reservation(FIRST_RESERVATION_ID)
+    val secondReservation = reservation(SECOND_RESERVATION_ID)
+    given(
+      reservationRepository.findAllByStatusAndPaymentExpiresAtBefore(
+        anyNonNull(ReservationStatus::class.java, ReservationStatus.PAYMENT_PENDING),
+        anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+      ),
+    ).willReturn(listOf(firstReservation, secondReservation))
+    willThrow(IllegalStateException("redis failed"))
+      .given(reservationCheckoutService)
+      .expireCheckout(FIRST_RESERVATION_ID)
+
+    scheduler.expirePendingReservations()
+
+    then(reservationCheckoutService)
+      .should()
+      .expireCheckout(SECOND_RESERVATION_ID)
+  }
+
   private fun reservation(id: Long): Reservation = mock(Reservation::class.java).also {
     given(it.id).willReturn(id)
-  }
-
-  private fun anyReservationStatus(): ReservationStatus {
-    any(ReservationStatus::class.java)
-    return ReservationStatus.PAYMENT_PENDING
-  }
-
-  private fun anyLocalDateTime(): LocalDateTime {
-    any(LocalDateTime::class.java)
-    return LocalDateTime.MIN
   }
 
   companion object {

@@ -8,6 +8,7 @@ import com.example.server.auth.repository.OAuthAccountRepository
 import com.example.server.auth.repository.UserRepository
 import com.example.server.auth.types.OAuthProvider
 import com.example.server.auth.types.UserRole
+import com.example.server.support.any
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -136,7 +137,5 @@ class AuthTransactionServiceTest {
       assertNotNull(result)
       assertEquals(UserRole.USER, result.role)
     }
-
-    private fun <T> any(type: Class<T>): T = org.mockito.ArgumentMatchers.any(type)
   }
 }

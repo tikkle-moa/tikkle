@@ -2,6 +2,7 @@ package com.example.server.reservation
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.reservation.dto.ConfirmPaymentMessageData
 import com.example.server.reservation.entity.ReservationSeat
@@ -25,6 +26,7 @@ class ReservationPaymentConfirmationService(
   private val reservationSeatRepository: ReservationSeatRepository,
   private val venueSeatRepository: VenueSeatRepository,
   private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
+  private val outboxEventService: OutboxEventService,
 ) {
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   fun begin(userId: Long, paymentKey: String, orderId: String, amount: Int): PaymentConfirmationStart {
@@ -224,6 +226,13 @@ class ReservationPaymentConfirmationService(
       },
     )
 
+    holds.holdDetails.forEach { hold ->
+      outboxEventService.recordReservationConfirmed(
+        reservationId = reservation.id,
+        hold = hold,
+      )
+    }
+
     return PaymentConfirmationCompletion.Succeeded(
       result = ConfirmPaymentMessageData.from(reservation),
       holds = holds,
@@ -269,6 +278,13 @@ class ReservationPaymentConfirmationService(
 
     reservation.status = ReservationStatus.REFUNDED
 
+    holds?.holdDetails?.forEach { hold ->
+      outboxEventService.recordHoldReleased(
+        reservationId = reservation.id,
+        hold = hold,
+      )
+    }
+
     return holds
   }
 
@@ -313,6 +329,13 @@ class ReservationPaymentConfirmationService(
 
     reservation.status = ReservationStatus.FAILED
 
+    holds?.holdDetails?.forEach { hold ->
+      outboxEventService.recordHoldReleased(
+        reservationId = reservation.id,
+        hold = hold,
+      )
+    }
+
     return holds
   }
 
@@ -346,6 +369,7 @@ class ReservationPaymentConfirmationService(
       groupId = groupId,
       performanceId = activeHoldData.performanceId,
       venueSeatIds = venueSeatIds,
+      holdDetails = activeHoldData.holdDetails,
     )
   }
 }
