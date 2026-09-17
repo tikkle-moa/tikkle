@@ -50,6 +50,20 @@ class RedisVenueSeatHoldService(
     )
   }
 
+  fun getMyGroupHolds(userId: Long, performanceId: Long): List<VenueSeatHoldDetail> {
+    val groupId = getGroupId(userId, performanceId)
+
+    val heldSeatsJson = stringRedisTemplate.execute(
+      getMyHeldSeatsScript,
+      listOf(holdGroupKey(groupId)),
+      HOLD_DETAIL_KEY_PREFIX,
+    )
+
+    return objectMapper
+      .readValue(heldSeatsJson, Array<VenueSeatHoldDetail>::class.java)
+      .toList()
+  }
+
   @Transactional
   fun holdVenueSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): VenueSeatHoldDetail {
     validateVenueSeatIds(venueSeatIds)
@@ -338,20 +352,31 @@ class RedisVenueSeatHoldService(
     }
   }
 
-  private fun holdGroupKey(groupId: String) = "hold:group:$groupId"
-  private fun holdDetailKey(holdId: String) = "hold:detail:$holdId"
-  private fun holdVenueSeatKey(performanceId: Long, venueSeatId: Long) = "hold:venue-seat:$performanceId:$venueSeatId"
-  private fun finalizingVenueSeatKey(performanceId: Long, venueSeatId: Long) = "hold:venue-seat-finalizing:$performanceId:$venueSeatId"
-  private fun outboxHoldActionKey(eventId: UUID) = "hold:outbox-action:$eventId"
+  private fun holdGroupKey(groupId: String) = "$HOLD_GROUP_KEY_PREFIX$groupId"
+  private fun holdDetailKey(holdId: String) = "$HOLD_DETAIL_KEY_PREFIX$holdId"
+  private fun holdVenueSeatKey(performanceId: Long, venueSeatId: Long) = "$HOLD_VENUE_SEAT_KEY_PREFIX$performanceId:$venueSeatId"
+  private fun finalizingVenueSeatKey(performanceId: Long, venueSeatId: Long) = "$FINALIZING_VENUE_SEAT_KEY_PREFIX$performanceId:$venueSeatId"
+  private fun outboxHoldActionKey(eventId: UUID) = "$OUTBOX_HOLD_ACTION_KEY_PREFIX$eventId"
 
   private fun LocalDateTime.toEpochMillis(): Long = atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
   companion object {
     private val SEAT_HOLD_TTL = Duration.ofMinutes(5)
 
+    private const val HOLD_GROUP_KEY_PREFIX = "hold:group:"
+    private const val HOLD_DETAIL_KEY_PREFIX = "hold:detail:"
+    private const val HOLD_VENUE_SEAT_KEY_PREFIX = "hold:venue-seat:"
+    private const val FINALIZING_VENUE_SEAT_KEY_PREFIX = "hold:venue-seat-finalizing:"
+    private const val OUTBOX_HOLD_ACTION_KEY_PREFIX = "hold:outbox-action:"
+
     private val holdVenueSeatsScript = DefaultRedisScript<Long>().apply {
       setLocation(ClassPathResource("redis/hold-venue-seats.lua"))
       resultType = Long::class.java
+    }
+
+    private val getMyHeldSeatsScript = DefaultRedisScript<String>().apply {
+      setLocation(ClassPathResource("redis/get-my-held-seats.lua"))
+      resultType = String::class.java
     }
 
     private val releaseVenueSeatsScript = DefaultRedisScript<Long>().apply {
