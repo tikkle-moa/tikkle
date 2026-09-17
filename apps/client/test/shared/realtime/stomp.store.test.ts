@@ -1,11 +1,9 @@
-import type { Client } from "@stomp/stompjs";
-
 import type { RefreshResult } from "@shared/api/refresh-token.types";
-import type { createStompClient } from "@shared/realtime/stomp-client";
+import type StompClient from "@shared/realtime/stomp-client";
 import { STOMP_RETRY_DELAY_MS } from "@shared/realtime/stomp.constants";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
-type StompClientCallbacks = Parameters<typeof createStompClient>[0];
+type StompClientCallbacks = ConstructorParameters<typeof StompClient>[0];
 
 const { mockActivate, mockCreateStompClient, mockDeactivate, mockRefreshAccessToken, mockSubscribeAccessTokenRefresh, getRefreshListener } =
   vi.hoisted(() => {
@@ -29,13 +27,17 @@ vi.mock("@shared/api/refresh-token", () => ({
 }));
 
 vi.mock("@shared/realtime/stomp-client", () => ({
-  createStompClient: mockCreateStompClient,
+  default: class MockStompClient {
+    constructor(callbacks: StompClientCallbacks) {
+      return mockCreateStompClient(callbacks);
+    }
+  },
 }));
 
 const mockClient = {
   activate: mockActivate,
   deactivate: mockDeactivate,
-} as unknown as Client;
+} as unknown as StompClient;
 
 describe("useStompStore", () => {
   beforeEach(() => {
@@ -48,7 +50,7 @@ describe("useStompStore", () => {
     mockRefreshAccessToken.mockResolvedValue({ type: "success" });
 
     useStompStore.setState({
-      client: null,
+      stompClient: null,
       connectionStatus: "disconnected",
       sessionExpiredHandler: null,
     });
@@ -61,13 +63,13 @@ describe("useStompStore", () => {
     vi.restoreAllMocks();
   });
 
-  it("getClient 호출 전에는 STOMP 클라이언트를 생성하지 않는다", () => {
-    expect(useStompStore.getState().client).toBeNull();
+  it("getStompClient 호출 전에는 STOMP 클라이언트를 생성하지 않는다", () => {
+    expect(useStompStore.getState().stompClient).toBeNull();
     expect(mockCreateStompClient).not.toHaveBeenCalled();
   });
 
-  it("최초 getClient 호출 시 클라이언트를 생성하고 활성화한다", () => {
-    const client = useStompStore.getState().getClient();
+  it("최초 getStompClient 호출 시 클라이언트를 생성하고 활성화한다", () => {
+    const client = useStompStore.getState().getStompClient();
 
     expect(client).toBe(mockClient);
     expect(mockCreateStompClient).toHaveBeenCalledOnce();
@@ -76,8 +78,8 @@ describe("useStompStore", () => {
   });
 
   it("이미 생성된 클라이언트가 있으면 같은 인스턴스를 재사용한다", () => {
-    const firstClient = useStompStore.getState().getClient();
-    const secondClient = useStompStore.getState().getClient();
+    const firstClient = useStompStore.getState().getStompClient();
+    const secondClient = useStompStore.getState().getStompClient();
 
     expect(secondClient).toBe(firstClient);
     expect(mockCreateStompClient).toHaveBeenCalledOnce();
@@ -88,28 +90,28 @@ describe("useStompStore", () => {
     const firstClient = {
       activate: mockActivate,
       deactivate: mockDeactivate,
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     const secondClient = {
       activate: mockActivate,
       deactivate: mockDeactivate,
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     mockCreateStompClient.mockReturnValueOnce(firstClient).mockReturnValueOnce(secondClient);
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().reconnectAfterRefresh();
 
     expect(mockDeactivate).toHaveBeenCalledOnce();
     expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
     expect(mockActivate).toHaveBeenCalledTimes(2);
-    expect(useStompStore.getState().client).toBe(secondClient);
+    expect(useStompStore.getState().stompClient).toBe(secondClient);
     expect(useStompStore.getState().connectionStatus).toBe("connecting");
   });
 
   it("연결 콜백에 따라 연결 상태를 갱신한다", () => {
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const callbacks = mockCreateStompClient.mock.calls[0][0] as StompClientCallbacks;
 
@@ -125,17 +127,17 @@ describe("useStompStore", () => {
     const firstClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     const secondClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     const thirdClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     mockCreateStompClient
       .mockImplementationOnce((callbacks: StompClientCallbacks) => {
@@ -148,12 +150,12 @@ describe("useStompStore", () => {
       })
       .mockReturnValueOnce(thirdClient);
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     firstCallbacks.onWebSocketClose();
 
     expect(mockRefreshAccessToken).not.toHaveBeenCalled();
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
 
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 
@@ -166,11 +168,11 @@ describe("useStompStore", () => {
 
     expect(mockRefreshAccessToken).toHaveBeenCalledOnce();
     expect(mockCreateStompClient).toHaveBeenCalledTimes(3);
-    expect(useStompStore.getState().client).toBe(thirdClient);
+    expect(useStompStore.getState().stompClient).toBe(thirdClient);
   });
 
   it("토큰 갱신 성공 시 기존 연결을 해제하고 즉시 재연결한다", async () => {
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().recover();
 
@@ -186,7 +188,7 @@ describe("useStompStore", () => {
 
     mockRefreshAccessToken.mockResolvedValue({ type: "authentication-failed" });
     useStompStore.getState().setSessionExpiredHandler(sessionExpiredHandler);
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().recover();
 
@@ -201,7 +203,7 @@ describe("useStompStore", () => {
 
     mockRefreshAccessToken.mockResolvedValue({ type: "retryable-failed" });
     useStompStore.getState().setSessionExpiredHandler(sessionExpiredHandler);
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().recover();
 
@@ -216,7 +218,7 @@ describe("useStompStore", () => {
 
   it("일시적인 갱신 실패가 반복되면 재연결 대기 시간을 증가시킨다", async () => {
     mockRefreshAccessToken.mockResolvedValue({ type: "retryable-failed" });
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().recover();
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
@@ -241,13 +243,13 @@ describe("useStompStore", () => {
     mockDeactivate.mockRejectedValueOnce(disconnectError);
 
     useStompStore.getState().setSessionExpiredHandler(sessionExpiredHandler);
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await expect(useStompStore.getState().recover()).resolves.toBeUndefined();
 
     expect(console.error).toHaveBeenCalledWith("STOMP 인증 실패 후 연결 종료 실패:", disconnectError);
     expect(sessionExpiredHandler).toHaveBeenCalledOnce();
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
     expect(useStompStore.getState().connectionStatus).toBe("disconnected");
   });
 
@@ -261,7 +263,7 @@ describe("useStompStore", () => {
         }),
     );
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const firstRecovery = useStompStore.getState().recover();
     const secondRecovery = useStompStore.getState().recover();
@@ -276,12 +278,12 @@ describe("useStompStore", () => {
   });
 
   it("disconnect 시 클라이언트를 비활성화하고 상태를 초기화한다", async () => {
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().disconnect();
 
     expect(mockDeactivate).toHaveBeenCalledOnce();
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
     expect(useStompStore.getState().connectionStatus).toBe("disconnected");
   });
 
@@ -289,7 +291,7 @@ describe("useStompStore", () => {
     await useStompStore.getState().disconnect();
 
     expect(mockDeactivate).not.toHaveBeenCalled();
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
     expect(useStompStore.getState().connectionStatus).toBe("disconnected");
   });
 
@@ -310,7 +312,7 @@ describe("useStompStore", () => {
         }),
     );
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const recovery = useStompStore.getState().recover();
 
@@ -322,7 +324,7 @@ describe("useStompStore", () => {
 
     expect(mockDeactivate).toHaveBeenCalledOnce();
     expect(mockCreateStompClient).toHaveBeenCalledOnce();
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
   });
 
   it("토큰 갱신 후 연결 실패가 반복되어도 refresh 없이 backoff 재연결한다", async () => {
@@ -332,17 +334,17 @@ describe("useStompStore", () => {
     const secondClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     const thirdClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     const fourthClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     mockCreateStompClient
       .mockReturnValueOnce(mockClient)
@@ -356,7 +358,7 @@ describe("useStompStore", () => {
       })
       .mockReturnValueOnce(fourthClient);
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().recover();
 
@@ -391,17 +393,17 @@ describe("useStompStore", () => {
     const firstClient = {
       activate: mockActivate,
       deactivate: mockDeactivate,
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     const secondClient = {
       activate: mockActivate,
       deactivate: mockDeactivate,
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     const thirdClient = {
       activate: mockActivate,
       deactivate: mockDeactivate,
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     mockCreateStompClient.mockReturnValueOnce(firstClient).mockReturnValueOnce(secondClient).mockReturnValueOnce(thirdClient);
 
@@ -419,7 +421,7 @@ describe("useStompStore", () => {
           }),
       );
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const firstRecovery = useStompStore.getState().recover();
 
@@ -427,7 +429,7 @@ describe("useStompStore", () => {
 
     await useStompStore.getState().disconnect();
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const secondRecovery = useStompStore.getState().recover();
 
@@ -442,7 +444,7 @@ describe("useStompStore", () => {
     await firstRecovery;
 
     expect(mockRefreshAccessToken).toHaveBeenCalledTimes(2);
-    expect(useStompStore.getState().client).toBe(secondClient);
+    expect(useStompStore.getState().stompClient).toBe(secondClient);
 
     resolveSecondRefresh({ type: "success" });
 
@@ -450,23 +452,23 @@ describe("useStompStore", () => {
 
     expect(mockDeactivate).toHaveBeenCalledTimes(2);
     expect(mockCreateStompClient).toHaveBeenCalledTimes(3);
-    expect(useStompStore.getState().client).toBe(thirdClient);
+    expect(useStompStore.getState().stompClient).toBe(thirdClient);
   });
 
   it("교체된 이전 Client의 connect 콜백은 연결 상태를 변경하지 않는다", async () => {
     const firstClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     const secondClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     mockCreateStompClient.mockReturnValueOnce(firstClient).mockReturnValueOnce(secondClient);
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const firstCallbacks = mockCreateStompClient.mock.calls[0][0] as StompClientCallbacks;
 
@@ -476,7 +478,7 @@ describe("useStompStore", () => {
 
     firstCallbacks.onConnect();
 
-    expect(useStompStore.getState().client).toBe(secondClient);
+    expect(useStompStore.getState().stompClient).toBe(secondClient);
     expect(useStompStore.getState().connectionStatus).toBe("connecting");
 
     secondCallbacks.onConnect();
@@ -485,7 +487,7 @@ describe("useStompStore", () => {
   });
 
   it("해제된 이전 클라이언트의 종료 이벤트는 복구하지 않는다", async () => {
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const callbacks = mockCreateStompClient.mock.calls[0][0] as StompClientCallbacks;
 
@@ -504,19 +506,19 @@ describe("useStompStore", () => {
 
   it("Client 생성 중 lifecycle이 변경되면 재연결을 예약하지 않는다", async () => {
     mockCreateStompClient.mockReturnValueOnce(mockClient).mockImplementationOnce(() => {
-      // getClient() 내부에서 Client 생성 중 연결 해제가 발생한 상황
+      // getStompClient() 내부에서 Client 생성 중 연결 해제가 발생한 상황
       void useStompStore.getState().disconnect();
 
       throw new Error("client creation failed");
     });
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().reconnectAfterRefresh();
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 
     expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
   });
 
   it("Client 종료 실패 중 lifecycle이 변경되면 재연결하지 않는다", async () => {
@@ -529,7 +531,7 @@ describe("useStompStore", () => {
         }),
     );
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const reconnectPromise = useStompStore.getState().reconnectAfterRefresh();
 
@@ -546,7 +548,7 @@ describe("useStompStore", () => {
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 
     expect(mockCreateStompClient).toHaveBeenCalledOnce();
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
   });
 
   it("클라이언트가 없으면 재연결하지 않는다", async () => {
@@ -561,11 +563,11 @@ describe("useStompStore", () => {
       type: "retryable-failed",
     });
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
     await useStompStore.getState().recover();
 
     useStompStore.setState({
-      client: mockClient,
+      stompClient: mockClient,
       connectionStatus: "connecting",
     });
 
@@ -582,7 +584,7 @@ describe("useStompStore", () => {
       type: "retryable-failed",
     });
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     mockCreateStompClient.mockImplementationOnce(() => {
       // timer callback 내부에서 lifecycleVersion을 변경한다.
@@ -603,7 +605,7 @@ describe("useStompStore", () => {
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS * 2);
 
     expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
   });
 
   it("재연결 timer 실행 시 이미 Client가 있으면 중복 생성하지 않는다", async () => {
@@ -611,11 +613,11 @@ describe("useStompStore", () => {
       type: "retryable-failed",
     });
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
     await useStompStore.getState().recover();
 
     useStompStore.setState({
-      client: mockClient,
+      stompClient: mockClient,
       connectionStatus: "connecting",
     });
 
@@ -629,7 +631,7 @@ describe("useStompStore", () => {
       type: "retryable-failed",
     });
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
     await useStompStore.getState().recover();
 
     await useStompStore.getState().disconnect();
@@ -641,10 +643,10 @@ describe("useStompStore", () => {
   it("기존 Client 종료 실패 시 재연결을 예약한다", async () => {
     mockDeactivate.mockRejectedValueOnce(new Error("deactivate failed"));
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
     await useStompStore.getState().reconnectAfterRefresh();
 
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
     expect(useStompStore.getState().connectionStatus).toBe("disconnected");
 
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
@@ -662,7 +664,7 @@ describe("useStompStore", () => {
         }),
     );
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const reconnectPromise = useStompStore.getState().reconnectAfterRefresh();
 
@@ -682,7 +684,7 @@ describe("useStompStore", () => {
     const recoveredClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     mockCreateStompClient
       .mockReturnValueOnce(mockClient)
@@ -691,15 +693,15 @@ describe("useStompStore", () => {
       })
       .mockReturnValueOnce(recoveredClient);
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
     await useStompStore.getState().reconnectAfterRefresh();
 
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
 
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 
     expect(mockCreateStompClient).toHaveBeenCalledTimes(3);
-    expect(useStompStore.getState().client).toBe(recoveredClient);
+    expect(useStompStore.getState().stompClient).toBe(recoveredClient);
     expect(recoveredClient.activate).toHaveBeenCalledOnce();
   });
 
@@ -707,7 +709,7 @@ describe("useStompStore", () => {
     const recoveredClient = {
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Client;
+    } as unknown as StompClient;
 
     mockRefreshAccessToken.mockResolvedValue({
       type: "retryable-failed",
@@ -720,7 +722,7 @@ describe("useStompStore", () => {
       })
       .mockReturnValueOnce(recoveredClient);
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().recover();
 
@@ -728,14 +730,14 @@ describe("useStompStore", () => {
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 
     expect(mockCreateStompClient).toHaveBeenCalledTimes(2);
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
     expect(console.error).toHaveBeenCalledWith("STOMP Client 재연결 실패:", expect.any(Error));
 
     // 실패 후 증가한 backoff timer 실행
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS * 2);
 
     expect(mockCreateStompClient).toHaveBeenCalledTimes(3);
-    expect(useStompStore.getState().client).toBe(recoveredClient);
+    expect(useStompStore.getState().stompClient).toBe(recoveredClient);
     expect(recoveredClient.activate).toHaveBeenCalledOnce();
   });
 
@@ -753,7 +755,7 @@ describe("useStompStore", () => {
         }),
     );
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const recoveryPromise = useStompStore.getState().recover();
 
@@ -789,7 +791,7 @@ describe("useStompStore", () => {
 
     mockRefreshAccessToken.mockRejectedValueOnce(refreshError);
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().recover();
 
@@ -811,7 +813,7 @@ describe("useStompStore", () => {
         }),
     );
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     const recovery = useStompStore.getState().recover();
 
@@ -825,7 +827,7 @@ describe("useStompStore", () => {
 
     expect(console.error).toHaveBeenCalledWith("STOMP recover 실패:", refreshError);
     expect(mockCreateStompClient).toHaveBeenCalledOnce();
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
   });
 
   it("재시도 가능한 복구 중 Client 종료가 실패해도 backoff 재연결을 예약한다", async () => {
@@ -836,12 +838,12 @@ describe("useStompStore", () => {
     });
     mockDeactivate.mockRejectedValueOnce(deactivateError);
 
-    useStompStore.getState().getClient();
+    useStompStore.getState().getStompClient();
 
     await useStompStore.getState().recover();
 
     expect(console.error).toHaveBeenCalledWith("STOMP recover 종료 실패:", deactivateError);
-    expect(useStompStore.getState().client).toBeNull();
+    expect(useStompStore.getState().stompClient).toBeNull();
 
     await vi.advanceTimersByTimeAsync(STOMP_RETRY_DELAY_MS);
 

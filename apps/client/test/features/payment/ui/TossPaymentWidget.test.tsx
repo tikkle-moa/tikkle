@@ -18,6 +18,7 @@ const order = {
   concertTitle: "2026 Summer Festival",
   performanceName: "2026 Summer Festival 1회차",
   performanceStartsAt: "2026-08-20T19:00:00",
+  posterUrl: null,
   venueName: "올림픽공원 KSPO DOME",
   seats: [
     { venueSeatId: 101, sectionName: "A구역", seatLabel: "A구역 1열 1번", price: 150_000 },
