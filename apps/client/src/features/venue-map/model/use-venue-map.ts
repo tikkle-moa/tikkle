@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import type { VenueSeatResponse } from "@entities/venue";
 
 import { useVenueMapSelection } from "./use-venue-map-selection";
@@ -7,9 +9,13 @@ interface UseVenueMapParams {
   width: number;
   height: number;
   venueSeats?: VenueSeatResponse[];
+  trackDragging?: boolean;
+  directDragRendering?: boolean;
 }
 
-export const useVenueMap = ({ width, height, venueSeats }: UseVenueMapParams) => ({
-  ...useVenueMapSelection(venueSeats),
-  ...useVenueMapViewport({ width, height }),
-});
+export const useVenueMap = ({ width, height, venueSeats, trackDragging, directDragRendering }: UseVenueMapParams) => {
+  const selection = useVenueMapSelection(venueSeats);
+  const viewport = useVenueMapViewport({ width, height, trackDragging, directDragRendering });
+
+  return useMemo(() => ({ ...selection, ...viewport }), [selection, viewport]);
+};
