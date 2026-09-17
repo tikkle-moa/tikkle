@@ -1,8 +1,13 @@
 package com.example.server.config
 
 import io.github.springwolf.core.asyncapi.components.postprocessors.SchemasPostProcessor
+import io.github.springwolf.core.asyncapi.schemas.ModelConvertersProvider
+import io.github.springwolf.core.asyncapi.schemas.converters.SchemaTitleModelConverter
+import io.github.springwolf.core.configuration.properties.SpringwolfConfigProperties
+import io.swagger.v3.core.converter.ModelConverter
 import io.swagger.v3.oas.models.media.Schema
 import org.openapitools.jackson.nullable.JsonNullable
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.context.annotation.Configuration
@@ -18,6 +23,18 @@ class AsyncApiConfig {
   }
 
   private val schemaClasses by lazy { findSchemaClasses() }
+
+  @Bean
+  fun springwolfModelConvertersProvider(
+    properties: SpringwolfConfigProperties,
+    @Qualifier("jsonNullableModelConverter") jsonNullableModelConverter: ModelConverter,
+  ): ModelConvertersProvider = ModelConvertersProvider(
+    properties,
+    listOf(
+      SchemaTitleModelConverter(),
+      jsonNullableModelConverter,
+    ),
+  )
 
   private fun findSchemaClasses(): Map<String, KClass<*>> {
     val scanner = ClassPathScanningCandidateComponentProvider(false).apply {
