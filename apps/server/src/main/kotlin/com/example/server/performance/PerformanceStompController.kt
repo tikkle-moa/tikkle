@@ -3,6 +3,8 @@ package com.example.server.performance
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.dto.GetMyGroupHoldsCommand
+import com.example.server.performance.dto.GetMyGroupHoldsMessage
 import com.example.server.performance.dto.HoldVenueSeatsCommand
 import com.example.server.performance.dto.HoldVenueSeatsMessage
 import com.example.server.performance.dto.PerformanceSeatStatusCommand
@@ -32,6 +34,25 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
     val result = redisVenueSeatHoldService.getSeatStatus(performanceId)
 
     return PerformanceSeatStatusMessage(
+      requestId = command.requestId,
+      data = result,
+    )
+  }
+
+  @MessageMapping("/{performanceId}/get-my-group-holds")
+  @SendToUser(
+    value = ["/queue/performances/{performanceId}/get-my-group-holds"],
+    broadcast = false,
+  )
+  fun getMyGroupHolds(
+    @DestinationVariable("performanceId") performanceId: Long,
+    @Payload @Valid command: GetMyGroupHoldsCommand,
+    authentication: Authentication,
+  ): GetMyGroupHoldsMessage {
+    val user = loginUser(authentication)
+    val result = redisVenueSeatHoldService.getMyGroupHolds(user.userId, performanceId)
+
+    return GetMyGroupHoldsMessage(
       requestId = command.requestId,
       data = result,
     )
