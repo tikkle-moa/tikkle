@@ -4,8 +4,8 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.outbox.types.OutboxHoldActionResult
 import com.example.server.performance.dto.ActiveHoldData
-import com.example.server.performance.dto.HeldSeat
 import com.example.server.performance.dto.HoldVenueSeatEntry
+import com.example.server.performance.dto.PerformanceHeldSeatsEventData
 import com.example.server.performance.dto.PerformanceSeatStatusMessageData
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.repository.PerformanceRepository
@@ -28,6 +28,7 @@ import java.util.UUID
 
 @Service
 class RedisVenueSeatHoldService(
+  private val performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher,
   private val performanceRepository: PerformanceRepository,
   private val venueSeatRepository: VenueSeatRepository,
   private val reservationSeatRepository: ReservationSeatRepository,
@@ -99,7 +100,7 @@ class RedisVenueSeatHoldService(
     )
 
     val held = stringRedisTemplate.execute(
-      holdVenueSeatsScript,
+      holdSeatsScript,
       keys,
       holdDetail.holdId,
       holdDetail.expiresAt.toEpochMillis().toString(),
@@ -111,6 +112,12 @@ class RedisVenueSeatHoldService(
       throw CustomException(ErrorCode.CONFLICT, "이미 점유된 좌석이 포함되어 있습니다.")
     }
 
+    performanceVenueSeatStompPublisher.publishHeldSeats(
+      performanceId,
+      holdDetail.venueSeatIds.map {
+        PerformanceHeldSeatsEventData.HeldSeat(id = it, expiresAt = holdDetail.expiresAt)
+      },
+    )
     return holdDetail
   }
 
@@ -153,7 +160,7 @@ class RedisVenueSeatHoldService(
       listOf(holdGroupKey(groupId))
 
     val released = stringRedisTemplate.execute(
-      releaseVenueSeatsScript,
+      releaseSeatsScript,
       keys,
       venueSeatKeys.size.toString(),
       emptyHoldDetails.size.toString(),
@@ -168,6 +175,7 @@ class RedisVenueSeatHoldService(
       throw CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 해제할 수 없습니다.")
     }
 
+    performanceVenueSeatStompPublisher.publishReleasedSeats(performanceId, venueSeatIds)
     return venueSeatIds
   }
 
@@ -219,7 +227,10 @@ class RedisVenueSeatHoldService(
       throw CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 해제할 수 없습니다.")
     }
 
-    return activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
+    val venueSeatIds = activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
+    performanceVenueSeatStompPublisher.publishReleasedSeats(activeHoldData.performanceId, venueSeatIds)
+
+    return venueSeatIds
   }
 
   fun releaseVenueSeats(holdId: String, groupId: String, performanceId: Long, venueSeatIds: List<Long>, eventId: UUID): OutboxHoldActionResult {
@@ -370,18 +381,18 @@ class RedisVenueSeatHoldService(
     private const val FINALIZING_VENUE_SEAT_KEY_PREFIX = "hold:venue-seat-finalizing:"
     private const val OUTBOX_HOLD_ACTION_KEY_PREFIX = "hold:outbox-action:"
 
-    private val holdVenueSeatsScript = DefaultRedisScript<Long>().apply {
-      setLocation(ClassPathResource("redis/hold-venue-seats.lua"))
-      resultType = Long::class.java
-    }
-
     private val getMyGroupHoldsScript = DefaultRedisScript<String>().apply {
       setLocation(ClassPathResource("redis/get-my-group-holds.lua"))
       resultType = String::class.java
     }
 
-    private val releaseVenueSeatsScript = DefaultRedisScript<Long>().apply {
-      setLocation(ClassPathResource("redis/release-venue-seats.lua"))
+    private val holdSeatsScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/hold-seats.lua"))
+      resultType = Long::class.java
+    }
+
+    private val releaseSeatsScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/release-seats.lua"))
       resultType = Long::class.java
     }
 
