@@ -54,13 +54,13 @@ class OutboxEventServiceTest {
     val hold = hold()
     given(objectMapper.writeValueAsString(any<Any>())).willReturn(PAYLOAD)
 
-    service.recordHoldReleased(RESERVATION_ID, hold)
+    service.recordReleasedSeats(RESERVATION_ID, hold)
 
     val captor = ArgumentCaptor.forClass(OutboxEvent::class.java)
     then(outboxEventRepository).should().save(captor.capture())
     val event = captor.value
-    assertThat(event.eventKey).isEqualTo("reservation:$RESERVATION_ID:hold-released:${hold.holdId}")
-    assertThat(event.eventType).isEqualTo(OutboxEventType.HOLD_RELEASED)
+    assertThat(event.eventKey).isEqualTo("reservation:$RESERVATION_ID:released-seats:${hold.holdId}")
+    assertThat(event.eventType).isEqualTo(OutboxEventType.RELEASED_SEATS)
     assertThat(event.status).isEqualTo(OutboxEventStatus.PENDING)
     assertThat(event.payload).isEqualTo(PAYLOAD)
   }
@@ -68,11 +68,11 @@ class OutboxEventServiceTest {
   @Test
   fun `처리 중 lease가 만료된 이벤트를 다시 점유하고 시도 횟수를 증가시킨다`() {
     val event = OutboxEvent(
-      eventKey = "reservation:$RESERVATION_ID:hold-released:${hold().holdId}",
+      eventKey = "reservation:$RESERVATION_ID:released-seats:${hold().holdId}",
       aggregateType = "RESERVATION",
       aggregateId = RESERVATION_ID,
       performanceId = PERFORMANCE_ID,
-      eventType = com.example.server.outbox.types.OutboxEventType.HOLD_RELEASED,
+      eventType = com.example.server.outbox.types.OutboxEventType.RELEASED_SEATS,
       payload = PAYLOAD,
       status = OutboxEventStatus.PROCESSING,
       attemptCount = 1,

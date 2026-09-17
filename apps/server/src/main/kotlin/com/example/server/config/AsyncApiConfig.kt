@@ -8,6 +8,7 @@ import io.swagger.v3.core.converter.ModelConverter
 import io.swagger.v3.oas.models.media.Schema
 import org.openapitools.jackson.nullable.JsonNullable
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.context.annotation.Configuration
@@ -17,6 +18,12 @@ import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(
+  prefix = "springwolf",
+  name = ["enabled"],
+  havingValue = "true",
+  matchIfMissing = true,
+)
 class AsyncApiConfig {
   private companion object {
     const val BASE_PACKAGE = "com.example.server"

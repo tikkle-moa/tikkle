@@ -196,7 +196,9 @@ class ReservationCheckoutServiceTest {
     val result = service.cancelCheckout(USER_ID, RESERVATION_ID)
 
     assertThat(result.status).isEqualTo(ReservationStatus.CANCELLED)
-    then(outboxEventService).should().recordHoldReleased(RESERVATION_ID, active.holdDetails.single())
+    then(outboxEventService).should().recordReleasedSeats(RESERVATION_ID, active.holdDetails.single())
+    then(redisVenueSeatHoldService).should().findActiveHoldDataByGroupId(GROUP_ID)
+    then(redisVenueSeatHoldService).shouldHaveNoMoreInteractions()
   }
 
   @Test
@@ -219,7 +221,7 @@ class ReservationCheckoutServiceTest {
     service.expireCheckout(RESERVATION_ID)
 
     assertThat(reservation.status).isEqualTo(ReservationStatus.EXPIRED)
-    then(outboxEventService).should().recordHoldReleased(RESERVATION_ID, active.holdDetails.single())
+    then(outboxEventService).should().recordReleasedSeats(RESERVATION_ID, active.holdDetails.single())
   }
 
   @Test

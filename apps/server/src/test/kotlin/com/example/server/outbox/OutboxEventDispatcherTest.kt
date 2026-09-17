@@ -71,7 +71,7 @@ class OutboxEventDispatcherTest {
 
   @Test
   fun `좌석 후처리 실패 시 재시도 상태를 기록한다`() {
-    val event = event(OutboxEventType.HOLD_RELEASED)
+    val event = event(OutboxEventType.RELEASED_SEATS)
     val payload = payload()
     val failure = IllegalStateException("redis failed")
     given(outboxEventService.claimNext(PROPERTIES.leaseMillis)).willReturn(event, null)
