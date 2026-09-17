@@ -90,13 +90,13 @@ class OutboxEventDispatcher(
         }
 
         performanceVenueSeatStompPublisher.publishReservationConfirmed(
-          eventId = eventId,
           performanceId = payload.performanceId,
           venueSeatIds = payload.seatIds,
+          eventId = eventId,
         )
       }
 
-      OutboxEventType.HOLD_RELEASED -> {
+      OutboxEventType.RELEASED_SEATS -> {
         val result = redisVenueSeatHoldService.releaseVenueSeats(
           holdId = payload.holdId,
           groupId = payload.groupId,
@@ -108,10 +108,10 @@ class OutboxEventDispatcher(
           result == OutboxHoldActionResult.APPLIED ||
           result == OutboxHoldActionResult.ALREADY_APPLIED
         ) {
-          performanceVenueSeatStompPublisher.publishHoldReleased(
-            eventId = eventId,
+          performanceVenueSeatStompPublisher.publishReleasedSeats(
             performanceId = payload.performanceId,
             venueSeatIds = payload.seatIds,
+            eventId = eventId,
           )
         }
       }

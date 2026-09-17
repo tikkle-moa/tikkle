@@ -148,7 +148,7 @@ class ReservationCheckoutService(
       ReservationStatus.EXPIRED
     }
 
-    recordHoldReleasedEvents(reservation)
+    recordReleasedSeatsEvents(reservation)
 
     return CancelCheckoutMessageData.from(reservation)
   }
@@ -167,7 +167,7 @@ class ReservationCheckoutService(
 
     reservation.status = ReservationStatus.EXPIRED
 
-    recordHoldReleasedEvents(reservation)
+    recordReleasedSeatsEvents(reservation)
   }
 
   private fun existingCheckout(reservation: Reservation, groupId: String): StartCheckoutMessageData {
@@ -182,7 +182,7 @@ class ReservationCheckoutService(
     return StartCheckoutMessageData.from(reservation)
   }
 
-  private fun recordHoldReleasedEvents(reservation: Reservation) {
+  private fun recordReleasedSeatsEvents(reservation: Reservation) {
     val activeHoldData = try {
       redisVenueSeatHoldService.findActiveHoldDataByGroupId(reservation.groupId)
     } catch (exception: CustomException) {
@@ -191,7 +191,7 @@ class ReservationCheckoutService(
     }
 
     activeHoldData.holdDetails.forEach { hold ->
-      outboxEventService.recordHoldReleased(
+      outboxEventService.recordReleasedSeats(
         reservationId = reservation.id,
         hold = hold,
       )

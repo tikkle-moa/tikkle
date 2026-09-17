@@ -279,7 +279,7 @@ class ReservationPaymentConfirmationService(
     reservation.status = ReservationStatus.REFUNDED
 
     holds?.holdDetails?.forEach { hold ->
-      outboxEventService.recordHoldReleased(
+      outboxEventService.recordReleasedSeats(
         reservationId = reservation.id,
         hold = hold,
       )
@@ -330,7 +330,7 @@ class ReservationPaymentConfirmationService(
     reservation.status = ReservationStatus.FAILED
 
     holds?.holdDetails?.forEach { hold ->
-      outboxEventService.recordHoldReleased(
+      outboxEventService.recordReleasedSeats(
         reservationId = reservation.id,
         hold = hold,
       )
