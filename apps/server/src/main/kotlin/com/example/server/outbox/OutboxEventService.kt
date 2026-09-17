@@ -27,12 +27,12 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
   }
 
   @Transactional(propagation = Propagation.MANDATORY)
-  fun recordHoldReleased(reservationId: Long, hold: VenueSeatHoldDetail) {
+  fun recordReleasedSeats(reservationId: Long, hold: VenueSeatHoldDetail) {
     record(
       reservationId = reservationId,
       hold = hold,
-      eventType = OutboxEventType.HOLD_RELEASED,
-      eventKey = "reservation:$reservationId:hold-released:${hold.holdId}",
+      eventType = OutboxEventType.RELEASED_SEATS,
+      eventKey = "reservation:$reservationId:released-seats:${hold.holdId}",
     )
   }
 

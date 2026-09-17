@@ -89,6 +89,13 @@ class SpringwolfResponseCustomizer(
     val channels = asyncAPI.channels ?: return
     val operations = asyncAPI.operations ?: return
 
+    channels.values
+      .firstOrNull { it.address == "/performances" }
+      ?.also { channel -> channel.messages = channel.messages?.minus("Authentication") }
+    operations.values.forEach { operation ->
+      operation.messages = operation.messages?.filterNot { it.ref.endsWith("/Authentication") }
+    }
+
     responseMessagesByOperationId.forEach { (operationId, responseMessage) ->
       val operation = operations[operationId] ?: return@forEach
       val channel = channels[responseMessage.channelId] ?: return@forEach

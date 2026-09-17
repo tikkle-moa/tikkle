@@ -3,4 +3,10 @@ package com.example.server.global.stomp
 import java.time.OffsetDateTime
 import java.util.UUID
 
-data class StompEvent<T>(val eventId: UUID, val version: Long, val occurredAt: OffsetDateTime, val type: String, val data: T)
+interface StompEvent<TType, TData> {
+  val eventId: UUID
+  val version: Long
+  val occurredAt: OffsetDateTime
+  val type: TType
+  val data: TData
+}

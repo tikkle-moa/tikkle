@@ -356,7 +356,7 @@ class ReservationPaymentConfirmationServiceTest {
 
     assertThat(result).isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L), active.holdDetails))
     assertThat(reservation.status).isEqualTo(ReservationStatus.REFUNDED)
-    then(outboxEventService).should().recordHoldReleased(RESERVATION_ID, active.holdDetails.single())
+    then(outboxEventService).should().recordReleasedSeats(RESERVATION_ID, active.holdDetails.single())
   }
 
   @Test
@@ -370,7 +370,7 @@ class ReservationPaymentConfirmationServiceTest {
 
     assertThat(result).isEqualTo(ActiveHoldsSnapshot(GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L), active.holdDetails))
     assertThat(reservation.status).isEqualTo(ReservationStatus.FAILED)
-    then(outboxEventService).should().recordHoldReleased(RESERVATION_ID, active.holdDetails.single())
+    then(outboxEventService).should().recordReleasedSeats(RESERVATION_ID, active.holdDetails.single())
   }
 
   @Test

@@ -2,12 +2,16 @@ package com.example.server.performance
 
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
-import com.example.server.performance.dto.HeldSeat
+import com.example.server.global.exception.CustomException
+import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.dto.GetMyGroupHoldsCommand
+import com.example.server.performance.dto.GetMyGroupHoldsMessage
 import com.example.server.performance.dto.HoldVenueSeatsCommand
 import com.example.server.performance.dto.HoldVenueSeatsMessage
 import com.example.server.performance.dto.PerformanceSeatStatusCommand
 import com.example.server.performance.dto.PerformanceSeatStatusMessage
 import com.example.server.performance.dto.PerformanceSeatStatusMessageData
+import com.example.server.performance.dto.PerformanceSeatStatusMessageData.HeldSeat
 import com.example.server.performance.dto.ReleaseVenueSeatsCommand
 import com.example.server.performance.dto.ReleaseVenueSeatsMessage
 import com.example.server.performance.dto.VenueSeatHoldDetail
@@ -15,6 +19,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
@@ -46,7 +51,7 @@ class PerformanceStompControllerTest {
       val command = PerformanceSeatStatusCommand(REQUEST_ID)
       val result = PerformanceSeatStatusMessageData(
         serverTime = LocalDateTime.of(2026, 9, 10, 12, 0),
-        bookedSeats = listOf(1L),
+        bookedSeatIds = listOf(1L),
         heldSeats = listOf(
           HeldSeat(
             id = 2L,
@@ -98,6 +103,75 @@ class PerformanceStompControllerTest {
   }
 
   @Nested
+  @DisplayName("GET_MY_HELD_SEATS")
+  inner class GetMyHeldSeats {
+    @Test
+    fun `인증 사용자의 Hold 좌석을 조회해 개인 메시지로 반환한다`() {
+      val command = GetMyGroupHoldsCommand(REQUEST_ID)
+      val heldSeats = listOf(
+        VenueSeatHoldDetail(
+          holdId = "hold-1",
+          groupId = "$USER_ID:$PERFORMANCE_ID",
+          performanceId = PERFORMANCE_ID,
+          venueSeatIds = SEAT_IDS,
+          expiresAt = LocalDateTime.of(2026, 9, 10, 12, 5),
+        ),
+      )
+      given(authentication.principal).willReturn(LoginUserResult(USER_ID, UserRole.USER))
+      given(redisVenueSeatHoldService.getMyGroupHolds(USER_ID, PERFORMANCE_ID)).willReturn(heldSeats)
+
+      val response = controller.getMyGroupHolds(PERFORMANCE_ID, command, authentication)
+
+      assertThat(response).isEqualTo(
+        GetMyGroupHoldsMessage(
+          requestId = REQUEST_ID,
+          data = heldSeats,
+        ),
+      )
+      then(redisVenueSeatHoldService).should().getMyGroupHolds(USER_ID, PERFORMANCE_ID)
+    }
+
+    @Test
+    fun `내 Hold 조회 destination과 개인 응답 queue를 사용한다`() {
+      val method = PerformanceStompController::class.java.getDeclaredMethod(
+        "getMyGroupHolds",
+        Long::class.javaPrimitiveType,
+        GetMyGroupHoldsCommand::class.java,
+        Authentication::class.java,
+      )
+
+      assertThat(method.getAnnotation(MessageMapping::class.java).value)
+        .containsExactly("/{performanceId}/get-my-group-holds")
+      val sendToUser = requireNotNull(method.getAnnotation(SendToUser::class.java))
+      assertThat(sendToUser.value).containsExactly("/queue/performances/{performanceId}/get-my-group-holds")
+      assertThat(sendToUser.broadcast).isFalse()
+    }
+  }
+
+  @Test
+  fun `로그인 사용자가 아니면 개인 좌석 명령을 모두 거부한다`() {
+    given(authentication.principal).willReturn("anonymousUser")
+
+    assertThat(
+      assertThrows<CustomException> {
+        controller.getMyGroupHolds(PERFORMANCE_ID, GetMyGroupHoldsCommand(REQUEST_ID), authentication)
+      },
+    ).extracting(CustomException::errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
+    assertThat(
+      assertThrows<CustomException> {
+        controller.holdSeats(PERFORMANCE_ID, HoldVenueSeatsCommand(REQUEST_ID, SEAT_IDS), authentication)
+      },
+    ).extracting(CustomException::errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
+    assertThat(
+      assertThrows<CustomException> {
+        controller.releaseSeats(PERFORMANCE_ID, ReleaseVenueSeatsCommand(REQUEST_ID, SEAT_IDS), authentication)
+      },
+    ).extracting(CustomException::errorCode).isEqualTo(ErrorCode.UNAUTHORIZED)
+
+    then(redisVenueSeatHoldService).shouldHaveNoInteractions()
+  }
+
+  @Nested
   @DisplayName("HOLD_SEATS")
   inner class HoldSeats {
     @Test
@@ -118,14 +192,14 @@ class PerformanceStompControllerTest {
         .willReturn(LoginUserResult(USER_ID, UserRole.USER))
 
       given(
-        redisVenueSeatHoldService.holdVenueSeats(
+        redisVenueSeatHoldService.holdSeats(
           USER_ID,
           PERFORMANCE_ID,
           SEAT_IDS,
         ),
       ).willReturn(result)
 
-      val response = controller.hold(
+      val response = controller.holdSeats(
         performanceId = PERFORMANCE_ID,
         command = command,
         authentication = authentication,
@@ -136,13 +210,13 @@ class PerformanceStompControllerTest {
 
       then(redisVenueSeatHoldService)
         .should()
-        .holdVenueSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS)
+        .holdSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS)
     }
 
     @Test
     fun `좌석 점유 destination과 개인 응답 queue를 사용한다`() {
       val method = PerformanceStompController::class.java.getDeclaredMethod(
-        "hold",
+        "holdSeats",
         Long::class.javaPrimitiveType,
         HoldVenueSeatsCommand::class.java,
         Authentication::class.java,
@@ -179,14 +253,14 @@ class PerformanceStompControllerTest {
         .willReturn(LoginUserResult(USER_ID, UserRole.USER))
 
       given(
-        redisVenueSeatHoldService.releaseVenueSeats(
+        redisVenueSeatHoldService.releaseSeats(
           USER_ID,
           PERFORMANCE_ID,
           SEAT_IDS,
         ),
       ).willReturn(SEAT_IDS)
 
-      val response = controller.release(
+      val response = controller.releaseSeats(
         performanceId = PERFORMANCE_ID,
         command = command,
         authentication = authentication,
@@ -197,13 +271,13 @@ class PerformanceStompControllerTest {
 
       then(redisVenueSeatHoldService)
         .should()
-        .releaseVenueSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS)
+        .releaseSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS)
     }
 
     @Test
     fun `좌석 해제 destination과 개인 응답 queue를 사용한다`() {
       val method = PerformanceStompController::class.java.getDeclaredMethod(
-        "release",
+        "releaseSeats",
         Long::class.javaPrimitiveType,
         ReleaseVenueSeatsCommand::class.java,
         Authentication::class.java,

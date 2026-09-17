@@ -1,5 +1,6 @@
 package com.example.server.performance
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
@@ -7,9 +8,11 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.mockingDetails
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.data.redis.connection.DefaultMessage
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class RedisVenueSeatHoldExpirationListenerTest {
@@ -21,10 +24,10 @@ class RedisVenueSeatHoldExpirationListenerTest {
   fun `만료된 공연장 좌석 Hold 키를 해제 이벤트로 발행한다`() {
     listener.onMessage(message("hold:venue-seat:10:101"), null)
 
-    then(performanceVenueSeatStompPublisher).should().publishHoldReleased(
-      performanceId = 10L,
-      venueSeatIds = listOf(101L),
-    )
+    val invocation = mockingDetails(performanceVenueSeatStompPublisher).invocations.single()
+    assertThat(invocation.arguments[0]).isEqualTo(10L)
+    assertThat(invocation.arguments[1]).isEqualTo(listOf(101L))
+    assertThat(invocation.arguments[2]).isInstanceOf(UUID::class.java)
   }
 
   @ParameterizedTest

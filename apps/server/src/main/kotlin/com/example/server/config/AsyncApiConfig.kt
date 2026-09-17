@@ -1,8 +1,14 @@
 package com.example.server.config
 
 import io.github.springwolf.core.asyncapi.components.postprocessors.SchemasPostProcessor
+import io.github.springwolf.core.asyncapi.schemas.ModelConvertersProvider
+import io.github.springwolf.core.asyncapi.schemas.converters.SchemaTitleModelConverter
+import io.github.springwolf.core.configuration.properties.SpringwolfConfigProperties
+import io.swagger.v3.core.converter.ModelConverter
 import io.swagger.v3.oas.models.media.Schema
 import org.openapitools.jackson.nullable.JsonNullable
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.context.annotation.Configuration
@@ -12,12 +18,30 @@ import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(
+  prefix = "springwolf",
+  name = ["enabled"],
+  havingValue = "true",
+  matchIfMissing = true,
+)
 class AsyncApiConfig {
   private companion object {
     const val BASE_PACKAGE = "com.example.server"
   }
 
   private val schemaClasses by lazy { findSchemaClasses() }
+
+  @Bean
+  fun springwolfModelConvertersProvider(
+    properties: SpringwolfConfigProperties,
+    @Qualifier("jsonNullableModelConverter") jsonNullableModelConverter: ModelConverter,
+  ): ModelConvertersProvider = ModelConvertersProvider(
+    properties,
+    listOf(
+      SchemaTitleModelConverter(),
+      jsonNullableModelConverter,
+    ),
+  )
 
   private fun findSchemaClasses(): Map<String, KClass<*>> {
     val scanner = ClassPathScanningCandidateComponentProvider(false).apply {

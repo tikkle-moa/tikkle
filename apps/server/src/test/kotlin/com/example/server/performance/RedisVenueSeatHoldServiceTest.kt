@@ -5,7 +5,7 @@ import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.outbox.types.OutboxHoldActionResult
-import com.example.server.performance.dto.HeldSeat
+import com.example.server.performance.dto.PerformanceSeatStatusMessageData.HeldSeat
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
@@ -42,6 +42,8 @@ import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class RedisVenueSeatHoldServiceTest {
+  @Mock lateinit var performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher
+
   @Mock lateinit var performanceRepository: PerformanceRepository
 
   @Mock lateinit var venueSeatRepository: VenueSeatRepository
@@ -61,7 +63,7 @@ class RedisVenueSeatHoldServiceTest {
   private val objectMapper = ObjectMapper()
   private lateinit var service: RedisVenueSeatHoldService
 
-  private var executeResult: Long? = 0L
+  private var executeResult: Any? = 0L
 
   @BeforeEach
   fun setUp() {
@@ -72,6 +74,7 @@ class RedisVenueSeatHoldServiceTest {
       },
     )
     RedisVenueSeatHoldService(
+      performanceVenueSeatStompPublisher,
       performanceRepository,
       venueSeatRepository,
       reservationSeatRepository,
@@ -105,9 +108,17 @@ class RedisVenueSeatHoldServiceTest {
     val after = LocalDateTime.now()
 
     assertThat(result.serverTime).isBetween(before, after)
-    assertThat(result.bookedSeats).containsExactly(1L, 3L)
+    assertThat(result.bookedSeatIds).containsExactly(1L, 3L)
     assertThat(result.heldSeats).containsExactly(HeldSeat(101L, expiresAt), HeldSeat(102L, expiresAt))
     then(cursor).should().close()
+  }
+
+  @Test
+  fun `내가 점유한 좌석 목록을 반환한다`() {
+    val hold = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(4))
+    executeResult = objectMapper.writeValueAsString(listOf(hold))
+
+    assertThat(service.getMyGroupHolds(USER_ID, PERFORMANCE_ID)).containsExactly(hold)
   }
 
   @Test
@@ -176,7 +187,7 @@ class RedisVenueSeatHoldServiceTest {
   fun `점유 좌석 목록이 비어 있거나 양수가 아니면 거부한다`() {
     listOf(emptyList(), listOf(0L), listOf(-1L)).forEach { seatIds ->
       val exception = assertThrows<CustomException> {
-        service.holdVenueSeats(USER_ID, PERFORMANCE_ID, seatIds)
+        service.holdSeats(USER_ID, PERFORMANCE_ID, seatIds)
       }
       assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
     }
@@ -185,7 +196,7 @@ class RedisVenueSeatHoldServiceTest {
   @Test
   fun `점유 좌석 목록에 중복이 있으면 거부한다`() {
     val exception = assertThrows<CustomException> {
-      service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L, 101L))
+      service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L, 101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
@@ -196,7 +207,7 @@ class RedisVenueSeatHoldServiceTest {
     given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(mock())
 
     val exception = assertThrows<CustomException> {
-      service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -208,7 +219,7 @@ class RedisVenueSeatHoldServiceTest {
     given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(mock())
 
     val exception = assertThrows<CustomException> {
-      service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -220,7 +231,7 @@ class RedisVenueSeatHoldServiceTest {
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(null)
 
     val exception = assertThrows<CustomException> {
-      service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -233,7 +244,7 @@ class RedisVenueSeatHoldServiceTest {
       .willReturn(listOf(venueSeat(101L)))
 
     val exception = assertThrows<CustomException> {
-      service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L, 102L))
+      service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L, 102L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -246,7 +257,7 @@ class RedisVenueSeatHoldServiceTest {
     given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L))).willReturn(true)
 
     val exception = assertThrows<CustomException> {
-      service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -259,7 +270,7 @@ class RedisVenueSeatHoldServiceTest {
     given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L))).willReturn(false)
     executeResult = 0L
 
-    val result = service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+    val result = service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
 
     assertThat(result.performanceId).isEqualTo(PERFORMANCE_ID)
     assertThat(result.groupId).isEqualTo("$USER_ID:$PERFORMANCE_ID")
@@ -273,7 +284,7 @@ class RedisVenueSeatHoldServiceTest {
     executeResult = 1L
 
     val exception = assertThrows<CustomException> {
-      service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -287,7 +298,7 @@ class RedisVenueSeatHoldServiceTest {
     executeResult = null
 
     val exception = assertThrows<CustomException> {
-      service.holdVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -297,7 +308,7 @@ class RedisVenueSeatHoldServiceTest {
   fun `해제 좌석 목록이 비어 있거나 중복이면 거부한다`() {
     listOf(emptyList(), listOf(0L), listOf(101L, 101L)).forEach { seatIds ->
       val exception = assertThrows<CustomException> {
-        service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, seatIds)
+        service.releaseSeats(USER_ID, PERFORMANCE_ID, seatIds)
       }
       assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
     }
@@ -309,7 +320,7 @@ class RedisVenueSeatHoldServiceTest {
     given(valueOperations.multiGet(listOf("hold:venue-seat:$PERFORMANCE_ID:101"))).willReturn(listOf(null))
 
     val exception = assertThrows<CustomException> {
-      service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -322,7 +333,7 @@ class RedisVenueSeatHoldServiceTest {
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(null))
 
     val exception = assertThrows<CustomException> {
-      service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -336,7 +347,7 @@ class RedisVenueSeatHoldServiceTest {
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(objectMapper.writeValueAsString(hold)))
 
     val exception = assertThrows<CustomException> {
-      service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
@@ -350,7 +361,7 @@ class RedisVenueSeatHoldServiceTest {
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(objectMapper.writeValueAsString(hold)))
     executeResult = 0L
 
-    assertThat(service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))).containsExactly(101L)
+    assertThat(service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))).containsExactly(101L)
   }
 
   @Test
@@ -362,7 +373,7 @@ class RedisVenueSeatHoldServiceTest {
     executeResult = 1L
 
     val exception = assertThrows<CustomException> {
-      service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+      service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -376,7 +387,7 @@ class RedisVenueSeatHoldServiceTest {
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(objectMapper.writeValueAsString(hold)))
     executeResult = 0L
 
-    assertThat(service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))).containsExactly(101L)
+    assertThat(service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))).containsExactly(101L)
   }
 
   @Test
@@ -389,7 +400,7 @@ class RedisVenueSeatHoldServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.releaseVenueSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
+        service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
   }
