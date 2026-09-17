@@ -1,10 +1,9 @@
 package com.example.server.performance
 
-import com.example.server.performance.dto.PerformanceHeldSeatsEventData
+import com.example.server.performance.dto.PerformanceHeldSeatsEvent
 import com.example.server.performance.dto.PerformanceSeatEvent
-import com.example.server.performance.dto.PerformanceSeatEventData
-import com.example.server.performance.dto.PerformanceSeatEventType
-import com.example.server.performance.dto.PerformanceVenueSeatIdsEventData
+import com.example.server.performance.dto.PerformanceVenueSeatIdsEvent
+import com.example.server.performance.dto.PerformanceVenueSeatIdsEventType
 import io.github.springwolf.bindings.stomp.annotations.StompAsyncOperationBinding
 import io.github.springwolf.core.asyncapi.annotations.AsyncOperation
 import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher
@@ -15,30 +14,38 @@ import java.util.UUID
 
 @Component
 class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate, private val stringRedisTemplate: StringRedisTemplate) {
-  fun publishHeldSeats(performanceId: Long, heldSeats: List<PerformanceHeldSeatsEventData.HeldSeat>, eventId: UUID = UUID.randomUUID()) {
+  fun publishHeldSeats(performanceId: Long, heldSeats: List<PerformanceHeldSeatsEvent.HeldSeat>, eventId: UUID = UUID.randomUUID()) {
     publish(
-      eventId = eventId,
       performanceId = performanceId,
-      type = PerformanceSeatEventType.HELD_SEATS,
-      data = PerformanceHeldSeatsEventData(heldSeats),
+      event = PerformanceHeldSeatsEvent(
+        eventId = eventId,
+        version = getVersion(performanceId),
+        data = heldSeats,
+      ),
     )
   }
 
   fun publishReleasedSeats(performanceId: Long, venueSeatIds: List<Long>, eventId: UUID = UUID.randomUUID()) {
     publish(
-      eventId = eventId,
       performanceId = performanceId,
-      type = PerformanceSeatEventType.RELEASED_SEATS,
-      data = PerformanceVenueSeatIdsEventData(venueSeatIds),
+      event = PerformanceVenueSeatIdsEvent(
+        eventId = eventId,
+        version = getVersion(performanceId),
+        type = PerformanceVenueSeatIdsEventType.RELEASED_SEATS,
+        data = venueSeatIds,
+      ),
     )
   }
 
   fun publishReservationConfirmed(performanceId: Long, venueSeatIds: List<Long>, eventId: UUID = UUID.randomUUID()) {
     publish(
-      eventId = eventId,
       performanceId = performanceId,
-      type = PerformanceSeatEventType.RESERVATION_CONFIRMED,
-      data = PerformanceVenueSeatIdsEventData(venueSeatIds),
+      event = PerformanceVenueSeatIdsEvent(
+        eventId = eventId,
+        version = getVersion(performanceId),
+        type = PerformanceVenueSeatIdsEventType.RESERVATION_CONFIRMED,
+        data = venueSeatIds,
+      ),
     )
   }
 
@@ -49,18 +56,16 @@ class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMess
     ),
   )
   @StompAsyncOperationBinding
-  private fun publish(eventId: UUID, performanceId: Long, type: PerformanceSeatEventType, data: PerformanceSeatEventData) {
-    val version = stringRedisTemplate.opsForValue().increment(versionKey(performanceId))
-
+  private fun publish(performanceId: Long, event: PerformanceSeatEvent) {
     messagingTemplate.convertAndSend(
       "/topic/performances/$performanceId/seat-events",
-      PerformanceSeatEvent(
-        eventId = eventId,
-        version = version,
-        type = type,
-        data = data,
-      ),
+      event,
     )
+  }
+
+  private fun getVersion(performanceId: Long): Long {
+    val version = stringRedisTemplate.opsForValue().increment(versionKey(performanceId))
+    return version
   }
 
   private fun versionKey(performanceId: Long) = "performance:venue-seat-event-version:$performanceId"

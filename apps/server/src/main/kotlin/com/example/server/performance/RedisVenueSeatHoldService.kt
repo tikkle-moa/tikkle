@@ -5,7 +5,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.outbox.types.OutboxHoldActionResult
 import com.example.server.performance.dto.ActiveHoldData
 import com.example.server.performance.dto.HoldVenueSeatEntry
-import com.example.server.performance.dto.PerformanceHeldSeatsEventData
+import com.example.server.performance.dto.PerformanceHeldSeatsEvent
 import com.example.server.performance.dto.PerformanceSeatStatusMessageData
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.repository.PerformanceRepository
@@ -115,7 +115,7 @@ class RedisVenueSeatHoldService(
     performanceVenueSeatStompPublisher.publishHeldSeats(
       performanceId,
       holdDetail.venueSeatIds.map {
-        PerformanceHeldSeatsEventData.HeldSeat(id = it, expiresAt = holdDetail.expiresAt)
+        PerformanceHeldSeatsEvent.HeldSeat(id = it, expiresAt = holdDetail.expiresAt)
       },
     )
     return holdDetail

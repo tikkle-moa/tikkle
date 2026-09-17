@@ -7,30 +7,34 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
-data class PerformanceSeatEvent(
+@Schema(oneOf = [PerformanceHeldSeatsEvent::class, PerformanceVenueSeatIdsEvent::class], discriminatorProperty = "type")
+sealed interface PerformanceSeatEvent
+
+data class PerformanceHeldSeatsEvent(
   override val eventId: UUID,
   override val version: Long,
   override val occurredAt: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
-  override val type: PerformanceSeatEventType,
-  override val data: PerformanceSeatEventData,
-) : StompEvent<PerformanceSeatEventType, PerformanceSeatEventData>
-
-enum class PerformanceSeatEventType {
-  HELD_SEATS,
-  RELEASED_SEATS,
-  RESERVATION_CONFIRMED,
+  override val type: PerformanceHeldSeatsEventType = PerformanceHeldSeatsEventType.HELD_SEATS,
+  override val data: List<HeldSeat>,
+) : PerformanceSeatEvent,
+  StompEvent<PerformanceHeldSeatsEventType, List<PerformanceHeldSeatsEvent.HeldSeat>> {
+  data class HeldSeat(val id: Long, val expiresAt: LocalDateTime)
 }
 
-sealed interface PerformanceSeatEventData
+data class PerformanceVenueSeatIdsEvent(
+  override val eventId: UUID,
+  override val version: Long,
+  override val occurredAt: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
+  override val type: PerformanceVenueSeatIdsEventType,
+  override val data: List<Long>,
+) : PerformanceSeatEvent,
+  StompEvent<PerformanceVenueSeatIdsEventType, List<Long>>
 
-data class PerformanceVenueSeatIdsEventData(
-  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
-  val venueSeatIds: List<Long>,
-) : PerformanceSeatEventData
+enum class PerformanceHeldSeatsEventType {
+  HELD_SEATS,
+}
 
-data class PerformanceHeldSeatsEventData(
-  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
-  val heldSeats: List<HeldSeat>,
-) : PerformanceSeatEventData {
-  data class HeldSeat(val id: Long, val expiresAt: LocalDateTime)
+enum class PerformanceVenueSeatIdsEventType {
+  RELEASED_SEATS,
+  RESERVATION_CONFIRMED,
 }
