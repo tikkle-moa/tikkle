@@ -1,13 +1,27 @@
 import { VENUE_MAP_MIN_ZOOM } from "@features/venue-map/model/venue-map-viewport.constants";
-import { clampViewport, createInitialViewport, getDistance, getMidpoint, zoomAt } from "@features/venue-map/model/venue-map-viewport.utils";
+import {
+  clampViewport,
+  createInitialViewport,
+  createViewportViewBox,
+  getDistance,
+  getMidpoint,
+  getVenueMapMaxZoom,
+  zoomAt,
+} from "@features/venue-map/model/venue-map-viewport.utils";
 
 describe("venue map viewport utils", () => {
   it("공연장 크기의 중심을 초기 viewport로 생성한다", () => {
-    expect(createInitialViewport({ width: 120, height: 80 })).toEqual({
+    expect(createInitialViewport(120, 80)).toEqual({
       zoom: VENUE_MAP_MIN_ZOOM,
       centerX: 60,
       centerY: 40,
     });
+  });
+
+  it("공연장 크기에 따른 최대 확대 비율과 viewBox를 계산한다", () => {
+    expect(getVenueMapMaxZoom(120, 80)).toBe(1.6);
+    expect(getVenueMapMaxZoom(0, 0)).toBe(VENUE_MAP_MIN_ZOOM);
+    expect(createViewportViewBox({ zoom: 2, centerX: 60, centerY: 40 }, 120, 80)).toBe("30 20 60 40");
   });
 
   it("두 점의 거리와 중점을 계산한다", () => {

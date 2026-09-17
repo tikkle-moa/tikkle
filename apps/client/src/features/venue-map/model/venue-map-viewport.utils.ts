@@ -1,11 +1,13 @@
-import { VENUE_MAP_MIN_ZOOM } from "./venue-map-viewport.constants";
-import type { Point, UseVenueMapViewportParams, Viewport } from "./venue-map-viewport.types";
+import { VENUE_MAP_MIN_VISIBLE_SIZE, VENUE_MAP_MIN_ZOOM } from "./venue-map-viewport.constants";
+import type { Point, Viewport } from "./venue-map-viewport.types";
 
-export const createInitialViewport = ({ width, height }: UseVenueMapViewportParams): Viewport => ({
-  zoom: VENUE_MAP_MIN_ZOOM,
-  centerX: width / 2,
-  centerY: height / 2,
-});
+export const createInitialViewport = (width: number, height: number): Viewport => {
+  return {
+    zoom: VENUE_MAP_MIN_ZOOM,
+    centerX: width / 2,
+    centerY: height / 2,
+  };
+};
 
 export const getDistance = (first: Point, second: Point) => Math.hypot(first.x - second.x, first.y - second.y);
 
@@ -13,6 +15,9 @@ export const getMidpoint = (first: Point, second: Point): Point => ({
   x: (first.x + second.x) / 2,
   y: (first.y + second.y) / 2,
 });
+
+export const getVenueMapMaxZoom = (width: number, height: number) =>
+  Math.max(VENUE_MAP_MIN_ZOOM, Math.min(Math.max(width, 1) / VENUE_MAP_MIN_VISIBLE_SIZE, Math.max(height, 1) / VENUE_MAP_MIN_VISIBLE_SIZE));
 
 export const clampViewport = (next: Viewport, width: number, height: number): Viewport => {
   const viewWidth = width / next.zoom;
@@ -23,6 +28,13 @@ export const clampViewport = (next: Viewport, width: number, height: number): Vi
     centerX: Math.min(Math.max(next.centerX, viewWidth / 2), width - viewWidth / 2),
     centerY: Math.min(Math.max(next.centerY, viewHeight / 2), height - viewHeight / 2),
   };
+};
+
+export const createViewportViewBox = (viewport: Viewport, width: number, height: number) => {
+  const viewWidth = width / viewport.zoom;
+  const viewHeight = height / viewport.zoom;
+
+  return `${viewport.centerX - viewWidth / 2} ${viewport.centerY - viewHeight / 2} ${viewWidth} ${viewHeight}`;
 };
 
 export const zoomAt = (current: Viewport, startPoint: Point, targetPoint: Point, zoom: number, width: number, height: number): Viewport => {
