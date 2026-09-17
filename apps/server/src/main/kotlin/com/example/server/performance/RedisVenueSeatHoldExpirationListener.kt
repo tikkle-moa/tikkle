@@ -13,7 +13,7 @@ class RedisVenueSeatHoldExpirationListener(private val performanceVenueSeatStomp
     val match = holdSeatKeyPattern.matchEntire(key)
       ?: return
 
-    performanceVenueSeatStompPublisher.publishHoldReleased(
+    performanceVenueSeatStompPublisher.publishReleasedSeats(
       performanceId = match.groupValues[1].toLong(),
       venueSeatIds = listOf(match.groupValues[2].toLong()),
     )

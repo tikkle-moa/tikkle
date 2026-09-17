@@ -1,70 +1,67 @@
 package com.example.server.performance
 
-import com.example.server.global.stomp.StompEvent
-import com.example.server.performance.dto.HoldReleasedEventData
+import com.example.server.performance.dto.PerformanceHeldSeatsEventData
 import com.example.server.performance.dto.PerformanceSeatEvent
-import com.example.server.performance.dto.ReservationConfirmedEventData
+import com.example.server.performance.dto.PerformanceSeatEventData
+import com.example.server.performance.dto.PerformanceSeatEventType
+import com.example.server.performance.dto.PerformanceVenueSeatIdsEventData
+import io.github.springwolf.bindings.stomp.annotations.StompAsyncOperationBinding
+import io.github.springwolf.core.asyncapi.annotations.AsyncOperation
+import io.github.springwolf.core.asyncapi.annotations.AsyncPublisher
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Component
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 
 @Component
 class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate, private val stringRedisTemplate: StringRedisTemplate) {
-  fun publishReservationConfirmed(performanceId: Long, venueSeatIds: List<Long>) {
-    publishReservationConfirmed(
-      eventId = UUID.randomUUID(),
-      performanceId = performanceId,
-      venueSeatIds = venueSeatIds,
-    )
-  }
-
-  fun publishReservationConfirmed(eventId: UUID, performanceId: Long, venueSeatIds: List<Long>) {
+  fun publishHeldSeats(performanceId: Long, heldSeats: List<PerformanceHeldSeatsEventData.HeldSeat>, eventId: UUID = UUID.randomUUID()) {
     publish(
       eventId = eventId,
       performanceId = performanceId,
-      type = PerformanceSeatEvent.RESERVATION_CONFIRMED,
-      data = ReservationConfirmedEventData(venueSeatIds),
+      type = PerformanceSeatEventType.HELD_SEATS,
+      data = PerformanceHeldSeatsEventData(heldSeats),
     )
   }
 
-  fun publishHoldReleased(performanceId: Long, venueSeatIds: List<Long>) {
-    publishHoldReleased(
-      eventId = UUID.randomUUID(),
-      performanceId = performanceId,
-      venueSeatIds = venueSeatIds,
-    )
-  }
-
-  fun publishHoldReleased(eventId: UUID, performanceId: Long, venueSeatIds: List<Long>) {
+  fun publishReleasedSeats(performanceId: Long, venueSeatIds: List<Long>, eventId: UUID = UUID.randomUUID()) {
     publish(
       eventId = eventId,
       performanceId = performanceId,
-      type = PerformanceSeatEvent.HOLD_RELEASED,
-      data = HoldReleasedEventData(venueSeatIds),
+      type = PerformanceSeatEventType.RELEASED_SEATS,
+      data = PerformanceVenueSeatIdsEventData(venueSeatIds),
     )
   }
 
-  private fun publish(eventId: UUID, performanceId: Long, type: PerformanceSeatEvent, data: Any) {
-    val version = requireNotNull(
-      stringRedisTemplate.opsForValue().increment(versionKey(performanceId)),
-    ) {
-      "공연 좌석 이벤트 버전을 증가시키지 못했습니다."
-    }
+  fun publishReservationConfirmed(performanceId: Long, venueSeatIds: List<Long>, eventId: UUID = UUID.randomUUID()) {
+    publish(
+      eventId = eventId,
+      performanceId = performanceId,
+      type = PerformanceSeatEventType.RESERVATION_CONFIRMED,
+      data = PerformanceVenueSeatIdsEventData(venueSeatIds),
+    )
+  }
+
+  @AsyncPublisher(
+    operation = AsyncOperation(
+      channelName = "/topic/performances/{performanceId}/seat-events",
+      payloadType = PerformanceSeatEvent::class,
+    ),
+  )
+  @StompAsyncOperationBinding
+  private fun publish(eventId: UUID, performanceId: Long, type: PerformanceSeatEventType, data: PerformanceSeatEventData) {
+    val version = stringRedisTemplate.opsForValue().increment(versionKey(performanceId))
 
     messagingTemplate.convertAndSend(
-      "/topic/performances/$performanceId",
-      StompEvent(
+      "/topic/performances/$performanceId/seat-events",
+      PerformanceSeatEvent(
         eventId = eventId,
         version = version,
-        occurredAt = OffsetDateTime.now(ZoneOffset.UTC),
-        type = type.name,
+        type = type,
         data = data,
       ),
     )
   }
 
-  private fun versionKey(performanceId: Long) = "performance:seat-event-version:$performanceId"
+  private fun versionKey(performanceId: Long) = "performance:venue-seat-event-version:$performanceId"
 }
