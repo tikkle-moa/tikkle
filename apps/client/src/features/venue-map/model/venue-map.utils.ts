@@ -1,3 +1,5 @@
+import { formatTime } from "@shared/lib/date.utils";
+
 import type { VenueSeatResponse, VenueSeatStatus } from "@entities/venue";
 
 import { SECTION_COLOR_LIGHTNESS, SECTION_COLOR_SATURATION } from "./venue-map.constants";
@@ -39,7 +41,7 @@ const getRemainingHoldTime = (expiresAt?: Date, currentTime?: number, serverTime
 };
 
 export const getSeatStatusMessage = (status: VenueSeatStatus, expiresAt?: Date, currentTime?: number, serverTimeOffset: number = 0) => {
-  const expiresAtText = expiresAt && Number.isFinite(expiresAt.getTime()) ? expiresAt.toLocaleTimeString("ko-KR") : null;
+  const expiresAtText = expiresAt && Number.isFinite(expiresAt.getTime()) ? formatTime(expiresAt) : null;
   const remainingText = getRemainingHoldTime(expiresAt, currentTime, serverTimeOffset);
   const holdTimeText = [remainingText, expiresAtText ? `${expiresAtText}까지` : null].filter(Boolean).join(" · ");
 
