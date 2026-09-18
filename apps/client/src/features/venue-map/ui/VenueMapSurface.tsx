@@ -74,7 +74,7 @@ const VenueMapSurface = ({
     activeSeat,
     activeSeatStatus,
     isTooltipVisible,
-    tooltipPlacement,
+    tooltipPosition,
     handlePointerEnter,
     handlePointerMove: handleTooltipPointerMove,
     handlePointerLeave,
@@ -147,13 +147,13 @@ const VenueMapSurface = ({
         )}
       </svg>
 
-      {isTooltipVisible && activeSeat && activeSeatStatus && (
+      {isTooltipVisible && activeSeat && activeSeatStatus && tooltipPosition && (
         <VenueMapSeatTooltip
           seat={activeSeat}
           status={activeSeatStatus}
           expiresAt={venueSeatStates?.get(activeSeat.id)?.expiresAt}
           serverTimeOffset={serverTimeOffset}
-          placement={tooltipPlacement}
+          position={tooltipPosition}
         />
       )}
     </div>

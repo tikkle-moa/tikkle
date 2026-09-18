@@ -2,8 +2,8 @@ import { SECTION_COLOR_LIGHTNESS, SECTION_COLOR_SATURATION } from "@features/ven
 import {
   createSectionColorMap,
   createVenueSeatLabelMap,
-  getOppositeTooltipPlacement,
   getSeatStatusMessage,
+  getViewportAdjustedTooltipPosition,
   isCurrentSeatSelectable,
 } from "@features/venue-map/model/venue-map.utils";
 
@@ -28,6 +28,45 @@ describe("createSectionColorMap", () => {
 
     expect(colors["A구역"]).toMatch(colorPattern);
     expect(colors["B구역"]).toMatch(colorPattern);
+  });
+});
+
+describe("getViewportAdjustedTooltipPosition", () => {
+  const tooltipSize = { width: 100, height: 40 };
+  const viewport = { left: 0, top: 0, width: 300, height: 200 };
+
+  it("공간이 충분하면 좌석 중앙 위에 배치한다", () => {
+    expect(getViewportAdjustedTooltipPosition({ left: 150, top: 100, bottom: 108 }, tooltipSize, viewport)).toEqual({
+      left: 100,
+      top: 52,
+    });
+  });
+
+  it.each([
+    [
+      { left: 20, top: 100, bottom: 108 },
+      { left: 12, top: 52 },
+    ],
+    [
+      { left: 290, top: 100, bottom: 108 },
+      { left: 188, top: 52 },
+    ],
+  ])("좌석이 좌우 경계에 가까우면 viewport 안으로 이동한다", (anchor, expected) => {
+    expect(getViewportAdjustedTooltipPosition(anchor, tooltipSize, viewport)).toEqual(expected);
+  });
+
+  it("좌석 위 공간이 부족하면 좌석 아래에 배치한다", () => {
+    expect(getViewportAdjustedTooltipPosition({ left: 150, top: 20, bottom: 28 }, tooltipSize, viewport)).toEqual({
+      left: 100,
+      top: 36,
+    });
+  });
+
+  it("좌석 위아래 공간이 모두 부족하면 viewport 안으로 제한한다", () => {
+    expect(getViewportAdjustedTooltipPosition({ left: 150, top: 20, bottom: 170 }, { width: 100, height: 170 }, viewport)).toEqual({
+      left: 100,
+      top: 12,
+    });
   });
 });
 
@@ -56,13 +95,6 @@ describe("seat status utilities", () => {
     expect(getSeatStatusMessage("held_by_other_group", new Date(Number.NaN), 0).description).toBe("다른 관람객이 Hold 중인 좌석입니다.");
     expect(getSeatStatusMessage("held_by_my_group", new Date(15_000), 0).description).toContain("15초 남음");
     expect(getSeatStatusMessage("held_by_my_group", new Date(0), 1_000).description).toContain("곧 만료");
-  });
-
-  it("tooltip 방향의 네 가지 조합을 반환한다", () => {
-    expect(getOppositeTooltipPlacement(true, true)).toBe("bottom-right");
-    expect(getOppositeTooltipPlacement(true, false)).toBe("bottom-left");
-    expect(getOppositeTooltipPlacement(false, true)).toBe("top-right");
-    expect(getOppositeTooltipPlacement(false, false)).toBe("top-left");
   });
 
   it.each([

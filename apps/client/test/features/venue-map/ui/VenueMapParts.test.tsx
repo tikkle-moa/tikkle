@@ -37,12 +37,14 @@ describe("venue map parts", () => {
     render(
       <>
         <VenueMapSelectedSeatStatus status="held_by_my_group" expiresAt={new Date(Date.now() + 60000)} serverTimeOffset={0} />
-        <VenueMapSeatTooltip seat={seat} status="held_by_my_group" placement="top-left" serverTimeOffset={0} />
+        <VenueMapSeatTooltip seat={seat} status="held_by_my_group" position={{ left: 20, top: 28, bottom: 31.5 }} serverTimeOffset={0} />
       </>,
     );
 
     expect(screen.getByText(/남음.*Hold 중입니다/)).toBeInTheDocument();
     expect(screen.getByRole("tooltip")).toHaveTextContent("A구역 1열 1번");
+    expect(screen.getByRole("tooltip")).toHaveStyle({ left: "20px", top: "20px" });
+    expect(screen.getByRole("tooltip")).toHaveClass("absolute");
   });
 
   it("좌석 아이템 클릭과 키보드 이벤트를 전달한다", () => {

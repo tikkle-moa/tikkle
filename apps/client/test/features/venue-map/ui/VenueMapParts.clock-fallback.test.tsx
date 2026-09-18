@@ -24,7 +24,7 @@ describe("venue map clock fallback", () => {
           seat={seat}
           status="held_by_my_group"
           expiresAt={new Date(Date.now() + 60000)}
-          placement="top-left"
+          position={{ left: 20, top: 28, bottom: 31.5 }}
           serverTimeOffset={0}
         />
       </>,

@@ -2,8 +2,8 @@ import { formatTime } from "@shared/lib/date.utils";
 
 import type { VenueSeatResponse, VenueSeatStatus } from "@entities/venue";
 
-import { SECTION_COLOR_LIGHTNESS, SECTION_COLOR_SATURATION } from "./venue-map.constants";
-import type { TooltipPlacement } from "./venue-map.types";
+import { SECTION_COLOR_LIGHTNESS, SECTION_COLOR_SATURATION, TOOLTIP_GAP, TOOLTIP_VIEWPORT_PADDING } from "./venue-map.constants";
+import type { TooltipPosition } from "./venue-map.types";
 
 export const createVenueSeatLabelMap = (venueSeats: VenueSeatResponse[]) =>
   new Map(venueSeats.map((seat) => [seat.id, `${seat.seatLabel}, ${seat.price.toLocaleString()}원`]));
@@ -69,9 +69,30 @@ export const getSeatStatusMessage = (status: VenueSeatStatus, expiresAt?: Date, 
   }
 };
 
-export const getOppositeTooltipPlacement = (isTop: boolean, isLeft: boolean): TooltipPlacement => {
-  if (isTop) return isLeft ? "bottom-right" : "bottom-left";
-  return isLeft ? "top-right" : "top-left";
+export const getViewportAdjustedTooltipPosition = (
+  anchor: TooltipPosition,
+  tooltipSize: { width: number; height: number },
+  viewport: { left: number; top: number; width: number; height: number },
+) => {
+  const viewportRight = viewport.left + viewport.width - TOOLTIP_VIEWPORT_PADDING;
+  const viewportBottom = viewport.top + viewport.height - TOOLTIP_VIEWPORT_PADDING;
+  const minLeft = viewport.left + TOOLTIP_VIEWPORT_PADDING;
+  const maxLeft = Math.max(minLeft, viewportRight - tooltipSize.width);
+  const preferredLeft = anchor.left - tooltipSize.width / 2;
+  const preferredTop = anchor.top - TOOLTIP_GAP - tooltipSize.height;
+  const fallbackTop = anchor.bottom + TOOLTIP_GAP;
+  const minTop = viewport.top + TOOLTIP_VIEWPORT_PADDING;
+  const maxTop = Math.max(minTop, viewportBottom - tooltipSize.height);
+
+  return {
+    left: Math.min(Math.max(preferredLeft, minLeft), maxLeft),
+    top:
+      preferredTop >= minTop
+        ? preferredTop
+        : fallbackTop + tooltipSize.height <= viewportBottom
+          ? fallbackTop
+          : Math.min(Math.max(preferredTop, minTop), maxTop),
+  };
 };
 
 export const isCurrentSeatSelectable = (element: SVGGElement) => {

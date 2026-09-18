@@ -2,8 +2,7 @@ import { type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } 
 
 import { type VenueSeatResponse, type VenueSeatState, isHeldSeatStatus } from "@entities/venue";
 
-import type { TooltipPlacement } from "./venue-map.types";
-import { getOppositeTooltipPlacement } from "./venue-map.utils";
+import type { TooltipPosition } from "./venue-map.types";
 
 interface UseVenueMapSeatTooltipProps {
   venueSeats: VenueSeatResponse[];
@@ -12,7 +11,7 @@ interface UseVenueMapSeatTooltipProps {
 
 export const useVenueMapSeatTooltip = ({ venueSeats, venueSeatStates }: UseVenueMapSeatTooltipProps) => {
   const [activeSeatId, setActiveSeatId] = useState<number | null>(null);
-  const [tooltipPlacement, setTooltipPlacement] = useState<TooltipPlacement>("bottom-right");
+  const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null);
   const venueSeatStatesRef = useRef(venueSeatStates);
 
   useEffect(() => {
@@ -25,47 +24,53 @@ export const useVenueMapSeatTooltip = ({ venueSeats, venueSeatStates }: UseVenue
     () => (activeSeat && venueSeatStates ? (venueSeatStates.get(activeSeat.id)?.status ?? "available") : null),
     [activeSeat, venueSeatStates],
   );
-  const isTooltipVisible = activeSeatStatus !== null && isHeldSeatStatus(activeSeatStatus);
+  const isTooltipVisible = tooltipPosition !== null && activeSeatStatus !== null && isHeldSeatStatus(activeSeatStatus);
 
-  const handlePointerEnter = useCallback((event: PointerEvent<SVGGElement>, seat: VenueSeatResponse) => {
-    if (event.pointerType !== "mouse") {
-      setActiveSeatId(null);
-      return;
-    }
-
-    const status = venueSeatStatesRef.current?.get(seat.id)?.status ?? "available";
-    if (!isHeldSeatStatus(status)) return;
-
-    const svgRect = event.currentTarget.ownerSVGElement?.getBoundingClientRect();
-    if (svgRect) {
-      const isTop = event.clientY < svgRect.top + svgRect.height / 2;
-      const isLeft = event.clientX < svgRect.left + svgRect.width / 2;
-      setTooltipPlacement(getOppositeTooltipPlacement(isTop, isLeft));
-    }
-    setActiveSeatId(seat.id);
-  }, []);
-
-  const handlePointerMove = useCallback((event: PointerEvent<SVGGElement>) => {
-    if (event.pointerType !== "mouse") return;
-
-    const svgRect = event.currentTarget.ownerSVGElement?.getBoundingClientRect();
-    if (!svgRect) return;
-
-    setTooltipPlacement((current) => {
-      const isTop = event.clientY < svgRect.top + svgRect.height / 2;
-      const isLeft = event.clientX < svgRect.left + svgRect.width / 2;
-      const next = getOppositeTooltipPlacement(isTop, isLeft);
-      return current === next ? current : next;
+  const updateTooltipPosition = useCallback((element: SVGGElement) => {
+    const seatRect = element.getBoundingClientRect();
+    setTooltipPosition({
+      left: seatRect.left + seatRect.width / 2 + window.scrollX,
+      top: seatRect.top + window.scrollY,
+      bottom: seatRect.top + seatRect.height + window.scrollY,
     });
   }, []);
 
-  const handlePointerLeave = useCallback(() => setActiveSeatId(null), []);
+  const handlePointerEnter = useCallback(
+    (event: PointerEvent<SVGGElement>, seat: VenueSeatResponse) => {
+      if (event.pointerType !== "mouse") {
+        setActiveSeatId(null);
+        setTooltipPosition(null);
+        return;
+      }
+
+      const status = venueSeatStatesRef.current?.get(seat.id)?.status ?? "available";
+      if (!isHeldSeatStatus(status)) return;
+
+      updateTooltipPosition(event.currentTarget);
+      setActiveSeatId(seat.id);
+    },
+    [updateTooltipPosition],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent<SVGGElement>) => {
+      if (event.pointerType !== "mouse") return;
+
+      updateTooltipPosition(event.currentTarget);
+    },
+    [updateTooltipPosition],
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    setActiveSeatId(null);
+    setTooltipPosition(null);
+  }, []);
 
   return {
     activeSeat,
     activeSeatStatus,
     isTooltipVisible,
-    tooltipPlacement,
+    tooltipPosition,
     handlePointerEnter,
     handlePointerMove,
     handlePointerLeave,
