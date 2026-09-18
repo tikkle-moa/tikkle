@@ -30,6 +30,6 @@ describe("venue map clock fallback", () => {
       </>,
     );
 
-    expect(screen.getAllByText(/까지 Hold 중입니다/)).toHaveLength(2);
+    expect(screen.getAllByText(/까지 점유 중입니다/)).toHaveLength(2);
   });
 });

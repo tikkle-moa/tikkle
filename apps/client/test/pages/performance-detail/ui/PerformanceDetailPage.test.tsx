@@ -39,8 +39,7 @@ const pageState = {
     createdAt: "2026-08-25T12:00:00",
     status: "UPCOMING",
   },
-  venue,
-  venueSeats: [],
+  venueDetail: { venue, venueSeats: [] },
   isError: false,
   isParamValid: true,
   isPending: false,
@@ -100,8 +99,7 @@ describe("PerformanceDetailPage", () => {
     mockUsePerformanceDetail.mockReturnValue({
       ...pageState,
       performance: { ...pageState.performance, status: "ENDED" },
-      venue: undefined,
-      venueSeats: [],
+      venueDetail: undefined,
     });
 
     renderPage();
@@ -114,7 +112,7 @@ describe("PerformanceDetailPage", () => {
   it("공연장 정보가 없으면 오류 안내를 표시한다", () => {
     mockUsePerformanceDetail.mockReturnValue({
       ...pageState,
-      venue: undefined,
+      venueDetail: undefined,
     });
 
     renderPage();

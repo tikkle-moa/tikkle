@@ -76,8 +76,7 @@ describe("usePerformanceDetail", () => {
     expect(result.current).toEqual({
       isParamValid: true,
       performance,
-      venue,
-      venueSeats: [],
+      venueDetail: { venue, venueSeats: [] },
       isError: false,
       isPending: false,
     });
@@ -120,8 +119,7 @@ describe("usePerformanceDetail", () => {
     expect(result.current).toEqual({
       isParamValid: true,
       performance: endedPerformance,
-      venue: undefined,
-      venueSeats: [],
+      venueDetail: undefined,
       isError: false,
       isPending: false,
     });
