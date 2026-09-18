@@ -19,8 +19,7 @@ export const usePerformanceDetail = () => {
   return {
     isParamValid,
     performance,
-    venue: venueQuery.data?.venue,
-    venueSeats: venueQuery.data?.venueSeats ?? [],
+    venueDetail: venueQuery.data,
     isError: performanceQuery.isError || isVenueError,
     isPending: performanceQuery.isPending || isVenuePending,
   };
