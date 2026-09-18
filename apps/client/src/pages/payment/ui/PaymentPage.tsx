@@ -1,5 +1,6 @@
 import { ArrowLeft, Clock3 } from "lucide-react";
 
+import { formatTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
 import { PaymentOrderSummary, TossPaymentWidget } from "@features/payment";
@@ -41,7 +42,7 @@ const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-950">주문서를 확인해 주세요</h1>
         <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
           <Clock3 className="size-4" aria-hidden />
-          결제 가능 시간: {new Date(order.paymentExpiresAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}까지
+          결제 가능 시간: {formatTime(order.paymentExpiresAt, { timeStyle: "short" })}까지
         </p>
       </header>
 

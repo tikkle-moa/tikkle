@@ -60,6 +60,7 @@ export const useVenueLayoutInteraction = ({
   const wheelFrameRef = useRef<number | null>(null);
   const pendingWheelStepsRef = useRef(0);
   const startSeatDragRef = useRef<((event: PointerEvent<SVGElement>, clientId: number) => void) | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
 
   const [dragState, setDragState] = useState<VenueLayoutDragState | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -104,7 +105,7 @@ export const useVenueLayoutInteraction = ({
     setPan({ x: 0, y: 0 });
   }, []);
 
-  const getCoordinates = useCallback((event: PointerEvent<SVGSVGElement | SVGElement>) => {
+  const getCoordinates = useCallback((event: Pick<PointerEvent<SVGSVGElement | SVGElement>, "clientX" | "clientY">) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
     const point = svg.createSVGPoint();
@@ -191,10 +192,11 @@ export const useVenueLayoutInteraction = ({
     event.preventDefault();
     event.stopPropagation();
     svgRef.current?.focus({ preventScroll: true });
+    activePointerIdRef.current = event.pointerId;
     svgRef.current?.setPointerCapture(event.pointerId);
   };
 
-  const flushPan = () => {
+  const flushPan = useCallback(() => {
     const delta = pendingPanDeltaRef.current;
     pendingPanDeltaRef.current = { x: 0, y: 0 };
     if (delta.x === 0 && delta.y === 0) return;
@@ -209,7 +211,7 @@ export const useVenueLayoutInteraction = ({
       x: Math.min(Math.max(current.x - delta.x, 0), latestSafeWidth - latestViewWidth),
       y: Math.min(Math.max(current.y - delta.y, 0), latestSafeHeight - latestViewHeight),
     }));
-  };
+  }, []);
 
   const handlePointerMove = (event: PointerEvent<SVGSVGElement>) => {
     if (!dragState || isSubmitting) return;
@@ -439,39 +441,64 @@ export const useVenueLayoutInteraction = ({
     });
   };
 
-  const finishDrag = (event?: PointerEvent<SVGSVGElement>) => {
-    if (panFrameRef.current !== null) {
-      cancelAnimationFrame(panFrameRef.current);
-      panFrameRef.current = null;
-      flushPan();
-    }
-    if (selectFrameRef.current !== null) {
-      cancelAnimationFrame(selectFrameRef.current);
-      selectFrameRef.current = null;
-    }
-    if (dragState?.type === "select") {
-      const point = event ? getCoordinates(event) : pendingSelectionPointRef.current;
-      const currentX = point?.x ?? dragState.currentX;
-      const currentY = point?.y ?? dragState.currentY;
-      const left = Math.min(dragState.startX, currentX);
-      const right = Math.max(dragState.startX, currentX);
-      const top = Math.min(dragState.startY, currentY);
-      const bottom = Math.max(dragState.startY, currentY);
-      const enclosedClientIds: number[] = [];
+  const finishDrag = useCallback(
+    (event?: { pointerId: number; clientX: number; clientY: number }) => {
+      if (activePointerIdRef.current === null || (event && activePointerIdRef.current !== event.pointerId)) return;
 
-      venueSeats.forEach((seat) => {
-        if (seat.positionX >= left && seat.positionX <= right && seat.positionY >= top && seat.positionY <= bottom) {
-          enclosedClientIds.push(seat.clientId);
-        }
-      });
+      activePointerIdRef.current = null;
+      if (panFrameRef.current !== null) {
+        cancelAnimationFrame(panFrameRef.current);
+        panFrameRef.current = null;
+        flushPan();
+      }
+      if (selectFrameRef.current !== null) {
+        cancelAnimationFrame(selectFrameRef.current);
+        selectFrameRef.current = null;
+      }
+      if (dragState?.type === "select") {
+        const point = event ? getCoordinates(event) : pendingSelectionPointRef.current;
+        const currentX = point?.x ?? dragState.currentX;
+        const currentY = point?.y ?? dragState.currentY;
+        const left = Math.min(dragState.startX, currentX);
+        const right = Math.max(dragState.startX, currentX);
+        const top = Math.min(dragState.startY, currentY);
+        const bottom = Math.max(dragState.startY, currentY);
+        const enclosedClientIds: number[] = [];
 
-      setSelectedSeatClientIds(dragState.additive ? [...new Set([...dragState.baseClientIds, ...enclosedClientIds])] : enclosedClientIds);
-    }
-    pendingSelectionPointRef.current = null;
-    if (dragState?.type === "pan" && !dragState.moved) setSelectedSeatClientIds([]);
-    panPointerRef.current = null;
-    setDragState(null);
-  };
+        venueSeats.forEach((seat) => {
+          if (seat.positionX >= left && seat.positionX <= right && seat.positionY >= top && seat.positionY <= bottom) {
+            enclosedClientIds.push(seat.clientId);
+          }
+        });
+
+        setSelectedSeatClientIds(dragState.additive ? [...new Set([...dragState.baseClientIds, ...enclosedClientIds])] : enclosedClientIds);
+      }
+      pendingSelectionPointRef.current = null;
+      if (dragState?.type === "pan" && !dragState.moved) setSelectedSeatClientIds([]);
+      panPointerRef.current = null;
+      setDragState(null);
+    },
+    [dragState, flushPan, getCoordinates, setSelectedSeatClientIds, venueSeats],
+  );
+
+  useEffect(() => {
+    const finishDragOutsideSvg = (event: globalThis.PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && svgRef.current?.contains(target)) return;
+      finishDrag(event);
+    };
+
+    window.addEventListener("pointerup", finishDragOutsideSvg);
+    window.addEventListener("pointercancel", finishDragOutsideSvg);
+    const finishDragOnBlur = () => finishDrag();
+    window.addEventListener("blur", finishDragOnBlur);
+
+    return () => {
+      window.removeEventListener("pointerup", finishDragOutsideSvg);
+      window.removeEventListener("pointercancel", finishDragOutsideSvg);
+      window.removeEventListener("blur", finishDragOnBlur);
+    };
+  }, [finishDrag]);
 
   const handlePointerDown = useCallback((event: PointerEvent<SVGGElement>) => {
     const seatElement = (event.target as Element).closest<SVGGElement>("[data-seat-client-id]");

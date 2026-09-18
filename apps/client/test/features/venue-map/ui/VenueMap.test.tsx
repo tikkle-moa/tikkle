@@ -92,7 +92,8 @@ describe("VenueMap", () => {
     const { container } = render(<VenueMap venue={venue} venueSeats={seats} />);
 
     expect(screen.getByRole("heading", { name: "좌석 배치 정보" })).toBeInTheDocument();
-    expect(screen.getByText("올림픽공원 KSPO DOME · 전체 2석")).toBeInTheDocument();
+    expect(screen.getByText("올림픽공원 KSPO DOME")).toBeInTheDocument();
+    expect(screen.getByText("전체 2석")).toBeInTheDocument();
 
     const map = screen.getByLabelText("올림픽공원 KSPO DOME 좌석 배치도");
     expect(map).toHaveAttribute("viewBox", "0 0 100 100");
@@ -115,7 +116,7 @@ describe("VenueMap", () => {
     await user.click(seat);
 
     expect(seat).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("A구역 1열 1번 · A구역 · 150,000원")).toBeInTheDocument();
+    expect(screen.getByText("A구역 1열 1번").closest("p")).toHaveTextContent("A구역 1열 1번 · A구역 · 150,000원");
   });
 
   it("확대 제어 버튼으로 확대와 축소할 수 있다", async () => {
@@ -212,7 +213,7 @@ describe("VenueMap", () => {
     await user.keyboard("{Enter}");
 
     expect(seat).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("A구역 1열 2번 · A구역 · 150,000원")).toBeInTheDocument();
+    expect(screen.getByText("A구역 1열 2번").closest("p")).toHaveTextContent("A구역 1열 2번 · A구역 · 150,000원");
   });
 
   it("지도 내부의 두 손가락 제스처와 Safari 제스처만 브라우저 확대를 막는다", () => {
@@ -255,7 +256,7 @@ describe("VenueMap", () => {
     }
   });
 
-  it("드래그 중에는 grabbing 커서를 표시하고 드래그 직후 좌석 클릭을 무시한다", async () => {
+  it("드래그 중에는 grabbing 커서를 표시하고 이후 좌석을 선택할 수 있다", async () => {
     const user = userEvent.setup();
 
     render(<VenueMap venue={venue} venueSeats={seats} />);
@@ -292,8 +293,64 @@ describe("VenueMap", () => {
 
     expect(map).toHaveClass("cursor-grab");
 
-    await user.click(seat);
-
     expect(seat).toHaveAttribute("aria-pressed", "false");
+    await user.click(seat);
+    expect(seat).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("상태가 있는 Hold 모드에서 선택 상태와 좌석 callback을 반영한다", async () => {
+    const user = userEvent.setup();
+    const onSeatToggle = vi.fn();
+
+    render(
+      <VenueMap
+        venue={venue}
+        venueSeats={seats}
+        venueSeatStates={
+          new Map([
+            [1, { status: "held_by_my_group", expiresAt: new Date(Date.now() + 60000) }],
+            [2, { status: "booked" }],
+          ])
+        }
+        selectedSeatIds={new Set([1])}
+        serverTimeOffset={0}
+        onSeatToggle={onSeatToggle}
+      />,
+    );
+
+    const heldSeat = screen.getByRole("button", { name: /A구역 1열 1번/ });
+    expect(heldSeat).toHaveAttribute("aria-pressed", "true");
+    expect(heldSeat).toHaveAttribute("aria-disabled", "false");
+    await user.click(heldSeat);
+    expect(onSeatToggle).toHaveBeenCalledWith(seats[0]);
+
+    heldSeat.focus();
+    await user.keyboard(" ");
+    expect(onSeatToggle).toHaveBeenCalledTimes(2);
+
+    const bookedSeat = screen.getByRole("button", { name: /A구역 1열 2번/ });
+    expect(bookedSeat).toHaveAttribute("aria-disabled", "true");
+    await user.click(bookedSeat);
+    expect(onSeatToggle).toHaveBeenCalledTimes(2);
+
+    fireEvent.keyDown(bookedSeat, { key: "Enter" });
+    expect(onSeatToggle).toHaveBeenCalledTimes(2);
+  });
+
+  it("상태 map에 없는 선택 좌석은 available 상태 안내를 표시한다", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <VenueMap
+        venue={venue}
+        venueSeats={seats}
+        venueSeatStates={new Map([[2, { status: "booked" }]])}
+        selectedSeatIds={new Set([1])}
+        onSeatToggle={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /A구역 1열 1번/ }));
+    expect(screen.getByText("선택 가능한 좌석입니다.")).toBeInTheDocument();
   });
 });

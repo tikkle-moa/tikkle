@@ -105,6 +105,47 @@ describe("useVenueLayoutInteraction", () => {
     expect(props.onLayoutChangeStart).toHaveBeenCalledOnce();
   });
 
+  it("SVG 밖에서 pointerup이 발생하거나 창 포커스를 잃으면 드래그를 종료한다", () => {
+    const { result } = renderInteraction();
+    attachCoordinateSvg(result);
+
+    act(() => result.current.startBackgroundDrag(createFullPointerEvent() as never));
+    act(() => window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 })));
+    expect(result.current.dragState).toBeNull();
+
+    act(() => result.current.startBackgroundDrag(createFullPointerEvent() as never));
+    act(() => window.dispatchEvent(new Event("blur")));
+    expect(result.current.dragState).toBeNull();
+  });
+
+  it("SVG 내부에서 버블된 pointerup은 전역 fallback에서 중복 종료하지 않는다", () => {
+    const { result } = renderInteraction();
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+    Object.assign(svg, {
+      focus: vi.fn(),
+      setPointerCapture: vi.fn(),
+      createSVGPoint: () => ({
+        x: 0,
+        y: 0,
+        matrixTransform() {
+          return { x: this.x, y: this.y };
+        },
+      }),
+      getScreenCTM: () => ({ inverse: () => ({}) }),
+    });
+    document.body.append(svg);
+    result.current.svgRef.current = svg;
+
+    act(() => result.current.startBackgroundDrag(createFullPointerEvent() as never));
+    act(() => svg.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1 })));
+
+    expect(result.current.dragState).toMatchObject({ type: "seats" });
+
+    act(() => result.current.finishDrag());
+    svg.remove();
+  });
+
   it("더블 클릭 제한 시간을 넘기면 구역 전체를 선택하지 않는다", () => {
     const { result, props } = renderInteraction();
 

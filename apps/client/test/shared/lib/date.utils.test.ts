@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime, toDate } from "@shared/lib/date.utils";
+import { formatDate, formatDateTime, formatTime, toDate } from "@shared/lib/date.utils";
 
 const DATE_TIME = "2026-09-01T19:00:00";
 
@@ -33,5 +33,18 @@ describe("date utils", () => {
     };
 
     expect(formatDateTime(DATE_TIME, options)).toBe(new Date(DATE_TIME).toLocaleString(undefined, options));
+  });
+
+  it("시간과 소수점 이하 초를 지정한 형식으로 표시한다", () => {
+    expect(formatTime(DATE_TIME)).toBe(new Date(DATE_TIME).toLocaleTimeString(undefined, { timeStyle: "medium" }));
+    const options: Intl.DateTimeFormatOptions = { fractionalSecondDigits: 2 };
+    expect(formatTime(DATE_TIME, options)).toBe(
+      new Date(DATE_TIME).toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        ...options,
+      }),
+    );
   });
 });

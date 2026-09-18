@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { SeatSelectionMockup } from "@features/seat";
+import { VenueSelectionMockup } from "@entities/venue";
 
 const HeroBanner = () => (
   <div
@@ -44,7 +44,7 @@ const HeroBanner = () => (
       </div>
 
       <div className="hidden md:flex">
-        <SeatSelectionMockup />
+        <VenueSelectionMockup />
       </div>
     </div>
   </div>

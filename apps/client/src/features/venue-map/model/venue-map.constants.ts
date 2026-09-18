@@ -1,2 +1,4 @@
 export const SECTION_COLOR_LIGHTNESS = 52;
 export const SECTION_COLOR_SATURATION = 68;
+export const TOOLTIP_GAP = 8;
+export const TOOLTIP_VIEWPORT_PADDING = 12;

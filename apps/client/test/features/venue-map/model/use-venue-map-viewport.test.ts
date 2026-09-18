@@ -56,6 +56,21 @@ describe("useVenueMapViewport", () => {
     expect(result.current.consumeSeatClick()).toBe(true);
   });
 
+  it("SVG 밖에서 pointerup이 발생해도 추적 중인 포인터를 정리한다", () => {
+    const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
+
+    act(() => {
+      result.current.zoomIn();
+      result.current.handlePointerDown(createPointerEvent(1, 50, 50));
+      window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 }));
+
+      result.current.handlePointerDown(createPointerEvent(2, 50, 50));
+      result.current.handlePointerMove(createPointerEvent(2, 30, 50));
+    });
+
+    expect(result.current.zoom).toBe(1.2);
+  });
+
   it("확대와 축소 제어의 활성 상태를 제공한다", () => {
     const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
 
@@ -77,7 +92,20 @@ describe("useVenueMapViewport", () => {
     expect(result.current.canZoomOut).toBe(false);
   });
 
-  it("좌석을 누르면 지도 포인터 캡처를 시작하지 않는다", () => {
+  it("venue-form과 같은 최소 가시 영역을 기준으로 최대 확대를 제한한다", () => {
+    const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
+
+    act(() => {
+      for (let index = 0; index < 10; index += 1) {
+        result.current.zoomIn();
+      }
+    });
+
+    expect(result.current.zoom).toBe(2);
+    expect(result.current.canZoomIn).toBe(false);
+  });
+
+  it("좌석에서 시작한 포인터도 지도 드래그로 전환할 수 있다", () => {
     const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
     const seatElement = document.createElementNS("http://www.w3.org/2000/svg", "rect");
 
@@ -93,9 +121,45 @@ describe("useVenueMapViewport", () => {
     });
 
     expect(mockSetPointerCapture).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.handlePointerMove(
+        createPointerEvent(1, 40, 50, {
+          pointerType: "mouse",
+          target: seatElement,
+        }),
+      );
+      result.current.handlePointerUp(
+        createPointerEvent(1, 40, 50, {
+          pointerType: "mouse",
+          target: seatElement,
+        }),
+      );
+    });
+
+    expect(mockSetPointerCapture).toHaveBeenCalledWith(1);
+    expect(result.current.consumeSeatClick()).toBe(true);
   });
 
-  it("pan gesture를 시작하지 않은 포인터 이동은 확대 후에도 무시한다", () => {
+  it("좌석에서 이동하지 않고 포인터를 떼면 클릭을 허용한다", () => {
+    const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
+    const seatElement = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    seatElement.setAttribute("data-seat-id", "1");
+    const event = createPointerEvent(1, 50, 50, {
+      pointerType: "mouse",
+      target: seatElement,
+    });
+
+    act(() => {
+      result.current.handlePointerDown(event);
+      result.current.handlePointerUp(event);
+    });
+
+    expect(mockSetPointerCapture).not.toHaveBeenCalled();
+    expect(result.current.consumeSeatClick()).toBe(false);
+  });
+
+  it("기본 배율에서 누른 포인터도 확대 후 이동하면 드래그로 전환한다", () => {
     const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
 
     act(() => {
@@ -109,8 +173,8 @@ describe("useVenueMapViewport", () => {
       result.current.handlePointerMove(createPointerEvent(1, 30, 50));
     });
 
-    expect(result.current.isDragging).toBe(false);
-    expect(result.current.viewBox).toBe(viewBoxBeforeMove);
+    expect(result.current.isDragging).toBe(true);
+    expect(result.current.viewBox).not.toBe(viewBoxBeforeMove);
 
     act(() => {
       result.current.handlePointerUp(createPointerEvent(1, 30, 50));
@@ -158,5 +222,31 @@ describe("useVenueMapViewport", () => {
     expect(result.current.isDragging).toBe(false);
     expect(result.current.viewBox).toBe(initialViewBox);
     expect(result.current.consumeSeatClick()).toBe(false);
+  });
+
+  it("공연장 크기가 줄어 최대 배율이 낮아지면 현재 배율을 제한한다", () => {
+    const { result, rerender } = renderHook(({ width, height }) => useVenueMapViewport({ width, height }), {
+      initialProps: { width: 100, height: 100 },
+    });
+    act(() => {
+      result.current.zoomIn();
+      result.current.zoomIn();
+      result.current.zoomIn();
+    });
+
+    rerender({ width: 30, height: 30 });
+    expect(result.current.zoom).toBe(1);
+  });
+
+  it("pinch가 끝나 pan gesture가 없는 남은 포인터 이동을 무시한다", () => {
+    const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
+    act(() => {
+      result.current.handlePointerDown(createPointerEvent(1, 20, 50));
+      result.current.handlePointerDown(createPointerEvent(2, 80, 50));
+      result.current.handlePointerUp(createPointerEvent(2, 80, 50));
+      result.current.handlePointerMove(createPointerEvent(1, 30, 50));
+    });
+
+    expect(result.current.isDragging).toBe(false);
   });
 });

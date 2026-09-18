@@ -68,8 +68,9 @@ describe("PerformanceDetailPage", () => {
     expect(screen.getByText(formatDateTime(pageState.performance.startsAt))).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "콘서트 상세로 돌아가기" })).toHaveAttribute("href", "/concerts/10");
     expect(screen.getByRole("heading", { name: "좌석 배치 정보" })).toBeInTheDocument();
-    expect(screen.getByText("올림픽공원 KSPO DOME · 전체 0석")).toBeInTheDocument();
-    expect(screen.getByText("Option + 스크롤 또는 두 손가락으로 확대할 수 있습니다. 확대 후 드래그하여 이동하세요.")).toBeInTheDocument();
+    expect(screen.getByText("올림픽공원 KSPO DOME")).toBeInTheDocument();
+    expect(screen.getByText("전체 0석")).toBeInTheDocument();
+    expect(screen.getByText(/좌석을 탭하거나 클릭하여 선택하세요/)).toBeInTheDocument();
   });
 
   it("예매 오픈 일시가 없으면 예매 오픈 정보를 표시하지 않는다", () => {
