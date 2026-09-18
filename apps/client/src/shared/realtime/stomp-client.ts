@@ -81,7 +81,7 @@ class StompClient {
     return `${prefix}${resolvedPath}`;
   }
 
-  private handleFrame<TMessage>(frame: IMessage, callback: (message: TMessage) => void, errorCallback?: (error: StompFailureMessage) => void) {
+  private handleFrame<TMessage>(frame: IMessage, callback: (message: TMessage) => void, errorCallback?: (errorMessage: StompFailureMessage) => void) {
     const message = JSON.parse(frame.body) as TMessage | StompFailureMessage;
 
     if (this.isStompFailureMessage(message)) {
