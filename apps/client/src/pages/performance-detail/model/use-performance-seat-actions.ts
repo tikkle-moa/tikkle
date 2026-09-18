@@ -76,7 +76,7 @@ export const usePerformanceSeatActions = ({
   }, [performanceId, stompClient, validateSeatHoldAction]);
 
   const handleHoldSeats = useCallback(() => {
-    if (!validateSeatHoldAction(stompClient)) return;
+    if (!validateSeatHoldAction(stompClient, "hold")) return;
 
     setSeatOperationState({ status: "loading" });
 
@@ -88,7 +88,7 @@ export const usePerformanceSeatActions = ({
   }, [performanceId, selectedSeatIdsToHold, setSeatOperationState, stompClient, validateSeatHoldAction]);
 
   const handleReleaseSeats = useCallback(() => {
-    if (!validateSeatHoldAction(stompClient)) return;
+    if (!validateSeatHoldAction(stompClient, "release")) return;
 
     setSeatOperationState({ status: "loading" });
 
