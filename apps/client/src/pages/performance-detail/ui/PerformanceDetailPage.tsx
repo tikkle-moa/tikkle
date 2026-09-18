@@ -8,14 +8,13 @@ import DetailMessage from "@shared/ui/DetailMessage";
 
 import { PERFORMANCE_STATUS_MAP } from "@entities/performance";
 
-import { VenueMap } from "@features/venue-map";
-
 import PerformanceDetailSkeleton from "./PerformanceDetailSkeleton";
+import PerformanceSeatMap from "./PerformanceSeatMap";
 
 import { usePerformanceDetail } from "../model/use-performance-detail";
 
 const PerformanceDetailPage = () => {
-  const { performance, venue, venueSeats, isError, isParamValid, isPending } = usePerformanceDetail();
+  const { performance, venueDetail, isError, isParamValid, isPending } = usePerformanceDetail();
 
   if (!isParamValid) {
     return <DetailMessage title="잘못된 공연 회차입니다." description="올바르지 않은 공연 회차 ID입니다." />;
@@ -33,14 +32,14 @@ const PerformanceDetailPage = () => {
     return <DetailMessage title="종료된 공연 회차입니다." description="다른 회차를 선택해 주세요." />;
   }
 
-  if (!venue) {
+  if (!venueDetail) {
     return <DetailMessage title="연결된 공연장 정보를 불러오지 못했습니다." description="잠시 후 다시 시도해 주세요." />;
   }
 
   const { label: statusLabel, className: statusClassName } = PERFORMANCE_STATUS_MAP[performance.status];
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div>
       <Link
         className="hover:text-brand-primary inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 transition-colors"
         to={generatePath(ROUTE_PATHS.CONCERT_DETAIL, {
@@ -102,7 +101,7 @@ const PerformanceDetailPage = () => {
         <Ticket className="absolute top-5 right-5 size-8 text-white/10 sm:size-12" aria-hidden />
       </section>
 
-      <VenueMap venue={venue} venueSeats={venueSeats} />
+      <PerformanceSeatMap performance={performance} venueDetail={venueDetail} />
     </div>
   );
 };
