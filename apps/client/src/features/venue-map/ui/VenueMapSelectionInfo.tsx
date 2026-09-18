@@ -35,7 +35,7 @@ const VenueMapSelectionInfo = ({ selectedSeat, selectedSeatIds, selectedSeatStat
             (isHeldSeatStatus(selectedSeatStatus) ? (
               <VenueMapSelectedSeatStatus status={selectedSeatStatus} expiresAt={expiresAt} serverTimeOffset={serverTimeOffset} />
             ) : (
-              <p className="mt-1 font-semibold text-slate-600">{staticStatusMessage?.description}</p>
+              <p className="mt-1 font-semibold text-slate-600">{staticStatusMessage}</p>
             ))}
         </div>
       ) : (
