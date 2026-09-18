@@ -28,10 +28,12 @@ export const useVenueMapSeatTooltip = ({ venueSeats, venueSeatStates }: UseVenue
 
   const updateTooltipPosition = useCallback((element: SVGGElement) => {
     const seatRect = element.getBoundingClientRect();
-    setTooltipPosition({
-      left: seatRect.left + seatRect.width / 2 + window.scrollX,
-      top: seatRect.top + window.scrollY,
-      bottom: seatRect.top + seatRect.height + window.scrollY,
+    setTooltipPosition((current) => {
+      const left = seatRect.left + seatRect.width / 2 + window.scrollX;
+      const top = seatRect.top + window.scrollY;
+      const bottom = seatRect.top + seatRect.height + window.scrollY;
+      if (current && current.left === left && current.top === top && current.bottom === bottom) return current;
+      return { left, top, bottom };
     });
   }, []);
 
