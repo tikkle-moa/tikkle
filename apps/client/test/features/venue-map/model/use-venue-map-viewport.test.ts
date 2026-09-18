@@ -56,6 +56,21 @@ describe("useVenueMapViewport", () => {
     expect(result.current.consumeSeatClick()).toBe(true);
   });
 
+  it("SVG 밖에서 pointerup이 발생해도 추적 중인 포인터를 정리한다", () => {
+    const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
+
+    act(() => {
+      result.current.zoomIn();
+      result.current.handlePointerDown(createPointerEvent(1, 50, 50));
+      window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 }));
+
+      result.current.handlePointerDown(createPointerEvent(2, 50, 50));
+      result.current.handlePointerMove(createPointerEvent(2, 30, 50));
+    });
+
+    expect(result.current.zoom).toBe(1.2);
+  });
+
   it("확대와 축소 제어의 활성 상태를 제공한다", () => {
     const { result } = renderHook(() => useVenueMapViewport({ width: 100, height: 100 }));
 

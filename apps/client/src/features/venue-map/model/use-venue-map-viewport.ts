@@ -12,7 +12,7 @@ import {
   zoomAt,
 } from "./venue-map-viewport.utils";
 
-export interface UseVenueMapViewportProps {
+interface UseVenueMapViewportProps {
   width: number;
   height: number;
   trackDragging?: boolean;
@@ -243,8 +243,10 @@ export const useVenueMapViewport = ({ width, height, trackDragging = true, direc
     ],
   );
 
-  const handlePointerUp = useCallback(
-    (event: PointerEvent<SVGSVGElement>) => {
+  const finishPointerGesture = useCallback(
+    (pointerId: number) => {
+      if (!pointersRef.current.has(pointerId)) return;
+
       const gesture = gestureRef.current;
       flushPendingViewport();
 
@@ -256,7 +258,7 @@ export const useVenueMapViewport = ({ width, height, trackDragging = true, direc
         if (directDragRendering) setViewport(viewportRef.current);
       }
 
-      pointersRef.current.delete(event.pointerId);
+      pointersRef.current.delete(pointerId);
 
       if (pointersRef.current.size === 1 && getCurrentViewport().zoom > VENUE_MAP_MIN_ZOOM) {
         startPan([...pointersRef.current.values()][0]);
@@ -269,6 +271,27 @@ export const useVenueMapViewport = ({ width, height, trackDragging = true, direc
     },
     [directDragRendering, flushPendingViewport, getCurrentViewport, setDraggingVisual, startPan, trackDragging],
   );
+
+  const handlePointerUp = useCallback(
+    (event: PointerEvent<SVGSVGElement>) => {
+      finishPointerGesture(event.pointerId);
+    },
+    [finishPointerGesture],
+  );
+
+  useEffect(() => {
+    const handleWindowPointerEnd = (event: globalThis.PointerEvent) => {
+      finishPointerGesture(event.pointerId);
+    };
+
+    window.addEventListener("pointerup", handleWindowPointerEnd);
+    window.addEventListener("pointercancel", handleWindowPointerEnd);
+
+    return () => {
+      window.removeEventListener("pointerup", handleWindowPointerEnd);
+      window.removeEventListener("pointercancel", handleWindowPointerEnd);
+    };
+  }, [finishPointerGesture]);
 
   useEffect(
     () => () => {
