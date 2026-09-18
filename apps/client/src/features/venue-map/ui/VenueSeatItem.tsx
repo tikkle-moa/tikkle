@@ -8,6 +8,7 @@ import {
   VENUE_SEAT_WIDTH,
   type VenueSeatResponse,
   type VenueSeatStatus,
+  isHeldSeatStatus,
 } from "@entities/venue";
 
 import { isCurrentSeatSelectable } from "../model/venue-map.utils";
@@ -60,7 +61,7 @@ const VenueSeatItem = ({
       aria-disabled={isHoldMode ? !isSeatSelectable : undefined}
       onPointerEnter={(event) => onPointerEnter?.(event, seat)}
       onPointerMove={(event) => {
-        if (isHeldSeatStatusValue(event.currentTarget.dataset.seatStatus)) onPointerMove?.(event);
+        if (isHeldSeatStatus(event.currentTarget.dataset.seatStatus as VenueSeatStatus)) onPointerMove?.(event);
       }}
       onPointerLeave={() => onPointerLeave?.()}
       onClick={(event) => onSeatClick(seat, !isHoldMode || isCurrentSeatSelectable(event.currentTarget))}
@@ -96,5 +97,3 @@ const VenueSeatItem = ({
 };
 
 export default memo(VenueSeatItem);
-
-const isHeldSeatStatusValue = (status?: string) => status === "held_by_my_group" || status === "held_by_other_group";
