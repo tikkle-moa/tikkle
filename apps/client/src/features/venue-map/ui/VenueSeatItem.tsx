@@ -2,7 +2,6 @@ import { type KeyboardEvent, type PointerEvent, memo } from "react";
 
 import {
   VENUE_SEAT_HEIGHT,
-  VENUE_SEAT_INTERACTION_PADDING,
   VENUE_SEAT_RADIUS,
   VENUE_SEAT_STYLE_MAP,
   VENUE_SEAT_WIDTH,
@@ -68,16 +67,6 @@ const VenueSeatItem = ({
       onKeyDown={(event) => onSeatKeyDown(event, seat, !isHoldMode || isCurrentSeatSelectable(event.currentTarget))}
     >
       <rect
-        data-seat-hitbox
-        x={seat.positionX - VENUE_SEAT_WIDTH / 2 - VENUE_SEAT_INTERACTION_PADDING}
-        y={seat.positionY - VENUE_SEAT_HEIGHT / 2 - VENUE_SEAT_INTERACTION_PADDING}
-        width={VENUE_SEAT_WIDTH + VENUE_SEAT_INTERACTION_PADDING * 2}
-        height={VENUE_SEAT_HEIGHT + VENUE_SEAT_INTERACTION_PADDING * 2}
-        rx={VENUE_SEAT_RADIUS + VENUE_SEAT_INTERACTION_PADDING}
-        fill="transparent"
-        pointerEvents="all"
-      />
-      <rect
         data-seat-visual
         x={seat.positionX - VENUE_SEAT_WIDTH / 2}
         y={seat.positionY - VENUE_SEAT_HEIGHT / 2}
@@ -88,7 +77,7 @@ const VenueSeatItem = ({
         fillOpacity={status === "booked" ? 0.72 : 1}
         stroke={isSelected ? "#312e81" : hasSeatStatuses ? VENUE_SEAT_STYLE_MAP[status].stroke : "transparent"}
         strokeWidth={isSelected ? 1.1 : hasSeatStatuses ? 0.3 : 0}
-        className={`pointer-events-none transition-[filter] duration-200 group-hover:stroke-violet-700 group-hover:stroke-[1.1] group-data-[selected=true]:stroke-indigo-900 group-data-[selected=true]:stroke-[1.1] ${
+        className={`transition-[filter] duration-200 group-hover:stroke-violet-700 group-hover:stroke-[1.1] group-data-[selected=true]:stroke-indigo-900 group-data-[selected=true]:stroke-[1.1] ${
           isSeatSelectable || isHeld ? "group-hover:brightness-95" : ""
         }`}
       />

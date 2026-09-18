@@ -71,13 +71,13 @@ describe("venue map parts", () => {
     );
 
     const item = screen.getByRole("button");
-    const hitbox = item.querySelector("[data-seat-hitbox]");
     const visual = item.querySelector("[data-seat-visual]");
-    expect(hitbox).toHaveAttribute("width", "5.5");
-    expect(hitbox).toHaveAttribute("height", "4.5");
+    expect(visual).toHaveAttribute("width", "4.5");
+    expect(visual).toHaveAttribute("height", "3.5");
     expect(visual).toHaveClass("group-hover:stroke-violet-700", "group-hover:stroke-[1.1]");
 
-    fireEvent.pointerEnter(hitbox!);
+    if (!visual) throw new Error("좌석 visual 요소를 찾을 수 없습니다.");
+    fireEvent.pointerEnter(visual);
     fireEvent.click(item);
     fireEvent.keyDown(item, { key: "Enter" });
 

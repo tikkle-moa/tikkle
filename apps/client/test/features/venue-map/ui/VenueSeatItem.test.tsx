@@ -49,16 +49,24 @@ describe("VenueSeatItem", () => {
     expect(props.onSeatClick).toHaveBeenCalledWith(seat, false);
   });
 
-  it("Hold 좌석의 pointer 이벤트를 전달한다", () => {
+  it("Hold 좌석의 visual에서 발생한 pointer 이벤트를 전달한다", () => {
     const onPointerEnter = vi.fn();
     const onPointerMove = vi.fn();
     const onPointerLeave = vi.fn();
-    renderItem({ status: "held_by_my_group", isHeld: true, onPointerEnter, onPointerMove, onPointerLeave });
-    const item = screen.getByRole("button");
+    const { container } = renderItem({
+      status: "held_by_my_group",
+      isHeld: true,
+      onPointerEnter,
+      onPointerMove,
+      onPointerLeave,
+    });
+    const visual = container.querySelector("[data-seat-visual]");
 
-    fireEvent.pointerEnter(item);
-    fireEvent.pointerMove(item);
-    fireEvent.pointerLeave(item);
+    expect(visual).toBeInTheDocument();
+    if (!visual) throw new Error("좌석 visual 요소를 찾을 수 없습니다.");
+    fireEvent.pointerEnter(visual);
+    fireEvent.pointerMove(visual);
+    fireEvent.pointerLeave(visual);
 
     expect(onPointerEnter).toHaveBeenCalled();
     expect(onPointerMove).toHaveBeenCalled();

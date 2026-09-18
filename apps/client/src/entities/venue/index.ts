@@ -1,5 +1,5 @@
 export { useVenueDetail, useVenues } from "./model/venue.queries";
-export { VENUE_QUERY_KEYS, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH, VENUE_SEAT_RADIUS, VENUE_SEAT_INTERACTION_PADDING } from "./model/venue.constants";
+export { VENUE_QUERY_KEYS, VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH, VENUE_SEAT_RADIUS } from "./model/venue.constants";
 export { getVenueStageCornerRadius, getVenueStageTitleFontSize, getVenueRegion } from "./model/venue.utils";
 export { isHeldSeatStatus, areSeatIdsEqual } from "./model/venue-seat.utils";
 export { VENUE_SEAT_STYLE_MAP, SEAT_STATUS_LEGEND } from "./model/venue-seat.constants";
