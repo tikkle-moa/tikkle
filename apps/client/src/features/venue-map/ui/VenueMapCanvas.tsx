@@ -16,7 +16,7 @@ interface VenueMapCanvasProps {
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset: number;
   selectedSeatIds?: ReadonlySet<number>;
-  onSeatToggle?: (seat: VenueSeatResponse) => void;
+  onSeatToggle?: (seat: number) => void;
   onSeatSelectionChange?: (seatIds: ReadonlySet<number>) => void;
 }
 
