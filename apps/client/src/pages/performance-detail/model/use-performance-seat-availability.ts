@@ -3,13 +3,7 @@ import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
 import type { MyGroupHeldSeatInfo, SeatOperationStatus } from "./seat-map.types";
-import {
-  areVenueSeatStatesEqual,
-  createVenueSeatStates,
-  filterSelectableSeatIds,
-  getMyGroupHoldSummary,
-  getSelectedSeatOperationIds,
-} from "./seat-map.utils";
+import { areVenueSeatStatesEqual, createVenueSeatStates, filterSelectableSeatIds, getMyGroupHoldSummary } from "./seat-map.utils";
 
 interface UsePerformanceSeatAvailabilityProps {
   venueSeats: VenueSeatResponse[];
@@ -52,9 +46,14 @@ export const usePerformanceSeatAvailability = ({
 
   const venueSeatById = useMemo(() => new Map(venueSeats.map((venueSeat) => [venueSeat.id, venueSeat])), [venueSeats]);
 
-  const { selectedSeatIdsToHold, selectedSeatIdsToRelease } = useMemo(
-    () => getSelectedSeatOperationIds(selectedSeatIds, venueSeatStates),
+  const selectedSeatIdsToHold = useMemo(
+    () => Array.from(selectedSeatIds).filter((seatId) => venueSeatStates.get(seatId)?.status === "available"),
     [venueSeatStates, selectedSeatIds],
+  );
+
+  const selectedSeatIdsToRelease = useMemo(
+    () => Array.from(selectedSeatIds).filter((seatId) => myGroupHeldSeatInfoBySeatId.has(seatId)),
+    [myGroupHeldSeatInfoBySeatId, selectedSeatIds],
   );
 
   const { myGroupHoldInfoByHoldId, myGroupHeldSeatTotalPrice } = useMemo(

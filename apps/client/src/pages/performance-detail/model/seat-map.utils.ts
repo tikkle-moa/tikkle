@@ -40,23 +40,6 @@ export const areVenueSeatStatesEqual = (first: ReadonlyMap<number, VenueSeatStat
   return true;
 };
 
-export const getSelectedSeatOperationIds = (selectedSeatIds: Set<number>, venueSeatStates: Map<number, VenueSeatState>) => {
-  const selectedSeatIdsToHold: number[] = [];
-  const selectedSeatIdsToRelease: number[] = [];
-
-  for (const seatId of selectedSeatIds) {
-    const status = venueSeatStates.get(seatId)?.status;
-
-    if (status === "available") {
-      selectedSeatIdsToHold.push(seatId);
-    } else if (status === "held_by_my_group") {
-      selectedSeatIdsToRelease.push(seatId);
-    }
-  }
-
-  return { selectedSeatIdsToHold, selectedSeatIdsToRelease };
-};
-
 export const getMyGroupHoldSummary = (
   myGroupHeldSeatInfoBySeatId: Map<number, MyGroupHeldSeatInfo>,
   venueSeatById: Map<number, VenueSeatResponse>,
