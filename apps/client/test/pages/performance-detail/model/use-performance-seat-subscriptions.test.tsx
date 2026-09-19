@@ -127,7 +127,12 @@ describe("usePerformanceSeatSubscriptions", () => {
     expect(result.current.bookedSeatIds).toEqual(new Set([2]));
     expect(result.current.heldSeatExpiresAtBySeatId.get(1)).toEqual(new Date("2026-09-16T20:00:00"));
     expect(result.current.serverTimeOffset).toBeGreaterThan(0);
-    expect(handleRefreshFinish).toHaveBeenCalledWith("seatStatus");
+    expect(handleRefreshFinish).toHaveBeenCalledWith("seatStatus", { status: "success" });
+    act(() => seatStatus.errorCallback?.({ error: { message: "좌석 상태 조회 실패" } }));
+    expect(handleRefreshFinish).toHaveBeenCalledWith("seatStatus", {
+      status: "error",
+      message: "좌석 상태 조회 실패",
+    });
 
     act(() =>
       seatStatus.callback({
@@ -142,7 +147,12 @@ describe("usePerformanceSeatSubscriptions", () => {
       }),
     );
     expect(result.current.myGroupHeldSeatInfoBySeatId.get(2)?.holdId).toBe("hold-1");
-    expect(handleRefreshFinish).toHaveBeenCalledWith("myHeldSeats");
+    expect(handleRefreshFinish).toHaveBeenCalledWith("myHeldSeats", { status: "success" });
+    act(() => myHolds.errorCallback?.({ error: { message: "내 점유 좌석 조회 실패" } }));
+    expect(handleRefreshFinish).toHaveBeenCalledWith("myHeldSeats", {
+      status: "error",
+      message: "내 점유 좌석 조회 실패",
+    });
 
     const event = getEventCallback();
     act(() => event({ type: "HELD_SEATS", data: [] as never }));

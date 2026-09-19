@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import { Armchair, RefreshCw } from "lucide-react";
+import { Armchair, CircleAlert, RefreshCw } from "lucide-react";
 
 import { PERFORMANCE_STATUS_MAP } from "@entities/performance";
 
@@ -10,10 +10,11 @@ interface PerformanceSeatHoldHeaderProps {
   connectionStyle: ConnectionStyle;
   isConnected: boolean;
   isRefreshing: boolean;
+  refreshError: string | null;
   handleRefresh: () => void;
 }
 
-const PerformanceSeatHoldHeader = ({ connectionStyle, isConnected, isRefreshing, handleRefresh }: PerformanceSeatHoldHeaderProps) => {
+const PerformanceSeatHoldHeader = ({ connectionStyle, isConnected, isRefreshing, refreshError, handleRefresh }: PerformanceSeatHoldHeaderProps) => {
   return (
     <div className="space-y-3 border-b border-slate-100 bg-linear-to-br from-violet-100 via-slate-50 to-fuchsia-100 px-3 py-4 sm:px-5">
       <div className="flex items-center justify-between gap-3">
@@ -31,7 +32,6 @@ const PerformanceSeatHoldHeader = ({ connectionStyle, isConnected, isRefreshing,
           {PERFORMANCE_STATUS_MAP.AVAILABLE.label}
         </span>
       </div>
-
       <div className={`flex items-center gap-3 rounded-2xl border px-3.5 py-3 ${connectionStyle.className}`} role="status">
         <span className={`size-2 shrink-0 rounded-full ${connectionStyle.dotClassName}`} aria-hidden />
 
@@ -52,6 +52,16 @@ const PerformanceSeatHoldHeader = ({ connectionStyle, isConnected, isRefreshing,
           </button>
         )}
       </div>
+      {!isRefreshing && refreshError && (
+        <div className="rounded-xl border border-red-200 bg-red-50/80 px-3.5 py-2.5 text-red-700" role="alert">
+          <div className="flex items-center gap-1.5">
+            <CircleAlert className="size-3.5 shrink-0" aria-hidden />
+            <p className="text-xs font-extrabold">좌석 정보 동기화</p>
+          </div>
+
+          <p className="mt-1.5 text-[11px] leading-4 font-bold whitespace-pre-line opacity-80">{refreshError}</p>
+        </div>
+      )}
     </div>
   );
 };

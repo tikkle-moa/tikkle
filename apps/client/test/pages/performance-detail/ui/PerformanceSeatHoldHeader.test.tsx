@@ -14,7 +14,15 @@ describe("PerformanceSeatHoldHeader", () => {
   it("연결 상태에서 새로고침을 실행한다", async () => {
     const user = userEvent.setup();
     const handleRefresh = vi.fn();
-    render(<PerformanceSeatHoldHeader connectionStyle={connectionStyle} isConnected isRefreshing={false} handleRefresh={handleRefresh} />);
+    render(
+      <PerformanceSeatHoldHeader
+        connectionStyle={connectionStyle}
+        isConnected
+        isRefreshing={false}
+        refreshError={null}
+        handleRefresh={handleRefresh}
+      />,
+    );
 
     expect(screen.getByRole("status")).toHaveTextContent("실시간 연결됨");
     await user.click(screen.getByRole("button", { name: "좌석 상태 새로고침" }));
@@ -23,11 +31,32 @@ describe("PerformanceSeatHoldHeader", () => {
 
   it("연결되지 않으면 버튼을 숨기고 새로고침 중이면 비활성화한다", () => {
     const { rerender } = render(
-      <PerformanceSeatHoldHeader connectionStyle={connectionStyle} isConnected={false} isRefreshing={false} handleRefresh={vi.fn()} />,
+      <PerformanceSeatHoldHeader
+        connectionStyle={connectionStyle}
+        isConnected={false}
+        isRefreshing={false}
+        refreshError={null}
+        handleRefresh={vi.fn()}
+      />,
     );
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
 
-    rerender(<PerformanceSeatHoldHeader connectionStyle={connectionStyle} isConnected isRefreshing handleRefresh={vi.fn()} />);
+    rerender(<PerformanceSeatHoldHeader connectionStyle={connectionStyle} isConnected isRefreshing refreshError={null} handleRefresh={vi.fn()} />);
     expect(screen.getByRole("button", { name: "좌석 상태 새로고침 중" })).toBeDisabled();
+  });
+
+  it("새로고침 조회 오류를 표시한다", () => {
+    render(
+      <PerformanceSeatHoldHeader
+        connectionStyle={connectionStyle}
+        isConnected
+        isRefreshing={false}
+        refreshError="좌석 상태: 조회에 실패했습니다."
+        handleRefresh={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("좌석 정보 동기화");
+    expect(screen.getByRole("alert")).toHaveTextContent("좌석 상태: 조회에 실패했습니다.");
   });
 });

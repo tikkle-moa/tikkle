@@ -49,7 +49,7 @@ export const usePerformanceSeatHoldPanel = ({
     setSelectedSeatIds,
   });
 
-  const { isRefreshing, visibleSeatOperationState, handleHoldSeats, handleReleaseSeats, handleRefresh, handleRefreshFinish } =
+  const { isRefreshing, refreshError, visibleSeatOperationState, handleHoldSeats, handleReleaseSeats, handleRefresh, handleRefreshFinish } =
     usePerformanceSeatActions({
       performanceId,
       selectedSeatIdsToHold,
@@ -83,6 +83,7 @@ export const usePerformanceSeatHoldPanel = ({
 
   return {
     isRefreshing,
+    refreshError,
     myGroupHoldInfoByHoldId,
     myGroupHeldSeatInfoBySeatId,
     selectedSeatIdsToRelease,

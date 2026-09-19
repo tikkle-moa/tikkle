@@ -7,7 +7,7 @@ import { getConnectionStyle } from "./seat-map.utils";
 
 interface UsePerformanceSeatSubscriptionsProps {
   performanceId: number;
-  handleRefreshFinish: (action: RefreshAction) => void;
+  handleRefreshFinish: (action: RefreshAction, state: SeatOperationState) => void;
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
@@ -48,7 +48,10 @@ export const usePerformanceSeatSubscriptions = ({
         setBookedSeatIds(new Set(message.data.bookedSeatIds));
         setHeldSeatExpiresAtBySeatId(new Map(message.data.heldSeats.map(({ id, expiresAt }) => [id, new Date(expiresAt)])));
 
-        handleRefreshFinish("seatStatus");
+        handleRefreshFinish("seatStatus", { status: "success" });
+      },
+      errorCallback: (errorMessage) => {
+        handleRefreshFinish("seatStatus", { status: "error", message: errorMessage.error.message });
       },
     });
 
@@ -70,7 +73,10 @@ export const usePerformanceSeatSubscriptions = ({
           ),
         );
 
-        handleRefreshFinish("myHeldSeats");
+        handleRefreshFinish("myHeldSeats", { status: "success" });
+      },
+      errorCallback: (errorMessage) => {
+        handleRefreshFinish("myHeldSeats", { status: "error", message: errorMessage.error.message });
       },
     });
 

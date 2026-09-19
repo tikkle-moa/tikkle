@@ -35,6 +35,7 @@ const PerformanceSeatHoldPanel = ({
 }: PerformanceSeatHoldPanelProps) => {
   const {
     isRefreshing,
+    refreshError,
     myGroupHoldInfoByHoldId,
     myGroupHeldSeatInfoBySeatId,
     selectedSeatIdsToRelease,
@@ -66,6 +67,7 @@ const PerformanceSeatHoldPanel = ({
         connectionStyle={connectionStyle}
         isConnected={isConnected}
         isRefreshing={isRefreshing}
+        refreshError={refreshError}
         handleRefresh={handleRefresh}
       />
 
