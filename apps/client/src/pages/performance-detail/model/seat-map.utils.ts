@@ -1,6 +1,6 @@
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
-import type { ConnectionStyle, MyGroupHeldSeatInfo } from "./seat-map.types";
+import type { ConnectionStyle, MyGroupHeldSeatInfo, MyGroupHoldInfo } from "./seat-map.types";
 
 export const filterSelectableSeatIds = (seatIds: ReadonlySet<number>, venueSeatStates: Map<number, VenueSeatState>) => {
   return [...seatIds].filter((seatId) => {
@@ -44,7 +44,7 @@ export const getMyGroupHoldSummary = (
   myGroupHeldSeatInfoBySeatId: Map<number, MyGroupHeldSeatInfo>,
   venueSeatById: Map<number, VenueSeatResponse>,
 ) => {
-  const myGroupHoldInfoByHoldId = new Map<string, { expiresAt: Date; venueSeatIds: number[] }>();
+  const myGroupHoldInfoByHoldId = new Map<string, MyGroupHoldInfo>();
   let myGroupHeldSeatTotalPrice = 0;
 
   myGroupHeldSeatInfoBySeatId.forEach(({ holdId, expiresAt }, seatId) => {
