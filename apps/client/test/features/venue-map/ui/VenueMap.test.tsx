@@ -322,7 +322,7 @@ describe("VenueMap", () => {
     expect(heldSeat).toHaveAttribute("aria-pressed", "true");
     expect(heldSeat).toHaveAttribute("aria-disabled", "false");
     await user.click(heldSeat);
-    expect(onSeatToggle).toHaveBeenCalledWith(seats[0]);
+    expect(onSeatToggle).toHaveBeenCalledWith(seats[0].id);
 
     heldSeat.focus();
     await user.keyboard(" ");

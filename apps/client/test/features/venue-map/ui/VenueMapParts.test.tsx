@@ -41,7 +41,7 @@ describe("venue map parts", () => {
       </>,
     );
 
-    expect(screen.getByText(/남음.*Hold 중입니다/)).toBeInTheDocument();
+    expect(screen.getByText(/남음.*점유 중입니다/)).toBeInTheDocument();
     expect(screen.getByRole("tooltip")).toHaveTextContent("A구역 1열 1번");
     expect(screen.getByRole("tooltip")).toHaveStyle({ left: "20px", top: "20px" });
     expect(screen.getByRole("tooltip")).toHaveClass("absolute");

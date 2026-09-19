@@ -4,10 +4,13 @@ import type {
   CancelPaymentCommand,
   ConfirmPaymentCommand,
   ConfirmPaymentMessage,
+  GetMyGroupHoldsCommand,
+  GetMyGroupHoldsMessage,
   GetPaymentOrderCommand,
   HoldVenueSeatsCommand,
   HoldVenueSeatsMessage,
   PaymentOrderMessage,
+  PerformanceSeatEvent,
   PerformanceSeatStatusCommand,
   PerformanceSeatStatusMessage,
   ReleaseVenueSeatsCommand,
@@ -26,6 +29,11 @@ interface StompPaths {
     message: PerformanceSeatStatusMessage;
     path: { performanceId: number };
   };
+  "/performances/{performanceId}/get-my-group-holds": {
+    command: GetMyGroupHoldsCommand;
+    message: GetMyGroupHoldsMessage;
+    path: { performanceId: number };
+  };
   "/performances/{performanceId}/hold-seats": {
     command: HoldVenueSeatsCommand;
     message: HoldVenueSeatsMessage;
@@ -34,6 +42,10 @@ interface StompPaths {
   "/performances/{performanceId}/release-seats": {
     command: ReleaseVenueSeatsCommand;
     message: ReleaseVenueSeatsMessage;
+    path: { performanceId: number };
+  };
+  "/performances/{performanceId}/seat-events": {
+    event: PerformanceSeatEvent;
     path: { performanceId: number };
   };
   "/reservation/start-checkout": {
@@ -83,13 +95,13 @@ export type EventOf<TPath extends EventPath> = StompPaths[TPath] extends { event
 export type StompSubscribeProps<TPath extends SubscribePath> = {
   path: TPath;
   callback: (message: MessageOf<TPath>) => void;
-  errorCallback?: (error: StompFailureMessage) => void;
+  errorCallback?: (errorMessage: StompFailureMessage) => void;
   headers?: StompHeaders;
 } & WithPathParams<TPath>;
 
 export type StompEventSubscribeProps<TPath extends EventPath> = {
   path: TPath;
   callback: (event: EventOf<TPath>) => void;
-  errorCallback?: (error: StompFailureMessage) => void;
+  errorCallback?: (errorMessage: StompFailureMessage) => void;
   headers?: StompHeaders;
 } & WithPathParams<TPath>;

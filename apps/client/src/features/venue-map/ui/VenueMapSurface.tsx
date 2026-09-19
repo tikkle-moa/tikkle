@@ -23,7 +23,7 @@ interface VenueMapSurfaceProps {
   serverTimeOffset: number;
   visibleSelectedSeatIds?: ReadonlySet<number>;
   selectedSeat: VenueSeatResponse | null;
-  onSeatToggle?: (seat: VenueSeatResponse) => void;
+  onSeatToggle?: (seat: number) => void;
   svgRef: RefObject<SVGSVGElement | null>;
   viewBox: string;
   zoom: number;

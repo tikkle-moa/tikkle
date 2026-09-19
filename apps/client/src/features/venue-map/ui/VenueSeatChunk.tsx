@@ -39,7 +39,7 @@ const VenueSeatChunk = ({
   handleTooltipPointerMove,
   handlePointerLeave,
 }: VenueSeatChunkProps) => {
-  const statusDescriptionByKey = new Map<string, string>();
+  const statusMessageByKey = new Map<string, string>();
 
   return venueSeats.map((seat) => {
     const { status, expiresAt } = venueSeatStates?.get(seat.id) ?? { status: "available" };
@@ -47,10 +47,10 @@ const VenueSeatChunk = ({
     const isSeatSelectable = !isHoldMode || status === "available" || status === "held_by_my_group";
     const isHeld = isHeldSeatStatus(status);
     const statusKey = `${status}:${expiresAt?.getTime() ?? ""}:${isHeld ? serverTimeOffset : 0}`;
-    let statusDescription = statusDescriptionByKey.get(statusKey);
-    if (statusDescription === undefined) {
-      statusDescription = getSeatStatusMessage(status, expiresAt, undefined, isHeld ? serverTimeOffset : 0).description;
-      statusDescriptionByKey.set(statusKey, statusDescription);
+    let statusMessage = statusMessageByKey.get(statusKey);
+    if (statusMessage === undefined) {
+      statusMessage = getSeatStatusMessage(status, expiresAt, undefined, isHeld ? serverTimeOffset : 0);
+      statusMessageByKey.set(statusKey, statusMessage);
     }
     const seatLabel = seatLabelById.get(seat.id) ?? seat.seatLabel;
 
@@ -65,7 +65,7 @@ const VenueSeatChunk = ({
         isHoldMode={isHoldMode}
         isHeld={isHeld}
         sectionColor={sectionColors[seat.sectionName]}
-        ariaLabel={venueSeatStates ? `${seatLabel}, ${statusDescription}` : seatLabel}
+        ariaLabel={venueSeatStates ? `${seatLabel}, ${statusMessage}` : seatLabel}
         tabIndex={getSeatTabIndex(seat)}
         onSeatClick={handleSeatClick}
         onSeatKeyDown={handleSeatKeyDown}

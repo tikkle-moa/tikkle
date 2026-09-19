@@ -44,9 +44,12 @@ export const router = createBrowserRouter([
           { path: ROUTE_PATHS.HOME, element: <HomePage /> },
           { path: ROUTE_PATHS.CONCERT_LIST, element: <ConcertListPage /> },
           { path: ROUTE_PATHS.CONCERT_DETAIL, element: <ConcertDetailPage /> },
-          { path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> },
           { path: ROUTE_PATHS.VENUE_LIST, element: <VenueListPage /> },
           { path: ROUTE_PATHS.VENUE_DETAIL, element: <VenueDetailPage /> },
+          {
+            element: <AuthGuard />,
+            children: [{ path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> }],
+          },
           {
             element: <AdminGuard />,
             children: [

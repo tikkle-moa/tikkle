@@ -83,7 +83,7 @@ describe("VenueMap drag selection", () => {
 
     expect(map.setPointerCapture).not.toHaveBeenCalled();
     expect(onSeatToggle).toHaveBeenCalledTimes(1);
-    expect(onSeatToggle).toHaveBeenCalledWith(seats[0]);
+    expect(onSeatToggle).toHaveBeenCalledWith(seats[0].id);
   });
 
   it("Option 드래그가 끝난 뒤 선택 가능한 좌석 ID를 한 번에 전달한다", () => {
@@ -115,7 +115,7 @@ describe("VenueMap drag selection", () => {
     expect(onSeatSelectionChange).toHaveBeenCalledWith(new Set([1, 2]));
 
     fireEvent.click(screen.getByRole("button", { name: /A-1/ }));
-    expect(onSeatToggle).toHaveBeenCalledWith(seats[0]);
+    expect(onSeatToggle).toHaveBeenCalledWith(seats[0].id);
   });
 
   it("Shift와 함께 드래그하면 기존 선택에 새 좌석을 추가한다", () => {

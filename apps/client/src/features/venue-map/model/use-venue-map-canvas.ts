@@ -10,7 +10,7 @@ interface UseVenueMapCanvasParams {
   venueSeats: VenueSeatResponse[];
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   selectedSeatIds?: ReadonlySet<number>;
-  onSeatToggle?: (seat: VenueSeatResponse) => void;
+  onSeatToggle?: (seat: number) => void;
   onSeatSelectionChange?: (seatIds: ReadonlySet<number>) => void;
 }
 
@@ -74,7 +74,7 @@ export const useVenueMapCanvas = ({
 
       selectSeat(seat);
       if (isSeatSelectable) {
-        onSeatToggle?.(seat);
+        onSeatToggle?.(seat.id);
       }
     },
     [consumeDragSelectionSeatClick, consumeSeatClick, onSeatToggle, selectSeat],
@@ -86,7 +86,7 @@ export const useVenueMapCanvas = ({
         event.preventDefault();
         selectSeat(seat);
         if (isSeatSelectable) {
-          onSeatToggle(seat);
+          onSeatToggle(seat.id);
         }
         return;
       }

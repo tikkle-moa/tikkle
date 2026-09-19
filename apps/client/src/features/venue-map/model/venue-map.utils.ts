@@ -47,25 +47,13 @@ export const getSeatStatusMessage = (status: VenueSeatStatus, expiresAt?: Date, 
 
   switch (status) {
     case "held_by_my_group":
-      return {
-        label: "내 Hold",
-        description: holdTimeText ? `${holdTimeText} Hold 중입니다.` : "Hold 중인 좌석입니다.",
-      };
+      return holdTimeText ? `${holdTimeText} 점유 중입니다.` : "점유 중인 좌석입니다.";
     case "held_by_other_group":
-      return {
-        label: "다른 관람객 Hold",
-        description: holdTimeText ? `${holdTimeText} 다른 관람객이 Hold 중입니다.` : "다른 관람객이 Hold 중인 좌석입니다.",
-      };
+      return holdTimeText ? `${holdTimeText} 다른 그룹이 점유 중입니다.` : "다른 그룹이 점유 중인 좌석입니다.";
     case "booked":
-      return {
-        label: "예약 완료",
-        description: "예약이 완료된 좌석입니다.",
-      };
+      return "예약이 완료된 좌석입니다.";
     case "available":
-      return {
-        label: "선택 가능",
-        description: "선택 가능한 좌석입니다.",
-      };
+      return "선택 가능한 좌석입니다.";
   }
 };
 

@@ -14,7 +14,7 @@ const VenueMapSelectedSeatStatus = ({ status, expiresAt, serverTimeOffset }: Ven
   const currentTime = useCurrentTime();
   const statusMessage = getSeatStatusMessage(status, expiresAt, currentTime, serverTimeOffset);
 
-  return <p className="mt-1 font-semibold text-slate-600">{statusMessage.description}</p>;
+  return <p className="mt-1 font-semibold text-slate-600">{statusMessage}</p>;
 };
 
 export default VenueMapSelectedSeatStatus;

@@ -14,7 +14,7 @@ interface VenueSeatLayoutProps {
   serverTimeOffset: number;
   visibleSelectedSeatIds?: ReadonlySet<number>;
   selectedSeat: VenueSeatResponse | null;
-  onSeatToggle?: (seat: VenueSeatResponse) => void;
+  onSeatToggle?: (seat: number) => void;
   getSeatTabIndex: (seat: VenueSeatResponse) => number;
   handleSeatClick: (seat: VenueSeatResponse, isSeatSelectable: boolean) => void;
   handleSeatKeyDown: (event: KeyboardEvent<SVGElement>, seat: VenueSeatResponse, isSeatSelectable: boolean) => void;

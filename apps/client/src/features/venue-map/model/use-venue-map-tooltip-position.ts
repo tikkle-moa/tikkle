@@ -39,7 +39,7 @@ export const useVenueMapTooltipPosition = ({ status, expiresAt, serverTimeOffset
     };
   }, [updatePosition]);
 
-  const seatStatusMessage = getSeatStatusMessage(status, expiresAt, currentTime, serverTimeOffset).description;
+  const seatStatusMessage = getSeatStatusMessage(status, expiresAt, currentTime, serverTimeOffset);
 
   return {
     tooltipRef,

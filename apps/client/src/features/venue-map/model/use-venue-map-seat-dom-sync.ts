@@ -66,7 +66,7 @@ export const useVenueMapSeatDomSync = ({ svgRef, venueSeats, venueSeatStates, se
       const statusKey = `${nextState.status}:${nextExpiresAt ?? ""}:${isHeld ? serverTimeOffset : 0}`;
       let statusDescription = statusDescriptionByKey.get(statusKey);
       if (statusDescription === undefined) {
-        statusDescription = getSeatStatusMessage(nextState.status, nextState.expiresAt, undefined, isHeld ? serverTimeOffset : 0).description;
+        statusDescription = getSeatStatusMessage(nextState.status, nextState.expiresAt, undefined, isHeld ? serverTimeOffset : 0);
         statusDescriptionByKey.set(statusKey, statusDescription);
       }
 
