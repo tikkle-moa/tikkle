@@ -56,13 +56,13 @@ export const usePerformanceSeatAvailability = ({
     [myGroupHeldSeatInfoBySeatId, selectedSeatIds],
   );
 
-  const { myGroupHoldInfoByHoldId, myGroupHeldSeatTotalPrice } = useMemo(
+  const { myGroupHolds, myGroupHeldSeatTotalPrice } = useMemo(
     () => getMyGroupHoldSummary(myGroupHeldSeatInfoBySeatId, venueSeatById),
     [myGroupHeldSeatInfoBySeatId, venueSeatById],
   );
 
   return {
-    myGroupHoldInfoByHoldId,
+    myGroupHolds,
     myGroupHeldSeatInfoBySeatId,
     selectedSeatIdsToHold,
     selectedSeatIdsToRelease,

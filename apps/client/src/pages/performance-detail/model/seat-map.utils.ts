@@ -50,14 +50,18 @@ export const getMyGroupHoldSummary = (
   myGroupHeldSeatInfoBySeatId.forEach(({ holdId, expiresAt }, seatId) => {
     myGroupHeldSeatTotalPrice += venueSeatById.get(seatId)?.price ?? 0;
 
-    if (myGroupHoldInfoByHoldId.has(holdId)) {
-      myGroupHoldInfoByHoldId.get(holdId)!.venueSeatIds.push(seatId);
+    const holdInfo = myGroupHoldInfoByHoldId.get(holdId);
+
+    if (holdInfo) {
+      holdInfo.venueSeatIds.push(seatId);
     } else {
-      myGroupHoldInfoByHoldId.set(holdId, { expiresAt, venueSeatIds: [seatId] });
+      myGroupHoldInfoByHoldId.set(holdId, { holdId, expiresAt, venueSeatIds: [seatId] });
     }
   });
 
-  return { myGroupHoldInfoByHoldId, myGroupHeldSeatTotalPrice };
+  const myGroupHolds = Array.from(myGroupHoldInfoByHoldId.values());
+
+  return { myGroupHolds, myGroupHeldSeatTotalPrice };
 };
 
 export const getConnectionStyle = (isConnected: boolean): ConnectionStyle => {

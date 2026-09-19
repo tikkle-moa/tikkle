@@ -36,7 +36,7 @@ const PerformanceSeatHoldPanel = ({
   const {
     isRefreshing,
     refreshError,
-    myGroupHoldInfoByHoldId,
+    myGroupHolds,
     myGroupHeldSeatInfoBySeatId,
     selectedSeatIdsToRelease,
     myGroupHeldSeatTotalPrice,
@@ -81,7 +81,13 @@ const PerformanceSeatHoldPanel = ({
           handleReleaseSeats={handleReleaseSeats}
         />
 
-        <PerformanceSeatMyGroupHolds venueSeatById={venueSeatById} myGroupHoldInfoByHoldId={myGroupHoldInfoByHoldId} />
+        {myGroupHeldSeatInfoBySeatId.size > 0 && (
+          <PerformanceSeatMyGroupHolds
+            venueSeatById={venueSeatById}
+            myGroupHolds={myGroupHolds}
+            myGroupHeldSeatSize={myGroupHeldSeatInfoBySeatId.size}
+          />
+        )}
 
         <PerformanceSeatHoldInfo />
       </div>

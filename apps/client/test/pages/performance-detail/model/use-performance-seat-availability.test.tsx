@@ -129,6 +129,6 @@ describe("usePerformanceSeatAvailability", () => {
     );
 
     expect(result.current.myGroupHeldSeatTotalPrice).toBe(22000);
-    expect(result.current.myGroupHoldInfoByHoldId.get("hold-1")?.venueSeatIds).toEqual([1, 2, 3]);
+    expect(result.current.myGroupHolds.map(({ venueSeatIds }) => venueSeatIds).flat()).toEqual([1, 2, 3]);
   });
 });

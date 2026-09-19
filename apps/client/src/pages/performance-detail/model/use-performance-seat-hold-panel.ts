@@ -31,7 +31,7 @@ export const usePerformanceSeatHoldPanel = ({
   setSeatOperationState,
 }: UsePerformanceSeatHoldPanelProps) => {
   const {
-    myGroupHoldInfoByHoldId,
+    myGroupHolds,
     myGroupHeldSeatInfoBySeatId,
     selectedSeatIdsToHold,
     selectedSeatIdsToRelease,
@@ -84,7 +84,7 @@ export const usePerformanceSeatHoldPanel = ({
   return {
     isRefreshing,
     refreshError,
-    myGroupHoldInfoByHoldId,
+    myGroupHolds,
     myGroupHeldSeatInfoBySeatId,
     selectedSeatIdsToRelease,
     myGroupHeldSeatTotalPrice,
