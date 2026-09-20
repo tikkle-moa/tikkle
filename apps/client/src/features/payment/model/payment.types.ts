@@ -1,5 +1,7 @@
 import type { CancelPaymentData, ConfirmPaymentData, PaymentOrderMessageData } from "@tikkle/api-types";
 
+export type PaymentOrder = PaymentOrderMessageData;
+
 export interface PaymentOrderState {
   key: string;
   order: PaymentOrderMessageData | null;

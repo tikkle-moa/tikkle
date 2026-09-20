@@ -3,7 +3,9 @@ import { useLocation, useNavigate, useParams } from "react-router";
 
 import { useSessionStore } from "@entities/session";
 
-import { isPaymentOrder, usePaymentOrder } from "@features/payment";
+import { isPaymentOrder } from "@features/payment";
+
+import { usePaymentOrder } from "./use-payment-order";
 
 export const usePaymentPage = () => {
   const navigate = useNavigate();

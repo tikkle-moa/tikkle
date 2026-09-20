@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { generatePath, useLocation, useNavigate, useParams } from "react-router";
 
 import type { VenueSeatHoldDetail } from "@tikkle/api-types";
@@ -96,10 +96,14 @@ const PerformanceCheckoutPage = ({ fixture = false }: PerformanceCheckoutPagePro
     return () => window.clearInterval(timer);
   }, [fixture]);
 
+  const handleCheckoutSuccess = useCallback(
+    (reservationId: number) => navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) })),
+    [navigate],
+  );
   const { errorMessage, isStarting, startCheckout } = useStartCheckout({
     performanceId: id,
     enabled: !fixture,
-    onSuccess: (reservationId) => navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) })),
+    onSuccess: handleCheckoutSuccess,
   });
 
   const handleConfirm = () => {

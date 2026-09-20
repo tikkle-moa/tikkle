@@ -5,7 +5,9 @@ import { ArrowRight } from "lucide-react";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentOrderSummary, isPaymentOrder, usePaymentOrder } from "@features/payment";
+import { PaymentOrderSummary, isPaymentOrder } from "@features/payment";
+
+import { usePaymentOrder } from "../model/use-payment-order";
 
 const PaymentCheckoutPage = () => {
   const navigate = useNavigate();

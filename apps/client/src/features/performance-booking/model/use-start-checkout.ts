@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useStompStore } from "@shared/realtime/stomp.store";
-import { useStompSubscription } from "@shared/realtime/use-stomp-subscription";
 
-import { PERFORMANCE_BOOKING_DESTINATIONS } from "./performance-booking.constants";
-import { isStartCheckoutData, parseBookingMessage } from "./performance-booking.utils";
+import { isStartCheckoutData } from "./performance-booking.utils";
 
 interface UseStartCheckoutProps {
   performanceId: number;
@@ -13,9 +11,9 @@ interface UseStartCheckoutProps {
 }
 
 export const useStartCheckout = ({ performanceId, onSuccess, enabled = true }: UseStartCheckoutProps) => {
-  const client = useStompStore((state) => state.client);
+  const stompClient = useStompStore((state) => state.stompClient);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
-  const getClient = useStompStore((state) => state.getClient);
+  const getStompClient = useStompStore((state) => state.getStompClient);
   const requestIdRef = useRef<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -23,36 +21,40 @@ export const useStartCheckout = ({ performanceId, onSuccess, enabled = true }: U
   useEffect(() => {
     if (!enabled) return;
 
-    getClient();
-  }, [enabled, getClient]);
+    getStompClient();
+  }, [enabled, getStompClient]);
 
-  const handleMessage = useCallback(
-    (message: { body: string }) => {
-      const response = parseBookingMessage(message.body);
-      if (!response || response.requestId !== requestIdRef.current) return;
+  useEffect(() => {
+    if (!enabled || performanceId <= 0 || !stompClient || connectionStatus !== "connected") return;
 
-      setIsStarting(false);
-      const checkoutData = "data" in response ? response.data : null;
-      if (!response.success || !isStartCheckoutData(checkoutData)) {
-        setErrorMessage("error" in response ? response.error.message : "결제 준비를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
-        return;
-      }
+    const subscription = stompClient.subscribe({
+      path: "/reservation/start-checkout",
+      callback: (message) => {
+        if (message.requestId !== requestIdRef.current) return;
 
-      onSuccess(checkoutData.reservationId);
-    },
-    [onSuccess],
-  );
+        setIsStarting(false);
+        if (!message.success || !isStartCheckoutData(message.data)) {
+          setErrorMessage("결제 준비를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+          return;
+        }
 
-  useStompSubscription({
-    destination: PERFORMANCE_BOOKING_DESTINATIONS.checkoutResponse,
-    enabled: enabled && performanceId > 0,
-    onMessage: handleMessage,
-  });
+        onSuccess(message.data.reservationId);
+      },
+      errorCallback: (message) => {
+        if (message.requestId !== requestIdRef.current) return;
+
+        setIsStarting(false);
+        setErrorMessage(message.error.message);
+      },
+    });
+
+    return () => subscription.unsubscribe();
+  }, [connectionStatus, enabled, onSuccess, performanceId, stompClient]);
 
   const startCheckout = () => {
     if (!enabled) return;
 
-    if (isStarting || !client || connectionStatus !== "connected" || !client.connected) {
+    if (isStarting || !stompClient || connectionStatus !== "connected") {
       if (!isStarting) setErrorMessage("서버 연결 후 다시 시도해 주세요.");
       return;
     }
@@ -61,9 +63,9 @@ export const useStartCheckout = ({ performanceId, onSuccess, enabled = true }: U
     requestIdRef.current = requestId;
     setIsStarting(true);
     setErrorMessage(null);
-    client.publish({
-      destination: PERFORMANCE_BOOKING_DESTINATIONS.checkoutRequest,
-      body: JSON.stringify({ requestId, data: { performanceId } }),
+    stompClient.publish({
+      path: "/reservation/start-checkout",
+      command: { requestId, data: { performanceId } },
     });
   };
 

@@ -1,46 +1,44 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import type { PaymentOrderMessageData } from "@tikkle/api-types";
 
 import { useStompStore } from "@shared/realtime/stomp.store";
 
-import { type PaymentOrderState, createPaymentOrderFixture } from "@features/payment";
+import type { PaymentOrderState } from "@features/payment";
 
 interface UsePaymentOrderProps {
   reservationId: number;
-  fixture?: boolean;
+  initialOrder?: PaymentOrderMessageData;
 }
 
-export const usePaymentOrder = ({ reservationId, fixture = false }: UsePaymentOrderProps) => {
+export const usePaymentOrder = ({ reservationId, initialOrder }: UsePaymentOrderProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getStompClient = useStompStore((state) => state.getStompClient);
   const requestIdRef = useRef<string | null>(null);
-  const queryKey = `${reservationId}:${fixture ? "fixture" : "server"}`;
+  const queryKey = `${reservationId}:${initialOrder?.orderId ?? "server"}`;
   const [paymentState, setPaymentState] = useState<PaymentOrderState>(() => ({
     key: queryKey,
-    order: null,
+    order: initialOrder ?? null,
     errorMessage: null,
-    isLoading: true,
+    isLoading: initialOrder === undefined,
   }));
   const isReservationIdValid = Number.isInteger(reservationId) && reservationId > 0;
-  const fixtureOrder = useMemo(
-    () => (fixture && isReservationIdValid ? createPaymentOrderFixture(reservationId) : null),
-    [fixture, isReservationIdValid, reservationId],
-  );
 
   const visibleState = paymentState.key === queryKey ? paymentState : { key: queryKey, order: null, errorMessage: null, isLoading: true };
-  const order = fixtureOrder ?? visibleState.order;
+  const order = initialOrder ?? visibleState.order;
   const errorMessage = !isReservationIdValid ? "올바르지 않은 결제 주문입니다." : visibleState.errorMessage;
-  const isLoading = !isReservationIdValid || fixture ? false : visibleState.isLoading;
+  const isLoading = !isReservationIdValid || initialOrder !== undefined ? false : visibleState.isLoading;
 
   useEffect(() => {
-    if (fixture) return;
+    if (initialOrder !== undefined) return;
     getStompClient();
-  }, [fixture, getStompClient]);
+  }, [getStompClient, initialOrder]);
 
   useEffect(() => {
     requestIdRef.current = null;
 
-    if (!isReservationIdValid || fixture || !stompClient || connectionStatus !== "connected") return;
+    if (!isReservationIdValid || initialOrder !== undefined || !stompClient || connectionStatus !== "connected") return;
 
     const requestId = crypto.randomUUID();
     requestIdRef.current = requestId;
@@ -78,7 +76,7 @@ export const usePaymentOrder = ({ reservationId, fixture = false }: UsePaymentOr
     });
 
     return () => subscription.unsubscribe();
-  }, [connectionStatus, fixture, isReservationIdValid, queryKey, reservationId, stompClient]);
+  }, [connectionStatus, initialOrder, isReservationIdValid, queryKey, reservationId, stompClient]);
 
-  return { order, errorMessage, isLoading, isFixture: fixture };
+  return { order, errorMessage, isLoading };
 };
