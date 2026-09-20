@@ -19,6 +19,9 @@ vi.mock("@entities/session", () => ({
 
 vi.mock("@features/payment", () => ({
   isPaymentOrder: vi.fn((value) => value?.orderId === "fixture-order"),
+}));
+
+vi.mock("@pages/payment/model/use-payment-order", () => ({
   usePaymentOrder: mockUsePaymentOrder,
 }));
 

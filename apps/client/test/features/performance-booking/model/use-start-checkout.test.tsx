@@ -1,31 +1,36 @@
-import type { Client } from "@stomp/stompjs";
 import { act, renderHook } from "@testing-library/react";
+import type { StartCheckoutMessage, StompFailureMessage } from "@tikkle/api-types";
 
+import type StompClient from "@shared/realtime/stomp-client";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
 import { useStartCheckout } from "@features/performance-booking/model/use-start-checkout";
 
-const subscriptions = vi.hoisted(() => new Map<string, (message: { body: string }) => void>());
-
-vi.mock("@shared/realtime/use-stomp-subscription", () => ({
-  useStompSubscription: ({ destination, onMessage }: { destination: string; onMessage: (message: { body: string }) => void }) => {
-    subscriptions.set(destination, onMessage);
-  },
-}));
-
 describe("useStartCheckout", () => {
   const publish = vi.fn();
-  const client = { connected: true, publish } as unknown as Client;
+  const unsubscribe = vi.fn();
+  const subscribe = vi.fn();
+  let handleMessage: ((message: StartCheckoutMessage) => void) | undefined;
+  let handleError: ((message: StompFailureMessage) => void) | undefined;
+  const stompClient = { publish, subscribe } as unknown as StompClient;
 
   beforeEach(() => {
     publish.mockReset();
-    subscriptions.clear();
-    useStompStore.setState({ client, connectionStatus: "connected" });
+    subscribe.mockReset();
+    unsubscribe.mockReset();
+    handleMessage = undefined;
+    handleError = undefined;
+    subscribe.mockImplementation(({ callback, errorCallback }) => {
+      handleMessage = callback;
+      handleError = errorCallback;
+      return { unsubscribe };
+    });
+    useStompStore.setState({ stompClient, connectionStatus: "connected" });
   });
 
   afterEach(() => {
     act(() => {
-      useStompStore.setState({ client: null, connectionStatus: "disconnected" });
+      useStompStore.setState({ stompClient: null, connectionStatus: "disconnected" });
     });
   });
 
@@ -40,25 +45,22 @@ describe("useStartCheckout", () => {
     expect(publish).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({
-        destination: "/api/reservation/start-checkout",
-        body: expect.not.stringContaining('"action"'),
+        path: "/reservation/start-checkout",
+        command: { requestId: expect.any(String), data: { performanceId: 10 } },
       }),
     );
-    const requestId = JSON.parse(publish.mock.calls[0][0].body).requestId as string;
-    expect(JSON.parse(publish.mock.calls[0][0].body).data).toEqual({ performanceId: 10 });
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
     act(() => {
-      subscriptions.get("/user/queue/reservation/start-checkout")?.({
-        body: JSON.stringify({
-          requestId,
-          success: true,
-          data: {
-            reservationId: 501,
-            orderId: "order-501",
-            orderName: "Tikkle Live",
-            amount: 150_000,
-            paymentExpiresAt: "2026-09-15T13:00:00",
-          },
-        }),
+      handleMessage?.({
+        requestId,
+        success: true,
+        data: {
+          reservationId: 501,
+          orderId: "order-501",
+          orderName: "Tikkle Live",
+          amount: 150_000,
+          paymentExpiresAt: "2026-09-15T13:00:00",
+        },
       });
     });
 
@@ -70,15 +72,13 @@ describe("useStartCheckout", () => {
     const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
-    const requestId = JSON.parse(publish.mock.calls[0][0].body).requestId as string;
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
 
     act(() => {
-      subscriptions.get("/user/queue/reservation/start-checkout")?.({
-        body: JSON.stringify({
-          requestId,
-          success: false,
-          error: { code: "CONFLICT", message: "좌석 점유가 만료되었습니다." },
-        }),
+      handleError?.({
+        requestId,
+        success: false,
+        error: { code: "CONFLICT", message: "좌석 점유가 만료되었습니다." },
       });
     });
 
@@ -90,24 +90,27 @@ describe("useStartCheckout", () => {
     const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
-    const requestId = JSON.parse(publish.mock.calls[0][0].body).requestId as string;
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
     act(() => {
-      subscriptions.get("/user/queue/reservation/start-checkout")?.({
-        body: JSON.stringify({ requestId, success: true, data: {} }),
+      handleMessage?.({
+        requestId,
+        success: true,
+        data: {} as never,
       });
     });
 
     expect(result.current.errorMessage).toBe("결제 준비를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
   });
 
-  it("잘못된 응답 본문과 다른 요청 응답은 무시한다", () => {
+  it("다른 요청 응답은 무시한다", () => {
     const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
     act(() => {
-      subscriptions.get("/user/queue/reservation/start-checkout")?.({ body: "not-json" });
-      subscriptions.get("/user/queue/reservation/start-checkout")?.({
-        body: JSON.stringify({ requestId: "another-request", success: false, error: { message: "무시" } }),
+      handleMessage?.({
+        requestId: "another-request",
+        success: false,
+        data: {} as never,
       });
     });
 
@@ -116,8 +119,7 @@ describe("useStartCheckout", () => {
   });
 
   it("STOMP가 연결되지 않았으면 요청 대신 연결 오류를 표시한다", () => {
-    const disconnectedClient = { connected: false, publish } as unknown as Client;
-    useStompStore.setState({ client: disconnectedClient, connectionStatus: "disconnected" });
+    useStompStore.setState({ stompClient, connectionStatus: "disconnected" });
     const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());

@@ -18,6 +18,9 @@ vi.mock("react-router", async () => {
 vi.mock("@features/payment", () => ({
   isPaymentOrder: mockIsPaymentOrder,
   PaymentOrderSummary: mockPaymentOrderSummary,
+}));
+
+vi.mock("@pages/payment/model/use-payment-order", () => ({
   usePaymentOrder: mockUsePaymentOrder,
 }));
 
