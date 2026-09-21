@@ -1,6 +1,6 @@
 import { generatePath, useLocation, useNavigate, useParams } from "react-router";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
@@ -32,6 +32,14 @@ const PaymentCheckoutPage = () => {
 
   return (
     <div className="mx-auto w-full max-w-3xl pb-6">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="hover:text-brand-primary inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 transition-colors"
+      >
+        <ArrowLeft className="size-4" aria-hidden />
+        예매 정보로 돌아가기
+      </button>
       <header>
         <p className="text-brand-primary text-sm font-semibold">결제 준비</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-950">결제 주문을 확인해 주세요</h1>

@@ -61,6 +61,15 @@ describe("PaymentCheckoutPage", () => {
     expect(navigate).toHaveBeenCalledWith("/payments/501", { state: order });
   });
 
+  it("예매 정보 확인 화면으로 돌아간다", async () => {
+    const user = userEvent.setup();
+    render(<PaymentCheckoutPage />);
+
+    await user.click(screen.getByRole("button", { name: "예매 정보로 돌아가기" }));
+
+    expect(navigate).toHaveBeenCalledWith(-1);
+  });
+
   it("예매 정보 확인에서 전달한 fixture 주문을 결제 준비 화면에 표시한다", () => {
     mockIsPaymentOrder.mockReturnValue(true);
     mockUseLocation.mockReturnValue({ state: order });

@@ -86,6 +86,7 @@ export const router = createBrowserRouter([
           {
             element: <AuthGuard />,
             children: [
+              { path: ROUTE_PATHS.PERFORMANCE_CHECKOUT, element: <PerformanceCheckoutPage /> },
               { path: ROUTE_PATHS.PAYMENT_CHECKOUT, element: <PaymentCheckoutPage /> },
               { path: ROUTE_PATHS.PAYMENT, element: <PaymentPage /> },
               { path: ROUTE_PATHS.PAYMENT_SUCCESS, element: <PaymentSuccessPage /> },
