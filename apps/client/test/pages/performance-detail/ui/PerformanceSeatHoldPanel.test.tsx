@@ -36,7 +36,7 @@ const createPanelState = () => ({
   connectionStyle,
 });
 
-const renderPanel = () =>
+const renderPanel = (onCheckout = vi.fn()) =>
   render(
     <MemoryRouter>
       <PerformanceSeatHoldPanel
@@ -49,6 +49,7 @@ const renderPanel = () =>
         setSelectedSeatIds={vi.fn()}
         setServerTimeOffset={vi.fn()}
         setSeatOperationState={vi.fn()}
+        onCheckout={onCheckout}
       />
     </MemoryRouter>,
   );
@@ -80,26 +81,43 @@ describe("PerformanceSeatHoldPanel", () => {
     expect(handleReleaseSeats).toHaveBeenCalledOnce();
   });
 
-  it("내 점유 좌석과 결제 링크를 표시한다", () => {
+  it("내 점유 좌석과 예매 정보 확인 CTA를 표시한다", () => {
+    const onCheckout = vi.fn();
+    const expiresAt = new Date("2026-09-16T20:00:00");
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { holdId: "hold-1", expiresAt: new Date() }]]),
-      myGroupHolds: [{ holdId: "hold-1", expiresAt: new Date("2026-09-16T20:00:00"), venueSeatIds: [1] }],
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
       myGroupHeldSeatTotalPrice: 15000,
     });
-    renderPanel();
+    renderPanel(onCheckout);
 
     expect(screen.getByRole("region", { name: "내 점유 좌석" })).toHaveTextContent("A구역 1번");
-    expect(screen.getByRole("link", { name: /결제하러 가기/ })).toHaveAttribute("href", "/payments/fixture/checkout");
+    expect(screen.getByRole("button", { name: /예매 정보 확인하기/ })).toBeInTheDocument();
+
+    return userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /예매 정보 확인하기/ }))
+      .then(() => {
+        expect(onCheckout).toHaveBeenCalledWith({
+          groupId: "group-1",
+          holdId: "hold-1",
+          performanceId: 1,
+          venueSeatIds: [1],
+          expiresAt: expiresAt.toISOString(),
+        });
+      });
   });
 
   it("내 점유 내역이 많으면 목록을 펼치고 접는다", async () => {
     const user = userEvent.setup();
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { holdId: "hold-1", expiresAt: new Date() }]]),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
       myGroupHolds: Array.from({ length: 6 }, (_, index) => ({
+        groupId: "group-1",
         holdId: `hold-${index + 1}`,
+        performanceId: 1,
         expiresAt: new Date("2026-09-16T20:00:00"),
         venueSeatIds: [index === 5 ? 999 : 1],
       })),

@@ -143,7 +143,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     const myHolds = findSubscription(subscriptions, "get-my-group-holds");
     act(() =>
       myHolds.callback({
-        data: [{ holdId: "hold-1", expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] }] as never,
+        data: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] }] as never,
       }),
     );
     expect(result.current.myGroupHeldSeatInfoBySeatId.get(2)?.holdId).toBe("hold-1");
@@ -203,13 +203,13 @@ describe("usePerformanceSeatSubscriptions", () => {
     const hold = findSubscription(subscriptions, "hold-seats");
     act(() =>
       hold.callback({
-        data: { holdId: "hold-1", expiresAt: "2026-09-16T20:00:00", venueSeatIds: [] } as never,
+        data: { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: "2026-09-16T20:00:00", venueSeatIds: [] } as never,
       }),
     );
     expect(result.current.seatOperationState.status).toBe("success");
     act(() =>
       hold.callback({
-        data: { holdId: "hold-1", expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] } as never,
+        data: { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] } as never,
       }),
     );
     expect(result.current.myGroupHeldSeatInfoBySeatId.size).toBe(2);
