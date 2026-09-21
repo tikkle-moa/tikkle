@@ -29,7 +29,7 @@ const PerformanceSeatHoldActions = ({
         <button
           type="button"
           onClick={handleCheckout}
-          className="group flex items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 px-4 py-3.5 transition hover:border-violet-200 hover:bg-violet-50 focus-visible:ring-2 focus-visible:ring-violet-200 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="group flex w-full items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 px-4 py-3.5 text-left transition hover:border-violet-200 hover:bg-violet-50 focus-visible:ring-2 focus-visible:ring-violet-200 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-violet-600 shadow-sm">
             <TicketCheck className="size-4" aria-hidden />

@@ -1,6 +1,6 @@
 import { type PointerEvent, type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
 
-import { type VenueSeatResponse, type VenueSeatState } from "@entities/venue";
+import { VENUE_SEAT_STYLE_MAP, type VenueSeatResponse, type VenueSeatState } from "@entities/venue";
 
 import type { DragSelectionArea, DragSelectionState } from "./venue-map-drag.types";
 
@@ -110,10 +110,17 @@ export const useVenueMapDragSelection = ({
         const isSelected = nextSelectedSeatIds.has(seatId);
         seatElement?.setAttribute("aria-pressed", String(isSelected));
         seatElement?.setAttribute("data-selected", String(isSelected));
+
+        const visual = seatElement?.querySelector<SVGRectElement>("[data-seat-visual]");
+        if (!visual) return;
+
+        const status = venueSeatStates?.get(seatId)?.status ?? "available";
+        visual.setAttribute("stroke", isSelected ? "#312e81" : venueSeatStates ? VENUE_SEAT_STYLE_MAP[status].stroke : "transparent");
+        visual.setAttribute("stroke-width", isSelected ? "1.1" : venueSeatStates ? "0.3" : "0");
       });
       previewSelectedSeatIdsRef.current = nextSelectedSeatIds;
     },
-    [svgRef],
+    [svgRef, venueSeatStates],
   );
 
   useLayoutEffect(() => {

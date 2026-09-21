@@ -49,10 +49,7 @@ export const router = createBrowserRouter([
           { path: ROUTE_PATHS.VENUE_DETAIL, element: <VenueDetailPage /> },
           {
             element: <AuthGuard />,
-            children: [
-              { path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> },
-              { path: ROUTE_PATHS.PERFORMANCE_CHECKOUT, element: <PerformanceCheckoutPage /> },
-            ],
+            children: [{ path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> }],
           },
           {
             element: <AdminGuard />,

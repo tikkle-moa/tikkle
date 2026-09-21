@@ -114,6 +114,16 @@ export const usePerformanceSeatSubscriptions = ({
             break;
           }
           case "RESERVATION_CONFIRMED": {
+            setHeldSeatExpiresAtBySeatId((current) => {
+              const updated = new Map(current);
+              event.data.forEach((seatId) => updated.delete(seatId));
+              return current.size === updated.size ? current : updated;
+            });
+            setMyGroupHeldSeatInfoBySeatId((current) => {
+              const updated = new Map(current);
+              event.data.forEach((seatId) => updated.delete(seatId));
+              return current.size === updated.size ? current : updated;
+            });
             setBookedSeatIds((current) => {
               const updated = new Set(current);
               event.data.forEach((seatId) => updated.add(seatId));
