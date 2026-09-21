@@ -47,7 +47,7 @@ export const getMyGroupHoldSummary = (
   const myGroupHoldInfoByHoldId = new Map<string, MyGroupHoldInfo>();
   let myGroupHeldSeatTotalPrice = 0;
 
-  myGroupHeldSeatInfoBySeatId.forEach(({ holdId, expiresAt }, seatId) => {
+  myGroupHeldSeatInfoBySeatId.forEach(({ groupId, holdId, performanceId, expiresAt }, seatId) => {
     myGroupHeldSeatTotalPrice += venueSeatById.get(seatId)?.price ?? 0;
 
     const holdInfo = myGroupHoldInfoByHoldId.get(holdId);
@@ -55,7 +55,7 @@ export const getMyGroupHoldSummary = (
     if (holdInfo) {
       holdInfo.venueSeatIds.push(seatId);
     } else {
-      myGroupHoldInfoByHoldId.set(holdId, { holdId, expiresAt, venueSeatIds: [seatId] });
+      myGroupHoldInfoByHoldId.set(holdId, { groupId, holdId, performanceId, expiresAt, venueSeatIds: [seatId] });
     }
   });
 

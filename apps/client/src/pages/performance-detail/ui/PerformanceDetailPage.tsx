@@ -1,5 +1,7 @@
-import { Link, generatePath } from "react-router";
+import { useCallback } from "react";
+import { Link, generatePath, useNavigate } from "react-router";
 
+import type { VenueSeatHoldDetail } from "@tikkle/api-types";
 import { ArrowLeft, CalendarDays, Clock3, MapPinned, Ticket } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
@@ -14,7 +16,18 @@ import PerformanceSeatMap from "./PerformanceSeatMap";
 import { usePerformanceDetail } from "../model/use-performance-detail";
 
 const PerformanceDetailPage = () => {
+  const navigate = useNavigate();
   const { performance, venueDetail, isError, isParamValid, isPending } = usePerformanceDetail();
+  const handleCheckout = useCallback(
+    (hold: VenueSeatHoldDetail) => {
+      if (!performance || !venueDetail) return;
+
+      navigate(generatePath(ROUTE_PATHS.PERFORMANCE_CHECKOUT, { performanceId: String(performance.id) }), {
+        state: { performance, venue: venueDetail.venue, venueSeats: venueDetail.venueSeats, hold },
+      });
+    },
+    [navigate, performance, venueDetail],
+  );
 
   if (!isParamValid) {
     return <DetailMessage title="잘못된 공연 회차입니다." description="올바르지 않은 공연 회차 ID입니다." />;
@@ -101,7 +114,7 @@ const PerformanceDetailPage = () => {
         <Ticket className="absolute top-5 right-5 size-8 text-white/10 sm:size-12" aria-hidden />
       </section>
 
-      <PerformanceSeatMap performance={performance} venueDetail={venueDetail} />
+      <PerformanceSeatMap performance={performance} venueDetail={venueDetail} onCheckout={handleCheckout} />
     </div>
   );
 };

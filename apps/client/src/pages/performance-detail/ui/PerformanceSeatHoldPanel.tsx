@@ -1,5 +1,7 @@
 import { type Dispatch, type SetStateAction, memo } from "react";
 
+import type { VenueSeatHoldDetail } from "@tikkle/api-types";
+
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
 import PerformanceSeatHoldActions from "./PerformanceSeatHoldActions";
@@ -20,6 +22,7 @@ interface PerformanceSeatHoldPanelProps {
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
+  onCheckout?: (hold: VenueSeatHoldDetail) => void;
 }
 
 const PerformanceSeatHoldPanel = ({
@@ -32,6 +35,7 @@ const PerformanceSeatHoldPanel = ({
   setSelectedSeatIds,
   setServerTimeOffset,
   setSeatOperationState,
+  onCheckout,
 }: PerformanceSeatHoldPanelProps) => {
   const {
     isRefreshing,
@@ -58,6 +62,19 @@ const PerformanceSeatHoldPanel = ({
     setSeatOperationState,
   });
 
+  const handleCheckout = () => {
+    const firstHold = myGroupHolds[0];
+    if (!onCheckout || !firstHold) return;
+
+    onCheckout({
+      holdId: firstHold.holdId,
+      groupId: firstHold.groupId,
+      performanceId: firstHold.performanceId,
+      venueSeatIds: myGroupHolds.flatMap(({ venueSeatIds }) => venueSeatIds),
+      expiresAt: new Date(Math.min(...myGroupHolds.map(({ expiresAt }) => expiresAt.getTime()))).toISOString(),
+    });
+  };
+
   return (
     <aside
       aria-label="좌석 선택 및 Hold"
@@ -78,6 +95,7 @@ const PerformanceSeatHoldPanel = ({
           selectedSeatIdsToReleaseSize={selectedSeatIdsToRelease.length}
           isConnected={isConnected}
           visibleSeatOperationState={visibleSeatOperationState}
+          handleCheckout={handleCheckout}
           handleReleaseSeats={handleReleaseSeats}
         />
 

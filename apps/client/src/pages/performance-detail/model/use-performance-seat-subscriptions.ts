@@ -67,8 +67,8 @@ export const usePerformanceSeatSubscriptions = ({
       callback: (message) => {
         setMyGroupHeldSeatInfoBySeatId(
           new Map(
-            message.data.flatMap(({ holdId, expiresAt, venueSeatIds }) =>
-              venueSeatIds.map((venueSeatId) => [venueSeatId, { holdId, expiresAt: new Date(expiresAt) }]),
+            message.data.flatMap(({ groupId, holdId, performanceId, expiresAt, venueSeatIds }) =>
+              venueSeatIds.map((venueSeatId) => [venueSeatId, { groupId, holdId, performanceId, expiresAt: new Date(expiresAt) }]),
             ),
           ),
         );
@@ -156,10 +156,10 @@ export const usePerformanceSeatSubscriptions = ({
       callback: (message) => {
         setMyGroupHeldSeatInfoBySeatId((current) => {
           if (message.data.venueSeatIds.length === 0) return current;
-          const holdId = message.data.holdId;
+          const { groupId, holdId, performanceId } = message.data;
           const expiresAt = new Date(message.data.expiresAt);
           const updated = new Map(current);
-          message.data.venueSeatIds.forEach((seatId) => updated.set(seatId, { holdId, expiresAt }));
+          message.data.venueSeatIds.forEach((seatId) => updated.set(seatId, { groupId, holdId, performanceId, expiresAt }));
           return updated;
         });
         setSeatOperationState({ status: "success" });

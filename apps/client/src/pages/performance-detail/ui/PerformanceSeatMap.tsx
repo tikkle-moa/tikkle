@@ -1,5 +1,7 @@
 import { memo } from "react";
 
+import type { VenueSeatHoldDetail } from "@tikkle/api-types";
+
 import type { PerformanceResponse } from "@entities/performance";
 import type { VenueDetailResponse } from "@entities/venue";
 
@@ -12,9 +14,10 @@ import { usePerformanceSeatMap } from "../model/use-performance-seat-map";
 interface PerformanceSeatMapProps {
   performance: PerformanceResponse;
   venueDetail: VenueDetailResponse;
+  onCheckout?: (hold: VenueSeatHoldDetail) => void;
 }
 
-const PerformanceSeatMap = ({ performance, venueDetail }: PerformanceSeatMapProps) => {
+const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: PerformanceSeatMapProps) => {
   const {
     selectedSeatIds,
     setSelectedSeatIds,
@@ -54,6 +57,7 @@ const PerformanceSeatMap = ({ performance, venueDetail }: PerformanceSeatMapProp
           setSelectedSeatIds={setSelectedSeatIds}
           setServerTimeOffset={setServerTimeOffset}
           setSeatOperationState={setSeatOperationState}
+          onCheckout={onCheckout}
         />
       )}
     </div>
