@@ -62,6 +62,39 @@ describe("VenueMap drag selection", () => {
     expect(onSeatToggle).not.toHaveBeenCalled();
   });
 
+  it("제어된 선택 상태가 비워지면 좌석 테두리 스타일을 원복한다", () => {
+    const onSeatToggle = vi.fn();
+    const { rerender } = render(
+      <VenueMap
+        venue={venue}
+        venueSeats={seats}
+        venueSeatStates={venueSeatStates}
+        selectedSeatIds={new Set([1])}
+        onSeatToggle={onSeatToggle}
+        onSeatSelectionChange={vi.fn()}
+      />,
+    );
+
+    const selectedSeat = screen.getByRole("button", { name: /A-1/ });
+    const visual = selectedSeat.querySelector("[data-seat-visual]");
+    expect(visual).toHaveAttribute("stroke", "#312e81");
+    expect(visual).toHaveAttribute("stroke-width", "1.1");
+
+    rerender(
+      <VenueMap
+        venue={venue}
+        venueSeats={seats}
+        venueSeatStates={venueSeatStates}
+        selectedSeatIds={new Set()}
+        onSeatToggle={onSeatToggle}
+        onSeatSelectionChange={vi.fn()}
+      />,
+    );
+
+    expect(visual).toHaveAttribute("stroke", "#86efac");
+    expect(visual).toHaveAttribute("stroke-width", "0.3");
+  });
+
   it("좌석을 이동 없이 누르고 떼면 단일 클릭으로 처리한다", () => {
     const onSeatToggle = vi.fn();
     render(

@@ -160,7 +160,10 @@ describe("usePerformanceSeatSubscriptions", () => {
     act(() =>
       event({
         type: "HELD_SEATS",
-        data: [{ id: 3, expiresAt: "2026-09-16T21:00:00" }] as never,
+        data: [
+          { id: 2, expiresAt: "2026-09-16T21:00:00" },
+          { id: 3, expiresAt: "2026-09-16T21:00:00" },
+        ] as never,
       }),
     );
     expect(result.current.heldSeatExpiresAtBySeatId).not.toBe(emptyHeldResult);
@@ -173,7 +176,9 @@ describe("usePerformanceSeatSubscriptions", () => {
 
     act(() => event({ type: "RESERVATION_CONFIRMED", data: [2, 3] as never }));
     expect(result.current.bookedSeatIds).toEqual(new Set([2, 3]));
-    expect(result.current.selectedSeatIds).toEqual(new Set([1]));
+    expect(result.current.selectedSeatIds).toEqual(new Set());
+    expect(result.current.heldSeatExpiresAtBySeatId.has(2)).toBe(false);
+    expect(result.current.myGroupHeldSeatInfoBySeatId.has(2)).toBe(false);
     act(() => event({ type: "RESERVATION_CONFIRMED", data: [2] as never }));
 
     unmount();
