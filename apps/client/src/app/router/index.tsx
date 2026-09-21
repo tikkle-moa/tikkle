@@ -51,7 +51,6 @@ export const router = createBrowserRouter([
             element: <AuthGuard />,
             children: [
               { path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> },
-              { path: ROUTE_PATHS.PERFORMANCE_CHECKOUT_FIXTURE, element: <PerformanceCheckoutPage fixture /> },
               { path: ROUTE_PATHS.PERFORMANCE_CHECKOUT, element: <PerformanceCheckoutPage /> },
             ],
           },

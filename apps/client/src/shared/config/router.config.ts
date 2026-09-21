@@ -10,7 +10,6 @@ export const ROUTE_PATHS = {
   CONCERT_NEW: "/concerts/new",
   CONCERT_EDIT: "/concerts/:concertId/edit",
   PERFORMANCE_DETAIL: "/performances/:performanceId",
-  PERFORMANCE_CHECKOUT_FIXTURE: "/performances/fixture/checkout",
   PERFORMANCE_CHECKOUT: "/performances/:performanceId/checkout",
   PERFORMANCE_NEW: "/concerts/:concertId/performances/new",
   SEARCH: "/search",

@@ -14,8 +14,6 @@ import type { PerformanceCheckoutLocationState } from "@features/performance-boo
 import { formatBookingAmount, getRemainingSeconds } from "@features/performance-booking/model/performance-booking.utils";
 import { useStartCheckout } from "@features/performance-booking/model/use-start-checkout";
 
-import { createPerformanceCheckoutFixture } from "../model/performance-checkout.fixtures";
-
 const isVenueSeatHold = (value: unknown): value is VenueSeatHoldDetail => {
   if (!value || typeof value !== "object") return false;
 
@@ -70,31 +68,24 @@ const isCheckoutLocationState = (state: unknown): state is PerformanceCheckoutLo
   );
 };
 
-interface PerformanceCheckoutPageProps {
-  fixture?: boolean;
-}
-
-const PerformanceCheckoutPage = ({ fixture = false }: PerformanceCheckoutPageProps) => {
+const PerformanceCheckoutPage = () => {
   const { performanceId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [now, setNow] = useState(() => Date.now());
   const user = useSessionStore((store) => store.user);
-  const fixtureState = fixture ? createPerformanceCheckoutFixture() : null;
-  const state = !fixture && isCheckoutLocationState(location.state) ? location.state : null;
-  const performance = fixtureState?.performance ?? state?.performance;
-  const venue = fixtureState?.venue ?? state?.venue;
-  const venueSeats = fixtureState?.venueSeats ?? state?.venueSeats ?? [];
-  const selectedSeatIds = fixtureState?.selectedSeatIds ?? (state ? state.hold.venueSeatIds : []);
-  const id = fixtureState?.performance.id ?? Number(performanceId);
+  const state = isCheckoutLocationState(location.state) ? location.state : null;
+  const performance = state?.performance;
+  const venue = state?.venue;
+  const venueSeats = state?.venueSeats ?? [];
+  const selectedSeatIds = state?.hold.venueSeatIds ?? [];
+  const id = Number(performanceId);
   const selectedSeats = venueSeats.filter((seat) => selectedSeatIds.includes(seat.id));
 
   useEffect(() => {
-    if (fixture) return;
-
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, [fixture]);
+  }, []);
 
   const handleCheckoutSuccess = useCallback(
     (reservationId: number) => navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) })),
@@ -102,23 +93,13 @@ const PerformanceCheckoutPage = ({ fixture = false }: PerformanceCheckoutPagePro
   );
   const { errorMessage, isStarting, startCheckout } = useStartCheckout({
     performanceId: id,
-    enabled: !fixture,
     onSuccess: handleCheckoutSuccess,
   });
 
-  const handleConfirm = () => {
-    if (fixtureState) {
-      navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(fixtureState.paymentOrder.reservationId) }), {
-        state: fixtureState.paymentOrder,
-      });
-      return;
-    }
-
-    startCheckout();
-  };
+  const handleConfirm = () => startCheckout();
 
   if (
-    (!fixture && !state) ||
+    !state ||
     !performance ||
     !venue ||
     !Number.isInteger(id) ||
@@ -130,7 +111,7 @@ const PerformanceCheckoutPage = ({ fixture = false }: PerformanceCheckoutPagePro
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="공연 상세에서 좌석을 다시 선택해 주세요." />;
   }
 
-  const remainingSeconds = state ? getRemainingSeconds(state.hold.expiresAt, now) : null;
+  const remainingSeconds = getRemainingSeconds(state.hold.expiresAt, now);
   const totalAmount = selectedSeats.reduce((total, seat) => total + seat.price, 0);
   return (
     <div className="mx-auto w-full max-w-3xl pb-6">
@@ -171,9 +152,7 @@ const PerformanceCheckoutPage = ({ fixture = false }: PerformanceCheckoutPagePro
           </dl>
           <p className="flex items-center gap-1.5 rounded-xl bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-950">
             <Clock3 className="size-4" aria-hidden />
-            {remainingSeconds === null
-              ? "테스트 좌석 선택 정보"
-              : `좌석 점유 남은 시간 ${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`}
+            {`좌석 점유 남은 시간 ${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`}
           </p>
           <ul className="mt-5 divide-y divide-gray-100 rounded-xl border border-gray-100">
             {selectedSeats.map((seat) => (
