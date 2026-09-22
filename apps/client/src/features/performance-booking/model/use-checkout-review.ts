@@ -4,6 +4,7 @@ import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import { useStompStore } from "@shared/realtime/stomp.store";
 
+import { CHECKOUT_REVIEW_MAX_REQUEST_ATTEMPTS, CHECKOUT_REVIEW_RESPONSE_TIMEOUT_MS } from "./performance-booking.constants";
 import { isCheckoutReview } from "./performance-booking.utils";
 
 interface UseCheckoutReviewProps {
@@ -17,9 +18,6 @@ interface PendingReviewRequest {
   reviewToken: string;
   attempts: number;
 }
-
-const RESPONSE_TIMEOUT_MS = 8_000;
-const MAX_REQUEST_ATTEMPTS = 2;
 
 export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess }: UseCheckoutReviewProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
@@ -138,7 +136,7 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
         if (beginRequestRef.current !== request) return;
 
         const { stompClient: activeClient, connectionStatus: activeStatus } = useStompStore.getState();
-        if (request.attempts < MAX_REQUEST_ATTEMPTS && activeClient && activeStatus === "connected") {
+        if (request.attempts < CHECKOUT_REVIEW_MAX_REQUEST_ATTEMPTS && activeClient && activeStatus === "connected") {
           request.attempts += 1;
           waitForResponse();
           activeClient.publish({
@@ -152,7 +150,7 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
         beginTimeoutRef.current = null;
         setIsBeginning(false);
         setErrorMessage("예매 정보 확인 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
-      }, RESPONSE_TIMEOUT_MS);
+      }, CHECKOUT_REVIEW_RESPONSE_TIMEOUT_MS);
     };
 
     waitForResponse();
@@ -179,7 +177,7 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
         if (endRequestRef.current !== request) return;
 
         const { stompClient: activeClient, connectionStatus: activeStatus } = useStompStore.getState();
-        if (request.attempts < MAX_REQUEST_ATTEMPTS && activeClient && activeStatus === "connected") {
+        if (request.attempts < CHECKOUT_REVIEW_MAX_REQUEST_ATTEMPTS && activeClient && activeStatus === "connected") {
           request.attempts += 1;
           waitForResponse();
           activeClient.publish({
@@ -193,7 +191,7 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
         endTimeoutRef.current = null;
         setIsEnding(false);
         setErrorMessage("좌석 선택 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
-      }, RESPONSE_TIMEOUT_MS);
+      }, CHECKOUT_REVIEW_RESPONSE_TIMEOUT_MS);
     };
 
     waitForResponse();

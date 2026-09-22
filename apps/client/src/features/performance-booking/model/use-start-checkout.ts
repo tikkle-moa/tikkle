@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useStompStore } from "@shared/realtime/stomp.store";
 
+import { START_CHECKOUT_MAX_REQUEST_ATTEMPTS, START_CHECKOUT_RESPONSE_TIMEOUT_MS } from "./performance-booking.constants";
 import { isStartCheckoutData } from "./performance-booking.utils";
 
 interface UseStartCheckoutProps {
@@ -10,9 +11,6 @@ interface UseStartCheckoutProps {
   onSuccess: (reservationId: number) => void;
   enabled?: boolean;
 }
-
-const RESPONSE_TIMEOUT_MS = 8_000;
-const MAX_REQUEST_ATTEMPTS = 2;
 
 export const useStartCheckout = ({ performanceId, reviewToken, onSuccess, enabled = true }: UseStartCheckoutProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
@@ -88,7 +86,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, onSuccess, enable
         if (requestIdRef.current !== requestId) return;
 
         const { stompClient: activeClient, connectionStatus: activeStatus } = useStompStore.getState();
-        if (requestAttemptsRef.current < MAX_REQUEST_ATTEMPTS && activeClient && activeStatus === "connected") {
+        if (requestAttemptsRef.current < START_CHECKOUT_MAX_REQUEST_ATTEMPTS && activeClient && activeStatus === "connected") {
           requestAttemptsRef.current += 1;
           waitForResponse();
           activeClient.publish({
@@ -102,7 +100,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, onSuccess, enable
         requestTimeoutRef.current = null;
         setIsStarting(false);
         setErrorMessage("결제 준비 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
-      }, RESPONSE_TIMEOUT_MS);
+      }, START_CHECKOUT_RESPONSE_TIMEOUT_MS);
     };
 
     waitForResponse();
