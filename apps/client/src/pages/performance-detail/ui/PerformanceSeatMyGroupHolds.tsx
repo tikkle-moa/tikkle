@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import { ChevronDown, ChevronUp, Clock3 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Clock3 } from "lucide-react";
 
 import { formatTime } from "@shared/lib/date.utils";
 import { useExpandableList } from "@shared/model/use-expandable-list";
@@ -14,9 +14,10 @@ interface PerformanceSeatMyGroupHoldsProps {
   venueSeatById: Map<number, VenueSeatResponse>;
   myGroupHolds: MyGroupHoldInfo[];
   myGroupHeldSeatSize: number;
+  selectedSeatIds: ReadonlySet<number>;
 }
 
-const PerformanceSeatMyGroupHolds = ({ venueSeatById, myGroupHolds, myGroupHeldSeatSize }: PerformanceSeatMyGroupHoldsProps) => {
+const PerformanceSeatMyGroupHolds = ({ venueSeatById, myGroupHolds, myGroupHeldSeatSize, selectedSeatIds }: PerformanceSeatMyGroupHoldsProps) => {
   const { visibleItems, isExpanded, canExpand, handleToggleExpanded } = useExpandableList({
     items: myGroupHolds,
     visibleCount: VISIBLE_HOLD_COUNT,
@@ -40,16 +41,25 @@ const PerformanceSeatMyGroupHolds = ({ venueSeatById, myGroupHolds, myGroupHeldS
         {visibleItems.map(({ holdId, expiresAt, venueSeatIds }) => {
           const seatLabels = venueSeatIds.map((seatId) => venueSeatById.get(seatId)?.seatLabel).join(", ");
           const formattedExpiresAt = formatTime(expiresAt);
+          const isSelected = venueSeatIds.some((seatId) => selectedSeatIds.has(seatId));
           return (
-            <div key={holdId} className="px-3 py-2">
+            <div key={holdId} data-selected={isSelected} className={`px-3 py-2 ${isSelected ? "bg-emerald-100/70" : ""}`}>
               <div className="flex items-center justify-between gap-3">
                 <p className="min-w-0 truncate text-xs font-bold text-slate-800" title={seatLabels}>
                   {seatLabels}
                 </p>
 
-                <span className="shrink-0 text-[11px] font-medium text-emerald-700 tabular-nums" title={`만료: ${formattedExpiresAt}`}>
-                  {formattedExpiresAt}
-                </span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {isSelected && (
+                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-700">
+                      <Check className="size-3" aria-hidden />
+                      선택됨
+                    </span>
+                  )}
+                  <span className="text-[11px] font-medium text-emerald-700 tabular-nums" title={`만료: ${formattedExpiresAt}`}>
+                    {formattedExpiresAt}
+                  </span>
+                </div>
               </div>
             </div>
           );

@@ -104,6 +104,7 @@ const PerformanceSeatHoldPanel = ({
             venueSeatById={venueSeatById}
             myGroupHolds={myGroupHolds}
             myGroupHeldSeatSize={myGroupHeldSeatInfoBySeatId.size}
+            selectedSeatIds={selectedSeatIds}
           />
         )}
 
