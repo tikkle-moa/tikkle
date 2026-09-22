@@ -32,6 +32,7 @@ describe("useStartCheckout", () => {
     act(() => {
       useStompStore.setState({ stompClient: null, connectionStatus: "disconnected" });
     });
+    vi.useRealTimers();
   });
 
   it("공연 ID로 START_CHECKOUT을 전송하고 예약 ID를 전달한다", () => {
@@ -132,6 +133,81 @@ describe("useStartCheckout", () => {
 
     expect(result.current.isStarting).toBe(true);
     expect(result.current.errorMessage).toBeNull();
+  });
+
+  it("응답을 잃으면 같은 START_CHECKOUT을 재전송하고 늦게 도착한 중복 응답은 무시한다", () => {
+    vi.useFakeTimers();
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess }));
+
+    act(() => result.current.startCheckout());
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+    act(() => vi.advanceTimersByTime(8_000));
+
+    expect(publish).toHaveBeenCalledTimes(2);
+    expect(publish.mock.calls[1][0].command).toEqual({ requestId, data: { performanceId: 10 } });
+    expect(result.current.isStarting).toBe(true);
+
+    act(() => {
+      handleMessage?.({
+        requestId,
+        success: true,
+        data: {
+          reservationId: 501,
+          orderId: "order-501",
+          orderName: "Tikkle Live",
+          amount: 150_000,
+          paymentExpiresAt: "2026-09-15T13:00:00",
+        },
+      });
+      handleMessage?.({
+        requestId,
+        success: true,
+        data: {
+          reservationId: 501,
+          orderId: "order-501",
+          orderName: "Tikkle Live",
+          amount: 150_000,
+          paymentExpiresAt: "2026-09-15T13:00:00",
+        },
+      });
+    });
+
+    expect(result.current.isStarting).toBe(false);
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("재전송 후에도 응답이 없으면 대기를 끝내고 다시 시도할 수 있다", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+
+    act(() => result.current.startCheckout());
+    const firstRequestId = publish.mock.calls[0][0].command.requestId as string;
+    act(() => vi.advanceTimersByTime(16_000));
+
+    expect(publish).toHaveBeenCalledTimes(2);
+    expect(result.current.isStarting).toBe(false);
+    expect(result.current.errorMessage).toBe("결제 준비 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
+
+    act(() => result.current.startCheckout());
+
+    expect(publish).toHaveBeenCalledTimes(3);
+    expect(publish.mock.calls[2][0].command.requestId).not.toBe(firstRequestId);
+    expect(result.current.isStarting).toBe(true);
+    expect(result.current.errorMessage).toBeNull();
+  });
+
+  it("응답 대기 중 연결이 끊기면 무한 대기하지 않는다", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+
+    act(() => result.current.startCheckout());
+    act(() => useStompStore.setState({ stompClient: null, connectionStatus: "disconnected" }));
+    act(() => vi.advanceTimersByTime(8_000));
+
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(result.current.isStarting).toBe(false);
+    expect(result.current.errorMessage).toBe("결제 준비 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
   });
 
   it("STOMP가 연결되지 않았으면 요청 대신 연결 오류를 표시한다", () => {
