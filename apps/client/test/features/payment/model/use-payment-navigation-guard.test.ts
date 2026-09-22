@@ -5,7 +5,7 @@ import { usePaymentNavigationGuard } from "@features/payment/model/use-payment-n
 
 const usePrompt = vi.hoisted(() => vi.fn());
 
-vi.mock("react-router", () => ({ usePrompt }));
+vi.mock("react-router", () => ({ unstable_usePrompt: usePrompt }));
 
 describe("usePaymentNavigationGuard", () => {
   beforeEach(() => {
