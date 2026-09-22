@@ -3,22 +3,17 @@ import { act, renderHook } from "@testing-library/react";
 import { usePaymentPage } from "@pages/payment/model/use-payment-page";
 
 const navigate = vi.hoisted(() => vi.fn());
-const mockUseLocation = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUsePaymentOrder = vi.hoisted(() => vi.fn());
 const mockUseSessionStore = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
-  return { ...actual, useLocation: mockUseLocation, useNavigate: () => navigate, useParams: mockUseParams };
+  return { ...actual, useNavigate: () => navigate, useParams: mockUseParams };
 });
 
 vi.mock("@entities/session", () => ({
   useSessionStore: mockUseSessionStore,
-}));
-
-vi.mock("@features/payment", () => ({
-  isPaymentOrder: vi.fn((value) => value?.orderId === "fixture-order"),
 }));
 
 vi.mock("@pages/payment/model/use-payment-order", () => ({
@@ -32,7 +27,6 @@ describe("usePaymentPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseParams.mockReturnValue({ reservationId: "501" });
-    mockUseLocation.mockReturnValue({ state: null });
     mockUseSessionStore.mockImplementation((selector) => selector({ user }));
     mockUsePaymentOrder.mockReturnValue(paymentOrder);
   });
@@ -45,7 +39,7 @@ describe("usePaymentPage", () => {
       user,
       ...paymentOrder,
     });
-    expect(mockUsePaymentOrder).toHaveBeenCalledWith({ reservationId: 501, initialOrder: undefined });
+    expect(mockUsePaymentOrder).toHaveBeenCalledWith({ reservationId: 501 });
 
     act(() => result.current.handleBack());
 
@@ -58,16 +52,6 @@ describe("usePaymentPage", () => {
     const { result } = renderHook(() => usePaymentPage());
 
     expect(result.current.isReservationIdValid).toBe(false);
-    expect(mockUsePaymentOrder).toHaveBeenCalledWith({ reservationId: Number(reservationId), initialOrder: undefined });
-  });
-
-  it("이전 화면에서 전달한 주문서를 초기 주문으로 사용한다", () => {
-    const initialOrder = { orderId: "fixture-order", reservationId: 501 };
-    mockUseLocation.mockReturnValue({ state: initialOrder });
-
-    const { result } = renderHook(() => usePaymentPage());
-
-    expect(result.current.isReservationIdValid).toBe(true);
-    expect(mockUsePaymentOrder).toHaveBeenCalledWith({ reservationId: 501, initialOrder });
+    expect(mockUsePaymentOrder).toHaveBeenCalledWith({ reservationId: Number(reservationId) });
   });
 });

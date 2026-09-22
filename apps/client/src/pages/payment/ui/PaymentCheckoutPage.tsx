@@ -1,22 +1,20 @@
-import { generatePath, useLocation, useNavigate, useParams } from "react-router";
+import { generatePath, useNavigate, useParams } from "react-router";
 
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentNavigationDialog, PaymentOrderSummary, isPaymentOrder, usePaymentNavigationGuard } from "@features/payment";
+import { PaymentNavigationDialog, PaymentOrderSummary, usePaymentNavigationGuard } from "@features/payment";
 
 import { usePaymentOrder } from "../model/use-payment-order";
 
 const PaymentCheckoutPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { reservationId } = useParams();
   const id = Number(reservationId);
   const isReservationIdValid = Number.isInteger(id) && id > 0;
-  const initialOrder = isPaymentOrder(location.state) ? location.state : undefined;
-  const { order, errorMessage, isLoading } = usePaymentOrder({ reservationId: id, initialOrder });
+  const { order, errorMessage, isLoading } = usePaymentOrder({ reservationId: id });
   const navigationGuard = usePaymentNavigationGuard({
     enabled: isReservationIdValid && !isLoading && !errorMessage && Boolean(order),
     allowedPathnames: isReservationIdValid ? [generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) })] : [],
@@ -56,7 +54,7 @@ const PaymentCheckoutPage = () => {
         <button
           type="button"
           className="bg-brand-primary mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-bold text-white"
-          onClick={() => navigate(generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) }), { state: order })}
+          onClick={() => navigate(generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) }))}
         >
           결제하러 가기
           <ArrowRight className="size-4" aria-hidden />

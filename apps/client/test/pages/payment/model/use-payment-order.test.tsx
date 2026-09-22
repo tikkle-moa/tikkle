@@ -85,13 +85,17 @@ describe("usePaymentOrder", () => {
     expect(subscribe).not.toHaveBeenCalled();
   });
 
-  it("초기 주문서가 있으면 STOMP 요청 없이 주문서를 제공한다", () => {
-    const initialOrder = createPaymentOrderMessageData(501);
-    const { result } = renderHook(() => usePaymentOrder({ reservationId: 501, initialOrder }));
+  it("결제 화면에 다시 진입하면 서버 주문서를 다시 조회한다", async () => {
+    const first = renderHook(() => usePaymentOrder({ reservationId: 501 }));
 
-    expect(result.current.order).toEqual(initialOrder);
-    expect(result.current.isLoading).toBe(false);
-    expect(publish).not.toHaveBeenCalled();
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
+    first.unmount();
+
+    const second = renderHook(() => usePaymentOrder({ reservationId: 501 }));
+
+    expect(second.result.current.order).toBeNull();
+    expect(second.result.current.isLoading).toBe(true);
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(2));
   });
 
   it("주문 조회 실패 응답은 서버 오류 메시지를 표시한다", async () => {
