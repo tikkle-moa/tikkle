@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentOrderSummary, isPaymentOrder } from "@features/payment";
+import { PaymentOrderSummary, isPaymentOrder, usePaymentNavigationGuard } from "@features/payment";
 
 import { usePaymentOrder } from "../model/use-payment-order";
 
@@ -17,6 +17,10 @@ const PaymentCheckoutPage = () => {
   const isReservationIdValid = Number.isInteger(id) && id > 0;
   const initialOrder = isPaymentOrder(location.state) ? location.state : undefined;
   const { order, errorMessage, isLoading } = usePaymentOrder({ reservationId: id, initialOrder });
+  usePaymentNavigationGuard({
+    enabled: isReservationIdValid,
+    allowedPathnames: isReservationIdValid ? [generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) })] : [],
+  });
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;
