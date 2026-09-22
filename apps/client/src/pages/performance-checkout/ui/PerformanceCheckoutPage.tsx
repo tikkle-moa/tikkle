@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { generatePath, useLocation, useNavigate, useParams } from "react-router";
 
-import type { VenueSeatHoldDetail } from "@tikkle/api-types";
 import { ArrowLeft, ArrowRight, CalendarDays, Clock3, Info, MapPin, Ticket } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
@@ -10,63 +9,12 @@ import DetailMessage from "@shared/ui/DetailMessage";
 
 import { useSessionStore } from "@entities/session";
 
-import type { PerformanceCheckoutLocationState } from "@features/performance-booking";
-import { formatBookingAmount, getRemainingSeconds } from "@features/performance-booking/model/performance-booking.utils";
+import {
+  formatBookingAmount,
+  getRemainingSeconds,
+  isPerformanceCheckoutLocationState,
+} from "@features/performance-booking/model/performance-booking.utils";
 import { useStartCheckout } from "@features/performance-booking/model/use-start-checkout";
-
-const isVenueSeatHold = (value: unknown): value is VenueSeatHoldDetail => {
-  if (!value || typeof value !== "object") return false;
-
-  const hold = value as Record<string, unknown>;
-  return (
-    typeof hold.holdId === "string" &&
-    typeof hold.groupId === "string" &&
-    typeof hold.performanceId === "number" &&
-    Array.isArray(hold.venueSeatIds) &&
-    hold.venueSeatIds.length > 0 &&
-    hold.venueSeatIds.every((seatId) => typeof seatId === "number") &&
-    typeof hold.expiresAt === "string"
-  );
-};
-
-const isPerformance = (value: unknown) => {
-  if (!value || typeof value !== "object") return false;
-
-  const performance = value as Record<string, unknown>;
-  return (
-    typeof performance.id === "number" &&
-    typeof performance.venueId === "number" &&
-    typeof performance.name === "string" &&
-    typeof performance.startsAt === "string"
-  );
-};
-
-const isVenue = (value: unknown) => {
-  if (!value || typeof value !== "object") return false;
-
-  const venue = value as Record<string, unknown>;
-  return typeof venue.id === "number" && typeof venue.name === "string";
-};
-
-const isVenueSeat = (value: unknown) => {
-  if (!value || typeof value !== "object") return false;
-
-  const seat = value as Record<string, unknown>;
-  return typeof seat.id === "number" && typeof seat.sectionName === "string" && typeof seat.seatLabel === "string" && typeof seat.price === "number";
-};
-
-const isCheckoutLocationState = (state: unknown): state is PerformanceCheckoutLocationState => {
-  if (!state || typeof state !== "object") return false;
-
-  const value = state as Partial<PerformanceCheckoutLocationState>;
-  return Boolean(
-    isPerformance(value.performance) &&
-    isVenue(value.venue) &&
-    Array.isArray(value.venueSeats) &&
-    value.venueSeats.every(isVenueSeat) &&
-    isVenueSeatHold(value.hold),
-  );
-};
 
 const PerformanceCheckoutPage = () => {
   const { performanceId } = useParams();
@@ -74,12 +22,12 @@ const PerformanceCheckoutPage = () => {
   const navigate = useNavigate();
   const [now, setNow] = useState(() => Date.now());
   const user = useSessionStore((store) => store.user);
-  const state = isCheckoutLocationState(location.state) ? location.state : null;
+  const id = Number(performanceId);
+  const state = isPerformanceCheckoutLocationState(location.state, id) ? location.state : null;
   const performance = state?.performance;
   const venue = state?.venue;
   const venueSeats = state?.venueSeats ?? [];
   const selectedSeatIds = state?.hold.venueSeatIds ?? [];
-  const id = Number(performanceId);
   const selectedSeats = venueSeats.filter((seat) => selectedSeatIds.includes(seat.id));
 
   useEffect(() => {
@@ -98,16 +46,7 @@ const PerformanceCheckoutPage = () => {
 
   const handleConfirm = () => startCheckout();
 
-  if (
-    !state ||
-    !performance ||
-    !venue ||
-    !Number.isInteger(id) ||
-    id <= 0 ||
-    performance.id !== id ||
-    performance.venueId !== venue.id ||
-    selectedSeats.length !== selectedSeatIds.length
-  ) {
+  if (!state || !performance || !venue || selectedSeats.length !== selectedSeatIds.length) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="공연 상세에서 좌석을 다시 선택해 주세요." />;
   }
 

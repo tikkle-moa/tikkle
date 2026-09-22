@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentOrderSummary, isPaymentOrder, usePaymentNavigationGuard } from "@features/payment";
+import { PaymentNavigationDialog, PaymentOrderSummary, isPaymentOrder, usePaymentNavigationGuard } from "@features/payment";
 
 import { usePaymentOrder } from "../model/use-payment-order";
 
@@ -17,8 +17,8 @@ const PaymentCheckoutPage = () => {
   const isReservationIdValid = Number.isInteger(id) && id > 0;
   const initialOrder = isPaymentOrder(location.state) ? location.state : undefined;
   const { order, errorMessage, isLoading } = usePaymentOrder({ reservationId: id, initialOrder });
-  usePaymentNavigationGuard({
-    enabled: isReservationIdValid,
+  const navigationGuard = usePaymentNavigationGuard({
+    enabled: isReservationIdValid && !isLoading && !errorMessage && Boolean(order),
     allowedPathnames: isReservationIdValid ? [generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) })] : [],
   });
 
@@ -35,32 +35,37 @@ const PaymentCheckoutPage = () => {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl pb-6">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="hover:text-brand-primary inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 transition-colors"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        예매 정보로 돌아가기
-      </button>
-      <header>
-        <p className="text-brand-primary text-sm font-semibold">결제 준비</p>
-        <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-950">결제 주문을 확인해 주세요</h1>
-        <p className="mt-2 text-sm text-gray-500">결제 예정 금액과 좌석 정보를 확인한 뒤 결제수단을 선택할 수 있습니다.</p>
-      </header>
-      <div className="mt-7">
-        <PaymentOrderSummary order={order} />
+    <>
+      <div className="mx-auto w-full max-w-3xl pb-6">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="hover:text-brand-primary inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 transition-colors"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          예매 정보로 돌아가기
+        </button>
+        <header>
+          <p className="text-brand-primary text-sm font-semibold">결제 준비</p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-950">결제 주문을 확인해 주세요</h1>
+          <p className="mt-2 text-sm text-gray-500">결제 예정 금액과 좌석 정보를 확인한 뒤 결제수단을 선택할 수 있습니다.</p>
+        </header>
+        <div className="mt-7">
+          <PaymentOrderSummary order={order} />
+        </div>
+        <button
+          type="button"
+          className="bg-brand-primary mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-bold text-white"
+          onClick={() => navigate(generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) }), { state: order })}
+        >
+          결제하러 가기
+          <ArrowRight className="size-4" aria-hidden />
+        </button>
       </div>
-      <button
-        type="button"
-        className="bg-brand-primary mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-bold text-white"
-        onClick={() => navigate(generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) }), { state: order })}
-      >
-        결제하러 가기
-        <ArrowRight className="size-4" aria-hidden />
-      </button>
-    </div>
+      {navigationGuard.isBlocked && (
+        <PaymentNavigationDialog message={navigationGuard.message} onProceed={navigationGuard.proceed} onStay={navigationGuard.reset} />
+      )}
+    </>
   );
 };
 

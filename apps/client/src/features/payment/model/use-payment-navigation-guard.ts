@@ -1,4 +1,4 @@
-import { unstable_usePrompt as usePrompt } from "react-router";
+import { useBlocker } from "react-router";
 
 import { PAYMENT_NAVIGATION_WARNING_MESSAGE } from "./payment.constants";
 
@@ -8,8 +8,12 @@ interface UsePaymentNavigationGuardProps {
 }
 
 export const usePaymentNavigationGuard = ({ enabled, allowedPathnames = [] }: UsePaymentNavigationGuardProps) => {
-  usePrompt({
+  const blocker = useBlocker(({ nextLocation }) => enabled && !allowedPathnames.includes(nextLocation.pathname));
+
+  return {
+    isBlocked: blocker.state === "blocked",
     message: PAYMENT_NAVIGATION_WARNING_MESSAGE,
-    when: ({ nextLocation }) => enabled && !allowedPathnames.includes(nextLocation.pathname),
-  });
+    proceed: blocker.proceed,
+    reset: blocker.reset,
+  };
 };
