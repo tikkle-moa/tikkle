@@ -9,12 +9,7 @@ import DetailMessage from "@shared/ui/DetailMessage";
 
 import { useSessionStore } from "@entities/session";
 
-import {
-  formatBookingAmount,
-  getRemainingSeconds,
-  isPerformanceCheckoutLocationState,
-} from "@features/performance-booking/model/performance-booking.utils";
-import { useStartCheckout } from "@features/performance-booking/model/use-start-checkout";
+import { formatBookingAmount, getRemainingSeconds, isPerformanceCheckoutLocationState, useStartCheckout } from "@features/performance-booking";
 
 const PerformanceCheckoutPage = () => {
   const { performanceId } = useParams();
@@ -100,7 +95,9 @@ const PerformanceCheckoutPage = () => {
           </dl>
           <p className="flex items-center gap-1.5 rounded-xl bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-950">
             <Clock3 className="size-4" aria-hidden />
-            {`좌석 점유 남은 시간 ${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`}
+            {remainingSeconds > 0
+              ? `좌석 점유 남은 시간 ${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`
+              : "선택 당시 점유 시간이 지났습니다. 확정 요청 시 서버 상태를 다시 확인합니다."}
           </p>
           <ul className="mt-5 divide-y divide-gray-100 rounded-xl border border-gray-100">
             {selectedSeats.map((seat) => (
@@ -120,7 +117,7 @@ const PerformanceCheckoutPage = () => {
           <button
             type="button"
             className="bg-brand-primary mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300"
-            disabled={remainingSeconds === 0 || isStarting || !user}
+            disabled={isStarting || !user}
             onClick={handleConfirm}
           >
             {isStarting ? "예매 정보 확정 중..." : "예매 정보 확정하기"}

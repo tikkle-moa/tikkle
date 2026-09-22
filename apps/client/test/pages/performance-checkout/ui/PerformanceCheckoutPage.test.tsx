@@ -160,15 +160,15 @@ describe("PerformanceCheckoutPage", () => {
     expect(screen.getByRole("heading", { name: "예매 정보를 찾을 수 없습니다." })).toBeInTheDocument();
   });
 
-  it("점유 시간이 만료되면 확정 버튼을 비활성화한다", () => {
+  it("점유 시간이 지나도 결제 준비 결과를 다시 확인할 수 있다", () => {
     mockUseLocation.mockReturnValue({
       state: { ...validState, hold: { ...validState.hold, expiresAt: new Date(Date.now() - 1_000).toISOString() } },
     });
 
     render(<PerformanceCheckoutPage />);
 
-    expect(screen.getByText("좌석 점유 남은 시간 00:00")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "예매 정보 확정하기" })).toBeDisabled();
+    expect(screen.getByText("선택 당시 점유 시간이 지났습니다. 확정 요청 시 서버 상태를 다시 확인합니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "예매 정보 확정하기" })).toBeEnabled();
   });
 
   it("로그인 사용자 정보가 없으면 확정 버튼을 비활성화한다", () => {
