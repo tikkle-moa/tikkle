@@ -28,6 +28,7 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
     venueSeatStates,
     setVenueSeatStates,
     toggleSeat,
+    toggleHeldSeats,
     selectSeats,
   } = usePerformanceSeatMap();
 
@@ -55,6 +56,7 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
           seatOperationState={seatOperationState}
           setVenueSeatStates={setVenueSeatStates}
           setSelectedSeatIds={setSelectedSeatIds}
+          onHoldSeatToggle={toggleHeldSeats}
           setServerTimeOffset={setServerTimeOffset}
           setSeatOperationState={setSeatOperationState}
           onCheckout={onCheckout}

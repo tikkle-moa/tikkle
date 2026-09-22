@@ -37,6 +37,24 @@ export const usePerformanceSeatMap = () => {
     setSeatOperationState((current) => (current.status === "idle" ? current : { status: "idle" }));
   }, []);
 
+  const toggleHeldSeats = useCallback((seatIds: readonly number[]) => {
+    if (seatOperationStatusRef.current === "loading") return;
+
+    const heldSeatIds = [...new Set(seatIds)].filter((seatId) => venueSeatStatesRef.current.get(seatId)?.status === "held_by_my_group");
+    if (heldSeatIds.length === 0) return;
+
+    setSelectedSeatIds((current) => {
+      const shouldSelect = heldSeatIds.some((seatId) => !current.has(seatId));
+      const updated = new Set(current);
+      heldSeatIds.forEach((seatId) => {
+        if (shouldSelect) updated.add(seatId);
+        else updated.delete(seatId);
+      });
+      return areSeatIdsEqual(current, updated) ? current : updated;
+    });
+    setSeatOperationState((current) => (current.status === "idle" ? current : { status: "idle" }));
+  }, []);
+
   const selectSeats = useCallback((seatIds: ReadonlySet<number>) => {
     if (seatOperationStatusRef.current === "loading") return;
     const selectableSeatIds = new Set(filterSelectableSeatIds(seatIds, venueSeatStatesRef.current));
@@ -55,6 +73,7 @@ export const usePerformanceSeatMap = () => {
     venueSeatStates,
     setVenueSeatStates,
     toggleSeat,
+    toggleHeldSeats,
     selectSeats,
   };
 };

@@ -15,9 +15,16 @@ interface PerformanceSeatMyGroupHoldsProps {
   myGroupHolds: MyGroupHoldInfo[];
   myGroupHeldSeatSize: number;
   selectedSeatIds: ReadonlySet<number>;
+  onSelect: (seatIds: readonly number[]) => void;
 }
 
-const PerformanceSeatMyGroupHolds = ({ venueSeatById, myGroupHolds, myGroupHeldSeatSize, selectedSeatIds }: PerformanceSeatMyGroupHoldsProps) => {
+const PerformanceSeatMyGroupHolds = ({
+  venueSeatById,
+  myGroupHolds,
+  myGroupHeldSeatSize,
+  selectedSeatIds,
+  onSelect,
+}: PerformanceSeatMyGroupHoldsProps) => {
   const { visibleItems, isExpanded, canExpand, handleToggleExpanded } = useExpandableList({
     items: myGroupHolds,
     visibleCount: VISIBLE_HOLD_COUNT,
@@ -41,19 +48,31 @@ const PerformanceSeatMyGroupHolds = ({ venueSeatById, myGroupHolds, myGroupHeldS
         {visibleItems.map(({ holdId, expiresAt, venueSeatIds }) => {
           const seatLabels = venueSeatIds.map((seatId) => venueSeatById.get(seatId)?.seatLabel).join(", ");
           const formattedExpiresAt = formatTime(expiresAt);
-          const isSelected = venueSeatIds.some((seatId) => selectedSeatIds.has(seatId));
+          const selectedSeatSize = venueSeatIds.filter((seatId) => selectedSeatIds.has(seatId)).length;
+          const isSelected = selectedSeatSize === venueSeatIds.length;
+          const hasSelectedSeat = selectedSeatSize > 0;
           return (
-            <div key={holdId} data-selected={isSelected} className={`px-3 py-2 ${isSelected ? "bg-emerald-100/70" : ""}`}>
+            <button
+              key={holdId}
+              type="button"
+              data-selected={hasSelectedSeat}
+              aria-pressed={isSelected}
+              aria-label={`${seatLabels} ${isSelected ? "선택 취소" : "선택"}`}
+              className={`w-full px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-500 ${
+                hasSelectedSeat ? "bg-emerald-100/70" : "hover:bg-emerald-50/70"
+              }`}
+              onClick={() => onSelect(venueSeatIds)}
+            >
               <div className="flex items-center justify-between gap-3">
                 <p className="min-w-0 truncate text-xs font-bold text-slate-800" title={seatLabels}>
                   {seatLabels}
                 </p>
 
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {isSelected && (
+                  {hasSelectedSeat && (
                     <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-700">
                       <Check className="size-3" aria-hidden />
-                      선택됨
+                      {selectedSeatSize}석 선택됨
                     </span>
                   )}
                   <span className="text-[11px] font-medium text-emerald-700 tabular-nums" title={`만료: ${formattedExpiresAt}`}>
@@ -61,7 +80,7 @@ const PerformanceSeatMyGroupHolds = ({ venueSeatById, myGroupHolds, myGroupHeldS
                   </span>
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
         {canExpand && (

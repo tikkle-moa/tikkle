@@ -20,6 +20,7 @@ interface PerformanceSeatHoldPanelProps {
   seatOperationState: SeatOperationState;
   setVenueSeatStates: Dispatch<SetStateAction<Map<number, VenueSeatState>>>;
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
+  onHoldSeatToggle: (seatIds: readonly number[]) => void;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
   onCheckout?: (hold: VenueSeatHoldDetail) => void;
@@ -33,6 +34,7 @@ const PerformanceSeatHoldPanel = ({
   seatOperationState,
   setVenueSeatStates,
   setSelectedSeatIds,
+  onHoldSeatToggle,
   setServerTimeOffset,
   setSeatOperationState,
   onCheckout,
@@ -105,6 +107,7 @@ const PerformanceSeatHoldPanel = ({
             myGroupHolds={myGroupHolds}
             myGroupHeldSeatSize={myGroupHeldSeatInfoBySeatId.size}
             selectedSeatIds={selectedSeatIds}
+            onSelect={onHoldSeatToggle}
           />
         )}
 
