@@ -62,8 +62,9 @@ describe("getSeatSelectionSessionId", () => {
     const state = { performanceId: 1, seatSelectionSessionId: "session-1" };
 
     expect(getSeatSelectionSessionId(state, 1)).toBe("session-1");
-    expect(getSeatSelectionSessionId(state, 2)).toBeNull();
-    expect(getSeatSelectionSessionId({ ...state, seatSelectionSessionId: 1 }, 1)).toBeNull();
-    expect(getSeatSelectionSessionId(null, 1)).toBeNull();
+    expect(getSeatSelectionSessionId(state, 2)).toBeUndefined();
+    expect(getSeatSelectionSessionId({ ...state, seatSelectionSessionId: 1 }, 1)).toBeUndefined();
+    expect(getSeatSelectionSessionId(null, 1)).toBeUndefined();
+    expect(getSeatSelectionSessionId({ performanceId: 1, seatSelectionSessionId: null }, 1)).toBeNull();
   });
 });

@@ -23,6 +23,8 @@ export const getPerformanceCheckoutNavigation = ({ performance, venueDetail, rev
 };
 
 export const getSeatSelectionSessionId = (state: unknown, performanceId: number) => {
-  if (!state || typeof state !== "object" || !("performanceId" in state) || !("seatSelectionSessionId" in state)) return null;
-  return state.performanceId === performanceId && typeof state.seatSelectionSessionId === "string" ? state.seatSelectionSessionId : null;
+  if (!state || typeof state !== "object" || !("performanceId" in state) || state.performanceId !== performanceId) return undefined;
+  if (!("seatSelectionSessionId" in state)) return undefined;
+
+  return typeof state.seatSelectionSessionId === "string" || state.seatSelectionSessionId === null ? state.seatSelectionSessionId : undefined;
 };

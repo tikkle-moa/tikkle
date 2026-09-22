@@ -30,6 +30,16 @@ describe("usePerformanceSeatMap", () => {
     expect(result.current.sessionId).toBe("stored-session");
   });
 
+  it("명시적으로 초기화하면 저장된 세션 대신 새 세션을 생성한다", () => {
+    sessionStorage.setItem("tikkle.performance-seat-session:4", "stored-session");
+
+    const { result } = renderHook(() => usePerformanceSeatMap({ performanceId: 4, sessionId: null }));
+
+    expect(result.current.sessionId).toEqual(expect.any(String));
+    expect(result.current.sessionId).not.toBe("stored-session");
+    expect(sessionStorage.getItem("tikkle.performance-seat-session:4")).toBe(result.current.sessionId);
+  });
+
   it("선택 가능한 좌석을 토글한다", () => {
     const { result } = renderHook(() => usePerformanceSeatMap());
     act(() => {

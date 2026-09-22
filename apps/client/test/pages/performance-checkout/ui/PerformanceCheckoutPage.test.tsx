@@ -235,7 +235,10 @@ describe("PerformanceCheckoutPage", () => {
     await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
     onEndSuccess?.(false);
 
-    expect(navigate).toHaveBeenCalledWith("/performances/10", { replace: true, state: null });
+    expect(navigate).toHaveBeenCalledWith("/performances/10", {
+      replace: true,
+      state: { performanceId: 10, seatSelectionSessionId: null },
+    });
   });
 
   it("리뷰 잠금 해제 중에는 다시 누를 수 없고 서버 오류를 표시한다", () => {

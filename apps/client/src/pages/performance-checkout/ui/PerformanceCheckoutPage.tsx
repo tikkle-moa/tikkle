@@ -52,7 +52,10 @@ const PerformanceCheckoutPage = () => {
       if (!canResumeHold) clearPerformanceSeatSelectionSession(id);
       navigate(generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(id) }), {
         replace: true,
-        state: canResumeHold && reviewSessionId ? { performanceId: id, seatSelectionSessionId: reviewSessionId } : null,
+        state:
+          canResumeHold && reviewSessionId
+            ? { performanceId: id, seatSelectionSessionId: reviewSessionId }
+            : { performanceId: id, seatSelectionSessionId: null },
       });
     },
     [id, navigate, reviewSessionId],
