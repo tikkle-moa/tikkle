@@ -1,6 +1,6 @@
 import { generatePath } from "react-router";
 
-import type { VenueSeatHoldDetail } from "@tikkle/api-types";
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
@@ -10,14 +10,14 @@ import type { VenueDetailResponse } from "@entities/venue";
 interface PerformanceCheckoutNavigationProps {
   performance?: PerformanceResponse;
   venueDetail?: VenueDetailResponse;
-  hold: VenueSeatHoldDetail;
+  review: BeginCheckoutReviewMessageData;
 }
 
-export const getPerformanceCheckoutNavigation = ({ performance, venueDetail, hold }: PerformanceCheckoutNavigationProps) => {
+export const getPerformanceCheckoutNavigation = ({ performance, venueDetail, review }: PerformanceCheckoutNavigationProps) => {
   if (!performance || !venueDetail) return null;
 
   return {
     pathname: generatePath(ROUTE_PATHS.PERFORMANCE_CHECKOUT, { performanceId: String(performance.id) }),
-    state: { performance, venue: venueDetail.venue, venueSeats: venueDetail.venueSeats, hold },
+    state: { performance, venue: venueDetail.venue, venueSeats: venueDetail.venueSeats, review },
   };
 };

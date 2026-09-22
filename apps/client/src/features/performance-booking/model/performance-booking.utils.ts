@@ -44,18 +44,19 @@ export const getRemainingSeconds = (expiresAt: string, now = Date.now()) => {
   return Number.isFinite(expiresAtTime) ? Math.max(0, Math.ceil((expiresAtTime - now) / 1_000)) : 0;
 };
 
-const isVenueSeatHold = (value: unknown): value is PerformanceCheckoutLocationState["hold"] => {
+export const isCheckoutReview = (value: unknown): value is PerformanceCheckoutLocationState["review"] => {
   if (!value || typeof value !== "object") return false;
 
-  const hold = value as Record<string, unknown>;
+  const review = value as Record<string, unknown>;
   return (
-    typeof hold.holdId === "string" &&
-    typeof hold.groupId === "string" &&
-    typeof hold.performanceId === "number" &&
-    Array.isArray(hold.venueSeatIds) &&
-    hold.venueSeatIds.length > 0 &&
-    hold.venueSeatIds.every((seatId) => typeof seatId === "number") &&
-    typeof hold.expiresAt === "string"
+    typeof review.reviewToken === "string" &&
+    review.reviewToken.length > 0 &&
+    typeof review.groupId === "string" &&
+    typeof review.performanceId === "number" &&
+    Array.isArray(review.venueSeatIds) &&
+    review.venueSeatIds.length > 0 &&
+    review.venueSeatIds.every((seatId) => typeof seatId === "number") &&
+    typeof review.expiresAt === "string"
   );
 };
 
@@ -89,7 +90,7 @@ export const isPerformanceCheckoutLocationState = (state: unknown, performanceId
   if (!state || typeof state !== "object") return false;
 
   const value = state as Partial<PerformanceCheckoutLocationState>;
-  const { performance, venue, venueSeats, hold } = value;
+  const { performance, venue, venueSeats, review } = value;
   if (
     !Number.isInteger(performanceId) ||
     performanceId <= 0 ||
@@ -97,17 +98,17 @@ export const isPerformanceCheckoutLocationState = (state: unknown, performanceId
     !isVenue(venue) ||
     !Array.isArray(venueSeats) ||
     !venueSeats.every(isVenueSeat) ||
-    !isVenueSeatHold(hold)
+    !isCheckoutReview(review)
   ) {
     return false;
   }
 
-  const selectedSeatIds = hold.venueSeatIds;
+  const selectedSeatIds = review.venueSeatIds;
   const venueSeatIds = new Set(venueSeats.map((seat) => seat.id));
   return (
     performance.id === performanceId &&
     performance.venueId === venue.id &&
-    hold.performanceId === performanceId &&
+    review.performanceId === performanceId &&
     new Set(selectedSeatIds).size === selectedSeatIds.length &&
     selectedSeatIds.every((seatId) => venueSeatIds.has(seatId))
   );

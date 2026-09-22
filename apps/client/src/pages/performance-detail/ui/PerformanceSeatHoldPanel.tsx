@@ -1,8 +1,10 @@
 import { type Dispatch, type SetStateAction, memo } from "react";
 
-import type { VenueSeatHoldDetail } from "@tikkle/api-types";
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
+
+import { useCheckoutReview } from "@features/performance-booking";
 
 import PerformanceSeatHoldActions from "./PerformanceSeatHoldActions";
 import PerformanceSeatHoldHeader from "./PerformanceSeatHoldHeader";
@@ -23,7 +25,7 @@ interface PerformanceSeatHoldPanelProps {
   onHoldSeatToggle: (seatIds: readonly number[]) => void;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
-  onCheckout?: (hold: VenueSeatHoldDetail) => void;
+  onCheckout?: (review: BeginCheckoutReviewMessageData) => void;
 }
 
 const PerformanceSeatHoldPanel = ({
@@ -63,18 +65,18 @@ const PerformanceSeatHoldPanel = ({
     setServerTimeOffset,
     setSeatOperationState,
   });
+  const {
+    isBeginning,
+    errorMessage: checkoutReviewErrorMessage,
+    beginReview,
+  } = useCheckoutReview({
+    performanceId,
+    onBeginSuccess: onCheckout,
+  });
 
   const handleCheckout = () => {
-    const firstHold = myGroupHolds[0];
-    if (!onCheckout || !firstHold) return;
-
-    onCheckout({
-      holdId: firstHold.holdId,
-      groupId: firstHold.groupId,
-      performanceId: firstHold.performanceId,
-      venueSeatIds: myGroupHolds.flatMap(({ venueSeatIds }) => venueSeatIds),
-      expiresAt: new Date(Math.min(...myGroupHolds.map(({ expiresAt }) => expiresAt.getTime()))).toISOString(),
-    });
+    if (!onCheckout) return;
+    beginReview();
   };
 
   return (
@@ -96,10 +98,16 @@ const PerformanceSeatHoldPanel = ({
           myGroupHeldSeatTotalPrice={myGroupHeldSeatTotalPrice}
           selectedSeatIdsToReleaseSize={selectedSeatIdsToRelease.length}
           isConnected={isConnected}
+          isCheckoutReviewBeginning={isBeginning}
           visibleSeatOperationState={visibleSeatOperationState}
           handleCheckout={handleCheckout}
           handleReleaseSeats={handleReleaseSeats}
         />
+        {checkoutReviewErrorMessage && (
+          <p role="alert" className="text-xs font-medium text-red-700">
+            {checkoutReviewErrorMessage}
+          </p>
+        )}
 
         {myGroupHeldSeatInfoBySeatId.size > 0 && (
           <PerformanceSeatMyGroupHolds

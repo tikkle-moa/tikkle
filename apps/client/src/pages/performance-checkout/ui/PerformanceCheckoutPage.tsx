@@ -9,7 +9,13 @@ import DetailMessage from "@shared/ui/DetailMessage";
 
 import { useSessionStore } from "@entities/session";
 
-import { formatBookingAmount, getRemainingSeconds, isPerformanceCheckoutLocationState, useStartCheckout } from "@features/performance-booking";
+import {
+  formatBookingAmount,
+  getRemainingSeconds,
+  isPerformanceCheckoutLocationState,
+  useCheckoutReview,
+  useStartCheckout,
+} from "@features/performance-booking";
 
 const PerformanceCheckoutPage = () => {
   const { performanceId } = useParams();
@@ -22,7 +28,7 @@ const PerformanceCheckoutPage = () => {
   const performance = state?.performance;
   const venue = state?.venue;
   const venueSeats = state?.venueSeats ?? [];
-  const selectedSeatIds = state?.hold.venueSeatIds ?? [];
+  const selectedSeatIds = state?.review.venueSeatIds ?? [];
   const selectedSeats = venueSeats.filter((seat) => selectedSeatIds.includes(seat.id));
 
   useEffect(() => {
@@ -34,25 +40,45 @@ const PerformanceCheckoutPage = () => {
     (reservationId: number) => navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) })),
     [navigate],
   );
+  const handleReviewEnd = useCallback(() => navigate(-1), [navigate]);
+  const {
+    errorMessage: reviewErrorMessage,
+    isEnding,
+    endReview,
+  } = useCheckoutReview({
+    performanceId: id,
+    onEndSuccess: handleReviewEnd,
+  });
   const { errorMessage, isStarting, startCheckout } = useStartCheckout({
     performanceId: id,
+    reviewToken: state?.review.reviewToken ?? "",
+    enabled: Boolean(state),
     onSuccess: handleCheckoutSuccess,
   });
 
   const handleConfirm = () => startCheckout();
+  const handleBack = () => {
+    if (!state) return;
+    endReview(state.review.reviewToken);
+  };
 
   if (!state || !performance || !venue || selectedSeats.length !== selectedSeatIds.length) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="공연 상세에서 좌석을 다시 선택해 주세요." />;
   }
 
-  const remainingSeconds = getRemainingSeconds(state.hold.expiresAt, now);
+  const remainingSeconds = getRemainingSeconds(state.review.expiresAt, now);
   const totalAmount = selectedSeats.reduce((total, seat) => total + seat.price, 0);
   return (
     <div className="mx-auto w-full max-w-3xl pb-6">
-      <button type="button" className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500" onClick={() => navigate(-1)}>
+      <button type="button" className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500" disabled={isEnding} onClick={handleBack}>
         <ArrowLeft className="size-4" aria-hidden />
-        좌석 다시 선택
+        {isEnding ? "좌석 선택으로 돌아가는 중..." : "좌석 다시 선택"}
       </button>
+      {reviewErrorMessage && (
+        <p role="alert" className="mt-3 text-sm font-medium text-red-600">
+          {reviewErrorMessage}
+        </p>
+      )}
       <header className="mt-5">
         <p className="text-brand-primary text-sm font-semibold">예매 정보 확인</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-950">예매자와 공연 정보를 확인해 주세요</h1>

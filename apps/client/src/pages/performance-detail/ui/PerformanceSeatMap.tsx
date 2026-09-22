@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import type { VenueSeatHoldDetail } from "@tikkle/api-types";
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import type { PerformanceResponse } from "@entities/performance";
 import type { VenueDetailResponse } from "@entities/venue";
@@ -14,7 +14,7 @@ import { usePerformanceSeatMap } from "../model/use-performance-seat-map";
 interface PerformanceSeatMapProps {
   performance: PerformanceResponse;
   venueDetail: VenueDetailResponse;
-  onCheckout?: (hold: VenueSeatHoldDetail) => void;
+  onCheckout?: (review: BeginCheckoutReviewMessageData) => void;
 }
 
 const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: PerformanceSeatMapProps) => {

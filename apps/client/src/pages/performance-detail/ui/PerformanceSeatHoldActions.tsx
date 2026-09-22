@@ -9,6 +9,7 @@ interface PerformanceSeatHoldActionsProps {
   myGroupHeldSeatTotalPrice: number;
   selectedSeatIdsToReleaseSize: number;
   isConnected: boolean;
+  isCheckoutReviewBeginning: boolean;
   visibleSeatOperationState: SeatOperationState;
   handleCheckout: () => void;
   handleReleaseSeats: () => void;
@@ -19,6 +20,7 @@ const PerformanceSeatHoldActions = ({
   myGroupHeldSeatTotalPrice,
   selectedSeatIdsToReleaseSize,
   isConnected,
+  isCheckoutReviewBeginning,
   visibleSeatOperationState,
   handleCheckout,
   handleReleaseSeats,
@@ -29,6 +31,7 @@ const PerformanceSeatHoldActions = ({
         <button
           type="button"
           onClick={handleCheckout}
+          disabled={!isConnected || isCheckoutReviewBeginning}
           className="group flex w-full items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 px-4 py-3.5 text-left transition hover:border-violet-200 hover:bg-violet-50 focus-visible:ring-2 focus-visible:ring-violet-200 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-violet-600 shadow-sm">
@@ -36,7 +39,9 @@ const PerformanceSeatHoldActions = ({
           </span>
 
           <span className="min-w-0 flex-1">
-            <span className="block text-xs font-extrabold text-slate-800">예매 정보 확인하기</span>
+            <span className="block text-xs font-extrabold text-slate-800">
+              {isCheckoutReviewBeginning ? "예매 정보 불러오는 중..." : "예매 정보 확인하기"}
+            </span>
             <span className="mt-0.5 block text-[11px] text-slate-500">
               선택 좌석 {myGroupHeldSeatSize}석 · {myGroupHeldSeatTotalPrice.toLocaleString()}원
             </span>

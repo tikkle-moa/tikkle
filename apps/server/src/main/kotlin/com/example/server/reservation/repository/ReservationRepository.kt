@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param
 import java.time.LocalDateTime
 
 interface ReservationRepository : JpaRepository<Reservation, Long> {
+  fun existsByGroupId(groupId: String): Boolean
+
   @Query(
     """
     SELECT r

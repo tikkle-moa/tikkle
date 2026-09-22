@@ -3,10 +3,15 @@ package com.example.server.reservation
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.reservation.dto.BeginCheckoutReviewCommand
+import com.example.server.reservation.dto.BeginCheckoutReviewMessage
 import com.example.server.reservation.dto.CancelCheckoutMessage
 import com.example.server.reservation.dto.CancelPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentMessage
+import com.example.server.reservation.dto.EndCheckoutReviewCommand
+import com.example.server.reservation.dto.EndCheckoutReviewMessage
+import com.example.server.reservation.dto.EndCheckoutReviewMessageData
 import com.example.server.reservation.dto.GetPaymentOrderCommand
 import com.example.server.reservation.dto.PaymentOrderMessage
 import com.example.server.reservation.dto.StartCheckoutCommand
@@ -24,6 +29,35 @@ class ReservationStompController(
   private val reservationPaymentOrderService: ReservationPaymentOrderService,
   private val reservationPaymentService: ReservationPaymentService,
 ) {
+  @MessageMapping("/reservation/begin-checkout-review")
+  @SendToUser(
+    value = ["/queue/reservation/begin-checkout-review"],
+    broadcast = false,
+  )
+  fun beginCheckoutReview(@Payload @Valid request: BeginCheckoutReviewCommand, authentication: Authentication): BeginCheckoutReviewMessage {
+    val user = loginUser(authentication)
+
+    return BeginCheckoutReviewMessage(
+      requestId = request.requestId,
+      data = reservationCheckoutService.beginCheckoutReview(user.userId, request.data.performanceId, request.data.reviewToken),
+    )
+  }
+
+  @MessageMapping("/reservation/end-checkout-review")
+  @SendToUser(
+    value = ["/queue/reservation/end-checkout-review"],
+    broadcast = false,
+  )
+  fun endCheckoutReview(@Payload @Valid request: EndCheckoutReviewCommand, authentication: Authentication): EndCheckoutReviewMessage {
+    val user = loginUser(authentication)
+    reservationCheckoutService.endCheckoutReview(user.userId, request.data.performanceId, request.data.reviewToken)
+
+    return EndCheckoutReviewMessage(
+      requestId = request.requestId,
+      data = EndCheckoutReviewMessageData(performanceId = request.data.performanceId),
+    )
+  }
+
   @MessageMapping("/reservation/start-checkout")
   @SendToUser(
     value = ["/queue/reservation/start-checkout"],
@@ -37,6 +71,7 @@ class ReservationStompController(
       data = reservationCheckoutService.startCheckout(
         userId = user.userId,
         performanceId = request.data.performanceId,
+        reviewToken = request.data.reviewToken,
       ),
     )
   }

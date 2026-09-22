@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { Link, generatePath, useNavigate } from "react-router";
 
-import type { VenueSeatHoldDetail } from "@tikkle/api-types";
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 import { ArrowLeft, CalendarDays, Clock3, MapPinned, Ticket } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
@@ -20,8 +20,8 @@ const PerformanceDetailPage = () => {
   const navigate = useNavigate();
   const { performance, venueDetail, isError, isParamValid, isPending } = usePerformanceDetail();
   const handleCheckout = useCallback(
-    (hold: VenueSeatHoldDetail) => {
-      const navigation = getPerformanceCheckoutNavigation({ performance, venueDetail, hold });
+    (review: BeginCheckoutReviewMessageData) => {
+      const navigation = getPerformanceCheckoutNavigation({ performance, venueDetail, review });
       if (!navigation) return;
 
       navigate(navigation.pathname, { state: navigation.state });

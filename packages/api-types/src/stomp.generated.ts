@@ -12,9 +12,13 @@ export type PerformanceIdHoldMinusSeats = HoldVenueSeatsMessage | StompFailureMe
 
 export type PerformanceIdReleaseMinusSeats = ReleaseVenueSeatsMessage | StompFailureMessage;
 
+export type ReservationBeginMinusCheckoutMinusReview = BeginCheckoutReviewMessage | StompFailureMessage;
+
 export type ReservationCancelMinusPayment = CancelCheckoutMessage | StompFailureMessage;
 
 export type ReservationConfirmMinusPayment = ConfirmPaymentMessage | StompFailureMessage;
+
+export type ReservationEndMinusCheckoutMinusReview = EndCheckoutReviewMessage | StompFailureMessage;
 
 export type ReservationGetMinusPaymentMinusOrder = PaymentOrderMessage | StompFailureMessage;
 
@@ -94,6 +98,30 @@ export interface ReleaseVenueSeatsCommand {
   requestId: string;
 }
 
+export interface BeginCheckoutReviewMessage {
+  data: BeginCheckoutReviewMessageData;
+  requestId: string;
+  success: boolean;
+}
+
+export interface BeginCheckoutReviewMessageData {
+  expiresAt: string;
+  groupId: string;
+  performanceId: number;
+  reviewToken: string;
+  venueSeatIds: number[];
+}
+
+export interface BeginCheckoutReviewCommand {
+  data: BeginCheckoutReviewData;
+  requestId: string;
+}
+
+export interface BeginCheckoutReviewData {
+  performanceId: number;
+  reviewToken: string;
+}
+
 export interface CancelCheckoutMessage {
   data: CancelCheckoutMessageData;
   requestId: string;
@@ -137,6 +165,26 @@ export interface ConfirmPaymentData {
   amount: number;
   orderId: string;
   paymentKey: string;
+}
+
+export interface EndCheckoutReviewMessage {
+  data: EndCheckoutReviewMessageData;
+  requestId: string;
+  success: boolean;
+}
+
+export interface EndCheckoutReviewMessageData {
+  performanceId: number;
+}
+
+export interface EndCheckoutReviewCommand {
+  data: EndCheckoutReviewData;
+  requestId: string;
+}
+
+export interface EndCheckoutReviewData {
+  performanceId: number;
+  reviewToken: string;
 }
 
 export interface PaymentOrderMessage {
@@ -196,6 +244,7 @@ export interface StartCheckoutCommand {
 
 export interface StartCheckoutData {
   performanceId: number;
+  reviewToken: string;
 }
 
 export interface PerformanceHeldSeatsEvent {

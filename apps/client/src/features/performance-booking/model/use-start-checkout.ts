@@ -6,6 +6,7 @@ import { isStartCheckoutData } from "./performance-booking.utils";
 
 interface UseStartCheckoutProps {
   performanceId: number;
+  reviewToken: string;
   onSuccess: (reservationId: number) => void;
   enabled?: boolean;
 }
@@ -13,7 +14,7 @@ interface UseStartCheckoutProps {
 const RESPONSE_TIMEOUT_MS = 8_000;
 const MAX_REQUEST_ATTEMPTS = 2;
 
-export const useStartCheckout = ({ performanceId, onSuccess, enabled = true }: UseStartCheckoutProps) => {
+export const useStartCheckout = ({ performanceId, reviewToken, onSuccess, enabled = true }: UseStartCheckoutProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getStompClient = useStompStore((state) => state.getStompClient);
@@ -92,7 +93,7 @@ export const useStartCheckout = ({ performanceId, onSuccess, enabled = true }: U
           waitForResponse();
           activeClient.publish({
             path: "/reservation/start-checkout",
-            command: { requestId, data: { performanceId } },
+            command: { requestId, data: { performanceId, reviewToken } },
           });
           return;
         }
@@ -107,7 +108,7 @@ export const useStartCheckout = ({ performanceId, onSuccess, enabled = true }: U
     waitForResponse();
     stompClient.publish({
       path: "/reservation/start-checkout",
-      command: { requestId, data: { performanceId } },
+      command: { requestId, data: { performanceId, reviewToken } },
     });
   };
 
