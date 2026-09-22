@@ -4,6 +4,10 @@ import userEvent from "@testing-library/user-event";
 import PaymentNavigationDialog from "@features/payment/ui/PaymentNavigationDialog";
 
 describe("PaymentNavigationDialog", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("결제 중단 안내를 표시하고 사용자의 선택을 전달한다", async () => {
     const user = userEvent.setup();
     const onProceed = vi.fn();
@@ -40,5 +44,18 @@ describe("PaymentNavigationDialog", () => {
     unmount();
 
     expect(HTMLDialogElement.prototype.close).toHaveBeenCalled();
+  });
+
+  it("이미 열린 dialog는 다시 열지 않고 닫힌 상태로 unmount하면 닫지 않는다", () => {
+    const open = vi.spyOn(HTMLDialogElement.prototype, "open", "get").mockReturnValue(true);
+    const { unmount } = render(<PaymentNavigationDialog message="안내" onProceed={vi.fn()} onStay={vi.fn()} />);
+
+    expect(HTMLDialogElement.prototype.showModal).not.toHaveBeenCalled();
+
+    open.mockReturnValue(false);
+    unmount();
+
+    expect(HTMLDialogElement.prototype.close).not.toHaveBeenCalled();
+    open.mockRestore();
   });
 });

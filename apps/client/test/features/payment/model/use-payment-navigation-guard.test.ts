@@ -34,4 +34,15 @@ describe("usePaymentNavigationGuard", () => {
     expect(result.current.isBlocked).toBe(false);
     expect(options({ nextLocation: { pathname: "/performances/10" } })).toBe(false);
   });
+
+  it("blocker callback이 없더라도 화면에서 호출 가능한 함수를 반환한다", () => {
+    useBlocker.mockReturnValue({ state: "unblocked", proceed: undefined, reset: undefined });
+
+    const { result } = renderHook(() => usePaymentNavigationGuard({ enabled: true }));
+
+    expect(result.current.proceed).toEqual(expect.any(Function));
+    expect(result.current.reset).toEqual(expect.any(Function));
+    expect(() => result.current.proceed()).not.toThrow();
+    expect(() => result.current.reset()).not.toThrow();
+  });
 });
