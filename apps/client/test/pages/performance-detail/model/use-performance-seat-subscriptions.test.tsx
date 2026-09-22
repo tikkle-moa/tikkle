@@ -176,7 +176,7 @@ describe("usePerformanceSeatSubscriptions", () => {
 
     act(() => event({ type: "RESERVATION_CONFIRMED", data: [2, 3] as never }));
     expect(result.current.bookedSeatIds).toEqual(new Set([2, 3]));
-    expect(result.current.selectedSeatIds).toEqual(new Set());
+    expect(result.current.selectedSeatIds).toEqual(new Set([1]));
     expect(result.current.heldSeatExpiresAtBySeatId.has(2)).toBe(false);
     expect(result.current.myGroupHeldSeatInfoBySeatId.has(2)).toBe(false);
     act(() => event({ type: "RESERVATION_CONFIRMED", data: [2] as never }));

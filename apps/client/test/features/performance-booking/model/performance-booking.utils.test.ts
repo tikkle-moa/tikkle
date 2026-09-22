@@ -1,9 +1,15 @@
 import {
   formatBookingAmount,
   getRemainingSeconds,
+  isPerformanceCheckoutLocationState,
   isStartCheckoutData,
   parseBookingMessage,
 } from "@features/performance-booking/model/performance-booking.utils";
+
+const performance = { id: 10, venueId: 1, name: "Tikkle Live", startsAt: "2026-09-01T19:00:00" };
+const venue = { id: 1, name: "티끌홀" };
+const venueSeats = [{ id: 101, sectionName: "A구역", seatLabel: "1번", price: 150_000 }];
+const hold = { holdId: "hold-1", groupId: "group-1", performanceId: 10, venueSeatIds: [101], expiresAt: "2026-09-16T20:00:00" };
 
 describe("performance-booking.utils", () => {
   it("금액과 점유 남은 시간을 포맷한다", () => {
@@ -36,5 +42,15 @@ describe("performance-booking.utils", () => {
     expect(isStartCheckoutData({ ...value, orderName: 101 })).toBe(false);
     expect(isStartCheckoutData({ ...value, amount: "150000" })).toBe(false);
     expect(isStartCheckoutData({ ...value, paymentExpiresAt: 101 })).toBe(false);
+  });
+
+  it("예매 정보 확인 상태의 공연·공연장·좌석 점유 계약을 검증한다", () => {
+    const state = { performance, venue, venueSeats, hold };
+
+    expect(isPerformanceCheckoutLocationState(state, 10)).toBe(true);
+    expect(isPerformanceCheckoutLocationState({ ...state, hold: { ...hold, performanceId: 11 } }, 10)).toBe(false);
+    expect(isPerformanceCheckoutLocationState({ ...state, venueSeats: [] }, 10)).toBe(false);
+    expect(isPerformanceCheckoutLocationState({ ...state, hold: { ...hold, venueSeatIds: [999] } }, 10)).toBe(false);
+    expect(isPerformanceCheckoutLocationState(state, 11)).toBe(false);
   });
 });

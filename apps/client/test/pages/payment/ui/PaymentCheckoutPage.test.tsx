@@ -8,17 +8,18 @@ const mockUseLocation = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUsePaymentOrder = vi.hoisted(() => vi.fn());
 const mockPaymentOrderSummary = vi.hoisted(() => vi.fn());
+const mockPaymentNavigationDialog = vi.hoisted(() => vi.fn());
 const mockIsPaymentOrder = vi.hoisted(() => vi.fn());
-const mockUsePrompt = vi.hoisted(() => vi.fn());
 const mockUsePaymentNavigationGuard = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
-  return { ...actual, useLocation: mockUseLocation, useNavigate: () => navigate, useParams: mockUseParams, usePrompt: mockUsePrompt };
+  return { ...actual, useLocation: mockUseLocation, useNavigate: () => navigate, useParams: mockUseParams };
 });
 
 vi.mock("@features/payment", () => ({
   isPaymentOrder: mockIsPaymentOrder,
+  PaymentNavigationDialog: mockPaymentNavigationDialog,
   PaymentOrderSummary: mockPaymentOrderSummary,
   usePaymentNavigationGuard: mockUsePaymentNavigationGuard,
 }));
@@ -48,6 +49,8 @@ describe("PaymentCheckoutPage", () => {
     mockUseLocation.mockReturnValue({ state: null });
     mockIsPaymentOrder.mockReturnValue(false);
     mockUsePaymentOrder.mockReturnValue({ order, errorMessage: null, isLoading: false });
+    mockUsePaymentNavigationGuard.mockReturnValue({ isBlocked: false, message: "", proceed: vi.fn(), reset: vi.fn() });
+    mockPaymentNavigationDialog.mockImplementation(({ message }: { message: string }) => <div role="dialog">{message}</div>);
     mockPaymentOrderSummary.mockImplementation(({ order: summaryOrder }: { order: typeof order }) => (
       <output data-testid="payment-order-summary">{summaryOrder.orderId}</output>
     ));
@@ -71,6 +74,19 @@ describe("PaymentCheckoutPage", () => {
     await user.click(screen.getByRole("button", { name: "예매 정보로 돌아가기" }));
 
     expect(navigate).toHaveBeenCalledWith(-1);
+  });
+
+  it("이탈이 차단되면 공통 결제 경고 UI를 표시한다", () => {
+    mockUsePaymentNavigationGuard.mockReturnValue({
+      isBlocked: true,
+      message: "결제 준비 이후에는 좌석을 변경할 수 없습니다.",
+      proceed: vi.fn(),
+      reset: vi.fn(),
+    });
+
+    render(<PaymentCheckoutPage />);
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("결제 준비 이후에는 좌석을 변경할 수 없습니다.");
   });
 
   it("예매 정보 확인에서 전달한 fixture 주문을 결제 준비 화면에 표시한다", () => {
