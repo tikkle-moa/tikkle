@@ -4,6 +4,10 @@ import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.reservation.dto.BeginCheckoutReviewCommand
+import com.example.server.reservation.dto.BeginCheckoutReviewData
+import com.example.server.reservation.dto.BeginCheckoutReviewMessage
+import com.example.server.reservation.dto.BeginCheckoutReviewMessageData
 import com.example.server.reservation.dto.CancelCheckoutMessage
 import com.example.server.reservation.dto.CancelCheckoutMessageData
 import com.example.server.reservation.dto.CancelPaymentCommand
@@ -12,6 +16,10 @@ import com.example.server.reservation.dto.ConfirmPaymentCommand
 import com.example.server.reservation.dto.ConfirmPaymentData
 import com.example.server.reservation.dto.ConfirmPaymentMessage
 import com.example.server.reservation.dto.ConfirmPaymentMessageData
+import com.example.server.reservation.dto.EndCheckoutReviewCommand
+import com.example.server.reservation.dto.EndCheckoutReviewData
+import com.example.server.reservation.dto.EndCheckoutReviewMessage
+import com.example.server.reservation.dto.EndCheckoutReviewMessageData
 import com.example.server.reservation.dto.GetPaymentOrderCommand
 import com.example.server.reservation.dto.GetPaymentOrderData
 import com.example.server.reservation.dto.PaymentOrderMessage
@@ -60,6 +68,36 @@ class ReservationStompControllerTest {
       null,
     )
 
+  @Test
+  fun `예매 정보 확인 시작은 서버 snapshot을 개인 queue로 반환한다`() {
+    val request = BeginCheckoutReviewCommand(REQUEST_ID, BeginCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN))
+    val snapshot = BeginCheckoutReviewMessageData("1:10", PERFORMANCE_ID, listOf(101L), LocalDateTime.of(2027, 1, 20, 19, 5), REVIEW_TOKEN)
+    given(reservationCheckoutService.beginCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(snapshot)
+
+    assertThat(controller.beginCheckoutReview(request, authentication)).isEqualTo(BeginCheckoutReviewMessage(REQUEST_ID, snapshot))
+    assertEndpoint(
+      methodName = "beginCheckoutReview",
+      requestType = BeginCheckoutReviewCommand::class.java,
+      messageMapping = "/reservation/begin-checkout-review",
+      responseDestination = "/queue/reservation/begin-checkout-review",
+    )
+  }
+
+  @Test
+  fun `예매 정보 확인 종료는 token을 전달하고 개인 queue로 응답한다`() {
+    val request = EndCheckoutReviewCommand(REQUEST_ID, EndCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN))
+
+    assertThat(controller.endCheckoutReview(request, authentication))
+      .isEqualTo(EndCheckoutReviewMessage(REQUEST_ID, EndCheckoutReviewMessageData(PERFORMANCE_ID)))
+    then(reservationCheckoutService).should().endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    assertEndpoint(
+      methodName = "endCheckoutReview",
+      requestType = EndCheckoutReviewCommand::class.java,
+      messageMapping = "/reservation/end-checkout-review",
+      responseDestination = "/queue/reservation/end-checkout-review",
+    )
+  }
+
   @Nested
   @DisplayName("START_CHECKOUT")
   inner class StartCheckout {
@@ -67,7 +105,7 @@ class ReservationStompControllerTest {
     fun `checkout 서비스에 위임하고 성공 메시지를 반환한다`() {
       val request = StartCheckoutCommand(
         requestId = REQUEST_ID,
-        data = StartCheckoutData(PERFORMANCE_ID),
+        data = StartCheckoutData(PERFORMANCE_ID, REVIEW_TOKEN),
       )
       val result = startCheckoutMessageData()
 
@@ -75,6 +113,7 @@ class ReservationStompControllerTest {
         reservationCheckoutService.startCheckout(
           USER_ID,
           PERFORMANCE_ID,
+          REVIEW_TOKEN,
         ),
       ).willReturn(result)
 
@@ -88,7 +127,7 @@ class ReservationStompControllerTest {
 
       then(reservationCheckoutService)
         .should()
-        .startCheckout(USER_ID, PERFORMANCE_ID)
+        .startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
     }
 
     @Test
@@ -322,5 +361,6 @@ class ReservationStompControllerTest {
     private val REQUEST_ID = UUID.fromString(
       "2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a",
     )
+    private val REVIEW_TOKEN = UUID.fromString("25b619c1-f87a-4fbe-a2d7-2f16dc0cd1b3")
   }
 }

@@ -9,6 +9,7 @@ const navigate = vi.hoisted(() => vi.fn());
 const mockUseLocation = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUseStartCheckout = vi.hoisted(() => vi.fn());
+const mockUseCheckoutReview = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
@@ -22,6 +23,9 @@ vi.mock("react-router", async () => {
 
 vi.mock("@features/performance-booking/model/use-start-checkout", () => ({
   useStartCheckout: mockUseStartCheckout,
+}));
+vi.mock("@features/performance-booking/model/use-checkout-review", () => ({
+  useCheckoutReview: mockUseCheckoutReview,
 }));
 
 const performance = {
@@ -74,8 +78,8 @@ const validState = {
   performance,
   venue,
   venueSeats,
-  hold: {
-    holdId: "hold-1",
+  review: {
+    reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8",
     groupId: "7:10",
     performanceId: 10,
     venueSeatIds: [101, 102],
@@ -91,6 +95,7 @@ describe("PerformanceCheckoutPage", () => {
     mockUseParams.mockReturnValue({ performanceId: "10" });
     mockUseLocation.mockReturnValue({ state: validState });
     mockUseStartCheckout.mockReturnValue({ errorMessage: null, isStarting: false, startCheckout: vi.fn() });
+    mockUseCheckoutReview.mockReturnValue({ errorMessage: null, isEnding: false, endReview: vi.fn() });
     useSessionStore.setState({
       user: { id: 7, nickname: "티끌 사용자", email: "user@tikkle.test" } as never,
       status: "authenticated",
@@ -144,12 +149,12 @@ describe("PerformanceCheckoutPage", () => {
 
   it.each([
     ["공연 ID가 URL과 다를 때", { ...validState, performance: { ...performance, id: 9 } }],
-    ["Hold의 공연 ID가 URL과 다를 때", { ...validState, hold: { ...validState.hold, performanceId: 9 } }],
+    ["점유 스냅샷의 공연 ID가 URL과 다를 때", { ...validState, review: { ...validState.review, performanceId: 9 } }],
     ["공연장 ID가 공연 정보와 다를 때", { ...validState, venue: { ...venue, id: 2 } }],
     ["공연 정보가 불완전할 때", { ...validState, performance: { id: 10, venueId: 1 } }],
     ["공연장 정보가 불완전할 때", { ...validState, venue: { id: 1 } }],
-    ["Hold 좌석이 비어 있을 때", { ...validState, hold: { ...validState.hold, venueSeatIds: [] } }],
-    ["Hold 좌석이 공연장 좌석에 없을 때", { ...validState, hold: { ...validState.hold, venueSeatIds: [999] } }],
+    ["점유 스냅샷 좌석이 비어 있을 때", { ...validState, review: { ...validState.review, venueSeatIds: [] } }],
+    ["점유 스냅샷 좌석이 공연장 좌석에 없을 때", { ...validState, review: { ...validState.review, venueSeatIds: [999] } }],
     ["공연장 좌석 정보가 불완전할 때", { ...validState, venueSeats: [{ id: 101 }] }],
     ["공연장 좌석 정보가 올바르지 않을 때", { ...validState, venueSeats: [null] }],
   ])("%s 상세 안내를 표시한다", (_description, state) => {
@@ -162,7 +167,7 @@ describe("PerformanceCheckoutPage", () => {
 
   it("점유 시간이 지나도 결제 준비 결과를 다시 확인할 수 있다", () => {
     mockUseLocation.mockReturnValue({
-      state: { ...validState, hold: { ...validState.hold, expiresAt: new Date(Date.now() - 1_000).toISOString() } },
+      state: { ...validState, review: { ...validState.review, expiresAt: new Date(Date.now() - 1_000).toISOString() } },
     });
 
     render(<PerformanceCheckoutPage />);
@@ -193,13 +198,35 @@ describe("PerformanceCheckoutPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("결제 준비를 시작하지 못했습니다.");
   });
 
-  it("좌석 다시 선택을 누르면 이전 페이지로 돌아간다", async () => {
+  it("좌석 다시 선택을 누르면 리뷰 잠금 해제를 요청하고 성공 후 돌아간다", async () => {
     const user = userEvent.setup();
+    let onEndSuccess: (() => void) | undefined;
+    const endReview = vi.fn();
+    mockUseCheckoutReview.mockImplementation(({ onEndSuccess: callback }: { onEndSuccess: () => void }) => {
+      onEndSuccess = callback;
+      return { errorMessage: null, isEnding: false, endReview };
+    });
     render(<PerformanceCheckoutPage />);
 
     await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
 
+    expect(endReview).toHaveBeenCalledWith(validState.review.reviewToken);
+    expect(navigate).not.toHaveBeenCalled();
+    onEndSuccess?.();
     expect(navigate).toHaveBeenCalledWith(-1);
+  });
+
+  it("리뷰 잠금 해제 중에는 다시 누를 수 없고 서버 오류를 표시한다", () => {
+    mockUseCheckoutReview.mockReturnValue({
+      errorMessage: "결제 대기 중에는 좌석을 변경할 수 없습니다.",
+      isEnding: true,
+      endReview: vi.fn(),
+    });
+
+    render(<PerformanceCheckoutPage />);
+
+    expect(screen.getByRole("button", { name: "좌석 선택으로 돌아가는 중..." })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("결제 대기 중에는 좌석을 변경할 수 없습니다.");
   });
 
   it("타이머 콜백이 실행되면 점유 남은 시간을 갱신한다", () => {
@@ -211,7 +238,7 @@ describe("PerformanceCheckoutPage", () => {
     });
     const clearIntervalSpy = vi.spyOn(window, "clearInterval").mockImplementation(() => undefined);
     mockUseLocation.mockReturnValue({
-      state: { ...validState, hold: { ...validState.hold, expiresAt: new Date(300_000).toISOString() } },
+      state: { ...validState, review: { ...validState.review, expiresAt: new Date(300_000).toISOString() } },
     });
 
     const { unmount } = render(<PerformanceCheckoutPage />);

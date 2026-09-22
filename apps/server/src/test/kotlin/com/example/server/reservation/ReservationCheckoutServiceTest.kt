@@ -35,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.Optional
+import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class ReservationCheckoutServiceTest {
@@ -66,7 +67,7 @@ class ReservationCheckoutServiceTest {
     )
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
-    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, created)
+    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, null, created)
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance)
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L, 103L))).willReturn(seats)
     given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
@@ -85,10 +86,17 @@ class ReservationCheckoutServiceTest {
       amount = org.mockito.ArgumentMatchers.anyInt(),
       paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
     )
-    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN)))
+    given(
+      redisVenueSeatHoldService.transitionForPayment(
+        eqGroupId(),
+        anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        anyNonNull(UUID::class.java, REVIEW_TOKEN),
+        org.mockito.ArgumentMatchers.anyLong(),
+      ),
+    )
       .willReturn(active.holdDetails)
 
-    val result = service.startCheckout(USER_ID, PERFORMANCE_ID)
+    val result = service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
 
     assertThat(result.reservationId).isEqualTo(created.id)
     assertThat(result.amount).isEqualTo(208_000)
@@ -103,7 +111,14 @@ class ReservationCheckoutServiceTest {
       amount = org.mockito.ArgumentMatchers.anyInt(),
       paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
     )
-    then(redisVenueSeatHoldService).should().transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN))
+    then(
+      redisVenueSeatHoldService,
+    ).should().transitionForPayment(
+      eqGroupId(),
+      anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+      anyNonNull(UUID::class.java, REVIEW_TOKEN),
+      org.mockito.ArgumentMatchers.anyLong(),
+    )
   }
 
   @Test
@@ -112,21 +127,20 @@ class ReservationCheckoutServiceTest {
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
       .willThrow(CustomException(ErrorCode.NOT_FOUND, "점유된 좌석이 존재하지 않습니다."))
 
-    val exception = assertThrows<CustomException> { service.startCheckout(USER_ID, PERFORMANCE_ID) }
+    val exception = assertThrows<CustomException> { service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN) }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
     assertThat(exception).hasMessage("좌석 점유가 만료되었습니다.")
-    then(reservationRepository).shouldHaveNoInteractions()
+    then(reservationRepository).should().findByGroupIdForUpdate(GROUP_ID)
   }
 
   @Test
   fun `같은 Hold 그룹의 결제 대기 예매가 있으면 기존 예매를 반환한다`() {
     val existing = reservation()
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
     given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(existing)
 
-    val result = service.startCheckout(USER_ID, PERFORMANCE_ID)
+    val result = service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
 
     assertThat(result.reservationId).isEqualTo(existing.id)
     then(performanceRepository).shouldHaveNoInteractions()
@@ -142,7 +156,7 @@ class ReservationCheckoutServiceTest {
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance)
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L))).willReturn(listOf(venueSeat(101, 66_000)))
 
-    val exception = assertThrows<CustomException> { service.startCheckout(USER_ID, PERFORMANCE_ID) }
+    val exception = assertThrows<CustomException> { service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN) }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
     then(userRepository).shouldHaveNoInteractions()
@@ -156,7 +170,7 @@ class ReservationCheckoutServiceTest {
     val active = activeHoldData()
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
-    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, created)
+    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, null, created)
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance)
     given(
       venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L)),
@@ -177,10 +191,17 @@ class ReservationCheckoutServiceTest {
       amount = org.mockito.ArgumentMatchers.anyInt(),
       paymentExpiresAt = anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
     )
-    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN)))
+    given(
+      redisVenueSeatHoldService.transitionForPayment(
+        eqGroupId(),
+        anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        anyNonNull(UUID::class.java, REVIEW_TOKEN),
+        org.mockito.ArgumentMatchers.anyLong(),
+      ),
+    )
       .willThrow(CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 결제 전환을 할 수 없습니다."))
 
-    val exception = assertThrows<CustomException> { service.startCheckout(USER_ID, PERFORMANCE_ID) }
+    val exception = assertThrows<CustomException> { service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN) }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
     assertThat(created.status).isEqualTo(ReservationStatus.EXPIRED)
@@ -232,7 +253,7 @@ class ReservationCheckoutServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.startCheckout(USER_ID, PERFORMANCE_ID)
+        service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       },
     ).isSameAs(exception)
   }
@@ -244,7 +265,7 @@ class ReservationCheckoutServiceTest {
       .willReturn(activeHoldData(performanceId = OTHER_PERFORMANCE_ID))
 
     val exception = assertThrows<CustomException> {
-      service.startCheckout(USER_ID, PERFORMANCE_ID)
+      service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -258,7 +279,7 @@ class ReservationCheckoutServiceTest {
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(invalidGroup)
     assertThat(
       assertThrows<CustomException> {
-        service.startCheckout(USER_ID, PERFORMANCE_ID)
+        service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
 
@@ -266,7 +287,7 @@ class ReservationCheckoutServiceTest {
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(invalidPerformance)
     assertThat(
       assertThrows<CustomException> {
-        service.startCheckout(USER_ID, PERFORMANCE_ID)
+        service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
   }
@@ -279,7 +300,7 @@ class ReservationCheckoutServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.startCheckout(USER_ID, PERFORMANCE_ID)
+        service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
   }
@@ -293,7 +314,7 @@ class ReservationCheckoutServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.startCheckout(USER_ID, PERFORMANCE_ID)
+        service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       }.errorCode,
     ).isEqualTo(ErrorCode.NOT_FOUND)
   }
@@ -311,7 +332,7 @@ class ReservationCheckoutServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.startCheckout(USER_ID, PERFORMANCE_ID)
+        service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       }.errorCode,
     ).isEqualTo(ErrorCode.NOT_FOUND)
   }
@@ -323,13 +344,13 @@ class ReservationCheckoutServiceTest {
     val existing = reservation(orderId = "another-order", performance = performance, booker = user)
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
-    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, existing)
+    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, null, existing)
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance)
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L)))
       .willReturn(listOf(venueSeat(101, 66_000), venueSeat(102, 66_000)))
     given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
 
-    val result = service.startCheckout(USER_ID, PERFORMANCE_ID)
+    val result = service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
 
     assertThat(result.orderId).isEqualTo("another-order")
     then(redisVenueSeatHoldService).shouldHaveNoMoreInteractions()
@@ -360,7 +381,7 @@ class ReservationCheckoutServiceTest {
 
     assertThat(
       assertThrows<IllegalStateException> {
-        service.startCheckout(USER_ID, PERFORMANCE_ID)
+        service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       },
     ).hasMessage("생성한 결제 대기 예매를 찾을 수 없습니다.")
   }
@@ -372,7 +393,7 @@ class ReservationCheckoutServiceTest {
     val created = reservation(performance = performance, booker = user)
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
-    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, created)
+    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, null, created)
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance)
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L)))
       .willReturn(listOf(venueSeat(101, 66_000), venueSeat(102, 66_000)))
@@ -391,11 +412,18 @@ class ReservationCheckoutServiceTest {
       created.orderId = invocation.getArgument(3)
       1
     }
-    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN)))
+    given(
+      redisVenueSeatHoldService.transitionForPayment(
+        eqGroupId(),
+        anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        anyNonNull(UUID::class.java, REVIEW_TOKEN),
+        org.mockito.ArgumentMatchers.anyLong(),
+      ),
+    )
       .willThrow(CustomException(ErrorCode.NOT_FOUND, "expired"))
 
     val exception = assertThrows<CustomException> {
-      service.startCheckout(USER_ID, PERFORMANCE_ID)
+      service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -409,7 +437,7 @@ class ReservationCheckoutServiceTest {
     val created = reservation(performance = performance, booker = user)
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
-    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, created)
+    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(null, null, created)
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance)
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L)))
       .willReturn(listOf(venueSeat(101, 66_000), venueSeat(102, 66_000)))
@@ -429,11 +457,18 @@ class ReservationCheckoutServiceTest {
       1
     }
     val exception = CustomException(ErrorCode.CONFLICT, "changed")
-    given(redisVenueSeatHoldService.transitionForPayment(eqGroupId(), anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN))).willThrow(exception)
+    given(
+      redisVenueSeatHoldService.transitionForPayment(
+        eqGroupId(),
+        anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+        anyNonNull(UUID::class.java, REVIEW_TOKEN),
+        org.mockito.ArgumentMatchers.anyLong(),
+      ),
+    ).willThrow(exception)
 
     assertThat(
       assertThrows<CustomException> {
-        service.startCheckout(USER_ID, PERFORMANCE_ID)
+        service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       },
     ).isSameAs(exception)
     assertThat(created.status).isEqualTo(ReservationStatus.EXPIRED)
@@ -537,11 +572,10 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `기존 예매가 다른 그룹이면 FORBIDDEN을 반환한다`() {
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
     given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(reservation(groupId = "other:10"))
 
     val exception = assertThrows<CustomException> {
-      service.startCheckout(USER_ID, PERFORMANCE_ID)
+      service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
@@ -550,11 +584,10 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `기존 예매가 결제 대기 상태가 아니면 CONFLICT를 반환한다`() {
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
     given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(reservation(status = ReservationStatus.SUCCEEDED))
 
     val exception = assertThrows<CustomException> {
-      service.startCheckout(USER_ID, PERFORMANCE_ID)
+      service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -641,5 +674,6 @@ class ReservationCheckoutServiceTest {
     private const val VENUE_ID = 20L
     private const val GROUP_ID = "1:10"
     private const val RESERVATION_ID = 501L
+    private val REVIEW_TOKEN = UUID.fromString("25b619c1-f87a-4fbe-a2d7-2f16dc0cd1b3")
   }
 }

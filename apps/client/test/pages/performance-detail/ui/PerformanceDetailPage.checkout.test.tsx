@@ -2,7 +2,7 @@ import { MemoryRouter, useLocation } from "react-router";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { VenueSeatHoldDetail } from "@tikkle/api-types";
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import PerformanceDetailPage from "@pages/performance-detail/ui/PerformanceDetailPage";
 
@@ -11,8 +11,8 @@ const { mockUsePerformanceDetail, mockGetPerformanceCheckoutNavigation } = vi.ho
   mockGetPerformanceCheckoutNavigation: vi.fn(),
 }));
 
-const checkoutHold: VenueSeatHoldDetail = {
-  holdId: "hold-1",
+const checkoutReview: BeginCheckoutReviewMessageData = {
+  reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8",
   groupId: "group-1",
   performanceId: 1,
   venueSeatIds: [101],
@@ -28,8 +28,8 @@ vi.mock("@pages/performance-detail/model/performance-detail.utils", () => ({
 }));
 
 vi.mock("@pages/performance-detail/ui/PerformanceSeatMap", () => ({
-  default: ({ onCheckout }: { onCheckout?: (hold: VenueSeatHoldDetail) => void }) => (
-    <button type="button" onClick={() => onCheckout?.(checkoutHold)}>
+  default: ({ onCheckout }: { onCheckout?: (review: BeginCheckoutReviewMessageData) => void }) => (
+    <button type="button" onClick={() => onCheckout?.(checkoutReview)}>
       예매 정보 확인 테스트
     </button>
   ),
@@ -81,7 +81,7 @@ describe("PerformanceDetailPage checkout callback", () => {
     mockUsePerformanceDetail.mockReset();
     mockUsePerformanceDetail.mockReturnValue(pageState);
     mockGetPerformanceCheckoutNavigation.mockReset();
-    mockGetPerformanceCheckoutNavigation.mockReturnValue({ pathname: "/performances/1/checkout", state: { hold: checkoutHold } });
+    mockGetPerformanceCheckoutNavigation.mockReturnValue({ pathname: "/performances/1/checkout", state: { review: checkoutReview } });
   });
 
   it("점유한 좌석의 예매 정보 확인 callback으로 checkout 상태를 전달한다", async () => {
@@ -97,7 +97,7 @@ describe("PerformanceDetailPage checkout callback", () => {
     await user.click(screen.getByRole("button", { name: "예매 정보 확인 테스트" }));
 
     expect(screen.getByTestId("location-path")).toHaveAttribute("data-path", "/performances/1/checkout");
-    expect(screen.getByTestId("location-path")).toHaveTextContent('"holdId":"hold-1"');
+    expect(screen.getByTestId("location-path")).toHaveTextContent('"reviewToken":"92334384-52d0-41f2-a3c1-3d54047c35b8"');
   });
 
   it("예매 정보가 사라진 상태에서는 checkout으로 이동하지 않는다", async () => {

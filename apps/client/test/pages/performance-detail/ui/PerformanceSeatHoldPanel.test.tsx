@@ -5,13 +5,25 @@ import userEvent from "@testing-library/user-event";
 
 import PerformanceSeatHoldPanel from "@pages/performance-detail/ui/PerformanceSeatHoldPanel";
 
-const { mockUsePerformanceSeatHoldPanel } = vi.hoisted(() => ({
+const { mockUsePerformanceSeatHoldPanel, mockUseCheckoutReview } = vi.hoisted(() => ({
   mockUsePerformanceSeatHoldPanel: vi.fn(),
+  mockUseCheckoutReview: vi.fn(),
 }));
 
 vi.mock("@pages/performance-detail/model/use-performance-seat-hold-panel", () => ({
   usePerformanceSeatHoldPanel: mockUsePerformanceSeatHoldPanel,
 }));
+vi.mock("@features/performance-booking/model/use-checkout-review", () => ({
+  useCheckoutReview: mockUseCheckoutReview,
+}));
+
+const review = {
+  reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8",
+  groupId: "group-1",
+  performanceId: 1,
+  venueSeatIds: [1],
+  expiresAt: "2026-09-16T20:00:00.000Z",
+};
 
 const seat = { id: 1, seatLabel: "A구역 1번", price: 15000 } as never;
 const connectionStyle = {
@@ -58,6 +70,11 @@ const renderPanel = ({ onCheckout = vi.fn(), onHoldSeatToggle = vi.fn(), selecte
 describe("PerformanceSeatHoldPanel", () => {
   beforeEach(() => {
     mockUsePerformanceSeatHoldPanel.mockReturnValue(createPanelState());
+    mockUseCheckoutReview.mockImplementation(({ onBeginSuccess }: { onBeginSuccess?: (value: typeof review) => void }) => ({
+      isBeginning: false,
+      errorMessage: null,
+      beginReview: () => onBeginSuccess?.(review),
+    }));
   });
 
   it("연결 상태와 점유 안내를 표시한다", () => {
@@ -100,13 +117,7 @@ describe("PerformanceSeatHoldPanel", () => {
       .setup()
       .click(screen.getByRole("button", { name: /예매 정보 확인하기/ }))
       .then(() => {
-        expect(onCheckout).toHaveBeenCalledWith({
-          groupId: "group-1",
-          holdId: "hold-1",
-          performanceId: 1,
-          venueSeatIds: [1],
-          expiresAt: expiresAt.toISOString(),
-        });
+        expect(onCheckout).toHaveBeenCalledWith(review);
       });
   });
 
@@ -123,6 +134,24 @@ describe("PerformanceSeatHoldPanel", () => {
     await user.click(screen.getByRole("button", { name: /예매 정보 확인하기/ }));
 
     expect(screen.getByRole("button", { name: /예매 정보 확인하기/ })).toBeInTheDocument();
+  });
+
+  it("예매 정보 스냅샷 요청 중에는 CTA를 잠그고 오류를 표시한다", () => {
+    mockUseCheckoutReview.mockReturnValue({
+      isBeginning: true,
+      errorMessage: "다른 화면에서 예매 정보를 확인하고 있습니다.",
+      beginReview: vi.fn(),
+    });
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({
+      ...createPanelState(),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date(), venueSeatIds: [1] }],
+    });
+
+    renderPanel();
+
+    expect(screen.getByRole("button", { name: /예매 정보 불러오는 중/ })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("다른 화면에서 예매 정보를 확인하고 있습니다.");
   });
 
   it("지도에서 선택한 내 점유 좌석 행을 표시한다", () => {

@@ -122,6 +122,14 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
+  fun `예약이 있으면 점유 좌석을 사용자 소유로 반환하지 않는다`() {
+    given(reservationRepository.existsByGroupId(GROUP_ID)).willReturn(true)
+
+    assertThat(service.getMyGroupHolds(USER_ID, PERFORMANCE_ID)).isEmpty()
+    then(stringRedisTemplate).shouldHaveNoInteractions()
+  }
+
+  @Test
   fun `좌석 키나 Hold 본문이 없거나 만료된 Hold는 무시한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
     given(
@@ -506,7 +514,7 @@ class RedisVenueSeatHoldServiceTest {
     givenActiveHoldData(detail)
     executeResult = 0L
 
-    assertThat(service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10))).hasSize(1)
+    assertThat(service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10), REVIEW_TOKEN, RESERVATION_ID)).hasSize(1)
     assertThat(service.releaseAllVenueSeats("$USER_ID:$PERFORMANCE_ID")).containsExactly(101L)
   }
 
@@ -518,7 +526,7 @@ class RedisVenueSeatHoldServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10))
+        service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10), REVIEW_TOKEN, RESERVATION_ID)
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
     assertThat(
@@ -536,7 +544,7 @@ class RedisVenueSeatHoldServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10))
+        service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10), REVIEW_TOKEN, RESERVATION_ID)
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
   }
@@ -630,5 +638,7 @@ class RedisVenueSeatHoldServiceTest {
     private const val GROUP_ID = "1:10"
     private const val HOLD_ID = "hold-1"
     private const val EXPIRED_HOLD_ID = "hold-expired"
+    private const val RESERVATION_ID = 501L
+    private val REVIEW_TOKEN = UUID.fromString("25b619c1-f87a-4fbe-a2d7-2f16dc0cd1b3")
   }
 }

@@ -7,6 +7,7 @@ import { useStompStore } from "@shared/realtime/stomp.store";
 import { useStartCheckout } from "@features/performance-booking/model/use-start-checkout";
 
 describe("useStartCheckout", () => {
+  const reviewToken = "review-token";
   const publish = vi.fn();
   const unsubscribe = vi.fn();
   const subscribe = vi.fn();
@@ -37,7 +38,7 @@ describe("useStartCheckout", () => {
 
   it("공연 ID로 START_CHECKOUT을 전송하고 예약 ID를 전달한다", () => {
     const onSuccess = vi.fn();
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess }));
 
     act(() => result.current.startCheckout());
     expect(result.current.isStarting).toBe(true);
@@ -47,7 +48,7 @@ describe("useStartCheckout", () => {
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({
         path: "/reservation/start-checkout",
-        command: { requestId: expect.any(String), data: { performanceId: 10 } },
+        command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken } },
       }),
     );
     const requestId = publish.mock.calls[0][0].command.requestId as string;
@@ -70,7 +71,7 @@ describe("useStartCheckout", () => {
   });
 
   it("결제 준비 실패 응답은 서버 오류 메시지를 표시한다", () => {
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
     const requestId = publish.mock.calls[0][0].command.requestId as string;
@@ -88,7 +89,7 @@ describe("useStartCheckout", () => {
   });
 
   it("예약 ID가 없는 성공 응답은 기본 오류로 처리한다", () => {
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
     const requestId = publish.mock.calls[0][0].command.requestId as string;
@@ -104,7 +105,7 @@ describe("useStartCheckout", () => {
   });
 
   it("다른 요청 응답은 무시한다", () => {
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
     act(() => {
@@ -120,7 +121,7 @@ describe("useStartCheckout", () => {
   });
 
   it("다른 요청의 오류 응답도 무시한다", () => {
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
     act(() => {
@@ -138,14 +139,14 @@ describe("useStartCheckout", () => {
   it("응답을 잃으면 같은 START_CHECKOUT을 재전송하고 늦게 도착한 중복 응답은 무시한다", () => {
     vi.useFakeTimers();
     const onSuccess = vi.fn();
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess }));
 
     act(() => result.current.startCheckout());
     const requestId = publish.mock.calls[0][0].command.requestId as string;
     act(() => vi.advanceTimersByTime(8_000));
 
     expect(publish).toHaveBeenCalledTimes(2);
-    expect(publish.mock.calls[1][0].command).toEqual({ requestId, data: { performanceId: 10 } });
+    expect(publish.mock.calls[1][0].command).toEqual({ requestId, data: { performanceId: 10, reviewToken } });
     expect(result.current.isStarting).toBe(true);
 
     act(() => {
@@ -179,7 +180,7 @@ describe("useStartCheckout", () => {
 
   it("재전송 후에도 응답이 없으면 대기를 끝내고 다시 시도할 수 있다", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
     const firstRequestId = publish.mock.calls[0][0].command.requestId as string;
@@ -199,7 +200,7 @@ describe("useStartCheckout", () => {
 
   it("응답 대기 중 연결이 끊기면 무한 대기하지 않는다", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
     act(() => useStompStore.setState({ stompClient: null, connectionStatus: "disconnected" }));
@@ -212,7 +213,7 @@ describe("useStartCheckout", () => {
 
   it("STOMP가 연결되지 않았으면 요청 대신 연결 오류를 표시한다", () => {
     useStompStore.setState({ stompClient, connectionStatus: "disconnected" });
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
 
     act(() => result.current.startCheckout());
 
@@ -222,7 +223,7 @@ describe("useStartCheckout", () => {
 
   it("비활성화된 checkout은 STOMP 요청을 보내지 않는다", () => {
     const onSuccess = vi.fn();
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess, enabled: false }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess, enabled: false }));
 
     act(() => result.current.startCheckout());
 

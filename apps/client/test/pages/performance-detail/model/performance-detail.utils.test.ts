@@ -1,4 +1,4 @@
-import type { VenueSeatHoldDetail } from "@tikkle/api-types";
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import type { PerformanceResponse } from "@entities/performance";
 import type { VenueDetailResponse } from "@entities/venue";
@@ -33,8 +33,8 @@ const venueDetail: VenueDetailResponse = {
   venueSeats: [],
 };
 
-const hold: VenueSeatHoldDetail = {
-  holdId: "hold-1",
+const review: BeginCheckoutReviewMessageData = {
+  reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8",
   groupId: "group-1",
   performanceId: 1,
   venueSeatIds: [101],
@@ -43,9 +43,9 @@ const hold: VenueSeatHoldDetail = {
 
 describe("getPerformanceCheckoutNavigation", () => {
   it("공연과 공연장 정보로 checkout 이동 상태를 만든다", () => {
-    expect(getPerformanceCheckoutNavigation({ performance, venueDetail, hold })).toEqual({
+    expect(getPerformanceCheckoutNavigation({ performance, venueDetail, review })).toEqual({
       pathname: "/performances/1/checkout",
-      state: { performance, venue: venueDetail.venue, venueSeats: venueDetail.venueSeats, hold },
+      state: { performance, venue: venueDetail.venue, venueSeats: venueDetail.venueSeats, review },
     });
   });
 
@@ -53,6 +53,6 @@ describe("getPerformanceCheckoutNavigation", () => {
     { performance: undefined, venueDetail },
     { performance, venueDetail: undefined },
   ])("필수 정보가 없으면 이동 상태를 만들지 않는다", (missing) => {
-    expect(getPerformanceCheckoutNavigation({ ...missing, hold })).toBeNull();
+    expect(getPerformanceCheckoutNavigation({ ...missing, review })).toBeNull();
   });
 });
