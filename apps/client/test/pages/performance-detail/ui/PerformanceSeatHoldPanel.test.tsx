@@ -110,6 +110,21 @@ describe("PerformanceSeatHoldPanel", () => {
       });
   });
 
+  it("checkout 콜백이 없어도 예매 정보 확인 CTA를 안전하게 무시한다", async () => {
+    const user = userEvent.setup();
+    const expiresAt = new Date("2026-09-16T20:00:00");
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({
+      ...createPanelState(),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+    });
+    renderPanel({ onCheckout: null as never });
+
+    await user.click(screen.getByRole("button", { name: /예매 정보 확인하기/ }));
+
+    expect(screen.getByRole("button", { name: /예매 정보 확인하기/ })).toBeInTheDocument();
+  });
+
   it("지도에서 선택한 내 점유 좌석 행을 표시한다", () => {
     const expiresAt = new Date("2026-09-16T20:00:00");
     mockUsePerformanceSeatHoldPanel.mockReturnValue({

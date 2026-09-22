@@ -68,6 +68,39 @@ describe("usePerformanceSeatMap", () => {
     expect(result.current.selectedSeatIds).toEqual(new Set());
   });
 
+  it("선택할 수 없는 Hold 좌석이나 처리 중인 일괄 선택은 무시한다", () => {
+    const { result } = renderHook(() => usePerformanceSeatMap());
+    act(() => {
+      result.current.setVenueSeatStates(
+        new Map<number, VenueSeatState>([
+          [1, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [2, { status: "held_by_other_group", expiresAt: new Date("2026-09-16T20:00:00") }],
+        ]),
+      );
+      result.current.setSeatOperationState({ status: "loading" });
+    });
+
+    act(() => result.current.toggleHeldSeats([1]));
+    expect(result.current.selectedSeatIds).toEqual(new Set());
+
+    act(() => result.current.setSeatOperationState({ status: "success" }));
+    act(() => result.current.toggleHeldSeats([2]));
+    expect(result.current.selectedSeatIds).toEqual(new Set());
+  });
+
+  it("Hold 일괄 선택 후 작업 상태를 idle로 되돌린다", () => {
+    const { result } = renderHook(() => usePerformanceSeatMap());
+    act(() => {
+      result.current.setVenueSeatStates(new Map([[1, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }]]));
+      result.current.setSeatOperationState({ status: "success" });
+    });
+
+    act(() => result.current.toggleHeldSeats([1]));
+
+    expect(result.current.selectedSeatIds).toEqual(new Set([1]));
+    expect(result.current.seatOperationState).toEqual({ status: "idle" });
+  });
+
   it("처리 중에는 토글과 일괄 선택을 무시하고 선택 시 상태를 idle로 되돌린다", () => {
     const { result } = renderHook(() => usePerformanceSeatMap());
     act(() => {

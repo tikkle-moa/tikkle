@@ -37,6 +37,7 @@ describe("performance-booking.utils", () => {
     };
 
     expect(isStartCheckoutData(value)).toBe(true);
+    expect(isStartCheckoutData(null)).toBe(false);
     expect(isStartCheckoutData({ ...value, reservationId: "101" })).toBe(false);
     expect(isStartCheckoutData({ ...value, orderId: 101 })).toBe(false);
     expect(isStartCheckoutData({ ...value, orderName: 101 })).toBe(false);
@@ -48,6 +49,11 @@ describe("performance-booking.utils", () => {
     const state = { performance, venue, venueSeats, hold };
 
     expect(isPerformanceCheckoutLocationState(state, 10)).toBe(true);
+    expect(isPerformanceCheckoutLocationState(null, 10)).toBe(false);
+    expect(isPerformanceCheckoutLocationState({ ...state, performance: null }, 10)).toBe(false);
+    expect(isPerformanceCheckoutLocationState({ ...state, venue: null }, 10)).toBe(false);
+    expect(isPerformanceCheckoutLocationState({ ...state, venueSeats: [null] }, 10)).toBe(false);
+    expect(isPerformanceCheckoutLocationState({ ...state, hold: null }, 10)).toBe(false);
     expect(isPerformanceCheckoutLocationState({ ...state, hold: { ...hold, performanceId: 11 } }, 10)).toBe(false);
     expect(isPerformanceCheckoutLocationState({ ...state, venueSeats: [] }, 10)).toBe(false);
     expect(isPerformanceCheckoutLocationState({ ...state, hold: { ...hold, venueSeatIds: [999] } }, 10)).toBe(false);

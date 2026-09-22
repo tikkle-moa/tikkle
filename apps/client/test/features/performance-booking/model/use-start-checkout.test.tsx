@@ -118,6 +118,22 @@ describe("useStartCheckout", () => {
     expect(result.current.errorMessage).toBeNull();
   });
 
+  it("다른 요청의 오류 응답도 무시한다", () => {
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));
+
+    act(() => result.current.startCheckout());
+    act(() => {
+      handleError?.({
+        requestId: "another-request",
+        success: false,
+        error: { code: "ERROR", message: "무시되어야 합니다." },
+      });
+    });
+
+    expect(result.current.isStarting).toBe(true);
+    expect(result.current.errorMessage).toBeNull();
+  });
+
   it("STOMP가 연결되지 않았으면 요청 대신 연결 오류를 표시한다", () => {
     useStompStore.setState({ stompClient, connectionStatus: "disconnected" });
     const { result } = renderHook(() => useStartCheckout({ performanceId: 10, onSuccess: vi.fn() }));

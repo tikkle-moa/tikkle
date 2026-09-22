@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import PaymentNavigationDialog from "@features/payment/ui/PaymentNavigationDialog";
@@ -19,5 +19,26 @@ describe("PaymentNavigationDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "이전 화면으로 이동" }));
     expect(onProceed).toHaveBeenCalledOnce();
+  });
+
+  it("dialog 취소 이벤트는 기본 닫힘을 막고 결제 화면에 남는다", () => {
+    const onStay = vi.fn();
+    const dialog = render(<PaymentNavigationDialog message="좌석 점유는 만료 시간까지 유지됩니다." onProceed={vi.fn()} onStay={onStay} />).getByRole(
+      "dialog",
+    );
+    const event = new Event("cancel", { bubbles: false, cancelable: true });
+
+    fireEvent(dialog, event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(onStay).toHaveBeenCalledOnce();
+  });
+
+  it("컴포넌트가 사라지면 열린 dialog를 닫는다", () => {
+    const { unmount } = render(<PaymentNavigationDialog message="안내" onProceed={vi.fn()} onStay={vi.fn()} />);
+
+    unmount();
+
+    expect(HTMLDialogElement.prototype.close).toHaveBeenCalled();
   });
 });
