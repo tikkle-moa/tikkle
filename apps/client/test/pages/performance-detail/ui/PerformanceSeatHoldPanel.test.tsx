@@ -36,7 +36,7 @@ const createPanelState = () => ({
   connectionStyle,
 });
 
-const renderPanel = ({ onCheckout = vi.fn(), selectedSeatIds = new Set<number>() } = {}) =>
+const renderPanel = ({ onCheckout = vi.fn(), onHoldSeatToggle = vi.fn(), selectedSeatIds = new Set<number>() } = {}) =>
   render(
     <MemoryRouter>
       <PerformanceSeatHoldPanel
@@ -47,6 +47,7 @@ const renderPanel = ({ onCheckout = vi.fn(), selectedSeatIds = new Set<number>()
         seatOperationState={{ status: "idle" }}
         setVenueSeatStates={vi.fn()}
         setSelectedSeatIds={vi.fn()}
+        onHoldSeatToggle={onHoldSeatToggle}
         setServerTimeOffset={vi.fn()}
         setSeatOperationState={vi.fn()}
         onCheckout={onCheckout}
@@ -121,7 +122,23 @@ describe("PerformanceSeatHoldPanel", () => {
 
     const selectedHold = screen.getByText("A구역 1번").closest("[data-selected]");
     expect(selectedHold).toHaveAttribute("data-selected", "true");
-    expect(screen.getByText("선택됨")).toBeInTheDocument();
+    expect(screen.getByText("1석 선택됨")).toBeInTheDocument();
+  });
+
+  it("내 점유 좌석 행을 선택하면 지도 좌석 토글을 요청한다", async () => {
+    const user = userEvent.setup();
+    const expiresAt = new Date("2026-09-16T20:00:00");
+    const onHoldSeatToggle = vi.fn();
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({
+      ...createPanelState(),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+    });
+
+    renderPanel({ onHoldSeatToggle });
+
+    await user.click(screen.getByRole("button", { name: "A구역 1번 선택" }));
+    expect(onHoldSeatToggle).toHaveBeenCalledWith([1]);
   });
 
   it("내 점유 내역이 많으면 목록을 펼치고 접는다", async () => {
@@ -174,6 +191,7 @@ describe("PerformanceSeatHoldPanel", () => {
           seatOperationState={{ status: "idle" }}
           setVenueSeatStates={vi.fn()}
           setSelectedSeatIds={vi.fn()}
+          onHoldSeatToggle={vi.fn()}
           setServerTimeOffset={vi.fn()}
           setSeatOperationState={vi.fn()}
         />
