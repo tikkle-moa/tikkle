@@ -50,7 +50,7 @@ export const usePerformanceSeatMap = () => {
         if (shouldSelect) updated.add(seatId);
         else updated.delete(seatId);
       });
-      return areSeatIdsEqual(current, updated) ? current : updated;
+      return updated;
     });
     setSeatOperationState((current) => (current.status === "idle" ? current : { status: "idle" }));
   }, []);

@@ -2,6 +2,10 @@ import type { StartCheckoutMessageData } from "@tikkle/api-types";
 
 import type { BookingMessage, PerformanceCheckoutLocationState } from "./performance-booking.types";
 
+type PerformanceSummary = Pick<PerformanceCheckoutLocationState["performance"], "id" | "venueId" | "name" | "startsAt">;
+type VenueSummary = Pick<PerformanceCheckoutLocationState["venue"], "id" | "name">;
+type VenueSeatSummary = Pick<PerformanceCheckoutLocationState["venueSeats"][number], "id" | "sectionName" | "seatLabel" | "price">;
+
 export const formatBookingAmount = (amount: number) => `${new Intl.NumberFormat("ko-KR").format(amount)}원`;
 
 export const parseBookingMessage = (body: string) => {
@@ -40,7 +44,7 @@ export const getRemainingSeconds = (expiresAt: string, now = Date.now()) => {
   return Number.isFinite(expiresAtTime) ? Math.max(0, Math.ceil((expiresAtTime - now) / 1_000)) : 0;
 };
 
-const isVenueSeatHold = (value: unknown) => {
+const isVenueSeatHold = (value: unknown): value is PerformanceCheckoutLocationState["hold"] => {
   if (!value || typeof value !== "object") return false;
 
   const hold = value as Record<string, unknown>;
@@ -55,7 +59,7 @@ const isVenueSeatHold = (value: unknown) => {
   );
 };
 
-const isPerformance = (value: unknown) => {
+const isPerformance = (value: unknown): value is PerformanceSummary => {
   if (!value || typeof value !== "object") return false;
 
   const performance = value as Record<string, unknown>;
@@ -67,14 +71,14 @@ const isPerformance = (value: unknown) => {
   );
 };
 
-const isVenue = (value: unknown) => {
+const isVenue = (value: unknown): value is VenueSummary => {
   if (!value || typeof value !== "object") return false;
 
   const venue = value as Record<string, unknown>;
   return typeof venue.id === "number" && typeof venue.name === "string";
 };
 
-const isVenueSeat = (value: unknown) => {
+const isVenueSeat = (value: unknown): value is VenueSeatSummary => {
   if (!value || typeof value !== "object") return false;
 
   const seat = value as Record<string, unknown>;
@@ -85,24 +89,25 @@ export const isPerformanceCheckoutLocationState = (state: unknown, performanceId
   if (!state || typeof state !== "object") return false;
 
   const value = state as Partial<PerformanceCheckoutLocationState>;
+  const { performance, venue, venueSeats, hold } = value;
   if (
     !Number.isInteger(performanceId) ||
     performanceId <= 0 ||
-    !isPerformance(value.performance) ||
-    !isVenue(value.venue) ||
-    !Array.isArray(value.venueSeats) ||
-    !value.venueSeats.every(isVenueSeat) ||
-    !isVenueSeatHold(value.hold)
+    !isPerformance(performance) ||
+    !isVenue(venue) ||
+    !Array.isArray(venueSeats) ||
+    !venueSeats.every(isVenueSeat) ||
+    !isVenueSeatHold(hold)
   ) {
     return false;
   }
 
-  const selectedSeatIds = value.hold.venueSeatIds;
-  const venueSeatIds = new Set(value.venueSeats.map((seat) => seat.id));
+  const selectedSeatIds = hold.venueSeatIds;
+  const venueSeatIds = new Set(venueSeats.map((seat) => seat.id));
   return (
-    value.performance.id === performanceId &&
-    value.performance.venueId === value.venue.id &&
-    value.hold.performanceId === performanceId &&
+    performance.id === performanceId &&
+    performance.venueId === venue.id &&
+    hold.performanceId === performanceId &&
     new Set(selectedSeatIds).size === selectedSeatIds.length &&
     selectedSeatIds.every((seatId) => venueSeatIds.has(seatId))
   );
