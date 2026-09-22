@@ -53,8 +53,8 @@ class RedisVenueSeatHoldService(
     )
   }
 
-  fun getMyGroupHolds(userId: Long, performanceId: Long): List<VenueSeatHoldDetail> {
-    val groupId = getGroupId(userId, performanceId)
+  fun getMyGroupHolds(userId: Long, performanceId: Long, sessionId: UUID? = null): List<VenueSeatHoldDetail> {
+    val groupId = getGroupId(userId, performanceId, sessionId)
     if (reservationRepository.existsByGroupId(groupId)) return emptyList()
 
     val heldSeatsJson = stringRedisTemplate.execute(
@@ -94,22 +94,24 @@ class RedisVenueSeatHoldService(
     )
   }
 
-  fun endCheckoutReview(groupId: String, reviewToken: UUID) {
+  fun endCheckoutReview(groupId: String, reviewToken: UUID): Boolean {
     val result = stringRedisTemplate.execute(
       endCheckoutReviewScript,
       listOf(holdGroupControlKey(groupId)),
       reviewToken.toString(),
     )
-    if (result != 0L) {
-      throw CustomException(ErrorCode.CONFLICT, "예매 정보 확인 잠금을 해제할 수 없습니다.")
+    return when (result) {
+      0L -> true
+      2L -> false
+      else -> throw CustomException(ErrorCode.CONFLICT, "예매 정보 확인 잠금을 해제할 수 없습니다.")
     }
   }
 
   @Transactional
-  fun holdSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): VenueSeatHoldDetail {
+  fun holdSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>, sessionId: UUID? = null): VenueSeatHoldDetail {
     validateVenueSeatIds(venueSeatIds)
 
-    val groupId = getGroupId(userId, performanceId)
+    val groupId = getGroupId(userId, performanceId, sessionId)
     ensureHoldModificationAllowed(groupId)
 
     val performance = performanceRepository.findByIdWithConcertAndVenue(performanceId)
@@ -163,10 +165,10 @@ class RedisVenueSeatHoldService(
   }
 
   @Transactional
-  fun releaseSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): List<Long> {
+  fun releaseSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>, sessionId: UUID? = null): List<Long> {
     validateVenueSeatIds(venueSeatIds)
 
-    val groupId = getGroupId(userId, performanceId)
+    val groupId = getGroupId(userId, performanceId, sessionId)
     ensureHoldModificationAllowed(groupId)
 
     val venueSeatKeys = venueSeatIds.map { holdVenueSeatKey(performanceId, it) }
@@ -355,10 +357,19 @@ class RedisVenueSeatHoldService(
     )
   }
 
-  fun getGroupId(userId: Long, performanceId: Long): String {
-    // 추후 사용자 ID를 기반으로 그룹 ID를 가져오는 로직 구현 필요
-    // 현재는 단순히 사용자 ID를 문자열로 변환하여 그룹 ID로 사용
-    return "$userId:$performanceId"
+  fun getGroupId(userId: Long, performanceId: Long, sessionId: UUID? = null): String {
+    val baseGroupId = "$userId:$performanceId"
+    return sessionId?.let { "$baseGroupId:$it" } ?: baseGroupId
+  }
+
+  fun resolveGroupId(userId: Long, performanceId: Long, requestedGroupId: String?): String {
+    val baseGroupId = getGroupId(userId, performanceId)
+    if (requestedGroupId == null) return baseGroupId
+    if (requestedGroupId != baseGroupId && !requestedGroupId.startsWith("$baseGroupId:")) {
+      throw CustomException(ErrorCode.FORBIDDEN, "예매 그룹에 대한 권한이 없습니다.")
+    }
+
+    return requestedGroupId
   }
 
   private fun findHeldSeatsByPerformanceId(performanceId: Long): List<PerformanceSeatStatusMessageData.HeldSeat> {

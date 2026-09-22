@@ -1,30 +1,12 @@
 import type { StartCheckoutMessageData } from "@tikkle/api-types";
 
-import type { BookingMessage, PerformanceCheckoutLocationState } from "./performance-booking.types";
+import type { PerformanceCheckoutLocationState } from "./performance-booking.types";
 
 type PerformanceSummary = Pick<PerformanceCheckoutLocationState["performance"], "id" | "venueId" | "name" | "startsAt">;
 type VenueSummary = Pick<PerformanceCheckoutLocationState["venue"], "id" | "name">;
 type VenueSeatSummary = Pick<PerformanceCheckoutLocationState["venueSeats"][number], "id" | "sectionName" | "seatLabel" | "price">;
 
 export const formatBookingAmount = (amount: number) => `${new Intl.NumberFormat("ko-KR").format(amount)}원`;
-
-export const parseBookingMessage = (body: string) => {
-  try {
-    const response = JSON.parse(body) as unknown;
-
-    if (!response || typeof response !== "object") return null;
-
-    const value = response as Record<string, unknown>;
-
-    if (typeof value.requestId !== "string" || typeof value.success !== "boolean") {
-      return null;
-    }
-
-    return response as BookingMessage;
-  } catch {
-    return null;
-  }
-};
 
 export const isStartCheckoutData = (value: unknown): value is StartCheckoutMessageData => {
   if (!value || typeof value !== "object") return false;
@@ -42,6 +24,15 @@ export const isStartCheckoutData = (value: unknown): value is StartCheckoutMessa
 export const getRemainingSeconds = (expiresAt: string, now = Date.now()) => {
   const expiresAtTime = new Date(expiresAt).getTime();
   return Number.isFinite(expiresAtTime) ? Math.max(0, Math.ceil((expiresAtTime - now) / 1_000)) : 0;
+};
+
+export const PERFORMANCE_SEAT_SESSION_STORAGE_PREFIX = "tikkle.performance-seat-session";
+
+export const getPerformanceSeatSessionStorageKey = (performanceId: number) => `${PERFORMANCE_SEAT_SESSION_STORAGE_PREFIX}:${performanceId}`;
+
+export const clearPerformanceSeatSelectionSession = (performanceId: number) => {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(getPerformanceSeatSessionStorageKey(performanceId));
 };
 
 export const isCheckoutReview = (value: unknown): value is PerformanceCheckoutLocationState["review"] => {

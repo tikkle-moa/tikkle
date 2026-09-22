@@ -53,6 +53,7 @@ const renderPanel = ({ onCheckout = vi.fn(), onHoldSeatToggle = vi.fn(), selecte
     <MemoryRouter>
       <PerformanceSeatHoldPanel
         performanceId={1}
+        sessionId="session-1"
         venueSeats={[seat]}
         venueSeatStates={new Map()}
         selectedSeatIds={selectedSeatIds}
@@ -82,7 +83,10 @@ describe("PerformanceSeatHoldPanel", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("실시간 연결됨");
     expect(screen.getByRole("region", { name: "좌석 점유 안내" })).toBeInTheDocument();
-    expect(mockUsePerformanceSeatHoldPanel).toHaveBeenCalledWith(expect.objectContaining({ performanceId: 1, venueSeats: [seat] }));
+    expect(mockUsePerformanceSeatHoldPanel).toHaveBeenCalledWith(
+      expect.objectContaining({ performanceId: 1, sessionId: "session-1", venueSeats: [seat] }),
+    );
+    expect(mockUseCheckoutReview).toHaveBeenCalledWith(expect.objectContaining({ performanceId: 1, sessionId: "session-1" }));
   });
 
   it("선택한 내 점유 좌석을 해제한다", async () => {

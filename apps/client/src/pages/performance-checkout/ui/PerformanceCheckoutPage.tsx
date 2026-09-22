@@ -10,6 +10,7 @@ import DetailMessage from "@shared/ui/DetailMessage";
 import { useSessionStore } from "@entities/session";
 
 import {
+  clearPerformanceSeatSelectionSession,
   formatBookingAmount,
   getRemainingSeconds,
   isPerformanceCheckoutLocationState,
@@ -30,6 +31,9 @@ const PerformanceCheckoutPage = () => {
   const venueSeats = state?.venueSeats ?? [];
   const selectedSeatIds = state?.review.venueSeatIds ?? [];
   const selectedSeats = venueSeats.filter((seat) => selectedSeatIds.includes(seat.id));
+  const reviewSessionId = state?.review.sessionId;
+
+  useEffect(() => () => clearPerformanceSeatSelectionSession(id), [id]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
@@ -37,10 +41,22 @@ const PerformanceCheckoutPage = () => {
   }, []);
 
   const handleCheckoutSuccess = useCallback(
-    (reservationId: number) => navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) })),
-    [navigate],
+    (reservationId: number) => {
+      clearPerformanceSeatSelectionSession(id);
+      navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) }));
+    },
+    [id, navigate],
   );
-  const handleReviewEnd = useCallback(() => navigate(-1), [navigate]);
+  const handleReviewEnd = useCallback(
+    (canResumeHold: boolean) => {
+      if (!canResumeHold) clearPerformanceSeatSelectionSession(id);
+      navigate(generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(id) }), {
+        replace: true,
+        state: canResumeHold && reviewSessionId ? { performanceId: id, seatSelectionSessionId: reviewSessionId } : null,
+      });
+    },
+    [id, navigate, reviewSessionId],
+  );
   const {
     errorMessage: reviewErrorMessage,
     isEnding,
@@ -52,6 +68,7 @@ const PerformanceCheckoutPage = () => {
   const { errorMessage, isStarting, startCheckout } = useStartCheckout({
     performanceId: id,
     reviewToken: state?.review.reviewToken ?? "",
+    groupId: state?.review.groupId,
     enabled: Boolean(state),
     onSuccess: handleCheckoutSuccess,
   });
@@ -62,7 +79,7 @@ const PerformanceCheckoutPage = () => {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="공연 상세에서 좌석을 다시 선택해 주세요." />;
   }
 
-  const handleBack = () => endReview(state.review.reviewToken);
+  const handleBack = () => endReview(state.review.reviewToken, state.review.groupId);
 
   const remainingSeconds = getRemainingSeconds(state.review.expiresAt, now);
   const totalAmount = selectedSeats.reduce((total, seat) => total + seat.price, 0);
@@ -87,7 +104,8 @@ const PerformanceCheckoutPage = () => {
         <div>
           <p className="font-bold">결제 준비 전 안내</p>
           <p className="mt-1 leading-5">
-            예매 정보를 확정하면 좌석을 변경하거나 점유를 해제할 수 없습니다. 결제 화면에서 돌아가도 좌석 점유는 만료 시간까지 유지됩니다.
+            예매 정보를 확정한 좌석은 변경하거나 점유를 해제할 수 없습니다. 결제 화면에서 돌아가도 해당 좌석은 만료 시간까지 유지되며, 다른 좌석을
+            새로 선택할 수 있습니다.
           </p>
         </div>
       </div>

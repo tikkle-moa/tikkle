@@ -37,7 +37,7 @@ const PaymentNavigationDialog = ({ message, onProceed, onStay }: PaymentNavigati
           <CircleAlert className="size-6" />
         </div>
         <h2 id="payment-navigation-title" className="mt-5 text-center text-xl font-bold text-slate-950">
-          결제 준비를 중단할까요?
+          결제 화면에서 나갈까요?
         </h2>
         <p className="mx-auto mt-3 max-w-sm text-center text-sm leading-6 text-pretty break-keep text-slate-500">{message}</p>
         <div className="mt-7 grid gap-2 sm:grid-cols-2">

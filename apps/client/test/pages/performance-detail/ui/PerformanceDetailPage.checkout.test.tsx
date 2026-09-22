@@ -25,11 +25,19 @@ vi.mock("@pages/performance-detail/model/use-performance-detail", () => ({
 
 vi.mock("@pages/performance-detail/model/performance-detail.utils", () => ({
   getPerformanceCheckoutNavigation: mockGetPerformanceCheckoutNavigation,
+  getSeatSelectionSessionId: (state: { performanceId: number; seatSelectionSessionId: string } | null, performanceId: number) =>
+    state?.performanceId === performanceId ? state.seatSelectionSessionId : null,
 }));
 
 vi.mock("@pages/performance-detail/ui/PerformanceSeatMap", () => ({
-  default: ({ onCheckout }: { onCheckout?: (review: BeginCheckoutReviewMessageData) => void }) => (
-    <button type="button" onClick={() => onCheckout?.(checkoutReview)}>
+  default: ({
+    onCheckout,
+    seatSelectionSessionId,
+  }: {
+    onCheckout?: (review: BeginCheckoutReviewMessageData) => void;
+    seatSelectionSessionId?: string | null;
+  }) => (
+    <button type="button" data-session-id={seatSelectionSessionId ?? ""} onClick={() => onCheckout?.(checkoutReview)}>
       예매 정보 확인 테스트
     </button>
   ),
@@ -98,6 +106,16 @@ describe("PerformanceDetailPage checkout callback", () => {
 
     expect(screen.getByTestId("location-path")).toHaveAttribute("data-path", "/performances/1/checkout");
     expect(screen.getByTestId("location-path")).toHaveTextContent('"reviewToken":"92334384-52d0-41f2-a3c1-3d54047c35b8"');
+  });
+
+  it("같은 공연의 좌석 선택으로 복귀할 때 전달된 세션 ID를 사용한다", () => {
+    render(
+      <MemoryRouter initialEntries={[{ pathname: "/performances/1", state: { performanceId: 1, seatSelectionSessionId: "session-1" } }]}>
+        <PerformanceDetailPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "예매 정보 확인 테스트" })).toHaveAttribute("data-session-id", "session-1");
   });
 
   it("예매 정보가 사라진 상태에서는 checkout으로 이동하지 않는다", async () => {

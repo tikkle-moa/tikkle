@@ -1,9 +1,10 @@
 import {
+  clearPerformanceSeatSelectionSession,
   formatBookingAmount,
+  getPerformanceSeatSessionStorageKey,
   getRemainingSeconds,
   isPerformanceCheckoutLocationState,
   isStartCheckoutData,
-  parseBookingMessage,
 } from "@features/performance-booking/model/performance-booking.utils";
 
 const performance = { id: 10, venueId: 1, name: "Tikkle Live", startsAt: "2026-09-01T19:00:00" };
@@ -12,19 +13,20 @@ const venueSeats = [{ id: 101, sectionName: "A구역", seatLabel: "1번", price:
 const review = { reviewToken: "review-1", groupId: "group-1", performanceId: 10, venueSeatIds: [101], expiresAt: "2026-09-16T20:00:00" };
 
 describe("performance-booking.utils", () => {
+  it("공연별 좌석 선택 세션 키를 생성하고 삭제한다", () => {
+    const key = getPerformanceSeatSessionStorageKey(10);
+    sessionStorage.setItem(key, "session-1");
+
+    clearPerformanceSeatSelectionSession(10);
+
+    expect(sessionStorage.getItem(key)).toBeNull();
+  });
+
   it("금액과 점유 남은 시간을 포맷한다", () => {
     expect(formatBookingAmount(150_000)).toBe("150,000원");
     expect(getRemainingSeconds("2026-09-15T13:00:05.001Z", Date.parse("2026-09-15T13:00:00.000Z"))).toBe(6);
     expect(getRemainingSeconds("2026-09-15T12:59:59.000Z", Date.parse("2026-09-15T13:00:00.000Z"))).toBe(0);
     expect(getRemainingSeconds("invalid-date", Date.parse("2026-09-15T13:00:00.000Z"))).toBe(0);
-  });
-
-  it("예매 STOMP 응답을 검증하고 파싱한다", () => {
-    const valid = parseBookingMessage(JSON.stringify({ requestId: "req-1", success: true, data: {} }));
-    expect(valid).toMatchObject({ requestId: "req-1", success: true });
-    expect(parseBookingMessage("not-json")).toBeNull();
-    expect(parseBookingMessage("null")).toBeNull();
-    expect(parseBookingMessage(JSON.stringify({ requestId: "req-1" }))).toBeNull();
   });
 
   it("START_CHECKOUT 응답 데이터를 생성 계약대로 검증한다", () => {

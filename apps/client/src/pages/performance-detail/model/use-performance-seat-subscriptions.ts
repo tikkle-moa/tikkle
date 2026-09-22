@@ -7,6 +7,7 @@ import { getConnectionStyle } from "./seat-map.utils";
 
 interface UsePerformanceSeatSubscriptionsProps {
   performanceId: number;
+  sessionId?: string;
   handleRefreshFinish: (action: RefreshAction, state: SeatOperationState) => void;
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
@@ -18,6 +19,7 @@ interface UsePerformanceSeatSubscriptionsProps {
 
 export const usePerformanceSeatSubscriptions = ({
   performanceId,
+  sessionId,
   handleRefreshFinish,
   setSelectedSeatIds,
   setServerTimeOffset,
@@ -83,7 +85,7 @@ export const usePerformanceSeatSubscriptions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/get-my-group-holds",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID() },
+      command: { requestId: crypto.randomUUID(), ...(sessionId ? { sessionId } : {}) },
     });
 
     const seatEventSubscription = stompClient.subscribeEvent({
@@ -149,6 +151,7 @@ export const usePerformanceSeatSubscriptions = ({
     handleRefreshFinish,
     isConnected,
     performanceId,
+    sessionId,
     setBookedSeatIds,
     setMyGroupHeldSeatInfoBySeatId,
     setHeldSeatExpiresAtBySeatId,

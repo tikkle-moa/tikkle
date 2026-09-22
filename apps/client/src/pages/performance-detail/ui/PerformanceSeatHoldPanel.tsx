@@ -16,6 +16,7 @@ import { usePerformanceSeatHoldPanel } from "../model/use-performance-seat-hold-
 
 interface PerformanceSeatHoldPanelProps {
   performanceId: number;
+  sessionId?: string;
   venueSeats: VenueSeatResponse[];
   venueSeatStates: Map<number, VenueSeatState>;
   selectedSeatIds: Set<number>;
@@ -30,6 +31,7 @@ interface PerformanceSeatHoldPanelProps {
 
 const PerformanceSeatHoldPanel = ({
   performanceId,
+  sessionId,
   venueSeats,
   venueSeatStates,
   selectedSeatIds,
@@ -56,6 +58,7 @@ const PerformanceSeatHoldPanel = ({
     connectionStyle,
   } = usePerformanceSeatHoldPanel({
     performanceId,
+    sessionId,
     venueSeats,
     venueSeatStates,
     selectedSeatIds,
@@ -71,6 +74,7 @@ const PerformanceSeatHoldPanel = ({
     beginReview,
   } = useCheckoutReview({
     performanceId,
+    sessionId,
     onBeginSuccess: onCheckout,
   });
 

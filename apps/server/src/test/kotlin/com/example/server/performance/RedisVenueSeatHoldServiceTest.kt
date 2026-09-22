@@ -124,6 +124,30 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
+  fun `세션마다 다른 점유 그룹을 만들고 해당 그룹 Hold를 조회한다`() {
+    val groupId = "$GROUP_ID:$SESSION_ID"
+    val hold = VenueSeatHoldDetail(HOLD_ID, groupId, PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(4))
+    executeResult = objectMapper.writeValueAsString(listOf(hold))
+
+    assertThat(service.getGroupId(USER_ID, PERFORMANCE_ID, SESSION_ID)).isEqualTo(groupId)
+    assertThat(service.getGroupId(USER_ID, PERFORMANCE_ID, OTHER_SESSION_ID)).isNotEqualTo(groupId)
+    assertThat(service.getMyGroupHolds(USER_ID, PERFORMANCE_ID, SESSION_ID)).containsExactly(hold)
+    then(reservationRepository).should().existsByGroupId(groupId)
+  }
+
+  @Test
+  fun `다른 사용자나 공연 회차의 그룹은 결제 단계에서 사용할 수 없다`() {
+    assertThat(service.resolveGroupId(USER_ID, PERFORMANCE_ID, "$GROUP_ID:$SESSION_ID")).isEqualTo("$GROUP_ID:$SESSION_ID")
+
+    listOf("2:$PERFORMANCE_ID:$SESSION_ID", "$USER_ID:11:$SESSION_ID").forEach { groupId ->
+      val exception = assertThrows<CustomException> {
+        service.resolveGroupId(USER_ID, PERFORMANCE_ID, groupId)
+      }
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+    }
+  }
+
+  @Test
   fun `예약이 있으면 점유 좌석을 사용자 소유로 반환하지 않는다`() {
     given(reservationRepository.existsByGroupId(GROUP_ID)).willReturn(true)
 
@@ -222,6 +246,19 @@ class RedisVenueSeatHoldServiceTest {
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
     then(performanceRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `이전 그룹이 결제 대기 중이어도 새 세션은 다른 좌석을 점유할 수 있다`() {
+    val nextGroupId = "$GROUP_ID:$SESSION_ID"
+    given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance())
+    given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(102L))).willReturn(listOf(venueSeat(102L)))
+
+    val hold = service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(102L), SESSION_ID)
+
+    assertThat(hold.groupId).isEqualTo(nextGroupId)
+    then(reservationRepository).should().findByGroupIdForUpdate(nextGroupId)
+    then(reservationRepository).shouldHaveNoMoreInteractions()
   }
 
   @Test
@@ -361,6 +398,21 @@ class RedisVenueSeatHoldServiceTest {
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+  }
+
+  @Test
+  fun `새 세션은 이전 세션의 점유 좌석을 해제할 수 없다`() {
+    val hold = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.multiGet(listOf("hold:venue-seat:$PERFORMANCE_ID:101"))).willReturn(listOf(HOLD_ID))
+    given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(objectMapper.writeValueAsString(hold)))
+
+    val exception = assertThrows<CustomException> {
+      service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L), SESSION_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+    then(reservationRepository).should().findByGroupIdForUpdate("$GROUP_ID:$SESSION_ID")
   }
 
   @Test
@@ -657,7 +709,14 @@ class RedisVenueSeatHoldServiceTest {
   fun `예매 정보 확인 종료 성공을 처리한다`() {
     executeResult = 0L
 
-    service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isTrue()
+  }
+
+  @Test
+  fun `이미 결제 대기 중이거나 잠금이 없으면 이전 점유로 복귀하지 않는다`() {
+    executeResult = 2L
+
+    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isFalse()
   }
 
   @Test
@@ -729,5 +788,7 @@ class RedisVenueSeatHoldServiceTest {
     private const val EXPIRED_HOLD_ID = "hold-expired"
     private const val RESERVATION_ID = 501L
     private val REVIEW_TOKEN = UUID.fromString("25b619c1-f87a-4fbe-a2d7-2f16dc0cd1b3")
+    private val SESSION_ID = UUID.fromString("88974819-50e7-4127-ae98-b178e3ec2346")
+    private val OTHER_SESSION_ID = UUID.fromString("db60c466-7cbf-4470-96fa-0235016e44cc")
   }
 }

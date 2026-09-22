@@ -91,6 +91,7 @@ describe("usePerformanceSeatSubscriptions", () => {
       const [myGroupHeldSeatInfoBySeatId, setMyGroupHeldSeatInfoBySeatId] = useState(new Map<number, MyGroupHeldSeatInfo>());
       const subscription = usePerformanceSeatSubscriptions({
         performanceId: 10,
+        sessionId: "session-1",
         handleRefreshFinish,
         setSelectedSeatIds,
         setServerTimeOffset,
@@ -113,6 +114,13 @@ describe("usePerformanceSeatSubscriptions", () => {
     expect(result.current.isConnected).toBe(true);
     expect(result.current.connectionStyle.label).toBe("실시간 연결됨");
     expect(client.publish).toHaveBeenCalledTimes(2);
+    expect(client.publish).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        path: "/performances/{performanceId}/get-my-group-holds",
+        command: expect.objectContaining({ sessionId: "session-1" }),
+      }),
+    );
 
     const seatStatus = findSubscription(subscriptions, "get-seat-status");
     act(() =>

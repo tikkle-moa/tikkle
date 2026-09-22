@@ -21,6 +21,7 @@ vi.mock("@pages/performance-detail/model/use-performance-seat-subscriptions", ()
 
 const props = {
   performanceId: 10,
+  sessionId: "session-1",
   venueSeats: [],
   venueSeatStates: new Map(),
   selectedSeatIds: new Set<number>(),
@@ -74,6 +75,8 @@ describe("usePerformanceSeatHoldPanel", () => {
     setMocks([]);
     renderHook(() => usePerformanceSeatHoldPanel(props));
 
+    expect(mockActions).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1" }));
+    expect(mockSubscriptions).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1" }));
     act(() => vi.advanceTimersByTime(500));
     expect(handleHoldSeats).not.toHaveBeenCalled();
   });

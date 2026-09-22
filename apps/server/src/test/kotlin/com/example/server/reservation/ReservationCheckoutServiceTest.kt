@@ -699,6 +699,28 @@ class ReservationCheckoutServiceTest {
   }
 
   @Test
+  fun `새 세션의 예매 정보 확인은 해당 세션 점유만 잠그고 세션 ID를 반환한다`() {
+    val groupId = "$GROUP_ID:$SESSION_ID"
+    val snapshot = BeginCheckoutReviewMessageData(
+      groupId = groupId,
+      performanceId = PERFORMANCE_ID,
+      venueSeatIds = listOf(103L),
+      expiresAt = LocalDateTime.now().plusMinutes(4),
+      reviewToken = REVIEW_TOKEN,
+    )
+    given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID, SESSION_ID)).willReturn(groupId)
+    given(redisVenueSeatHoldService.beginCheckoutReview(groupId, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(snapshot)
+
+    val result = service.beginCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN, SESSION_ID)
+
+    assertThat(result.groupId).isEqualTo(groupId)
+    assertThat(result.venueSeatIds).containsExactly(103L)
+    assertThat(result.sessionId).isEqualTo(SESSION_ID)
+    then(reservationRepository).should().existsByGroupId(groupId)
+    then(redisVenueSeatHoldService).should().beginCheckoutReview(groupId, PERFORMANCE_ID, REVIEW_TOKEN)
+  }
+
+  @Test
   fun `이미 예매가 존재하면 예매 정보 확인 시작을 거부한다`() {
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
     given(reservationRepository.existsByGroupId(GROUP_ID)).willReturn(true)
@@ -714,10 +736,37 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `예매 정보 확인 종료는 그룹 ID와 review token을 Redis에 전달한다`() {
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).willReturn(true)
 
-    service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    assertThat(service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isTrue()
 
     then(redisVenueSeatHoldService).should().endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+  }
+
+  @Test
+  fun `결제 대기 그룹에서 예매 정보 확인 종료 시 이전 점유를 복원하지 않는다`() {
+    val groupId = "$GROUP_ID:$SESSION_ID"
+    given(redisVenueSeatHoldService.resolveGroupId(USER_ID, PERFORMANCE_ID, groupId)).willReturn(groupId)
+    given(redisVenueSeatHoldService.endCheckoutReview(groupId, REVIEW_TOKEN)).willReturn(false)
+
+    assertThat(service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN, groupId)).isFalse()
+
+    then(redisVenueSeatHoldService).should().endCheckoutReview(groupId, REVIEW_TOKEN)
+  }
+
+  @Test
+  fun `결제 대기 재요청은 전달받은 세션 그룹의 기존 주문을 반환한다`() {
+    val groupId = "$GROUP_ID:$SESSION_ID"
+    val existing = reservation(groupId = groupId)
+    given(redisVenueSeatHoldService.resolveGroupId(USER_ID, PERFORMANCE_ID, groupId)).willReturn(groupId)
+    given(reservationRepository.findByGroupIdForUpdate(groupId)).willReturn(existing)
+
+    val result = service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN, groupId)
+
+    assertThat(result.reservationId).isEqualTo(existing.id)
+    assertThat(result.orderId).isEqualTo(existing.orderId)
+    then(redisVenueSeatHoldService).should().resolveGroupId(USER_ID, PERFORMANCE_ID, groupId)
+    then(redisVenueSeatHoldService).shouldHaveNoMoreInteractions()
   }
 
   private fun activeHoldData(
@@ -792,5 +841,6 @@ class ReservationCheckoutServiceTest {
     private const val GROUP_ID = "1:10"
     private const val RESERVATION_ID = 501L
     private val REVIEW_TOKEN = UUID.fromString("25b619c1-f87a-4fbe-a2d7-2f16dc0cd1b3")
+    private val SESSION_ID = UUID.fromString("88974819-50e7-4127-ae98-b178e3ec2346")
   }
 }

@@ -8,11 +8,12 @@ import { isStartCheckoutData } from "./performance-booking.utils";
 interface UseStartCheckoutProps {
   performanceId: number;
   reviewToken: string;
+  groupId?: string;
   onSuccess: (reservationId: number) => void;
   enabled?: boolean;
 }
 
-export const useStartCheckout = ({ performanceId, reviewToken, onSuccess, enabled = true }: UseStartCheckoutProps) => {
+export const useStartCheckout = ({ performanceId, reviewToken, groupId, onSuccess, enabled = true }: UseStartCheckoutProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getStompClient = useStompStore((state) => state.getStompClient);
@@ -91,7 +92,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, onSuccess, enable
           waitForResponse();
           activeClient.publish({
             path: "/reservation/start-checkout",
-            command: { requestId, data: { performanceId, reviewToken } },
+            command: { requestId, data: { performanceId, reviewToken, ...(groupId ? { groupId } : {}) } },
           });
           return;
         }
@@ -106,7 +107,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, onSuccess, enable
     waitForResponse();
     stompClient.publish({
       path: "/reservation/start-checkout",
-      command: { requestId, data: { performanceId, reviewToken } },
+      command: { requestId, data: { performanceId, reviewToken, ...(groupId ? { groupId } : {}) } },
     });
   };
 

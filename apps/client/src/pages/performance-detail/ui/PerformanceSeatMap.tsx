@@ -14,11 +14,13 @@ import { usePerformanceSeatMap } from "../model/use-performance-seat-map";
 interface PerformanceSeatMapProps {
   performance: PerformanceResponse;
   venueDetail: VenueDetailResponse;
+  seatSelectionSessionId?: string | null;
   onCheckout?: (review: BeginCheckoutReviewMessageData) => void;
 }
 
-const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: PerformanceSeatMapProps) => {
+const PerformanceSeatMap = ({ performance, venueDetail, seatSelectionSessionId, onCheckout }: PerformanceSeatMapProps) => {
   const {
+    sessionId,
     selectedSeatIds,
     setSelectedSeatIds,
     seatOperationState,
@@ -30,7 +32,7 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
     toggleSeat,
     toggleHeldSeats,
     selectSeats,
-  } = usePerformanceSeatMap();
+  } = usePerformanceSeatMap({ performanceId: performance.id, sessionId: seatSelectionSessionId });
 
   const isAvailable = performance.status === "AVAILABLE";
 
@@ -50,6 +52,7 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
       {isAvailable && (
         <PerformanceSeatHoldPanel
           performanceId={performance.id}
+          sessionId={sessionId}
           venueSeats={venueDetail.venueSeats}
           venueSeatStates={venueSeatStates}
           selectedSeatIds={selectedSeatIds}

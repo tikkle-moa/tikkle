@@ -3,7 +3,7 @@ import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 import type { PerformanceResponse } from "@entities/performance";
 import type { VenueDetailResponse } from "@entities/venue";
 
-import { getPerformanceCheckoutNavigation } from "@pages/performance-detail/model/performance-detail.utils";
+import { getPerformanceCheckoutNavigation, getSeatSelectionSessionId } from "@pages/performance-detail/model/performance-detail.utils";
 
 const performance: PerformanceResponse = {
   id: 1,
@@ -54,5 +54,16 @@ describe("getPerformanceCheckoutNavigation", () => {
     { performance, venueDetail: undefined },
   ])("필수 정보가 없으면 이동 상태를 만들지 않는다", (missing) => {
     expect(getPerformanceCheckoutNavigation({ ...missing, review })).toBeNull();
+  });
+});
+
+describe("getSeatSelectionSessionId", () => {
+  it("같은 공연으로 돌아온 경우에만 이전 좌석 선택 세션을 복원한다", () => {
+    const state = { performanceId: 1, seatSelectionSessionId: "session-1" };
+
+    expect(getSeatSelectionSessionId(state, 1)).toBe("session-1");
+    expect(getSeatSelectionSessionId(state, 2)).toBeNull();
+    expect(getSeatSelectionSessionId({ ...state, seatSelectionSessionId: 1 }, 1)).toBeNull();
+    expect(getSeatSelectionSessionId(null, 1)).toBeNull();
   });
 });

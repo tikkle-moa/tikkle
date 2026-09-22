@@ -9,8 +9,9 @@ import { isCheckoutReview } from "./performance-booking.utils";
 
 interface UseCheckoutReviewProps {
   performanceId: number;
+  sessionId?: string;
   onBeginSuccess?: (review: BeginCheckoutReviewMessageData) => void;
-  onEndSuccess?: () => void;
+  onEndSuccess?: (canResumeHold: boolean) => void;
 }
 
 interface PendingReviewRequest {
@@ -19,7 +20,7 @@ interface PendingReviewRequest {
   attempts: number;
 }
 
-export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess }: UseCheckoutReviewProps) => {
+export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, onEndSuccess }: UseCheckoutReviewProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getStompClient = useStompStore((state) => state.getStompClient);
@@ -98,7 +99,7 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
           return;
         }
 
-        onEndSuccess?.();
+        onEndSuccess?.(message.data.canResumeHold);
       },
       errorCallback: (message) => {
         if (message.requestId !== endRequestRef.current?.requestId) return;
@@ -141,7 +142,7 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
           waitForResponse();
           activeClient.publish({
             path: "/reservation/begin-checkout-review",
-            command: { requestId: request.requestId, data: { performanceId, reviewToken } },
+            command: { requestId: request.requestId, data: { performanceId, reviewToken, ...(sessionId ? { sessionId } : {}) } },
           });
           return;
         }
@@ -156,11 +157,11 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
     waitForResponse();
     stompClient.publish({
       path: "/reservation/begin-checkout-review",
-      command: { requestId: request.requestId, data: { performanceId, reviewToken } },
+      command: { requestId: request.requestId, data: { performanceId, reviewToken, ...(sessionId ? { sessionId } : {}) } },
     });
   };
 
-  const endReview = (reviewToken: string) => {
+  const endReview = (reviewToken: string, groupId?: string) => {
     if (beginRequestRef.current || endRequestRef.current) return;
     if (!stompClient || connectionStatus !== "connected") {
       setErrorMessage("서버 연결 후 다시 시도해 주세요.");
@@ -182,7 +183,7 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
           waitForResponse();
           activeClient.publish({
             path: "/reservation/end-checkout-review",
-            command: { requestId: request.requestId, data: { performanceId, reviewToken } },
+            command: { requestId: request.requestId, data: { performanceId, reviewToken, ...(groupId ? { groupId } : {}) } },
           });
           return;
         }
@@ -197,7 +198,7 @@ export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess 
     waitForResponse();
     stompClient.publish({
       path: "/reservation/end-checkout-review",
-      command: { requestId: request.requestId, data: { performanceId, reviewToken } },
+      command: { requestId: request.requestId, data: { performanceId, reviewToken, ...(groupId ? { groupId } : {}) } },
     });
   };
 

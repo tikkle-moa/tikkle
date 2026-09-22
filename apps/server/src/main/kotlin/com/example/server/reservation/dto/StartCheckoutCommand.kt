@@ -5,4 +5,4 @@ import java.util.UUID
 
 data class StartCheckoutCommand(override val requestId: UUID, override val data: StartCheckoutData) : StompCommand<StartCheckoutData>
 
-data class StartCheckoutData(val performanceId: Long, val reviewToken: UUID)
+data class StartCheckoutData(val performanceId: Long, val reviewToken: UUID, val groupId: String? = null)

@@ -28,23 +28,25 @@ class ReservationCheckoutService(
   private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
   private val outboxEventService: OutboxEventService,
 ) {
-  fun beginCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID): BeginCheckoutReviewMessageData {
-    val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId)
+  fun beginCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID, sessionId: UUID? = null): BeginCheckoutReviewMessageData {
+    val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId, sessionId)
     if (reservationRepository.existsByGroupId(groupId)) {
       throw CustomException(ErrorCode.CONFLICT, "이미 결제 대기 이후의 예매가 존재합니다.")
     }
 
-    return redisVenueSeatHoldService.beginCheckoutReview(groupId, performanceId, reviewToken)
+    return redisVenueSeatHoldService.beginCheckoutReview(groupId, performanceId, reviewToken).copy(sessionId = sessionId)
   }
 
-  fun endCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID) {
-    val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId)
-    redisVenueSeatHoldService.endCheckoutReview(groupId, reviewToken)
+  fun endCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID, requestedGroupId: String? = null): Boolean {
+    val groupId = requestedGroupId?.let { redisVenueSeatHoldService.resolveGroupId(userId, performanceId, it) }
+      ?: redisVenueSeatHoldService.getGroupId(userId, performanceId)
+    return redisVenueSeatHoldService.endCheckoutReview(groupId, reviewToken)
   }
 
   @Transactional
-  fun startCheckout(userId: Long, performanceId: Long, reviewToken: UUID): StartCheckoutMessageData {
-    val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId)
+  fun startCheckout(userId: Long, performanceId: Long, reviewToken: UUID, requestedGroupId: String? = null): StartCheckoutMessageData {
+    val groupId = requestedGroupId?.let { redisVenueSeatHoldService.resolveGroupId(userId, performanceId, it) }
+      ?: redisVenueSeatHoldService.getGroupId(userId, performanceId)
     reservationRepository.findByGroupIdForUpdate(groupId)?.let { reservation ->
       return existingCheckout(reservation, groupId, userId, performanceId)
     }

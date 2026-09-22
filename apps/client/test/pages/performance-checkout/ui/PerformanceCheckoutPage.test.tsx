@@ -80,7 +80,8 @@ const validState = {
   venueSeats,
   review: {
     reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8",
-    groupId: "7:10",
+    groupId: "7:10:session-1",
+    sessionId: "session-1",
     performanceId: 10,
     venueSeatIds: [101, 102],
     expiresAt: new Date(Date.now() + 300_000).toISOString(),
@@ -119,8 +120,11 @@ describe("PerformanceCheckoutPage", () => {
     expect(screen.getByText("Tikkle Live")).toBeInTheDocument();
     expect(screen.getByText("올림픽공원 KSPO DOME")).toBeInTheDocument();
     expect(screen.getByText("270,000원")).toBeInTheDocument();
-    expect(screen.getByRole("note")).toHaveTextContent("예매 정보를 확정하면 좌석을 변경하거나 점유를 해제할 수 없습니다.");
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "결제 화면에서 돌아가도 해당 좌석은 만료 시간까지 유지되며, 다른 좌석을 새로 선택할 수 있습니다.",
+    );
     expect(screen.queryByText("B구역 1열 1번")).not.toBeInTheDocument();
+    expect(mockUseStartCheckout).toHaveBeenCalledWith(expect.objectContaining({ groupId: "7:10:session-1" }));
 
     await user.click(screen.getByRole("button", { name: "예매 정보 확정하기" }));
     expect(mockUseStartCheckout.mock.results[0].value.startCheckout).toHaveBeenCalledOnce();
@@ -200,9 +204,9 @@ describe("PerformanceCheckoutPage", () => {
 
   it("좌석 다시 선택을 누르면 리뷰 잠금 해제를 요청하고 성공 후 돌아간다", async () => {
     const user = userEvent.setup();
-    let onEndSuccess: (() => void) | undefined;
+    let onEndSuccess: ((canResumeHold: boolean) => void) | undefined;
     const endReview = vi.fn();
-    mockUseCheckoutReview.mockImplementation(({ onEndSuccess: callback }: { onEndSuccess: () => void }) => {
+    mockUseCheckoutReview.mockImplementation(({ onEndSuccess: callback }: { onEndSuccess: (canResumeHold: boolean) => void }) => {
       onEndSuccess = callback;
       return { errorMessage: null, isEnding: false, endReview };
     });
@@ -210,10 +214,28 @@ describe("PerformanceCheckoutPage", () => {
 
     await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
 
-    expect(endReview).toHaveBeenCalledWith(validState.review.reviewToken);
+    expect(endReview).toHaveBeenCalledWith(validState.review.reviewToken, validState.review.groupId);
     expect(navigate).not.toHaveBeenCalled();
-    onEndSuccess?.();
-    expect(navigate).toHaveBeenCalledWith(-1);
+    onEndSuccess?.(true);
+    expect(navigate).toHaveBeenCalledWith("/performances/10", {
+      replace: true,
+      state: { performanceId: 10, seatSelectionSessionId: "session-1" },
+    });
+  });
+
+  it("리뷰 종료 뒤 점유 복원이 불가능하면 새 좌석 선택 세션으로 이동한다", async () => {
+    const user = userEvent.setup();
+    let onEndSuccess: ((canResumeHold: boolean) => void) | undefined;
+    mockUseCheckoutReview.mockImplementation(({ onEndSuccess: callback }: { onEndSuccess: (canResumeHold: boolean) => void }) => {
+      onEndSuccess = callback;
+      return { errorMessage: null, isEnding: false, endReview: vi.fn() };
+    });
+    render(<PerformanceCheckoutPage />);
+
+    await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
+    onEndSuccess?.(false);
+
+    expect(navigate).toHaveBeenCalledWith("/performances/10", { replace: true, state: null });
   });
 
   it("리뷰 잠금 해제 중에는 다시 누를 수 없고 서버 오류를 표시한다", () => {
@@ -243,7 +265,7 @@ describe("PerformanceCheckoutPage", () => {
 
     await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
 
-    expect(endReview).toHaveBeenCalledWith(validState.review.reviewToken);
+    expect(endReview).toHaveBeenCalledWith(validState.review.reviewToken, validState.review.groupId);
   });
 
   it("타이머 콜백이 실행되면 점유 남은 시간을 갱신한다", () => {

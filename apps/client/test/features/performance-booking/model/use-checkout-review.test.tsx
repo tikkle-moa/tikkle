@@ -12,7 +12,8 @@ describe("useCheckoutReview", () => {
   const unsubscribe = vi.fn();
   const stompClient = { publish, subscribe } as unknown as StompClient;
   const review = {
-    groupId: "1:10",
+    groupId: "1:10:session-1",
+    sessionId: "session-1",
     performanceId: 10,
     venueSeatIds: [101, 102],
     expiresAt: "2026-09-22T13:00:00",
@@ -51,13 +52,13 @@ describe("useCheckoutReview", () => {
 
   it("BEGIN 응답의 서버 좌석 스냅샷을 전달하고 중복 응답은 무시한다", () => {
     const onBeginSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onBeginSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: "session-1", onBeginSuccess }));
 
     act(() => result.current.beginReview());
     const command = publish.mock.calls[0][0];
     expect(command).toMatchObject({
       path: "/reservation/begin-checkout-review",
-      command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken: expect.any(String) } },
+      command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken: expect.any(String), sessionId: "session-1" } },
     });
     expect(result.current.isBeginning).toBe(true);
     act(() => result.current.beginReview());
@@ -86,7 +87,7 @@ describe("useCheckoutReview", () => {
 
   it("BEGIN 응답 유실 시 같은 토큰으로 자동 재전송하고 타임아웃 뒤 수동 재시도에도 토큰을 유지한다", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: "session-1" }));
 
     act(() => result.current.beginReview());
     const firstCommand = publish.mock.calls[0][0].command;
@@ -94,6 +95,7 @@ describe("useCheckoutReview", () => {
 
     expect(publish).toHaveBeenCalledTimes(2);
     expect(publish.mock.calls[1][0].command).toEqual(firstCommand);
+    expect(firstCommand.data.sessionId).toBe("session-1");
     expect(result.current.isBeginning).toBe(true);
 
     act(() => vi.advanceTimersByTime(8_000));
@@ -189,22 +191,34 @@ describe("useCheckoutReview", () => {
     expect(onBeginSuccess).toHaveBeenCalledOnce();
   });
 
-  it("END에 토큰을 전달하고 성공 시 완료 콜백을 호출한다", () => {
+  it("END에 토큰과 그룹 ID를 전달하고 성공 시 완료 콜백을 호출한다", () => {
     const onEndSuccess = vi.fn();
     const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
     const command = publish.mock.calls[0][0];
     expect(command).toMatchObject({
       path: "/reservation/end-checkout-review",
-      command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken: "review-token" } },
+      command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken: "review-token", groupId: "1:10:session-1" } },
     });
     expect(result.current.isEnding).toBe(true);
 
-    act(() => handleEndMessage?.({ requestId: command.command.requestId, success: true, data: { performanceId: 10 } }));
+    act(() => handleEndMessage?.({ requestId: command.command.requestId, success: true, data: { performanceId: 10, canResumeHold: true } }));
 
     expect(result.current.isEnding).toBe(false);
     expect(onEndSuccess).toHaveBeenCalledTimes(1);
+    expect(onEndSuccess).toHaveBeenCalledWith(true);
+  });
+
+  it("END가 기존 점유를 복원할 수 없다고 응답하면 그 상태를 전달한다", () => {
+    const onEndSuccess = vi.fn();
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
+
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+    act(() => handleEndMessage?.({ requestId, success: true, data: { performanceId: 10, canResumeHold: false } }));
+
+    expect(onEndSuccess).toHaveBeenCalledWith(false);
   });
 
   it("END 성공 응답의 공연 ID가 다르면 복귀 오류를 표시한다", () => {
@@ -219,7 +233,7 @@ describe("useCheckoutReview", () => {
       handleEndMessage?.({
         requestId,
         success: true,
-        data: { performanceId: 11 },
+        data: { performanceId: 11, canResumeHold: false },
       });
     });
 
@@ -232,12 +246,13 @@ describe("useCheckoutReview", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
     const command = publish.mock.calls[0][0].command;
     act(() => vi.advanceTimersByTime(16_000));
 
     expect(publish).toHaveBeenCalledTimes(2);
     expect(publish.mock.calls[1][0].command).toEqual(command);
+    expect(command.data.groupId).toBe("1:10:session-1");
     expect(result.current.isEnding).toBe(false);
     expect(result.current.errorMessage).toBe("좌석 선택 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
   });
@@ -295,7 +310,7 @@ describe("useCheckoutReview", () => {
       handleEndMessage?.({
         requestId,
         success: true,
-        data: { performanceId: 10 },
+        data: { performanceId: 10, canResumeHold: false },
       });
     });
 
@@ -357,7 +372,7 @@ describe("useCheckoutReview", () => {
     const requestId = publish.mock.calls[0][0].command.requestId;
 
     expect(handleEndMessage).toBeDefined();
-    act(() => handleEndMessage!({ requestId, success: true, data: { performanceId: 10 } }));
+    act(() => handleEndMessage!({ requestId, success: true, data: { performanceId: 10, canResumeHold: true } }));
 
     expect(clearTimeoutSpy).not.toHaveBeenCalled();
     expect(onEndSuccess).toHaveBeenCalledOnce();
@@ -423,7 +438,7 @@ describe("useCheckoutReview", () => {
     expect(handleEndMessage).toBeDefined();
     expect(handleEndError).toBeDefined();
     act(() => {
-      handleEndMessage!({ requestId: "stale-request", success: true, data: { performanceId: 10 } });
+      handleEndMessage!({ requestId: "stale-request", success: true, data: { performanceId: 10, canResumeHold: true } });
       handleEndError!({
         requestId: "stale-request",
         success: false,

@@ -53,6 +53,7 @@ export interface StompError {
 
 export interface GetMyGroupHoldsCommand {
   requestId: string;
+  sessionId?: string;
 }
 
 export interface PerformanceSeatStatusMessage {
@@ -85,6 +86,7 @@ export interface HoldVenueSeatsMessage {
 export interface HoldVenueSeatsCommand {
   data: number[];
   requestId: string;
+  sessionId?: string;
 }
 
 export interface ReleaseVenueSeatsMessage {
@@ -96,6 +98,7 @@ export interface ReleaseVenueSeatsMessage {
 export interface ReleaseVenueSeatsCommand {
   data: number[];
   requestId: string;
+  sessionId?: string;
 }
 
 export interface BeginCheckoutReviewMessage {
@@ -109,6 +112,7 @@ export interface BeginCheckoutReviewMessageData {
   groupId: string;
   performanceId: number;
   reviewToken: string;
+  sessionId?: string;
   venueSeatIds: number[];
 }
 
@@ -120,6 +124,7 @@ export interface BeginCheckoutReviewCommand {
 export interface BeginCheckoutReviewData {
   performanceId: number;
   reviewToken: string;
+  sessionId?: string;
 }
 
 export interface CancelCheckoutMessage {
@@ -174,6 +179,7 @@ export interface EndCheckoutReviewMessage {
 }
 
 export interface EndCheckoutReviewMessageData {
+  canResumeHold: boolean;
   performanceId: number;
 }
 
@@ -183,6 +189,7 @@ export interface EndCheckoutReviewCommand {
 }
 
 export interface EndCheckoutReviewData {
+  groupId?: string;
   performanceId: number;
   reviewToken: string;
 }
@@ -243,6 +250,7 @@ export interface StartCheckoutCommand {
 }
 
 export interface StartCheckoutData {
+  groupId?: string;
   performanceId: number;
   reviewToken: string;
 }

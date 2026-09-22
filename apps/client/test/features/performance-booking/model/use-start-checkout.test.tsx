@@ -36,9 +36,9 @@ describe("useStartCheckout", () => {
     vi.useRealTimers();
   });
 
-  it("공연 ID로 START_CHECKOUT을 전송하고 예약 ID를 전달한다", () => {
+  it("공연 ID와 리뷰 그룹으로 START_CHECKOUT을 전송하고 예약 ID를 전달한다", () => {
     const onSuccess = vi.fn();
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, groupId: "1:10:session-1", onSuccess }));
 
     act(() => result.current.startCheckout());
     expect(result.current.isStarting).toBe(true);
@@ -48,7 +48,7 @@ describe("useStartCheckout", () => {
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({
         path: "/reservation/start-checkout",
-        command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken } },
+        command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken, groupId: "1:10:session-1" } },
       }),
     );
     const requestId = publish.mock.calls[0][0].command.requestId as string;
@@ -270,14 +270,14 @@ describe("useStartCheckout", () => {
   it("응답을 잃으면 같은 START_CHECKOUT을 재전송하고 늦게 도착한 중복 응답은 무시한다", () => {
     vi.useFakeTimers();
     const onSuccess = vi.fn();
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess }));
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, groupId: "1:10:session-1", onSuccess }));
 
     act(() => result.current.startCheckout());
     const requestId = publish.mock.calls[0][0].command.requestId as string;
     act(() => vi.advanceTimersByTime(8_000));
 
     expect(publish).toHaveBeenCalledTimes(2);
-    expect(publish.mock.calls[1][0].command).toEqual({ requestId, data: { performanceId: 10, reviewToken } });
+    expect(publish.mock.calls[1][0].command).toEqual({ requestId, data: { performanceId: 10, reviewToken, groupId: "1:10:session-1" } });
     expect(result.current.isStarting).toBe(true);
 
     act(() => {

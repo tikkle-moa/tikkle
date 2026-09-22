@@ -15,7 +15,7 @@ describe("PaymentNavigationDialog", () => {
 
     render(<PaymentNavigationDialog message="좌석 점유는 만료 시간까지 유지됩니다." onProceed={onProceed} onStay={onStay} />);
 
-    expect(screen.getByRole("dialog", { name: "결제 준비를 중단할까요?" })).toHaveTextContent("좌석 점유는 만료 시간까지 유지됩니다.");
+    expect(screen.getByRole("dialog", { name: "결제 화면에서 나갈까요?" })).toHaveTextContent("좌석 점유는 만료 시간까지 유지됩니다.");
     expect(HTMLDialogElement.prototype.showModal).toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "결제 계속하기" }));

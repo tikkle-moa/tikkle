@@ -13,4 +13,5 @@ data class BeginCheckoutReviewMessageData(
   val venueSeatIds: List<Long>,
   val expiresAt: LocalDateTime,
   val reviewToken: UUID,
+  val sessionId: UUID? = null,
 )
