@@ -1,4 +1,4 @@
-import { usePrompt } from "react-router";
+import { unstable_usePrompt as usePrompt } from "react-router";
 
 import { PAYMENT_NAVIGATION_WARNING_MESSAGE } from "./payment.constants";
 
