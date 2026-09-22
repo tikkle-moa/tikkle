@@ -9,15 +9,18 @@ const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUsePaymentOrder = vi.hoisted(() => vi.fn());
 const mockPaymentOrderSummary = vi.hoisted(() => vi.fn());
 const mockIsPaymentOrder = vi.hoisted(() => vi.fn());
+const mockUsePrompt = vi.hoisted(() => vi.fn());
+const mockUsePaymentNavigationGuard = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
-  return { ...actual, useLocation: mockUseLocation, useNavigate: () => navigate, useParams: mockUseParams };
+  return { ...actual, useLocation: mockUseLocation, useNavigate: () => navigate, useParams: mockUseParams, usePrompt: mockUsePrompt };
 });
 
 vi.mock("@features/payment", () => ({
   isPaymentOrder: mockIsPaymentOrder,
   PaymentOrderSummary: mockPaymentOrderSummary,
+  usePaymentNavigationGuard: mockUsePaymentNavigationGuard,
 }));
 
 vi.mock("@pages/payment/model/use-payment-order", () => ({

@@ -8,6 +8,13 @@ import PaymentPage from "@pages/payment/ui/PaymentPage";
 const mockUsePaymentPage = vi.hoisted(() => vi.fn());
 const mockPaymentOrderSummary = vi.hoisted(() => vi.fn());
 const mockTossPaymentWidget = vi.hoisted(() => vi.fn());
+const mockUsePrompt = vi.hoisted(() => vi.fn());
+const mockUsePaymentNavigationGuard = vi.hoisted(() => vi.fn());
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<typeof import("react-router")>("react-router");
+  return { ...actual, usePrompt: mockUsePrompt };
+});
 
 vi.mock("@pages/payment/model/use-payment-page", () => ({
   usePaymentPage: mockUsePaymentPage,
@@ -16,6 +23,7 @@ vi.mock("@pages/payment/model/use-payment-page", () => ({
 vi.mock("@features/payment", () => ({
   PaymentOrderSummary: mockPaymentOrderSummary,
   TossPaymentWidget: mockTossPaymentWidget,
+  usePaymentNavigationGuard: mockUsePaymentNavigationGuard,
 }));
 
 const order = {

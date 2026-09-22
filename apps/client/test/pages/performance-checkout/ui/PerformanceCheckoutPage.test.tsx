@@ -114,6 +114,7 @@ describe("PerformanceCheckoutPage", () => {
     expect(screen.getByText("Tikkle Live")).toBeInTheDocument();
     expect(screen.getByText("올림픽공원 KSPO DOME")).toBeInTheDocument();
     expect(screen.getByText("270,000원")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("결제 준비가 시작되면 좌석을 변경하거나 점유를 해제할 수 없습니다.");
     expect(screen.queryByText("B구역 1열 1번")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "예매 정보 확정하기" }));
