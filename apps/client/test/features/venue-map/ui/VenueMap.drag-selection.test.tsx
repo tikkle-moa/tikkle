@@ -41,7 +41,7 @@ const prepareMap = () => {
 };
 
 describe("VenueMap drag selection", () => {
-  it("전체 선택 해제는 빈 좌석 ID 집합만 전달한다", () => {
+  it("전체 선택 취소는 빈 좌석 ID 집합만 전달한다", () => {
     const onSeatSelectionChange = vi.fn();
     const onSeatToggle = vi.fn();
     render(
@@ -55,7 +55,7 @@ describe("VenueMap drag selection", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "전체 선택 해제" }));
+    fireEvent.click(screen.getByRole("button", { name: "전체 선택 취소" }));
 
     expect(onSeatSelectionChange).toHaveBeenCalledTimes(1);
     expect(onSeatSelectionChange).toHaveBeenCalledWith(new Set());

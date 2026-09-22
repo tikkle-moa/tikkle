@@ -36,14 +36,14 @@ const createPanelState = () => ({
   connectionStyle,
 });
 
-const renderPanel = (onCheckout = vi.fn()) =>
+const renderPanel = ({ onCheckout = vi.fn(), selectedSeatIds = new Set<number>() } = {}) =>
   render(
     <MemoryRouter>
       <PerformanceSeatHoldPanel
         performanceId={1}
         venueSeats={[seat]}
         venueSeatStates={new Map()}
-        selectedSeatIds={new Set()}
+        selectedSeatIds={selectedSeatIds}
         seatOperationState={{ status: "idle" }}
         setVenueSeatStates={vi.fn()}
         setSelectedSeatIds={vi.fn()}
@@ -90,7 +90,7 @@ describe("PerformanceSeatHoldPanel", () => {
       myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
       myGroupHeldSeatTotalPrice: 15000,
     });
-    renderPanel(onCheckout);
+    renderPanel({ onCheckout });
 
     expect(screen.getByRole("region", { name: "내 점유 좌석" })).toHaveTextContent("A구역 1번");
     expect(screen.getByRole("button", { name: /예매 정보 확인하기/ })).toBeInTheDocument();
@@ -107,6 +107,21 @@ describe("PerformanceSeatHoldPanel", () => {
           expiresAt: expiresAt.toISOString(),
         });
       });
+  });
+
+  it("지도에서 선택한 내 점유 좌석 행을 표시한다", () => {
+    const expiresAt = new Date("2026-09-16T20:00:00");
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({
+      ...createPanelState(),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+    });
+
+    renderPanel({ selectedSeatIds: new Set([1]) });
+
+    const selectedHold = screen.getByText("A구역 1번").closest("[data-selected]");
+    expect(selectedHold).toHaveAttribute("data-selected", "true");
+    expect(screen.getByText("선택됨")).toBeInTheDocument();
   });
 
   it("내 점유 내역이 많으면 목록을 펼치고 접는다", async () => {
