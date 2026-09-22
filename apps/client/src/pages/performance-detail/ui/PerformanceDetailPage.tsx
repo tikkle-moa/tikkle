@@ -13,6 +13,7 @@ import { PERFORMANCE_STATUS_MAP } from "@entities/performance";
 import PerformanceDetailSkeleton from "./PerformanceDetailSkeleton";
 import PerformanceSeatMap from "./PerformanceSeatMap";
 
+import { getPerformanceCheckoutNavigation } from "../model/performance-detail.utils";
 import { usePerformanceDetail } from "../model/use-performance-detail";
 
 const PerformanceDetailPage = () => {
@@ -20,11 +21,10 @@ const PerformanceDetailPage = () => {
   const { performance, venueDetail, isError, isParamValid, isPending } = usePerformanceDetail();
   const handleCheckout = useCallback(
     (hold: VenueSeatHoldDetail) => {
-      if (!performance || !venueDetail) return;
+      const navigation = getPerformanceCheckoutNavigation({ performance, venueDetail, hold });
+      if (!navigation) return;
 
-      navigate(generatePath(ROUTE_PATHS.PERFORMANCE_CHECKOUT, { performanceId: String(performance.id) }), {
-        state: { performance, venue: venueDetail.venue, venueSeats: venueDetail.venueSeats, hold },
-      });
+      navigate(navigation.pathname, { state: navigation.state });
     },
     [navigate, performance, venueDetail],
   );
