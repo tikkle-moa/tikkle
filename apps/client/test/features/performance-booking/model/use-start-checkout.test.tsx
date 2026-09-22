@@ -104,6 +104,137 @@ describe("useStartCheckout", () => {
     expect(result.current.errorMessage).toBe("결제 준비를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
   });
 
+  it("성공 응답을 받으면 응답 타이머를 정리한다", () => {
+    vi.useFakeTimers();
+
+    const onSuccess = vi.fn();
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess }));
+
+    act(() => result.current.startCheckout());
+
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+
+    act(() => {
+      handleMessage?.({
+        requestId,
+        success: true,
+        data: {
+          reservationId: 501,
+          orderId: "order-501",
+          orderName: "Tikkle Live",
+          amount: 150_000,
+          paymentExpiresAt: "2026-09-15T13:00:00",
+        },
+      });
+    });
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(onSuccess).toHaveBeenCalledWith(501);
+  });
+
+  it("오류 응답을 받으면 응답 타이머를 정리한다", () => {
+    vi.useFakeTimers();
+
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
+
+    act(() => result.current.startCheckout());
+
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+
+    act(() => {
+      handleError?.({
+        requestId,
+        success: false,
+        error: { code: "CONFLICT", message: "점유가 만료되었습니다." },
+      });
+    });
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(result.current.errorMessage).toBe("점유가 만료되었습니다.");
+  });
+
+  it("성공 응답 시 타이머 ID가 없으면 clearTimeout 없이 완료한다", () => {
+    vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess }));
+
+    act(() => result.current.startCheckout());
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+
+    expect(handleMessage).toBeDefined();
+    act(() => {
+      handleMessage!({
+        requestId,
+        success: true,
+        data: {
+          reservationId: 501,
+          orderId: "order-501",
+          orderName: "Tikkle Live",
+          amount: 150_000,
+          paymentExpiresAt: "2026-09-15T13:00:00",
+        },
+      });
+    });
+
+    expect(clearTimeoutSpy).not.toHaveBeenCalled();
+    expect(onSuccess).toHaveBeenCalledWith(501);
+  });
+
+  it("오류 응답 시 타이머 ID가 없으면 clearTimeout 없이 실패한다", () => {
+    vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
+
+    act(() => result.current.startCheckout());
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+
+    expect(handleError).toBeDefined();
+    act(() => {
+      handleError!({
+        requestId,
+        success: false,
+        error: { code: "CONFLICT", message: "점유가 만료되었습니다." },
+      });
+    });
+
+    expect(clearTimeoutSpy).not.toHaveBeenCalled();
+    expect(result.current.errorMessage).toBe("점유가 만료되었습니다.");
+  });
+
+  it("이전 요청의 타임아웃 콜백은 현재 요청을 변경하지 않는다", () => {
+    vi.useFakeTimers();
+
+    vi.spyOn(window, "clearTimeout").mockImplementation(() => undefined);
+
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
+
+    act(() => result.current.startCheckout());
+
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+
+    act(() => {
+      handleMessage?.({
+        requestId,
+        success: true,
+        data: {
+          reservationId: 501,
+          orderId: "order-501",
+          orderName: "Tikkle Live",
+          amount: 150_000,
+          paymentExpiresAt: "2026-09-15T13:00:00",
+        },
+      });
+    });
+
+    act(() => vi.advanceTimersByTime(8_000));
+
+    expect(result.current.isStarting).toBe(false);
+    expect(result.current.errorMessage).toBeNull();
+  });
+
   it("다른 요청 응답은 무시한다", () => {
     const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
 

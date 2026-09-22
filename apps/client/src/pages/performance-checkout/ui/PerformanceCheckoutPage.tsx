@@ -57,14 +57,12 @@ const PerformanceCheckoutPage = () => {
   });
 
   const handleConfirm = () => startCheckout();
-  const handleBack = () => {
-    if (!state) return;
-    endReview(state.review.reviewToken);
-  };
 
   if (!state || !performance || !venue || selectedSeats.length !== selectedSeatIds.length) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="공연 상세에서 좌석을 다시 선택해 주세요." />;
   }
+
+  const handleBack = () => endReview(state.review.reviewToken);
 
   const remainingSeconds = getRemainingSeconds(state.review.expiresAt, now);
   const totalAmount = selectedSeats.reduce((total, seat) => total + seat.price, 0);

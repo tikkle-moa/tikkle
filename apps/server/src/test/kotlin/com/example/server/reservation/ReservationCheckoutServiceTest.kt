@@ -13,6 +13,7 @@ import com.example.server.performance.dto.HoldVenueSeatEntry
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.reservation.dto.BeginCheckoutReviewMessageData
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
@@ -570,9 +571,83 @@ class ReservationCheckoutServiceTest {
   }
 
   @Test
+  fun `Hold 조회 후 기존 예매가 발견되면 기존 결제 대기를 반환한다`() {
+    val existing = reservation()
+
+    given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
+    given(reservationRepository.findByGroupIdForUpdate(GROUP_ID))
+      .willReturn(null, existing)
+
+    val result = service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+
+    assertThat(result.reservationId).isEqualTo(existing.id)
+    then(redisVenueSeatHoldService).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `기존 결제 대기 예매가 만료되었으면 CONFLICT를 반환한다`() {
+    given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(
+      reservationRepository.findByGroupIdForUpdate(GROUP_ID),
+    ).willReturn(
+      reservation(
+        status = ReservationStatus.PAYMENT_PENDING,
+        paymentExpiresAt = LocalDateTime.now().minusSeconds(1),
+      ),
+    )
+
+    val exception = assertThrows<CustomException> {
+      service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    assertThat(exception).hasMessage("이미 종료된 예매입니다.")
+  }
+
+  @Test
   fun `기존 예매가 다른 그룹이면 FORBIDDEN을 반환한다`() {
     given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
     given(reservationRepository.findByGroupIdForUpdate(GROUP_ID)).willReturn(reservation(groupId = "other:10"))
+
+    val exception = assertThrows<CustomException> {
+      service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+  }
+
+  @Test
+  fun `기존 예매의 예매자가 다르면 FORBIDDEN을 반환한다`() {
+    given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(
+      reservationRepository.findByGroupIdForUpdate(GROUP_ID),
+    ).willReturn(
+      reservation(booker = user(OTHER_USER_ID)),
+    )
+
+    val exception = assertThrows<CustomException> {
+      service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+  }
+
+  @Test
+  fun `기존 예매의 공연 회차가 다르면 FORBIDDEN을 반환한다`() {
+    val anotherPerformance = Performance(
+      id = OTHER_PERFORMANCE_ID,
+      concert = concert(),
+      name = "다른 회차",
+      startsAt = LocalDateTime.of(2027, 1, 21, 19, 0),
+    )
+
+    given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(
+      reservationRepository.findByGroupIdForUpdate(GROUP_ID),
+    ).willReturn(
+      reservation(performance = anotherPerformance),
+    )
 
     val exception = assertThrows<CustomException> {
       service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
@@ -601,6 +676,48 @@ class ReservationCheckoutServiceTest {
       .willThrow(CustomException(ErrorCode.CONFLICT, "changed"))
 
     assertThrows<CustomException> { service.cancelCheckout(USER_ID, RESERVATION_ID) }
+  }
+
+  @Test
+  fun `예매 정보 확인 시작은 그룹 ID와 review token을 Redis에 전달한다`() {
+    val snapshot = BeginCheckoutReviewMessageData(
+      groupId = GROUP_ID,
+      performanceId = PERFORMANCE_ID,
+      venueSeatIds = listOf(101L, 102L),
+      expiresAt = LocalDateTime.now().plusMinutes(4),
+      reviewToken = REVIEW_TOKEN,
+    )
+
+    given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(reservationRepository.existsByGroupId(GROUP_ID)).willReturn(false)
+    given(redisVenueSeatHoldService.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(snapshot)
+
+    val result = service.beginCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+
+    assertThat(result).isEqualTo(snapshot)
+    then(redisVenueSeatHoldService).should().beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+  }
+
+  @Test
+  fun `이미 예매가 존재하면 예매 정보 확인 시작을 거부한다`() {
+    given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(reservationRepository.existsByGroupId(GROUP_ID)).willReturn(true)
+
+    val exception = assertThrows<CustomException> {
+      service.beginCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(redisVenueSeatHoldService).shouldHaveNoMoreInteractions()
+  }
+
+  @Test
+  fun `예매 정보 확인 종료는 그룹 ID와 review token을 Redis에 전달한다`() {
+    given(redisVenueSeatHoldService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+
+    service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+
+    then(redisVenueSeatHoldService).should().endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
   }
 
   private fun activeHoldData(

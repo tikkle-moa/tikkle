@@ -37,6 +37,7 @@ import org.springframework.data.redis.core.ZSetOperations
 import tools.jackson.databind.ObjectMapper
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.Optional
 import java.util.UUID
 
@@ -67,6 +68,7 @@ class RedisVenueSeatHoldServiceTest {
 
   @BeforeEach
   fun setUp() {
+    executeResult = 0L
     stringRedisTemplate = mock(
       StringRedisTemplate::class.java,
       org.mockito.stubbing.Answer { invocation ->
@@ -591,6 +593,93 @@ class RedisVenueSeatHoldServiceTest {
 
     assertThat(result.performanceId).isEqualTo(PERFORMANCE_ID)
     assertThat(result.holdVenueSeatEntries.map { it.venueSeatId }).containsExactly(101L, 102L)
+  }
+
+  @Test
+  fun `예매 정보 확인 시작은 Redis snapshot을 반환한다`() {
+    val expiresAt = LocalDateTime.now().plusMinutes(4)
+    val expiresAtEpochMillis = expiresAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    executeResult = """
+    {
+      "phase": "REVIEW",
+      "groupId": "$GROUP_ID",
+      "performanceId": $PERFORMANCE_ID,
+      "holdIds": ["$HOLD_ID"],
+      "venueSeatIds": [101],
+      "expiresAtEpochMillis": $expiresAtEpochMillis,
+      "reviewToken": "$REVIEW_TOKEN"
+    }
+    """.trimIndent()
+
+    val result = service.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+
+    assertThat(result.groupId).isEqualTo(GROUP_ID)
+    assertThat(result.performanceId).isEqualTo(PERFORMANCE_ID)
+    assertThat(result.venueSeatIds).containsExactly(101L)
+    assertThat(result.reviewToken).isEqualTo(REVIEW_TOKEN)
+  }
+
+  @Test
+  fun `예매 정보 확인 시작 결과가 없으면 예외를 던진다`() {
+    executeResult = null
+
+    assertThat(
+      assertThrows<IllegalStateException> {
+        service.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+      },
+    ).hasMessage("예매 정보 확인 결과를 확인하지 못했습니다.")
+  }
+
+  @Test
+  fun `예매 정보 확인 시작 대상 Hold가 없으면 충돌을 반환한다`() {
+    executeResult = "NOT_FOUND"
+
+    assertThat(
+      assertThrows<CustomException> {
+        service.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+      }.errorCode,
+    ).isEqualTo(ErrorCode.CONFLICT)
+  }
+
+  @Test
+  fun `예매 정보 확인 중복 또는 결제 진행 중이면 충돌을 반환한다`() {
+    executeResult = "CONFLICT"
+
+    assertThat(
+      assertThrows<CustomException> {
+        service.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+      }.errorCode,
+    ).isEqualTo(ErrorCode.CONFLICT)
+  }
+
+  @Test
+  fun `예매 정보 확인 종료 성공을 처리한다`() {
+    executeResult = 0L
+
+    service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+  }
+
+  @Test
+  fun `예매 정보 확인 종료 충돌을 반환한다`() {
+    executeResult = 1L
+
+    assertThat(
+      assertThrows<CustomException> {
+        service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+      }.errorCode,
+    ).isEqualTo(ErrorCode.CONFLICT)
+  }
+
+  @Test
+  fun `예매 정보 확인 종료 결과가 없으면 충돌을 반환한다`() {
+    executeResult = null
+
+    assertThat(
+      assertThrows<CustomException> {
+        service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+      }.errorCode,
+    ).isEqualTo(ErrorCode.CONFLICT)
   }
 
   private fun givenActiveHoldData(detail: VenueSeatHoldDetail) {

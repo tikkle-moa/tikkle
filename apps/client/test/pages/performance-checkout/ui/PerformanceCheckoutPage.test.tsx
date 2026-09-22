@@ -229,6 +229,23 @@ describe("PerformanceCheckoutPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("결제 대기 중에는 좌석을 변경할 수 없습니다.");
   });
 
+  it("좌석 다시 선택 시 END_CHECKOUT_REVIEW를 요청한다", async () => {
+    const user = userEvent.setup();
+    const endReview = vi.fn();
+
+    mockUseCheckoutReview.mockReturnValue({
+      errorMessage: null,
+      isEnding: false,
+      endReview,
+    });
+
+    render(<PerformanceCheckoutPage />);
+
+    await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
+
+    expect(endReview).toHaveBeenCalledWith(validState.review.reviewToken);
+  });
+
   it("타이머 콜백이 실행되면 점유 남은 시간을 갱신한다", () => {
     const now = vi.spyOn(Date, "now").mockReturnValueOnce(0).mockReturnValue(1_000);
     let tick: (() => void) | undefined;
