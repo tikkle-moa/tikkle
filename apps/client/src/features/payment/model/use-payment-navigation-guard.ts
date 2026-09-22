@@ -13,7 +13,7 @@ export const usePaymentNavigationGuard = ({ enabled, allowedPathnames = [] }: Us
   return {
     isBlocked: blocker.state === "blocked",
     message: PAYMENT_NAVIGATION_WARNING_MESSAGE,
-    proceed: blocker.proceed,
-    reset: blocker.reset,
+    proceed: blocker.proceed ?? (() => undefined),
+    reset: blocker.reset ?? (() => undefined),
   };
 };

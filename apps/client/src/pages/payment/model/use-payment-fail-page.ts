@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 
 import { usePaymentResult } from "@features/payment";
-import type { PaymentResultCommand } from "@features/payment";
+import type { PaymentResultRequest } from "@features/payment";
 
 export const usePaymentFailPage = () => {
   const [searchParams] = useSearchParams();
@@ -16,7 +16,7 @@ export const usePaymentFailPage = () => {
     return {
       action: "CANCEL_PAYMENT",
       data: { reservationId },
-    } satisfies PaymentResultCommand;
+    } satisfies PaymentResultRequest;
   }, [searchParams]);
 
   return { isRequestValid: request !== null, ...usePaymentResult({ request }) };

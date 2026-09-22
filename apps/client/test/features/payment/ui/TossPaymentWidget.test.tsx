@@ -17,7 +17,6 @@ const order = {
   amount: 300_000,
   paymentExpiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   concertTitle: "2026 Summer Festival",
-  posterUrl: null,
   performanceName: "2026 Summer Festival 1회차",
   performanceStartsAt: "2026-08-20T19:00:00",
   posterUrl: null,
