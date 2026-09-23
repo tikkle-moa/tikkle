@@ -5,13 +5,25 @@ import userEvent from "@testing-library/user-event";
 
 import PerformanceSeatHoldPanel from "@pages/performance-detail/ui/PerformanceSeatHoldPanel";
 
-const { mockUsePerformanceSeatHoldPanel } = vi.hoisted(() => ({
+const { mockUsePerformanceSeatHoldPanel, mockUseCheckoutReview } = vi.hoisted(() => ({
   mockUsePerformanceSeatHoldPanel: vi.fn(),
+  mockUseCheckoutReview: vi.fn(),
 }));
 
 vi.mock("@pages/performance-detail/model/use-performance-seat-hold-panel", () => ({
   usePerformanceSeatHoldPanel: mockUsePerformanceSeatHoldPanel,
 }));
+vi.mock("@features/performance-booking/model/use-checkout-review", () => ({
+  useCheckoutReview: mockUseCheckoutReview,
+}));
+
+const review = {
+  reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8",
+  groupId: "group-1",
+  performanceId: 1,
+  venueSeatIds: [1],
+  expiresAt: "2026-09-16T20:00:00.000Z",
+};
 
 const seat = { id: 1, seatLabel: "A구역 1번", price: 15000 } as never;
 const connectionStyle = {
@@ -36,19 +48,22 @@ const createPanelState = () => ({
   connectionStyle,
 });
 
-const renderPanel = () =>
+const renderPanel = ({ onCheckout = vi.fn(), onHoldSeatToggle = vi.fn(), selectedSeatIds = new Set<number>() } = {}) =>
   render(
     <MemoryRouter>
       <PerformanceSeatHoldPanel
         performanceId={1}
+        sessionId="session-1"
         venueSeats={[seat]}
         venueSeatStates={new Map()}
-        selectedSeatIds={new Set()}
+        selectedSeatIds={selectedSeatIds}
         seatOperationState={{ status: "idle" }}
         setVenueSeatStates={vi.fn()}
         setSelectedSeatIds={vi.fn()}
+        onHoldSeatToggle={onHoldSeatToggle}
         setServerTimeOffset={vi.fn()}
         setSeatOperationState={vi.fn()}
+        onCheckout={onCheckout}
       />
     </MemoryRouter>,
   );
@@ -56,6 +71,11 @@ const renderPanel = () =>
 describe("PerformanceSeatHoldPanel", () => {
   beforeEach(() => {
     mockUsePerformanceSeatHoldPanel.mockReturnValue(createPanelState());
+    mockUseCheckoutReview.mockImplementation(({ onBeginSuccess }: { onBeginSuccess?: (value: typeof review) => void }) => ({
+      isBeginning: false,
+      errorMessage: null,
+      beginReview: () => onBeginSuccess?.(review),
+    }));
   });
 
   it("연결 상태와 점유 안내를 표시한다", () => {
@@ -63,7 +83,10 @@ describe("PerformanceSeatHoldPanel", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("실시간 연결됨");
     expect(screen.getByRole("region", { name: "좌석 점유 안내" })).toBeInTheDocument();
-    expect(mockUsePerformanceSeatHoldPanel).toHaveBeenCalledWith(expect.objectContaining({ performanceId: 1, venueSeats: [seat] }));
+    expect(mockUsePerformanceSeatHoldPanel).toHaveBeenCalledWith(
+      expect.objectContaining({ performanceId: 1, sessionId: "session-1", venueSeats: [seat] }),
+    );
+    expect(mockUseCheckoutReview).toHaveBeenCalledWith(expect.objectContaining({ performanceId: 1, sessionId: "session-1" }));
   });
 
   it("선택한 내 점유 좌석을 해제한다", async () => {
@@ -80,26 +103,101 @@ describe("PerformanceSeatHoldPanel", () => {
     expect(handleReleaseSeats).toHaveBeenCalledOnce();
   });
 
-  it("내 점유 좌석과 결제 링크를 표시한다", () => {
+  it("내 점유 좌석과 예매 정보 확인 CTA를 표시한다", () => {
+    const onCheckout = vi.fn();
+    const expiresAt = new Date("2026-09-16T20:00:00");
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { holdId: "hold-1", expiresAt: new Date() }]]),
-      myGroupHolds: [{ holdId: "hold-1", expiresAt: new Date("2026-09-16T20:00:00"), venueSeatIds: [1] }],
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
       myGroupHeldSeatTotalPrice: 15000,
     });
-    renderPanel();
+    renderPanel({ onCheckout });
 
     expect(screen.getByRole("region", { name: "내 점유 좌석" })).toHaveTextContent("A구역 1번");
-    expect(screen.getByRole("link", { name: /결제하러 가기/ })).toHaveAttribute("href", "/payments/fixture/checkout");
+    expect(screen.getByRole("button", { name: /예매 정보 확인하기/ })).toBeInTheDocument();
+
+    return userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /예매 정보 확인하기/ }))
+      .then(() => {
+        expect(onCheckout).toHaveBeenCalledWith(review);
+      });
+  });
+
+  it("checkout 콜백이 없어도 예매 정보 확인 CTA를 안전하게 무시한다", async () => {
+    const user = userEvent.setup();
+    const expiresAt = new Date("2026-09-16T20:00:00");
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({
+      ...createPanelState(),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+    });
+    renderPanel({ onCheckout: null as never });
+
+    await user.click(screen.getByRole("button", { name: /예매 정보 확인하기/ }));
+
+    expect(screen.getByRole("button", { name: /예매 정보 확인하기/ })).toBeInTheDocument();
+  });
+
+  it("예매 정보 스냅샷 요청 중에는 CTA를 잠그고 오류를 표시한다", () => {
+    mockUseCheckoutReview.mockReturnValue({
+      isBeginning: true,
+      errorMessage: "다른 화면에서 예매 정보를 확인하고 있습니다.",
+      beginReview: vi.fn(),
+    });
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({
+      ...createPanelState(),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date(), venueSeatIds: [1] }],
+    });
+
+    renderPanel();
+
+    expect(screen.getByRole("button", { name: /예매 정보 불러오는 중/ })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("다른 화면에서 예매 정보를 확인하고 있습니다.");
+  });
+
+  it("지도에서 선택한 내 점유 좌석 행을 표시한다", () => {
+    const expiresAt = new Date("2026-09-16T20:00:00");
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({
+      ...createPanelState(),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+    });
+
+    renderPanel({ selectedSeatIds: new Set([1]) });
+
+    const selectedHold = screen.getByText("A구역 1번").closest("[data-selected]");
+    expect(selectedHold).toHaveAttribute("data-selected", "true");
+    expect(screen.getByText("1석 선택됨")).toBeInTheDocument();
+  });
+
+  it("내 점유 좌석 행을 선택하면 지도 좌석 토글을 요청한다", async () => {
+    const user = userEvent.setup();
+    const expiresAt = new Date("2026-09-16T20:00:00");
+    const onHoldSeatToggle = vi.fn();
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({
+      ...createPanelState(),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+    });
+
+    renderPanel({ onHoldSeatToggle });
+
+    await user.click(screen.getByRole("button", { name: "A구역 1번 선택" }));
+    expect(onHoldSeatToggle).toHaveBeenCalledWith([1]);
   });
 
   it("내 점유 내역이 많으면 목록을 펼치고 접는다", async () => {
     const user = userEvent.setup();
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { holdId: "hold-1", expiresAt: new Date() }]]),
+      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
       myGroupHolds: Array.from({ length: 6 }, (_, index) => ({
+        groupId: "group-1",
         holdId: `hold-${index + 1}`,
+        performanceId: 1,
         expiresAt: new Date("2026-09-16T20:00:00"),
         venueSeatIds: [index === 5 ? 999 : 1],
       })),
@@ -141,6 +239,7 @@ describe("PerformanceSeatHoldPanel", () => {
           seatOperationState={{ status: "idle" }}
           setVenueSeatStates={vi.fn()}
           setSelectedSeatIds={vi.fn()}
+          onHoldSeatToggle={vi.fn()}
           setServerTimeOffset={vi.fn()}
           setSeatOperationState={vi.fn()}
         />

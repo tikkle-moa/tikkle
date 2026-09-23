@@ -8,7 +8,7 @@ import { toPositiveAmount } from "./payment.utils";
 
 export const usePaymentSuccessPage = () => {
   const [searchParams] = useSearchParams();
-  const request = useMemo<PaymentResultRequest | null>(() => {
+  const request = useMemo(() => {
     const paymentKey = searchParams.get("paymentKey");
     const orderId = searchParams.get("orderId");
     const amount = toPositiveAmount(searchParams.get("amount"));
@@ -20,7 +20,7 @@ export const usePaymentSuccessPage = () => {
     return {
       action: "CONFIRM_PAYMENT",
       data: { paymentKey, orderId, amount },
-    };
+    } satisfies PaymentResultRequest;
   }, [searchParams]);
 
   return { isRequestValid: request !== null, ...usePaymentResult({ request }) };

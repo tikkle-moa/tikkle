@@ -3,16 +3,13 @@ import { ArrowLeft, Clock3 } from "lucide-react";
 import { formatTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentOrderSummary, TossPaymentWidget } from "@features/payment";
+import { PaymentNavigationDialog, PaymentOrderSummary, TossPaymentWidget, usePaymentNavigationGuard } from "@features/payment";
 
 import { usePaymentPage } from "../model/use-payment-page";
 
-interface PaymentPageProps {
-  fixture?: boolean;
-}
-
-const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
-  const { handleBack, order, errorMessage, isLoading, isReservationIdValid, user } = usePaymentPage({ fixture });
+const PaymentPage = () => {
+  const { handleBack, order, errorMessage, isLoading, isReservationIdValid, user } = usePaymentPage();
+  const navigationGuard = usePaymentNavigationGuard({ enabled: isReservationIdValid && !isLoading && !errorMessage && Boolean(order && user) });
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;
@@ -27,30 +24,35 @@ const PaymentPage = ({ fixture = false }: PaymentPageProps) => {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl pb-6">
-      <button
-        type="button"
-        onClick={handleBack}
-        className="hover:text-brand-primary inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 transition-colors"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        이전 화면으로
-      </button>
+    <>
+      <div className="mx-auto w-full max-w-5xl pb-6">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="hover:text-brand-primary inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 transition-colors"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          이전 화면으로
+        </button>
 
-      <header className="mt-5">
-        <p className="text-brand-primary text-sm font-semibold">결제</p>
-        <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-950">주문서를 확인해 주세요</h1>
-        <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
-          <Clock3 className="size-4" aria-hidden />
-          결제 가능 시간: {formatTime(order.paymentExpiresAt, { timeStyle: "short" })}까지
-        </p>
-      </header>
+        <header className="mt-5">
+          <p className="text-brand-primary text-sm font-semibold">결제</p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-950">주문서를 확인해 주세요</h1>
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
+            <Clock3 className="size-4" aria-hidden />
+            결제 가능 시간: {formatTime(order.paymentExpiresAt, { timeStyle: "short" })}까지
+          </p>
+        </header>
 
-      <div className="mt-7 space-y-6">
-        <PaymentOrderSummary order={order} />
-        <TossPaymentWidget key={order.orderId} order={order} user={user} />
+        <div className="mt-7 space-y-6">
+          <PaymentOrderSummary order={order} />
+          <TossPaymentWidget key={order.orderId} order={order} user={user} />
+        </div>
       </div>
-    </div>
+      {navigationGuard.isBlocked && (
+        <PaymentNavigationDialog message={navigationGuard.message} onProceed={navigationGuard.proceed} onStay={navigationGuard.reset} />
+      )}
+    </>
   );
 };
 

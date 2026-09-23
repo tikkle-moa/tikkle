@@ -9,7 +9,8 @@ import { ConcertNewPage } from "@pages/concert-new";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
-import { PaymentFailPage, PaymentFixtureCheckoutPage, PaymentPage, PaymentSuccessPage } from "@pages/payment";
+import { PaymentCheckoutPage, PaymentFailPage, PaymentPage, PaymentSuccessPage } from "@pages/payment";
+import { PerformanceCheckoutPage } from "@pages/performance-checkout";
 import { PerformanceDetailPage } from "@pages/performance-detail";
 import { PerformanceNewPage } from "@pages/performance-new";
 import { SearchPage } from "@pages/search";
@@ -82,8 +83,8 @@ export const router = createBrowserRouter([
           {
             element: <AuthGuard />,
             children: [
-              { path: ROUTE_PATHS.PAYMENT_FIXTURE_CHECKOUT, element: <PaymentFixtureCheckoutPage /> },
-              { path: ROUTE_PATHS.PAYMENT_FIXTURE, element: <PaymentPage fixture /> },
+              { path: ROUTE_PATHS.PERFORMANCE_CHECKOUT, element: <PerformanceCheckoutPage /> },
+              { path: ROUTE_PATHS.PAYMENT_CHECKOUT, element: <PaymentCheckoutPage /> },
               { path: ROUTE_PATHS.PAYMENT, element: <PaymentPage /> },
               { path: ROUTE_PATHS.PAYMENT_SUCCESS, element: <PaymentSuccessPage /> },
               { path: ROUTE_PATHS.PAYMENT_FAIL, element: <PaymentFailPage /> },

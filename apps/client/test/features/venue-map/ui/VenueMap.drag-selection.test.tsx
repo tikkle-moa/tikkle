@@ -41,7 +41,7 @@ const prepareMap = () => {
 };
 
 describe("VenueMap drag selection", () => {
-  it("전체 선택 해제는 빈 좌석 ID 집합만 전달한다", () => {
+  it("전체 선택 취소는 빈 좌석 ID 집합만 전달한다", () => {
     const onSeatSelectionChange = vi.fn();
     const onSeatToggle = vi.fn();
     render(
@@ -55,11 +55,44 @@ describe("VenueMap drag selection", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "전체 선택 해제" }));
+    fireEvent.click(screen.getByRole("button", { name: "전체 선택 취소" }));
 
     expect(onSeatSelectionChange).toHaveBeenCalledTimes(1);
     expect(onSeatSelectionChange).toHaveBeenCalledWith(new Set());
     expect(onSeatToggle).not.toHaveBeenCalled();
+  });
+
+  it("제어된 선택 상태가 비워지면 좌석 테두리 스타일을 원복한다", () => {
+    const onSeatToggle = vi.fn();
+    const { rerender } = render(
+      <VenueMap
+        venue={venue}
+        venueSeats={seats}
+        venueSeatStates={venueSeatStates}
+        selectedSeatIds={new Set([1])}
+        onSeatToggle={onSeatToggle}
+        onSeatSelectionChange={vi.fn()}
+      />,
+    );
+
+    const selectedSeat = screen.getByRole("button", { name: /A-1/ });
+    const visual = selectedSeat.querySelector("[data-seat-visual]");
+    expect(visual).toHaveAttribute("stroke", "#312e81");
+    expect(visual).toHaveAttribute("stroke-width", "1.1");
+
+    rerender(
+      <VenueMap
+        venue={venue}
+        venueSeats={seats}
+        venueSeatStates={venueSeatStates}
+        selectedSeatIds={new Set()}
+        onSeatToggle={onSeatToggle}
+        onSeatSelectionChange={vi.fn()}
+      />,
+    );
+
+    expect(visual).toHaveAttribute("stroke", "#86efac");
+    expect(visual).toHaveAttribute("stroke-width", "0.3");
   });
 
   it("좌석을 이동 없이 누르고 떼면 단일 클릭으로 처리한다", () => {

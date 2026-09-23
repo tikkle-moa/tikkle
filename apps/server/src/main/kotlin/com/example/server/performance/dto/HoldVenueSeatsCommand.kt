@@ -12,4 +12,5 @@ data class HoldVenueSeatsCommand(
     @Positive(message = "좌석 ID는 양수여야 합니다.")
     Long,
     >,
+  val sessionId: UUID? = null,
 ) : StompCommand<List<Long>>

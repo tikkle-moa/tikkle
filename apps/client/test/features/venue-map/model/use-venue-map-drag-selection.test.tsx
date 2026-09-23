@@ -2,7 +2,7 @@ import { createRef } from "react";
 
 import { act, renderHook } from "@testing-library/react";
 
-import type { VenueSeatResponse } from "@entities/venue";
+import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
 import { useVenueMapDragSelection } from "@features/venue-map/model/use-venue-map-drag-selection";
 
@@ -141,5 +141,66 @@ describe("useVenueMapDragSelection", () => {
       expect(result.current.handlePointerCancel(createPointerEvent(svg))).toBe(true);
     });
     expect(result.current.handlePointerUp(createPointerEvent(svg))).toBe(false);
+  });
+
+  it("선택 미리보기와 해제 미리보기를 좌석 SVG 테두리에 반영한다", () => {
+    const svgRef = createRef<SVGSVGElement>();
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const seatElement = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const visual = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    seatElement.dataset.seatId = "1";
+    visual.dataset.seatVisual = "true";
+    seatElement.append(visual);
+    svg.append(seatElement);
+    svgRef.current = svg;
+    Object.defineProperties(svg, {
+      setPointerCapture: { configurable: true, value: vi.fn() },
+      getScreenCTM: { configurable: true, value: () => ({ inverse: () => ({}) }) },
+      createSVGPoint: {
+        configurable: true,
+        value: () => ({
+          x: 0,
+          y: 0,
+          matrixTransform: () => ({ x: 20, y: 20 }),
+        }),
+      },
+    });
+    const venueSeatStates = new Map<number, VenueSeatState>([[1, { status: "available" }]]);
+    const { result } = renderHook(() =>
+      useVenueMapDragSelection({
+        svgRef,
+        venueSeats: [seats[0]],
+        venueSeatStates,
+        enabled: true,
+        onSeatSelectionChange: vi.fn(),
+      }),
+    );
+
+    act(() => {
+      result.current.handlePointerDown(createPointerEvent(svg));
+      result.current.handlePointerMove(createPointerEvent(svg));
+    });
+    expect(visual).toHaveAttribute("stroke", "#312e81");
+    expect(visual).toHaveAttribute("stroke-width", "1.1");
+
+    act(() => result.current.handlePointerCancel(createPointerEvent(svg)));
+    expect(visual).toHaveAttribute("stroke", "#86efac");
+    expect(visual).toHaveAttribute("stroke-width", "0.3");
+
+    const { result: noStateResult } = renderHook(() =>
+      useVenueMapDragSelection({
+        svgRef,
+        venueSeats: [seats[0]],
+        enabled: true,
+      }),
+    );
+    act(() => {
+      noStateResult.current.handlePointerDown(createPointerEvent(svg, { pointerId: 2 }));
+      noStateResult.current.handlePointerMove(createPointerEvent(svg, { pointerId: 2 }));
+      noStateResult.current.handlePointerCancel(createPointerEvent(svg, { pointerId: 2 }));
+    });
+
+    expect(visual).toHaveAttribute("stroke", "transparent");
+    expect(visual).toHaveAttribute("stroke-width", "0");
   });
 });
