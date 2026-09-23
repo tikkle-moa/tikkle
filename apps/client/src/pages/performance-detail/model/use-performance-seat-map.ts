@@ -2,10 +2,31 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { type VenueSeatState, areSeatIdsEqual } from "@entities/venue";
 
+import { getPerformanceSeatSessionStorageKey } from "@features/performance-booking";
+
 import type { SeatOperationState } from "./seat-map.types";
 import { filterSelectableSeatIds } from "./seat-map.utils";
 
-export const usePerformanceSeatMap = () => {
+interface UsePerformanceSeatMapProps {
+  performanceId?: number;
+  sessionId?: string | null;
+}
+
+export const usePerformanceSeatMap = ({ performanceId = 0, sessionId: initialSessionId }: UsePerformanceSeatMapProps = {}) => {
+  const [sessionId] = useState(() => {
+    const storageKey = getPerformanceSeatSessionStorageKey(performanceId);
+    if (initialSessionId) {
+      window.sessionStorage.setItem(storageKey, initialSessionId);
+      return initialSessionId;
+    }
+
+    const storedSessionId = window.sessionStorage.getItem(storageKey);
+    if (storedSessionId) return storedSessionId;
+
+    const createdSessionId = crypto.randomUUID();
+    window.sessionStorage.setItem(storageKey, createdSessionId);
+    return createdSessionId;
+  });
   const [selectedSeatIds, setSelectedSeatIds] = useState<Set<number>>(new Set());
   const [serverTimeOffset, setServerTimeOffset] = useState(0);
 
@@ -37,6 +58,24 @@ export const usePerformanceSeatMap = () => {
     setSeatOperationState((current) => (current.status === "idle" ? current : { status: "idle" }));
   }, []);
 
+  const toggleHeldSeats = useCallback((seatIds: readonly number[]) => {
+    if (seatOperationStatusRef.current === "loading") return;
+
+    const heldSeatIds = [...new Set(seatIds)].filter((seatId) => venueSeatStatesRef.current.get(seatId)?.status === "held_by_my_group");
+    if (heldSeatIds.length === 0) return;
+
+    setSelectedSeatIds((current) => {
+      const shouldSelect = heldSeatIds.some((seatId) => !current.has(seatId));
+      const updated = new Set(current);
+      heldSeatIds.forEach((seatId) => {
+        if (shouldSelect) updated.add(seatId);
+        else updated.delete(seatId);
+      });
+      return updated;
+    });
+    setSeatOperationState((current) => (current.status === "idle" ? current : { status: "idle" }));
+  }, []);
+
   const selectSeats = useCallback((seatIds: ReadonlySet<number>) => {
     if (seatOperationStatusRef.current === "loading") return;
     const selectableSeatIds = new Set(filterSelectableSeatIds(seatIds, venueSeatStatesRef.current));
@@ -46,6 +85,7 @@ export const usePerformanceSeatMap = () => {
   }, []);
 
   return {
+    sessionId,
     selectedSeatIds,
     setSelectedSeatIds,
     seatOperationState,
@@ -55,6 +95,7 @@ export const usePerformanceSeatMap = () => {
     venueSeatStates,
     setVenueSeatStates,
     toggleSeat,
+    toggleHeldSeats,
     selectSeats,
   };
 };

@@ -1,5 +1,5 @@
 -- 신규 좌석의 점유 충돌 여부를 먼저 확인하여 일부 좌석만 점유되는 상황을 방지합니다.
--- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdGroupKey
+-- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdGroupKey -> holdGroupControlKey
 -- ARGV[1]: holdId
 -- ARGV[2]: hold 만료 시각 (epoch millis)
 -- ARGV[3]: SeatHoldDetail 객체의 JSON 문자열
@@ -11,8 +11,12 @@ local holdDetailJson = ARGV[3]
 local expiresAt = tonumber(ARGV[2])
 local venueSeatKeyCount = tonumber(ARGV[4])
 
-local holdDetailKeyIndex = #KEYS - 1
-local holdGroupKey = KEYS[#KEYS]
+local holdDetailKeyIndex = #KEYS - 2
+local holdGroupKey = KEYS[#KEYS - 1]
+
+if redis.call('EXISTS', KEYS[#KEYS]) == 1 then
+  return 1
+end
 
 -- 이미 지난 만료 시각으로 점유가 생성되어 즉시 삭제되는 것을 방지합니다.
 local now = redis.call('TIME')

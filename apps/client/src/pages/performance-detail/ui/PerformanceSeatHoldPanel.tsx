@@ -1,6 +1,10 @@
 import { type Dispatch, type SetStateAction, memo } from "react";
 
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
+
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
+
+import { useCheckoutReview } from "@features/performance-booking";
 
 import PerformanceSeatHoldActions from "./PerformanceSeatHoldActions";
 import PerformanceSeatHoldHeader from "./PerformanceSeatHoldHeader";
@@ -12,26 +16,32 @@ import { usePerformanceSeatHoldPanel } from "../model/use-performance-seat-hold-
 
 interface PerformanceSeatHoldPanelProps {
   performanceId: number;
+  sessionId?: string;
   venueSeats: VenueSeatResponse[];
   venueSeatStates: Map<number, VenueSeatState>;
   selectedSeatIds: Set<number>;
   seatOperationState: SeatOperationState;
   setVenueSeatStates: Dispatch<SetStateAction<Map<number, VenueSeatState>>>;
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
+  onHoldSeatToggle: (seatIds: readonly number[]) => void;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
+  onCheckout?: (review: BeginCheckoutReviewMessageData) => void;
 }
 
 const PerformanceSeatHoldPanel = ({
   performanceId,
+  sessionId,
   venueSeats,
   venueSeatStates,
   selectedSeatIds,
   seatOperationState,
   setVenueSeatStates,
   setSelectedSeatIds,
+  onHoldSeatToggle,
   setServerTimeOffset,
   setSeatOperationState,
+  onCheckout,
 }: PerformanceSeatHoldPanelProps) => {
   const {
     isRefreshing,
@@ -48,6 +58,7 @@ const PerformanceSeatHoldPanel = ({
     connectionStyle,
   } = usePerformanceSeatHoldPanel({
     performanceId,
+    sessionId,
     venueSeats,
     venueSeatStates,
     selectedSeatIds,
@@ -57,6 +68,20 @@ const PerformanceSeatHoldPanel = ({
     setServerTimeOffset,
     setSeatOperationState,
   });
+  const {
+    isBeginning,
+    errorMessage: checkoutReviewErrorMessage,
+    beginReview,
+  } = useCheckoutReview({
+    performanceId,
+    sessionId,
+    onBeginSuccess: onCheckout,
+  });
+
+  const handleCheckout = () => {
+    if (!onCheckout) return;
+    beginReview();
+  };
 
   return (
     <aside
@@ -77,15 +102,24 @@ const PerformanceSeatHoldPanel = ({
           myGroupHeldSeatTotalPrice={myGroupHeldSeatTotalPrice}
           selectedSeatIdsToReleaseSize={selectedSeatIdsToRelease.length}
           isConnected={isConnected}
+          isCheckoutReviewBeginning={isBeginning}
           visibleSeatOperationState={visibleSeatOperationState}
+          handleCheckout={handleCheckout}
           handleReleaseSeats={handleReleaseSeats}
         />
+        {checkoutReviewErrorMessage && (
+          <p role="alert" className="text-xs font-medium text-red-700">
+            {checkoutReviewErrorMessage}
+          </p>
+        )}
 
         {myGroupHeldSeatInfoBySeatId.size > 0 && (
           <PerformanceSeatMyGroupHolds
             venueSeatById={venueSeatById}
             myGroupHolds={myGroupHolds}
             myGroupHeldSeatSize={myGroupHeldSeatInfoBySeatId.size}
+            selectedSeatIds={selectedSeatIds}
+            onSelect={onHoldSeatToggle}
           />
         )}
 

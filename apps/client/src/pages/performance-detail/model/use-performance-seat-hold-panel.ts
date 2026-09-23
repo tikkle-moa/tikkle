@@ -9,6 +9,7 @@ import { usePerformanceSeatSubscriptions } from "./use-performance-seat-subscrip
 
 interface UsePerformanceSeatHoldPanelProps {
   performanceId: number;
+  sessionId?: string;
   venueSeats: VenueSeatResponse[];
   venueSeatStates: Map<number, VenueSeatState>;
   selectedSeatIds: Set<number>;
@@ -21,6 +22,7 @@ interface UsePerformanceSeatHoldPanelProps {
 
 export const usePerformanceSeatHoldPanel = ({
   performanceId,
+  sessionId,
   venueSeats,
   venueSeatStates,
   selectedSeatIds,
@@ -52,6 +54,7 @@ export const usePerformanceSeatHoldPanel = ({
   const { isRefreshing, refreshError, visibleSeatOperationState, handleHoldSeats, handleReleaseSeats, handleRefresh, handleRefreshFinish } =
     usePerformanceSeatActions({
       performanceId,
+      sessionId,
       selectedSeatIdsToHold,
       selectedSeatIdsToRelease,
       seatOperationState,
@@ -60,6 +63,7 @@ export const usePerformanceSeatHoldPanel = ({
 
   const { isConnected, connectionStyle } = usePerformanceSeatSubscriptions({
     performanceId,
+    sessionId,
     handleRefreshFinish,
     setSelectedSeatIds,
     setServerTimeOffset,

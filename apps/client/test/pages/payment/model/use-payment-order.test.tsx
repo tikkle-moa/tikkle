@@ -1,10 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { PaymentOrderMessage, StompFailureMessage } from "@tikkle/api-types";
+import type { PaymentOrderMessage, PaymentOrderMessageData, StompFailureMessage } from "@tikkle/api-types";
 
 import type StompClient from "@shared/realtime/stomp-client";
 import { useStompStore } from "@shared/realtime/stomp.store";
-
-import { createPaymentOrderFixture } from "@features/payment/model/payment.fixtures";
 
 import { usePaymentOrder } from "@pages/payment/model/use-payment-order";
 
@@ -16,10 +14,19 @@ describe("usePaymentOrder", () => {
   let handleError: ((message: StompFailureMessage) => void) | undefined;
 
   const stompClient = { publish, subscribe } as unknown as StompClient;
-  const createPaymentOrderMessageData = (reservationId: number) => {
-    const order = createPaymentOrderFixture(reservationId);
-    return { ...order, posterUrl: order.posterUrl ?? null };
-  };
+  const createPaymentOrderMessageData = (reservationId: number): PaymentOrderMessageData => ({
+    reservationId,
+    orderId: `tikkle-${reservationId}`,
+    orderName: "Tikkle Live 2석",
+    amount: 300_000,
+    paymentExpiresAt: "2026-09-15T13:30:00.000Z",
+    concertTitle: "Tikkle Live",
+    posterUrl: null,
+    performanceName: "Tikkle Live 1회차",
+    performanceStartsAt: "2026-09-01T19:00:00",
+    venueName: "올림픽공원 KSPO DOME",
+    seats: [],
+  });
 
   beforeEach(() => {
     publish.mockReset();
@@ -78,13 +85,17 @@ describe("usePaymentOrder", () => {
     expect(subscribe).not.toHaveBeenCalled();
   });
 
-  it("fixture 모드에서는 STOMP 요청 없이 주문서를 제공한다", () => {
-    const { result } = renderHook(() => usePaymentOrder({ reservationId: 501, fixture: true }));
+  it("결제 화면에 다시 진입하면 서버 주문서를 다시 조회한다", async () => {
+    const first = renderHook(() => usePaymentOrder({ reservationId: 501 }));
 
-    expect(result.current.order?.reservationId).toBe(501);
-    expect(result.current.isFixture).toBe(true);
-    expect(result.current.isLoading).toBe(false);
-    expect(publish).not.toHaveBeenCalled();
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
+    first.unmount();
+
+    const second = renderHook(() => usePaymentOrder({ reservationId: 501 }));
+
+    expect(second.result.current.order).toBeNull();
+    expect(second.result.current.isLoading).toBe(true);
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(2));
   });
 
   it("주문 조회 실패 응답은 서버 오류 메시지를 표시한다", async () => {
@@ -105,17 +116,18 @@ describe("usePaymentOrder", () => {
     expect(result.current.isLoading).toBe(false);
   });
 
-  it("오류 메시지가 없는 실패 응답은 기본 메시지를 표시한다", async () => {
+  it("오류 메시지가 없는 주문 조회 실패는 기본 문구를 표시한다", async () => {
     const { result } = renderHook(() => usePaymentOrder({ reservationId: 501 }));
 
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
     const requestId = publish.mock.calls[0][0].command.requestId as string;
 
     act(() => {
-      handleError?.({ requestId, success: false, error: undefined as never });
+      handleError?.({ requestId, success: false, error: { code: "ERROR" } as never });
     });
 
     expect(result.current.errorMessage).toBe("결제 주문서를 불러오지 못했습니다.");
+    expect(result.current.isLoading).toBe(false);
   });
 
   it("현재 요청과 일치하지 않는 응답은 무시한다", async () => {

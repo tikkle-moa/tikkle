@@ -1,5 +1,7 @@
 import { memo } from "react";
 
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
+
 import type { PerformanceResponse } from "@entities/performance";
 import type { VenueDetailResponse } from "@entities/venue";
 
@@ -12,10 +14,13 @@ import { usePerformanceSeatMap } from "../model/use-performance-seat-map";
 interface PerformanceSeatMapProps {
   performance: PerformanceResponse;
   venueDetail: VenueDetailResponse;
+  seatSelectionSessionId?: string | null;
+  onCheckout?: (review: BeginCheckoutReviewMessageData) => void;
 }
 
-const PerformanceSeatMap = ({ performance, venueDetail }: PerformanceSeatMapProps) => {
+const PerformanceSeatMap = ({ performance, venueDetail, seatSelectionSessionId, onCheckout }: PerformanceSeatMapProps) => {
   const {
+    sessionId,
     selectedSeatIds,
     setSelectedSeatIds,
     seatOperationState,
@@ -25,8 +30,9 @@ const PerformanceSeatMap = ({ performance, venueDetail }: PerformanceSeatMapProp
     venueSeatStates,
     setVenueSeatStates,
     toggleSeat,
+    toggleHeldSeats,
     selectSeats,
-  } = usePerformanceSeatMap();
+  } = usePerformanceSeatMap({ performanceId: performance.id, sessionId: seatSelectionSessionId });
 
   const isAvailable = performance.status === "AVAILABLE";
 
@@ -46,14 +52,17 @@ const PerformanceSeatMap = ({ performance, venueDetail }: PerformanceSeatMapProp
       {isAvailable && (
         <PerformanceSeatHoldPanel
           performanceId={performance.id}
+          sessionId={sessionId}
           venueSeats={venueDetail.venueSeats}
           venueSeatStates={venueSeatStates}
           selectedSeatIds={selectedSeatIds}
           seatOperationState={seatOperationState}
           setVenueSeatStates={setVenueSeatStates}
           setSelectedSeatIds={setSelectedSeatIds}
+          onHoldSeatToggle={toggleHeldSeats}
           setServerTimeOffset={setServerTimeOffset}
           setSeatOperationState={setSeatOperationState}
+          onCheckout={onCheckout}
         />
       )}
     </div>

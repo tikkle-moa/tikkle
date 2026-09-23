@@ -9,6 +9,7 @@ import com.example.server.performance.dto.PerformanceHeldSeatsEvent
 import com.example.server.performance.dto.PerformanceSeatStatusMessageData
 import com.example.server.performance.dto.VenueSeatHoldDetail
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.reservation.dto.BeginCheckoutReviewMessageData
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.ObjectMapper
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -51,8 +53,9 @@ class RedisVenueSeatHoldService(
     )
   }
 
-  fun getMyGroupHolds(userId: Long, performanceId: Long): List<VenueSeatHoldDetail> {
-    val groupId = getGroupId(userId, performanceId)
+  fun getMyGroupHolds(userId: Long, performanceId: Long, sessionId: UUID? = null): List<VenueSeatHoldDetail> {
+    val groupId = getGroupId(userId, performanceId, sessionId)
+    if (reservationRepository.existsByGroupId(groupId)) return emptyList()
 
     val heldSeatsJson = stringRedisTemplate.execute(
       getMyGroupHoldsScript,
@@ -65,11 +68,46 @@ class RedisVenueSeatHoldService(
       .toList()
   }
 
+  fun beginCheckoutReview(groupId: String, performanceId: Long, reviewToken: UUID): BeginCheckoutReviewMessageData {
+    val result = stringRedisTemplate.execute(
+      beginCheckoutReviewScript,
+      listOf(holdGroupKey(groupId), holdGroupControlKey(groupId)),
+      HOLD_DETAIL_KEY_PREFIX,
+      "$HOLD_VENUE_SEAT_KEY_PREFIX$performanceId:",
+      groupId,
+      performanceId.toString(),
+      reviewToken.toString(),
+    ) ?: throw IllegalStateException("예매 정보 확인 결과를 확인하지 못했습니다.")
+
+    when (result) {
+      "NOT_FOUND" -> throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
+      "CONFLICT" -> throw CustomException(ErrorCode.CONFLICT, "다른 예매 정보 확인 또는 결제가 진행 중입니다.")
+    }
+
+    val snapshot = objectMapper.readValue(result, CheckoutReviewSnapshot::class.java)
+    return BeginCheckoutReviewMessageData(
+      groupId = snapshot.groupId,
+      performanceId = snapshot.performanceId,
+      venueSeatIds = snapshot.venueSeatIds,
+      expiresAt = LocalDateTime.ofInstant(Instant.ofEpochMilli(snapshot.expiresAtEpochMillis), ZoneId.systemDefault()),
+      reviewToken = snapshot.reviewToken,
+    )
+  }
+
+  fun endCheckoutReview(groupId: String, reviewToken: UUID): Boolean {
+    val result = stringRedisTemplate.execute(
+      endCheckoutReviewScript,
+      listOf(holdGroupControlKey(groupId)),
+      reviewToken.toString(),
+    )
+    return result == 0L
+  }
+
   @Transactional
-  fun holdSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): VenueSeatHoldDetail {
+  fun holdSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>, sessionId: UUID? = null): VenueSeatHoldDetail {
     validateVenueSeatIds(venueSeatIds)
 
-    val groupId = getGroupId(userId, performanceId)
+    val groupId = getGroupId(userId, performanceId, sessionId)
     ensureHoldModificationAllowed(groupId)
 
     val performance = performanceRepository.findByIdWithConcertAndVenue(performanceId)
@@ -97,6 +135,7 @@ class RedisVenueSeatHoldService(
     val keys = venueSeatKeys + finalizingVenueSeatKeys + listOf(
       holdDetailKey(holdDetail.holdId),
       holdGroupKey(holdDetail.groupId),
+      holdGroupControlKey(holdDetail.groupId),
     )
 
     val held = stringRedisTemplate.execute(
@@ -122,10 +161,10 @@ class RedisVenueSeatHoldService(
   }
 
   @Transactional
-  fun releaseSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>): List<Long> {
+  fun releaseSeats(userId: Long, performanceId: Long, venueSeatIds: List<Long>, sessionId: UUID? = null): List<Long> {
     validateVenueSeatIds(venueSeatIds)
 
-    val groupId = getGroupId(userId, performanceId)
+    val groupId = getGroupId(userId, performanceId, sessionId)
     ensureHoldModificationAllowed(groupId)
 
     val venueSeatKeys = venueSeatIds.map { holdVenueSeatKey(performanceId, it) }
@@ -157,7 +196,7 @@ class RedisVenueSeatHoldService(
     val keys = venueSeatKeys +
       emptyHoldDetails.map { (_, updated) -> holdDetailKey(updated.holdId) } +
       remainingHoldDetails.map { (_, updated) -> holdDetailKey(updated.holdId) } +
-      listOf(holdGroupKey(groupId))
+      listOf(holdGroupKey(groupId), holdGroupControlKey(groupId))
 
     val released = stringRedisTemplate.execute(
       releaseSeatsScript,
@@ -179,12 +218,12 @@ class RedisVenueSeatHoldService(
     return venueSeatIds
   }
 
-  fun transitionForPayment(groupId: String, paymentExpiresAt: LocalDateTime): List<VenueSeatHoldDetail> {
+  fun transitionForPayment(groupId: String, paymentExpiresAt: LocalDateTime, reviewToken: UUID, reservationId: Long): List<VenueSeatHoldDetail> {
     val activeHoldData = findActiveHoldDataByGroupId(groupId)
 
     val keys = activeHoldData.holdVenueSeatEntries.map { it.key } +
       activeHoldData.holdDetailKeys +
-      activeHoldData.holdGroupKey
+      listOf(activeHoldData.holdGroupKey, holdGroupControlKey(groupId))
 
     val transitionedHoldDetails = activeHoldData.holdDetails.map { it.copy(expiresAt = paymentExpiresAt) }
 
@@ -198,6 +237,8 @@ class RedisVenueSeatHoldService(
       *activeHoldData.storedHoldDetailJsons.toTypedArray(),
       *transitionedHoldDetails.map { objectMapper.writeValueAsString(it) }.toTypedArray(),
       *transitionedHoldDetails.map { it.holdId }.toTypedArray(),
+      reviewToken.toString(),
+      reservationId.toString(),
     ) == 0L
 
     if (!transitioned) {
@@ -312,10 +353,19 @@ class RedisVenueSeatHoldService(
     )
   }
 
-  fun getGroupId(userId: Long, performanceId: Long): String {
-    // 추후 사용자 ID를 기반으로 그룹 ID를 가져오는 로직 구현 필요
-    // 현재는 단순히 사용자 ID를 문자열로 변환하여 그룹 ID로 사용
-    return "$userId:$performanceId"
+  fun getGroupId(userId: Long, performanceId: Long, sessionId: UUID? = null): String {
+    val baseGroupId = "$userId:$performanceId"
+    return sessionId?.let { "$baseGroupId:$it" } ?: baseGroupId
+  }
+
+  fun resolveGroupId(userId: Long, performanceId: Long, requestedGroupId: String?): String {
+    val baseGroupId = getGroupId(userId, performanceId)
+    if (requestedGroupId == null) return baseGroupId
+    if (requestedGroupId != baseGroupId && !requestedGroupId.startsWith("$baseGroupId:")) {
+      throw CustomException(ErrorCode.FORBIDDEN, "예매 그룹에 대한 권한이 없습니다.")
+    }
+
+    return requestedGroupId
   }
 
   private fun findHeldSeatsByPerformanceId(performanceId: Long): List<PerformanceSeatStatusMessageData.HeldSeat> {
@@ -365,6 +415,7 @@ class RedisVenueSeatHoldService(
   }
 
   private fun holdGroupKey(groupId: String) = "$HOLD_GROUP_KEY_PREFIX$groupId"
+  private fun holdGroupControlKey(groupId: String) = "$HOLD_GROUP_CONTROL_KEY_PREFIX$groupId"
   private fun holdDetailKey(holdId: String) = "$HOLD_DETAIL_KEY_PREFIX$holdId"
   private fun holdVenueSeatKey(performanceId: Long, venueSeatId: Long) = "$HOLD_VENUE_SEAT_KEY_PREFIX$performanceId:$venueSeatId"
   private fun finalizingVenueSeatKey(performanceId: Long, venueSeatId: Long) = "$FINALIZING_VENUE_SEAT_KEY_PREFIX$performanceId:$venueSeatId"
@@ -376,6 +427,7 @@ class RedisVenueSeatHoldService(
     private val SEAT_HOLD_TTL = Duration.ofMinutes(5)
 
     private const val HOLD_GROUP_KEY_PREFIX = "hold:group:"
+    private const val HOLD_GROUP_CONTROL_KEY_PREFIX = "hold:group-control:"
     private const val HOLD_DETAIL_KEY_PREFIX = "hold:detail:"
     private const val HOLD_VENUE_SEAT_KEY_PREFIX = "hold:venue-seat:"
     private const val FINALIZING_VENUE_SEAT_KEY_PREFIX = "hold:venue-seat-finalizing:"
@@ -384,6 +436,16 @@ class RedisVenueSeatHoldService(
     private val getMyGroupHoldsScript = DefaultRedisScript<String>().apply {
       setLocation(ClassPathResource("redis/get-my-group-holds.lua"))
       resultType = String::class.java
+    }
+
+    private val beginCheckoutReviewScript = DefaultRedisScript<String>().apply {
+      setLocation(ClassPathResource("redis/begin-checkout-review.lua"))
+      resultType = String::class.java
+    }
+
+    private val endCheckoutReviewScript = DefaultRedisScript<Long>().apply {
+      setLocation(ClassPathResource("redis/end-checkout-review.lua"))
+      resultType = Long::class.java
     }
 
     private val holdSeatsScript = DefaultRedisScript<Long>().apply {
@@ -417,3 +479,13 @@ class RedisVenueSeatHoldService(
     }
   }
 }
+
+private data class CheckoutReviewSnapshot(
+  val phase: String,
+  val groupId: String,
+  val performanceId: Long,
+  val holdIds: List<String>,
+  val venueSeatIds: List<Long>,
+  val expiresAtEpochMillis: Long,
+  val reviewToken: UUID,
+)
