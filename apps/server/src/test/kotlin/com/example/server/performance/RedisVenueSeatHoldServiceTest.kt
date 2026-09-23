@@ -137,6 +137,8 @@ class RedisVenueSeatHoldServiceTest {
 
   @Test
   fun `다른 사용자나 공연 회차의 그룹은 결제 단계에서 사용할 수 없다`() {
+    assertThat(service.resolveGroupId(USER_ID, PERFORMANCE_ID, null)).isEqualTo(GROUP_ID)
+    assertThat(service.resolveGroupId(USER_ID, PERFORMANCE_ID, GROUP_ID)).isEqualTo(GROUP_ID)
     assertThat(service.resolveGroupId(USER_ID, PERFORMANCE_ID, "$GROUP_ID:$SESSION_ID")).isEqualTo("$GROUP_ID:$SESSION_ID")
 
     listOf("2:$PERFORMANCE_ID:$SESSION_ID", "$USER_ID:11:$SESSION_ID").forEach { groupId ->
@@ -720,25 +722,17 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
-  fun `예매 정보 확인 종료 충돌을 반환한다`() {
+  fun `다른 토큰의 예매 정보 확인 잠금이면 이전 점유를 복원하지 않는다`() {
     executeResult = 1L
 
-    assertThat(
-      assertThrows<CustomException> {
-        service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
-      }.errorCode,
-    ).isEqualTo(ErrorCode.CONFLICT)
+    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isFalse()
   }
 
   @Test
-  fun `예매 정보 확인 종료 결과가 없으면 충돌을 반환한다`() {
+  fun `예매 정보 확인 종료 결과가 없으면 이전 점유를 복원하지 않는다`() {
     executeResult = null
 
-    assertThat(
-      assertThrows<CustomException> {
-        service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
-      }.errorCode,
-    ).isEqualTo(ErrorCode.CONFLICT)
+    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isFalse()
   }
 
   private fun givenActiveHoldData(detail: VenueSeatHoldDetail) {

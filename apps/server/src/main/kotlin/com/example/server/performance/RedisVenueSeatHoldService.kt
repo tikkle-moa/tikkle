@@ -100,11 +100,7 @@ class RedisVenueSeatHoldService(
       listOf(holdGroupControlKey(groupId)),
       reviewToken.toString(),
     )
-    return when (result) {
-      0L -> true
-      2L -> false
-      else -> throw CustomException(ErrorCode.CONFLICT, "예매 정보 확인 잠금을 해제할 수 없습니다.")
-    }
+    return result == 0L
   }
 
   @Transactional

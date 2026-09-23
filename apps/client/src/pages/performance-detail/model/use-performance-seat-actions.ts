@@ -86,7 +86,7 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/get-my-group-holds",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), ...(sessionId ? { sessionId } : {}) },
+      command: { requestId: crypto.randomUUID(), sessionId },
     });
   }, [performanceId, sessionId, stompClient, validateSeatHoldAction]);
 
@@ -98,7 +98,7 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/hold-seats",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToHold, ...(sessionId ? { sessionId } : {}) },
+      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToHold, sessionId },
     });
   }, [performanceId, selectedSeatIdsToHold, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
 
@@ -110,7 +110,7 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/release-seats",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToRelease, ...(sessionId ? { sessionId } : {}) },
+      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToRelease, sessionId },
     });
   }, [performanceId, selectedSeatIdsToRelease, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
 

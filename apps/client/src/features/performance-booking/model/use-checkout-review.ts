@@ -142,7 +142,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
           waitForResponse();
           activeClient.publish({
             path: "/reservation/begin-checkout-review",
-            command: { requestId: request.requestId, data: { performanceId, reviewToken, ...(sessionId ? { sessionId } : {}) } },
+            command: { requestId: request.requestId, data: { performanceId, reviewToken, sessionId } },
           });
           return;
         }
@@ -157,7 +157,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
     waitForResponse();
     stompClient.publish({
       path: "/reservation/begin-checkout-review",
-      command: { requestId: request.requestId, data: { performanceId, reviewToken, ...(sessionId ? { sessionId } : {}) } },
+      command: { requestId: request.requestId, data: { performanceId, reviewToken, sessionId } },
     });
   };
 
@@ -183,7 +183,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
           waitForResponse();
           activeClient.publish({
             path: "/reservation/end-checkout-review",
-            command: { requestId: request.requestId, data: { performanceId, reviewToken, ...(groupId ? { groupId } : {}) } },
+            command: { requestId: request.requestId, data: { performanceId, reviewToken, groupId } },
           });
           return;
         }
@@ -198,7 +198,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
     waitForResponse();
     stompClient.publish({
       path: "/reservation/end-checkout-review",
-      command: { requestId: request.requestId, data: { performanceId, reviewToken, ...(groupId ? { groupId } : {}) } },
+      command: { requestId: request.requestId, data: { performanceId, reviewToken, groupId } },
     });
   };
 

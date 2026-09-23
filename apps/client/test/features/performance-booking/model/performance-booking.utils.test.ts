@@ -23,6 +23,14 @@ describe("performance-booking.utils", () => {
     expect(sessionStorage.getItem(key)).toBeNull();
   });
 
+  it("브라우저 전역이 없으면 좌석 선택 세션 삭제를 건너뛴다", () => {
+    vi.stubGlobal("window", undefined);
+
+    expect(() => clearPerformanceSeatSelectionSession(10)).not.toThrow();
+
+    vi.unstubAllGlobals();
+  });
+
   it("공연별 새 좌석 선택 세션을 생성하고 저장한다", () => {
     const sessionId = createPerformanceSeatSelectionSession(10);
 
