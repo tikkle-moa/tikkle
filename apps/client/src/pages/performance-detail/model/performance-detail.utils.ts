@@ -26,5 +26,5 @@ export const getSeatSelectionSessionId = (state: unknown, performanceId: number)
   if (!state || typeof state !== "object" || !("performanceId" in state) || state.performanceId !== performanceId) return undefined;
   if (!("seatSelectionSessionId" in state)) return undefined;
 
-  return typeof state.seatSelectionSessionId === "string" ? state.seatSelectionSessionId : undefined;
+  return typeof state.seatSelectionSessionId === "string" || state.seatSelectionSessionId === null ? state.seatSelectionSessionId : undefined;
 };

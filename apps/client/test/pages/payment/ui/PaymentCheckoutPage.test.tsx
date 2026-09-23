@@ -7,6 +7,8 @@ const navigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUsePaymentOrder = vi.hoisted(() => vi.fn());
 const mockPaymentOrderSummary = vi.hoisted(() => vi.fn());
+const mockPaymentNavigationDialog = vi.hoisted(() => vi.fn());
+const mockUsePaymentNavigationGuard = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
@@ -14,7 +16,9 @@ vi.mock("react-router", async () => {
 });
 
 vi.mock("@features/payment", () => ({
+  PaymentNavigationDialog: mockPaymentNavigationDialog,
   PaymentOrderSummary: mockPaymentOrderSummary,
+  usePaymentNavigationGuard: mockUsePaymentNavigationGuard,
 }));
 
 vi.mock("@pages/payment/model/use-payment-order", () => ({
@@ -40,6 +44,8 @@ describe("PaymentCheckoutPage", () => {
     vi.clearAllMocks();
     mockUseParams.mockReturnValue({ reservationId: "501" });
     mockUsePaymentOrder.mockReturnValue({ order, errorMessage: null, isLoading: false });
+    mockUsePaymentNavigationGuard.mockReturnValue({ isBlocked: false, message: "", proceed: vi.fn(), reset: vi.fn() });
+    mockPaymentNavigationDialog.mockImplementation(({ message }: { message: string }) => <div role="dialog">{message}</div>);
     mockPaymentOrderSummary.mockImplementation(({ order: summaryOrder }: { order: typeof order }) => (
       <output data-testid="payment-order-summary">{summaryOrder.orderId}</output>
     ));
@@ -64,6 +70,19 @@ describe("PaymentCheckoutPage", () => {
     await user.click(screen.getByRole("button", { name: "예매 정보로 돌아가기" }));
 
     expect(navigate).toHaveBeenCalledWith(-1);
+  });
+
+  it("이탈이 차단되면 공통 결제 경고 UI를 표시한다", () => {
+    mockUsePaymentNavigationGuard.mockReturnValue({
+      isBlocked: true,
+      message: "결제 준비 이후에는 좌석을 변경할 수 없습니다.",
+      proceed: vi.fn(),
+      reset: vi.fn(),
+    });
+
+    render(<PaymentCheckoutPage />);
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("결제 준비 이후에는 좌석을 변경할 수 없습니다.");
   });
 
   it("주문 조회 중이면 로딩 안내를 표시한다", () => {

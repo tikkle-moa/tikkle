@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { generatePath, useLocation, useNavigate, useParams } from "react-router";
 
-import { ArrowLeft, ArrowRight, CalendarDays, Clock3, MapPin, Ticket } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Clock3, Info, MapPin, Ticket } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import { formatDateTime } from "@shared/lib/date.utils";
@@ -52,7 +52,10 @@ const PerformanceCheckoutPage = () => {
       if (!canResumeHold) clearPerformanceSeatSelectionSession(id);
       navigate(generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(id) }), {
         replace: true,
-        state: canResumeHold && reviewSessionId ? { performanceId: id, seatSelectionSessionId: reviewSessionId } : null,
+        state:
+          canResumeHold && reviewSessionId
+            ? { performanceId: id, seatSelectionSessionId: reviewSessionId }
+            : { performanceId: id, seatSelectionSessionId: null },
       });
     },
     [id, navigate, reviewSessionId],
@@ -99,6 +102,16 @@ const PerformanceCheckoutPage = () => {
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-950">예매자와 공연 정보를 확인해 주세요</h1>
         <p className="mt-2 text-sm text-gray-500">예매 정보를 확정하면 결제 준비를 시작합니다.</p>
       </header>
+      <div role="note" className="mt-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <Info className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+        <div>
+          <p className="font-bold">결제 준비 전 안내</p>
+          <p className="mt-1 leading-5">
+            예매 정보를 확정한 좌석은 변경하거나 점유를 해제할 수 없습니다. 결제 화면에서 돌아가도 해당 좌석은 만료 시간까지 유지되며, 다른 좌석을
+            새로 선택할 수 있습니다.
+          </p>
+        </div>
+      </div>
       <section className="mt-7 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="bg-linear-to-br from-violet-950 via-violet-900 to-fuchsia-900 px-5 py-6 text-white sm:px-7">
           <p className="text-sm font-semibold text-violet-200">공연 정보</p>

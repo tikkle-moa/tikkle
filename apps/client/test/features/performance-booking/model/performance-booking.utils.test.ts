@@ -1,5 +1,6 @@
 import {
   clearPerformanceSeatSelectionSession,
+  createPerformanceSeatSelectionSession,
   formatBookingAmount,
   getPerformanceSeatSessionStorageKey,
   getRemainingSeconds,
@@ -28,6 +29,13 @@ describe("performance-booking.utils", () => {
     expect(() => clearPerformanceSeatSelectionSession(10)).not.toThrow();
 
     vi.unstubAllGlobals();
+  });
+
+  it("공연별 새 좌석 선택 세션을 생성하고 저장한다", () => {
+    const sessionId = createPerformanceSeatSelectionSession(10);
+
+    expect(sessionId).toEqual(expect.any(String));
+    expect(sessionStorage.getItem(getPerformanceSeatSessionStorageKey(10))).toBe(sessionId);
   });
 
   it("금액과 점유 남은 시간을 포맷한다", () => {

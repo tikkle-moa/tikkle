@@ -120,6 +120,9 @@ describe("PerformanceCheckoutPage", () => {
     expect(screen.getByText("Tikkle Live")).toBeInTheDocument();
     expect(screen.getByText("올림픽공원 KSPO DOME")).toBeInTheDocument();
     expect(screen.getByText("270,000원")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "결제 화면에서 돌아가도 해당 좌석은 만료 시간까지 유지되며, 다른 좌석을 새로 선택할 수 있습니다.",
+    );
     expect(screen.queryByText("B구역 1열 1번")).not.toBeInTheDocument();
     expect(mockUseStartCheckout).toHaveBeenCalledWith(expect.objectContaining({ groupId: "7:10:session-1" }));
 
@@ -232,7 +235,10 @@ describe("PerformanceCheckoutPage", () => {
     await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
     onEndSuccess?.(false);
 
-    expect(navigate).toHaveBeenCalledWith("/performances/10", { replace: true, state: null });
+    expect(navigate).toHaveBeenCalledWith("/performances/10", {
+      replace: true,
+      state: { performanceId: 10, seatSelectionSessionId: null },
+    });
   });
 
   it("리뷰 잠금 해제 중에는 다시 누를 수 없고 서버 오류를 표시한다", () => {

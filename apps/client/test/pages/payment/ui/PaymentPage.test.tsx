@@ -6,16 +6,20 @@ import userEvent from "@testing-library/user-event";
 import PaymentPage from "@pages/payment/ui/PaymentPage";
 
 const mockUsePaymentPage = vi.hoisted(() => vi.fn());
+const mockPaymentNavigationDialog = vi.hoisted(() => vi.fn());
 const mockPaymentOrderSummary = vi.hoisted(() => vi.fn());
 const mockTossPaymentWidget = vi.hoisted(() => vi.fn());
+const mockUsePaymentNavigationGuard = vi.hoisted(() => vi.fn());
 
 vi.mock("@pages/payment/model/use-payment-page", () => ({
   usePaymentPage: mockUsePaymentPage,
 }));
 
 vi.mock("@features/payment", () => ({
+  PaymentNavigationDialog: mockPaymentNavigationDialog,
   PaymentOrderSummary: mockPaymentOrderSummary,
   TossPaymentWidget: mockTossPaymentWidget,
+  usePaymentNavigationGuard: mockUsePaymentNavigationGuard,
 }));
 
 const order = {
@@ -53,8 +57,10 @@ describe("PaymentPage", () => {
       order,
       user,
     });
+    mockUsePaymentNavigationGuard.mockReturnValue({ isBlocked: false, message: "", proceed: vi.fn(), reset: vi.fn() });
     mockPaymentOrderSummary.mockImplementation(() => <div data-testid="payment-order-summary" />);
     mockTossPaymentWidget.mockImplementation(() => <div data-testid="toss-payment-widget" />);
+    mockPaymentNavigationDialog.mockImplementation(({ message }: { message: string }) => <div role="dialog">{message}</div>);
   });
 
   it("주문서와 결제수단을 표시하고 이전 화면으로 돌아간다", async () => {
@@ -68,6 +74,19 @@ describe("PaymentPage", () => {
     await userEventInstance.click(screen.getByRole("button", { name: "이전 화면으로" }));
     expect(handleBack).toHaveBeenCalledOnce();
     expect(mockUsePaymentPage).toHaveBeenCalledWith();
+  });
+
+  it("이탈이 차단되면 공통 결제 경고 UI를 표시한다", () => {
+    mockUsePaymentNavigationGuard.mockReturnValue({
+      isBlocked: true,
+      message: "결제 준비 이후에는 좌석을 변경할 수 없습니다.",
+      proceed: vi.fn(),
+      reset: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("결제 준비 이후에는 좌석을 변경할 수 없습니다.");
   });
 
   it("예약 번호가 올바르지 않으면 오류 안내를 표시한다", () => {

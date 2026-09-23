@@ -30,6 +30,12 @@ export const PERFORMANCE_SEAT_SESSION_STORAGE_PREFIX = "tikkle.performance-seat-
 
 export const getPerformanceSeatSessionStorageKey = (performanceId: number) => `${PERFORMANCE_SEAT_SESSION_STORAGE_PREFIX}:${performanceId}`;
 
+export const createPerformanceSeatSelectionSession = (performanceId: number) => {
+  const sessionId = crypto.randomUUID();
+  window.sessionStorage.setItem(getPerformanceSeatSessionStorageKey(performanceId), sessionId);
+  return sessionId;
+};
+
 export const clearPerformanceSeatSelectionSession = (performanceId: number) => {
   if (typeof window === "undefined") return;
   window.sessionStorage.removeItem(getPerformanceSeatSessionStorageKey(performanceId));

@@ -3,12 +3,13 @@ import { ArrowLeft, Clock3 } from "lucide-react";
 import { formatTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentOrderSummary, TossPaymentWidget } from "@features/payment";
+import { PaymentNavigationDialog, PaymentOrderSummary, TossPaymentWidget, usePaymentNavigationGuard } from "@features/payment";
 
 import { usePaymentPage } from "../model/use-payment-page";
 
 const PaymentPage = () => {
   const { handleBack, order, errorMessage, isLoading, isReservationIdValid, user } = usePaymentPage();
+  const navigationGuard = usePaymentNavigationGuard({ enabled: isReservationIdValid && !isLoading && !errorMessage && Boolean(order && user) });
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;
@@ -48,6 +49,9 @@ const PaymentPage = () => {
           <TossPaymentWidget key={order.orderId} order={order} user={user} />
         </div>
       </div>
+      {navigationGuard.isBlocked && (
+        <PaymentNavigationDialog message={navigationGuard.message} onProceed={navigationGuard.proceed} onStay={navigationGuard.reset} />
+      )}
     </>
   );
 };
