@@ -5,6 +5,7 @@ export {
   createPerformanceSeatSelectionSession,
   formatBookingAmount,
   getRemainingSeconds,
+  getOrCreatePerformanceSeatSelectionSession,
   getPerformanceSeatSessionStorageKey,
   isPerformanceCheckoutLocationState,
 } from "./model/performance-booking.utils";

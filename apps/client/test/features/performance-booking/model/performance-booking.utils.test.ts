@@ -2,6 +2,8 @@ import {
   clearPerformanceSeatSelectionSession,
   createPerformanceSeatSelectionSession,
   formatBookingAmount,
+  getOrCreatePerformanceCheckoutReviewToken,
+  getOrCreatePerformanceSeatSelectionSession,
   getPerformanceSeatSessionStorageKey,
   getRemainingSeconds,
   isPerformanceCheckoutLocationState,
@@ -35,6 +37,28 @@ describe("performance-booking.utils", () => {
 
     expect(sessionId).toEqual(expect.any(String));
     expect(sessionStorage.getItem(getPerformanceSeatSessionStorageKey(10))).toBe(sessionId);
+  });
+
+  it("좌석 선택 세션과 예매 확인 토큰을 저장된 값에서 재사용한다", () => {
+    sessionStorage.setItem(getPerformanceSeatSessionStorageKey(11), "session-11");
+
+    const sessionId = getOrCreatePerformanceSeatSelectionSession(11);
+    const reviewToken = getOrCreatePerformanceCheckoutReviewToken(11, sessionId);
+
+    expect(sessionId).toBe("session-11");
+    expect(getOrCreatePerformanceSeatSelectionSession(11)).toBe(sessionId);
+    expect(getOrCreatePerformanceCheckoutReviewToken(11, sessionId)).toBe(reviewToken);
+    expect(getOrCreatePerformanceCheckoutReviewToken(12, sessionId)).not.toBe(reviewToken);
+  });
+
+  it("좌석 선택 세션을 정리할 때 해당 세션의 예매 확인 토큰도 삭제한다", () => {
+    const sessionId = getOrCreatePerformanceSeatSelectionSession(13);
+    const reviewToken = getOrCreatePerformanceCheckoutReviewToken(13, sessionId);
+
+    clearPerformanceSeatSelectionSession(13);
+
+    expect(sessionStorage.getItem(getPerformanceSeatSessionStorageKey(13))).toBeNull();
+    expect(getOrCreatePerformanceCheckoutReviewToken(13, sessionId)).not.toBe(reviewToken);
   });
 
   it("금액과 점유 남은 시간을 포맷한다", () => {

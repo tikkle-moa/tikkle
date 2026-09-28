@@ -62,6 +62,7 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
     endReview,
   } = useCheckoutReview({
     performanceId,
+    sessionId: review?.sessionId,
     onEndSuccess: handleReviewEnd,
   });
 

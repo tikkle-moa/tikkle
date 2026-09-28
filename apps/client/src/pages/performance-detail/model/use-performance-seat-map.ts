@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type VenueSeatState, areSeatIdsEqual } from "@entities/venue";
 
-import { createPerformanceSeatSelectionSession, getPerformanceSeatSessionStorageKey } from "@features/performance-booking";
+import { getOrCreatePerformanceSeatSelectionSession } from "@features/performance-booking";
 
 import type { SeatOperationState } from "./seat-map.types";
 import { filterSelectableSeatIds } from "./seat-map.utils";
@@ -12,13 +12,7 @@ interface UsePerformanceSeatMapProps {
 }
 
 export const usePerformanceSeatMap = ({ performanceId = 0 }: UsePerformanceSeatMapProps = {}) => {
-  const [sessionId] = useState(() => {
-    const storageKey = getPerformanceSeatSessionStorageKey(performanceId);
-    const storedSessionId = window.sessionStorage.getItem(storageKey);
-    if (storedSessionId) return storedSessionId;
-
-    return createPerformanceSeatSelectionSession(performanceId);
-  });
+  const sessionId = useMemo(() => getOrCreatePerformanceSeatSelectionSession(performanceId), [performanceId]);
   const [selectedSeatIds, setSelectedSeatIds] = useState<Set<number>>(new Set());
   const [serverTimeOffset, setServerTimeOffset] = useState(0);
 

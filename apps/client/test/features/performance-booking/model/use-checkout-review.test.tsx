@@ -4,6 +4,7 @@ import type { BeginCheckoutReviewMessage, EndCheckoutReviewMessage, StompFailure
 import type StompClient from "@shared/realtime/stomp-client";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
+import { getOrCreatePerformanceCheckoutReviewToken } from "@features/performance-booking/model/performance-booking.utils";
 import { useCheckoutReview } from "@features/performance-booking/model/use-checkout-review";
 
 describe("useCheckoutReview", () => {
@@ -24,6 +25,7 @@ describe("useCheckoutReview", () => {
   let handleEndError: ((message: StompFailureMessage) => void) | undefined;
 
   beforeEach(() => {
+    sessionStorage.clear();
     publish.mockReset();
     subscribe.mockReset();
     unsubscribe.mockReset();
@@ -106,6 +108,36 @@ describe("useCheckoutReview", () => {
     const retriedCommand = publish.mock.calls[2][0].command;
     expect(retriedCommand.requestId).not.toBe(firstCommand.requestId);
     expect(retriedCommand.data.reviewToken).toBe(firstCommand.data.reviewToken);
+  });
+
+  it("페이지가 다시 마운트돼도 응답 유실된 BEGIN 토큰을 복구한다", () => {
+    vi.useFakeTimers();
+    const props = { performanceId: 10, sessionId: "session-1" };
+    const firstMount = renderHook(() => useCheckoutReview(props));
+
+    act(() => firstMount.result.current.beginReview());
+    const firstCommand = publish.mock.calls[0][0].command;
+    act(() => vi.advanceTimersByTime(16_000));
+    firstMount.unmount();
+
+    const secondMount = renderHook(() => useCheckoutReview(props));
+    act(() => secondMount.result.current.beginReview());
+    const recoveredCommand = publish.mock.calls[2][0].command;
+
+    expect(recoveredCommand.requestId).not.toBe(firstCommand.requestId);
+    expect(recoveredCommand.data.reviewToken).toBe(firstCommand.data.reviewToken);
+  });
+
+  it("END 성공 시 현재 세션에 저장한 예매 확인 토큰을 정리한다", () => {
+    const sessionId = "session-1";
+    const reviewToken = getOrCreatePerformanceCheckoutReviewToken(10, sessionId);
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId }));
+
+    act(() => result.current.endReview(reviewToken, review.groupId));
+    const command = publish.mock.calls[0][0].command;
+    act(() => handleEndMessage?.({ requestId: command.requestId, success: true, data: { performanceId: 10, canResumeHold: true } }));
+
+    expect(getOrCreatePerformanceCheckoutReviewToken(10, sessionId)).not.toBe(reviewToken);
   });
 
   it("BEGIN 오류와 서버 스냅샷 불일치를 표시한다", () => {

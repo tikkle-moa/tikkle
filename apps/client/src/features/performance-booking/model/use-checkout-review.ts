@@ -6,6 +6,7 @@ import { useStompStore } from "@shared/realtime/stomp.store";
 
 import { CHECKOUT_REVIEW_MAX_REQUEST_ATTEMPTS, CHECKOUT_REVIEW_RESPONSE_TIMEOUT_MS } from "./performance-booking.constants";
 import type { PendingReviewRequest } from "./performance-booking.types";
+import { clearPerformanceCheckoutReviewToken, getOrCreatePerformanceCheckoutReviewToken } from "./performance-booking.utils";
 
 interface UseCheckoutReviewProps {
   performanceId: number;
@@ -76,7 +77,8 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
     const endSubscription = stompClient.subscribe({
       path: "/reservation/end-checkout-review",
       callback: (message) => {
-        if (message.requestId !== endRequestRef.current?.requestId) return;
+        const request = endRequestRef.current;
+        if (!request || message.requestId !== request.requestId) return;
 
         if (endTimeoutRef.current !== null) window.clearTimeout(endTimeoutRef.current);
         endTimeoutRef.current = null;
@@ -88,6 +90,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
           return;
         }
 
+        if (sessionId) clearPerformanceCheckoutReviewToken(performanceId, sessionId, request.reviewToken);
         onEndSuccess?.(message.data.canResumeHold);
       },
       errorCallback: (message) => {
@@ -105,7 +108,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
       beginSubscription.unsubscribe();
       endSubscription.unsubscribe();
     };
-  }, [connectionStatus, onBeginSuccess, onEndSuccess, performanceId, stompClient]);
+  }, [connectionStatus, onBeginSuccess, onEndSuccess, performanceId, sessionId, stompClient]);
 
   const beginReview = () => {
     if (beginRequestRef.current || endRequestRef.current) return;
@@ -114,7 +117,9 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
       return;
     }
 
-    const reviewToken = beginTokenRef.current ?? crypto.randomUUID();
+    const reviewToken = sessionId
+      ? getOrCreatePerformanceCheckoutReviewToken(performanceId, sessionId)
+      : (beginTokenRef.current ?? crypto.randomUUID());
     beginTokenRef.current = reviewToken;
     const request = { requestId: crypto.randomUUID(), reviewToken, attempts: 1 };
     beginRequestRef.current = request;

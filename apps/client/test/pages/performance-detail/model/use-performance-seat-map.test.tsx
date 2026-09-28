@@ -33,6 +33,20 @@ describe("usePerformanceSeatMap", () => {
     expect(result.current.sessionId).toBe("stored-session");
   });
 
+  it("같은 페이지에서 공연 회차가 바뀌면 해당 회차의 저장 세션을 다시 읽는다", () => {
+    sessionStorage.setItem("tikkle.performance-seat-session:4", "session-4");
+    sessionStorage.setItem("tikkle.performance-seat-session:5", "session-5");
+
+    const { result, rerender } = renderHook(({ performanceId }) => usePerformanceSeatMap({ performanceId }), {
+      initialProps: { performanceId: 4 },
+    });
+    expect(result.current.sessionId).toBe("session-4");
+
+    rerender({ performanceId: 5 });
+
+    expect(result.current.sessionId).toBe("session-5");
+  });
+
   it("선택 가능한 좌석을 토글한다", () => {
     const { result } = renderHook(() => usePerformanceSeatMap());
     act(() => {
