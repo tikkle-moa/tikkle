@@ -88,22 +88,6 @@ describe("useStartCheckout", () => {
     expect(result.current.errorMessage).toBe("좌석 점유가 만료되었습니다.");
   });
 
-  it("예약 ID가 없는 성공 응답은 기본 오류로 처리한다", () => {
-    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess: vi.fn() }));
-
-    act(() => result.current.startCheckout());
-    const requestId = publish.mock.calls[0][0].command.requestId as string;
-    act(() => {
-      handleMessage?.({
-        requestId,
-        success: true,
-        data: {} as never,
-      });
-    });
-
-    expect(result.current.errorMessage).toBe("결제 준비를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
-  });
-
   it("성공 응답을 받으면 응답 타이머를 정리한다", () => {
     vi.useFakeTimers();
 

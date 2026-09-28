@@ -5,19 +5,13 @@ import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
 import { CHECKOUT_REVIEW_MAX_REQUEST_ATTEMPTS, CHECKOUT_REVIEW_RESPONSE_TIMEOUT_MS } from "./performance-booking.constants";
-import { isCheckoutReview } from "./performance-booking.utils";
+import type { PendingReviewRequest } from "./performance-booking.types";
 
 interface UseCheckoutReviewProps {
   performanceId: number;
   sessionId?: string;
   onBeginSuccess?: (review: BeginCheckoutReviewMessageData) => void;
   onEndSuccess?: (canResumeHold: boolean) => void;
-}
-
-interface PendingReviewRequest {
-  requestId: string;
-  reviewToken: string;
-  attempts: number;
 }
 
 export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, onEndSuccess }: UseCheckoutReviewProps) => {
@@ -61,12 +55,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
         beginRequestRef.current = null;
         setIsBeginning(false);
 
-        if (
-          !message.success ||
-          !isCheckoutReview(message.data) ||
-          message.data.reviewToken !== request.reviewToken ||
-          message.data.performanceId !== performanceId
-        ) {
+        if (!message.success || message.data.reviewToken !== request.reviewToken || message.data.performanceId !== performanceId) {
           setErrorMessage("예매 정보 확인을 시작하지 못했습니다. 다시 시도해 주세요.");
           return;
         }

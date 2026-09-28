@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
 import { START_CHECKOUT_MAX_REQUEST_ATTEMPTS, START_CHECKOUT_RESPONSE_TIMEOUT_MS } from "./performance-booking.constants";
-import { isStartCheckoutData } from "./performance-booking.utils";
 
 interface UseStartCheckoutProps {
   performanceId: number;
@@ -48,7 +47,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, groupId, onSucces
         if (requestTimeoutRef.current !== null) window.clearTimeout(requestTimeoutRef.current);
         requestIdRef.current = null;
         setIsStarting(false);
-        if (!message.success || !isStartCheckoutData(message.data)) {
+        if (!message.success) {
           setErrorMessage("결제 준비를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
           return;
         }
