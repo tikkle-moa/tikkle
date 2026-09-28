@@ -216,6 +216,33 @@ describe("usePerformanceSeatActions", () => {
     expect(result.current.refreshError).toBe("조회에 실패했습니다.");
   });
 
+  it("백그라운드 좌석 상태 조회가 실패해도 동기화 오류를 표시한다", () => {
+    setConnectedClient();
+    const { result } = renderHook(() =>
+      usePerformanceSeatActions({
+        performanceId: 10,
+        ...requestIdRefs(),
+        selectedSeatIdsToHold: [],
+        selectedSeatIdsToRelease: [],
+        seatOperationState: { status: "idle" },
+        setSeatOperationState: vi.fn(),
+      }),
+    );
+
+    act(() => result.current.handleRefreshFinish({ status: "success" }));
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current.isRefreshing).toBe(false);
+
+    act(() =>
+      result.current.handleRefreshFinish({
+        status: "error",
+        message: "백그라운드 조회에 실패했습니다.",
+      }),
+    );
+
+    expect(result.current.refreshError).toBe("백그라운드 조회에 실패했습니다.");
+  });
+
   it("지연 종료 대기 중 실패하면 즉시 종료하고 예약된 종료 처리를 무시한다", () => {
     setConnectedClient();
     const { result } = renderHook(() =>

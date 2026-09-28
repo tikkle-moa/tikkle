@@ -44,14 +44,16 @@ export const usePerformanceSeatActions = ({
   }, [isConnected, performanceSeatRequestIdsRef, setSeatOperationState]);
 
   const handleRefreshFinish = useCallback((state: SeatOperationState) => {
-    if (!isRefreshingRef.current) return;
-
     if (state.status === "error") {
       setRefreshError(state.message);
+      if (!isRefreshingRef.current) return;
+
       isRefreshingRef.current = false;
       setIsRefreshing(false);
       return;
     }
+
+    if (!isRefreshingRef.current) return;
 
     setTimeout(() => {
       if (!isRefreshingRef.current) return;
