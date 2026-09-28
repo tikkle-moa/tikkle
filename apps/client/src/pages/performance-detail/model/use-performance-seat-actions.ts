@@ -34,6 +34,15 @@ export const usePerformanceSeatActions = ({
     isSeatOperationPendingRef.current = seatOperationState.status === "loading";
   }, [seatOperationState.status]);
 
+  useEffect(() => {
+    if (isConnected || !isSeatOperationPendingRef.current) return;
+
+    isSeatOperationPendingRef.current = false;
+    performanceSeatRequestIdsRef.current.hold = null;
+    performanceSeatRequestIdsRef.current.release = null;
+    setSeatOperationState({ status: "error", message: "실시간 연결이 끊겼습니다." });
+  }, [isConnected, performanceSeatRequestIdsRef, setSeatOperationState]);
+
   const handleRefreshFinish = useCallback((state: SeatOperationState) => {
     if (!isRefreshingRef.current) return;
 

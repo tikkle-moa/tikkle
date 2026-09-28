@@ -264,4 +264,35 @@ describe("usePerformanceSeatActions", () => {
       message: "실시간 연결이 끊겼습니다.",
     });
   });
+
+  it("처리 중 연결이 끊긴 뒤 재연결되면 Hold를 다시 요청할 수 있다", () => {
+    const client = setConnectedClient();
+    const requestRefs = requestIdRefs();
+    requestRefs.performanceSeatRequestIdsRef.current.hold = "pending-hold";
+    const setSeatOperationState = vi.fn();
+    const { result } = renderHook(() =>
+      usePerformanceSeatActions({
+        performanceId: 10,
+        ...requestRefs,
+        selectedSeatIdsToHold: [1],
+        selectedSeatIdsToRelease: [],
+        seatOperationState: { status: "loading" },
+        setSeatOperationState,
+      }),
+    );
+
+    act(() => useStompStore.setState({ stompClient: client as never, connectionStatus: "disconnected" }));
+    expect(requestRefs.performanceSeatRequestIdsRef.current.hold).toBeNull();
+    expect(setSeatOperationState).toHaveBeenCalledWith({ status: "error", message: "실시간 연결이 끊겼습니다." });
+
+    act(() => useStompStore.setState({ stompClient: client as never, connectionStatus: "connected" }));
+    act(() => result.current.handleHoldSeats());
+
+    expect(client.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "/performances/{performanceId}/hold-seats",
+        pathParams: { performanceId: 10 },
+      }),
+    );
+  });
 });
