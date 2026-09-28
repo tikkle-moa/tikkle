@@ -1,27 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
-import { generatePath, useLocation, useNavigate, useParams } from "react-router";
+import { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router";
 
 import { ArrowLeft, ArrowRight, CalendarDays, Clock3, Info, MapPin, Ticket } from "lucide-react";
 
-import { ROUTE_PATHS } from "@shared/config/router.config";
 import { formatDateTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
 import { useSessionStore } from "@entities/session";
 
-import {
-  clearPerformanceSeatSelectionSession,
-  formatBookingAmount,
-  getRemainingSeconds,
-  isPerformanceCheckoutLocationState,
-  useCheckoutReview,
-  useStartCheckout,
-} from "@features/performance-booking";
+import { formatBookingAmount, getRemainingSeconds, isPerformanceCheckoutLocationState } from "@features/performance-booking";
+
+import PerformanceCheckoutNavigationDialog from "./PerformanceCheckoutNavigationDialog";
+
+import { usePerformanceCheckoutNavigation } from "../model/use-performance-checkout-navigation";
 
 const PerformanceCheckoutPage = () => {
   const { performanceId } = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
   const [now, setNow] = useState(() => Date.now());
   const user = useSessionStore((store) => store.user);
   const id = Number(performanceId);
@@ -31,68 +26,41 @@ const PerformanceCheckoutPage = () => {
   const venueSeats = state?.venueSeats ?? [];
   const selectedSeatIds = state?.review.venueSeatIds ?? [];
   const selectedSeats = venueSeats.filter((seat) => selectedSeatIds.includes(seat.id));
-  const reviewSessionId = state?.review.sessionId;
-
-  useEffect(() => () => clearPerformanceSeatSelectionSession(id), [id]);
+  const {
+    checkoutErrorMessage,
+    isStarting,
+    isEnding,
+    reviewErrorMessage,
+    isNavigationBlocked,
+    startCheckout,
+    handleReturnToSeats,
+    handleLeaveReview,
+    handleStayOnReview,
+  } = usePerformanceCheckoutNavigation({ performanceId: id, review: state?.review ?? null });
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const handleCheckoutSuccess = useCallback(
-    (reservationId: number) => {
-      clearPerformanceSeatSelectionSession(id);
-      navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) }));
-    },
-    [id, navigate],
-  );
-  const handleReviewEnd = useCallback(
-    (canResumeHold: boolean) => {
-      if (!canResumeHold) clearPerformanceSeatSelectionSession(id);
-      navigate(generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(id) }), {
-        replace: true,
-        state:
-          canResumeHold && reviewSessionId
-            ? { performanceId: id, seatSelectionSessionId: reviewSessionId }
-            : { performanceId: id, seatSelectionSessionId: null },
-      });
-    },
-    [id, navigate, reviewSessionId],
-  );
-  const {
-    errorMessage: reviewErrorMessage,
-    isEnding,
-    endReview,
-  } = useCheckoutReview({
-    performanceId: id,
-    onEndSuccess: handleReviewEnd,
-  });
-  const { errorMessage, isStarting, startCheckout } = useStartCheckout({
-    performanceId: id,
-    reviewToken: state?.review.reviewToken ?? "",
-    groupId: state?.review.groupId,
-    enabled: Boolean(state),
-    onSuccess: handleCheckoutSuccess,
-  });
-
-  const handleConfirm = () => startCheckout();
-
   if (!state || !performance || !venue || selectedSeats.length !== selectedSeatIds.length) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="공연 상세에서 좌석을 다시 선택해 주세요." />;
   }
-
-  const handleBack = () => endReview(state.review.reviewToken, state.review.groupId);
 
   const remainingSeconds = getRemainingSeconds(state.review.expiresAt, now);
   const totalAmount = selectedSeats.reduce((total, seat) => total + seat.price, 0);
   return (
     <div className="mx-auto w-full max-w-3xl pb-6">
-      <button type="button" className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500" disabled={isEnding} onClick={handleBack}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500"
+        disabled={isEnding}
+        onClick={handleReturnToSeats}
+      >
         <ArrowLeft className="size-4" aria-hidden />
         {isEnding ? "좌석 선택으로 돌아가는 중..." : "좌석 다시 선택"}
       </button>
-      {reviewErrorMessage && (
+      {reviewErrorMessage && !isNavigationBlocked && (
         <p role="alert" className="mt-3 text-sm font-medium text-red-600">
           {reviewErrorMessage}
         </p>
@@ -163,18 +131,26 @@ const PerformanceCheckoutPage = () => {
             type="button"
             className="bg-brand-primary mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300"
             disabled={isStarting || !user}
-            onClick={handleConfirm}
+            onClick={startCheckout}
           >
             {isStarting ? "예매 정보 확정 중..." : "예매 정보 확정하기"}
             <ArrowRight className="size-4" aria-hidden />
           </button>
-          {errorMessage && (
+          {checkoutErrorMessage && (
             <p role="alert" className="mt-3 text-sm font-medium text-red-600">
-              {errorMessage}
+              {checkoutErrorMessage}
             </p>
           )}
         </div>
       </section>
+      {isNavigationBlocked && (
+        <PerformanceCheckoutNavigationDialog
+          errorMessage={reviewErrorMessage}
+          isEnding={isEnding}
+          onProceed={handleLeaveReview}
+          onStay={handleStayOnReview}
+        />
+      )}
     </div>
   );
 };

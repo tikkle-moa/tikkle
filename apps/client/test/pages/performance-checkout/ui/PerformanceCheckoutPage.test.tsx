@@ -5,27 +5,29 @@ import { useSessionStore } from "@entities/session";
 
 import PerformanceCheckoutPage from "@pages/performance-checkout/ui/PerformanceCheckoutPage";
 
-const navigate = vi.hoisted(() => vi.fn());
 const mockUseLocation = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
-const mockUseStartCheckout = vi.hoisted(() => vi.fn());
-const mockUseCheckoutReview = vi.hoisted(() => vi.fn());
+const mockUsePerformanceCheckoutNavigation = vi.hoisted(() => vi.fn());
+const mockStartCheckout = vi.hoisted(() => vi.fn());
+const mockHandleReturnToSeats = vi.hoisted(() => vi.fn());
+const mockHandleLeaveReview = vi.hoisted(() => vi.fn());
+const mockHandleStayOnReview = vi.hoisted(() => vi.fn());
+const mockPerformanceCheckoutNavigationDialog = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
   return {
     ...actual,
     useLocation: mockUseLocation,
-    useNavigate: () => navigate,
     useParams: mockUseParams,
   };
 });
 
-vi.mock("@features/performance-booking/model/use-start-checkout", () => ({
-  useStartCheckout: mockUseStartCheckout,
+vi.mock("@pages/performance-checkout/model/use-performance-checkout-navigation", () => ({
+  usePerformanceCheckoutNavigation: mockUsePerformanceCheckoutNavigation,
 }));
-vi.mock("@features/performance-booking/model/use-checkout-review", () => ({
-  useCheckoutReview: mockUseCheckoutReview,
+vi.mock("@pages/performance-checkout/ui/PerformanceCheckoutNavigationDialog", () => ({
+  default: mockPerformanceCheckoutNavigationDialog,
 }));
 
 const performance = {
@@ -95,8 +97,18 @@ describe("PerformanceCheckoutPage", () => {
     vi.spyOn(window, "clearInterval").mockImplementation(() => undefined);
     mockUseParams.mockReturnValue({ performanceId: "10" });
     mockUseLocation.mockReturnValue({ state: validState });
-    mockUseStartCheckout.mockReturnValue({ errorMessage: null, isStarting: false, startCheckout: vi.fn() });
-    mockUseCheckoutReview.mockReturnValue({ errorMessage: null, isEnding: false, endReview: vi.fn() });
+    mockUsePerformanceCheckoutNavigation.mockReturnValue({
+      checkoutErrorMessage: null,
+      isStarting: false,
+      isEnding: false,
+      reviewErrorMessage: null,
+      isNavigationBlocked: false,
+      startCheckout: mockStartCheckout,
+      handleReturnToSeats: mockHandleReturnToSeats,
+      handleLeaveReview: mockHandleLeaveReview,
+      handleStayOnReview: mockHandleStayOnReview,
+    });
+    mockPerformanceCheckoutNavigationDialog.mockImplementation(() => <div role="dialog">예매 정보 확인 종료 경고</div>);
     useSessionStore.setState({
       user: { id: 7, nickname: "티끌 사용자", email: "user@tikkle.test" } as never,
       status: "authenticated",
@@ -124,23 +136,10 @@ describe("PerformanceCheckoutPage", () => {
       "결제 화면에서 돌아가도 해당 좌석은 만료 시간까지 유지되며, 다른 좌석을 새로 선택할 수 있습니다.",
     );
     expect(screen.queryByText("B구역 1열 1번")).not.toBeInTheDocument();
-    expect(mockUseStartCheckout).toHaveBeenCalledWith(expect.objectContaining({ groupId: "7:10:session-1" }));
+    expect(mockUsePerformanceCheckoutNavigation).toHaveBeenCalledWith({ performanceId: 10, review: validState.review });
 
     await user.click(screen.getByRole("button", { name: "예매 정보 확정하기" }));
-    expect(mockUseStartCheckout.mock.results[0].value.startCheckout).toHaveBeenCalledOnce();
-  });
-
-  it("START_CHECKOUT 성공 시 결제 준비 화면으로 이동한다", () => {
-    let onSuccess: ((reservationId: number) => void) | undefined;
-    mockUseStartCheckout.mockImplementation(({ onSuccess: callback }: { onSuccess: (reservationId: number) => void }) => {
-      onSuccess = callback;
-      return { errorMessage: null, isStarting: false, startCheckout: vi.fn() };
-    });
-
-    render(<PerformanceCheckoutPage />);
-    onSuccess?.(501);
-
-    expect(navigate).toHaveBeenCalledWith("/payments/501/checkout");
+    expect(mockStartCheckout).toHaveBeenCalledOnce();
   });
 
   it("예매 상태가 없으면 상세 안내를 표시한다", () => {
@@ -190,10 +189,16 @@ describe("PerformanceCheckoutPage", () => {
   });
 
   it("예매 정보 확정 중이면 진행 상태와 오류 메시지를 표시한다", () => {
-    mockUseStartCheckout.mockReturnValue({
-      errorMessage: "결제 준비를 시작하지 못했습니다.",
+    mockUsePerformanceCheckoutNavigation.mockReturnValue({
+      checkoutErrorMessage: "결제 준비를 시작하지 못했습니다.",
       isStarting: true,
-      startCheckout: vi.fn(),
+      isEnding: false,
+      reviewErrorMessage: null,
+      isNavigationBlocked: false,
+      startCheckout: mockStartCheckout,
+      handleReturnToSeats: mockHandleReturnToSeats,
+      handleLeaveReview: mockHandleLeaveReview,
+      handleStayOnReview: mockHandleStayOnReview,
     });
 
     render(<PerformanceCheckoutPage />);
@@ -202,73 +207,50 @@ describe("PerformanceCheckoutPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("결제 준비를 시작하지 못했습니다.");
   });
 
-  it("좌석 다시 선택을 누르면 리뷰 잠금 해제를 요청하고 성공 후 돌아간다", async () => {
+  it("좌석 다시 선택은 예매 흐름 훅의 종료 동작을 호출한다", async () => {
     const user = userEvent.setup();
-    let onEndSuccess: ((canResumeHold: boolean) => void) | undefined;
-    const endReview = vi.fn();
-    mockUseCheckoutReview.mockImplementation(({ onEndSuccess: callback }: { onEndSuccess: (canResumeHold: boolean) => void }) => {
-      onEndSuccess = callback;
-      return { errorMessage: null, isEnding: false, endReview };
-    });
     render(<PerformanceCheckoutPage />);
 
     await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
 
-    expect(endReview).toHaveBeenCalledWith(validState.review.reviewToken, validState.review.groupId);
-    expect(navigate).not.toHaveBeenCalled();
-    onEndSuccess?.(true);
-    expect(navigate).toHaveBeenCalledWith("/performances/10", {
-      replace: true,
-      state: { performanceId: 10, seatSelectionSessionId: "session-1" },
-    });
-  });
-
-  it("리뷰 종료 뒤 점유 복원이 불가능하면 새 좌석 선택 세션으로 이동한다", async () => {
-    const user = userEvent.setup();
-    let onEndSuccess: ((canResumeHold: boolean) => void) | undefined;
-    mockUseCheckoutReview.mockImplementation(({ onEndSuccess: callback }: { onEndSuccess: (canResumeHold: boolean) => void }) => {
-      onEndSuccess = callback;
-      return { errorMessage: null, isEnding: false, endReview: vi.fn() };
-    });
-    render(<PerformanceCheckoutPage />);
-
-    await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
-    onEndSuccess?.(false);
-
-    expect(navigate).toHaveBeenCalledWith("/performances/10", {
-      replace: true,
-      state: { performanceId: 10, seatSelectionSessionId: null },
-    });
+    expect(mockHandleReturnToSeats).toHaveBeenCalledOnce();
   });
 
   it("리뷰 잠금 해제 중에는 다시 누를 수 없고 서버 오류를 표시한다", () => {
-    mockUseCheckoutReview.mockReturnValue({
-      errorMessage: "결제 대기 중에는 좌석을 변경할 수 없습니다.",
+    mockUsePerformanceCheckoutNavigation.mockReturnValue({
+      checkoutErrorMessage: null,
       isEnding: true,
-      endReview: vi.fn(),
+      isStarting: false,
+      reviewErrorMessage: "예매 정보 확인 종료에 실패했습니다.",
+      isNavigationBlocked: false,
+      startCheckout: mockStartCheckout,
+      handleReturnToSeats: mockHandleReturnToSeats,
+      handleLeaveReview: mockHandleLeaveReview,
+      handleStayOnReview: mockHandleStayOnReview,
     });
 
     render(<PerformanceCheckoutPage />);
 
     expect(screen.getByRole("button", { name: "좌석 선택으로 돌아가는 중..." })).toBeDisabled();
-    expect(screen.getByRole("alert")).toHaveTextContent("결제 대기 중에는 좌석을 변경할 수 없습니다.");
+    expect(screen.getByRole("alert")).toHaveTextContent("예매 정보 확인 종료에 실패했습니다.");
   });
 
-  it("좌석 다시 선택 시 END_CHECKOUT_REVIEW를 요청한다", async () => {
-    const user = userEvent.setup();
-    const endReview = vi.fn();
-
-    mockUseCheckoutReview.mockReturnValue({
-      errorMessage: null,
+  it("브라우저 이동이 차단되면 리뷰 종료 경고를 표시한다", () => {
+    mockUsePerformanceCheckoutNavigation.mockReturnValue({
+      checkoutErrorMessage: null,
+      isStarting: false,
       isEnding: false,
-      endReview,
+      reviewErrorMessage: null,
+      isNavigationBlocked: true,
+      startCheckout: mockStartCheckout,
+      handleReturnToSeats: mockHandleReturnToSeats,
+      handleLeaveReview: mockHandleLeaveReview,
+      handleStayOnReview: mockHandleStayOnReview,
     });
 
     render(<PerformanceCheckoutPage />);
 
-    await user.click(screen.getByRole("button", { name: "좌석 다시 선택" }));
-
-    expect(endReview).toHaveBeenCalledWith(validState.review.reviewToken, validState.review.groupId);
+    expect(screen.getByRole("dialog")).toHaveTextContent("예매 정보 확인 종료 경고");
   });
 
   it("타이머 콜백이 실행되면 점유 남은 시간을 갱신한다", () => {
