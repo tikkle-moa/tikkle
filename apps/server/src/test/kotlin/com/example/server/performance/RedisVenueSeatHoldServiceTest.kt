@@ -715,6 +715,15 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
+  fun `END 응답 유실 뒤 같은 토큰으로 재요청하면 기존 해제 성공을 복구한다`() {
+    executeResult = 0L
+    service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+
+    executeResult = 3L
+    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isTrue()
+  }
+
+  @Test
   fun `이미 결제 대기 중이거나 잠금이 없으면 이전 점유로 복귀하지 않는다`() {
     executeResult = 2L
 

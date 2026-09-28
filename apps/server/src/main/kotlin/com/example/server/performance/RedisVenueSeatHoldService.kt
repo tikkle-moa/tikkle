@@ -97,10 +97,10 @@ class RedisVenueSeatHoldService(
   fun endCheckoutReview(groupId: String, reviewToken: UUID): Boolean {
     val result = stringRedisTemplate.execute(
       endCheckoutReviewScript,
-      listOf(holdGroupControlKey(groupId)),
+      listOf(holdGroupControlKey(groupId), endCheckoutReviewResultKey(groupId, reviewToken)),
       reviewToken.toString(),
     )
-    return result == 0L
+    return result == 0L || result == 3L
   }
 
   @Transactional
@@ -418,6 +418,7 @@ class RedisVenueSeatHoldService(
 
   private fun holdGroupKey(groupId: String) = "$HOLD_GROUP_KEY_PREFIX$groupId"
   private fun holdGroupControlKey(groupId: String) = "$HOLD_GROUP_CONTROL_KEY_PREFIX$groupId"
+  private fun endCheckoutReviewResultKey(groupId: String, reviewToken: UUID) = "$HOLD_GROUP_REVIEW_RESULT_KEY_PREFIX$groupId:$reviewToken"
   private fun holdDetailKey(holdId: String) = "$HOLD_DETAIL_KEY_PREFIX$holdId"
   private fun holdVenueSeatKey(performanceId: Long, venueSeatId: Long) = "$HOLD_VENUE_SEAT_KEY_PREFIX$performanceId:$venueSeatId"
   private fun finalizingVenueSeatKey(performanceId: Long, venueSeatId: Long) = "$FINALIZING_VENUE_SEAT_KEY_PREFIX$performanceId:$venueSeatId"
@@ -430,6 +431,7 @@ class RedisVenueSeatHoldService(
 
     private const val HOLD_GROUP_KEY_PREFIX = "hold:group:"
     private const val HOLD_GROUP_CONTROL_KEY_PREFIX = "hold:group-control:"
+    private const val HOLD_GROUP_REVIEW_RESULT_KEY_PREFIX = "hold:group-review-result:"
     private const val HOLD_DETAIL_KEY_PREFIX = "hold:detail:"
     private const val HOLD_VENUE_SEAT_KEY_PREFIX = "hold:venue-seat:"
     private const val FINALIZING_VENUE_SEAT_KEY_PREFIX = "hold:venue-seat-finalizing:"
