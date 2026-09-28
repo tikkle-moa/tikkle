@@ -110,7 +110,7 @@ describe("STOMP refresh recovery", () => {
       path: "/reservation/start-checkout",
       command: {
         requestId: "request-id",
-        data: { performanceId: 10 },
+        data: { performanceId: 10, reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8" },
       },
     });
 

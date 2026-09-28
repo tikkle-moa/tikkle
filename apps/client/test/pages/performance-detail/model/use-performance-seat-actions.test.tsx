@@ -78,6 +78,7 @@ describe("usePerformanceSeatActions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
+        sessionId: "session-1",
         selectedSeatIdsToHold: [1, 2],
         selectedSeatIdsToRelease: [3],
         seatOperationState: { status: "idle" },
@@ -95,14 +96,14 @@ describe("usePerformanceSeatActions", () => {
       expect.objectContaining({
         path: "/performances/{performanceId}/hold-seats",
         pathParams: { performanceId: 10 },
-        command: expect.objectContaining({ data: [1, 2] }),
+        command: expect.objectContaining({ data: [1, 2], sessionId: "session-1" }),
       }),
     );
     expect(client.publish).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         path: "/performances/{performanceId}/release-seats",
-        command: expect.objectContaining({ data: [3] }),
+        command: expect.objectContaining({ data: [3], sessionId: "session-1" }),
       }),
     );
     expect(setSeatOperationState).toHaveBeenCalledTimes(2);
@@ -114,6 +115,7 @@ describe("usePerformanceSeatActions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
+        sessionId: "session-1",
         selectedSeatIdsToHold: [],
         selectedSeatIdsToRelease: [],
         seatOperationState: { status: "idle" },
@@ -135,6 +137,13 @@ describe("usePerformanceSeatActions", () => {
     act(() => result.current.handleRefresh());
     expect(result.current.isRefreshing).toBe(true);
     expect(client.publish).toHaveBeenCalledTimes(2);
+    expect(client.publish).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        path: "/performances/{performanceId}/get-my-group-holds",
+        command: expect.objectContaining({ sessionId: "session-1" }),
+      }),
+    );
 
     act(() => result.current.handleRefreshFinish("seatStatus", { status: "success" }));
     act(() => result.current.handleRefreshFinish("myHeldSeats", { status: "success" }));

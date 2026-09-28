@@ -6,6 +6,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.reservation.dto.BeginCheckoutReviewMessageData
 import com.example.server.reservation.dto.CancelCheckoutMessageData
 import com.example.server.reservation.dto.StartCheckoutMessageData
 import com.example.server.reservation.entity.Reservation
@@ -27,9 +28,29 @@ class ReservationCheckoutService(
   private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
   private val outboxEventService: OutboxEventService,
 ) {
+  fun beginCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID, sessionId: UUID? = null): BeginCheckoutReviewMessageData {
+    val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId, sessionId)
+    if (reservationRepository.existsByGroupId(groupId)) {
+      throw CustomException(ErrorCode.CONFLICT, "이미 결제 대기 이후의 예매가 존재합니다.")
+    }
+
+    return redisVenueSeatHoldService.beginCheckoutReview(groupId, performanceId, reviewToken).copy(sessionId = sessionId)
+  }
+
+  fun endCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID, requestedGroupId: String? = null): Boolean {
+    val groupId = requestedGroupId?.let { redisVenueSeatHoldService.resolveGroupId(userId, performanceId, it) }
+      ?: redisVenueSeatHoldService.getGroupId(userId, performanceId)
+    return redisVenueSeatHoldService.endCheckoutReview(groupId, reviewToken)
+  }
+
   @Transactional
-  fun startCheckout(userId: Long, performanceId: Long): StartCheckoutMessageData {
-    val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId)
+  fun startCheckout(userId: Long, performanceId: Long, reviewToken: UUID, requestedGroupId: String? = null): StartCheckoutMessageData {
+    val groupId = requestedGroupId?.let { redisVenueSeatHoldService.resolveGroupId(userId, performanceId, it) }
+      ?: redisVenueSeatHoldService.getGroupId(userId, performanceId)
+    reservationRepository.findByGroupIdForUpdate(groupId)?.let { reservation ->
+      return existingCheckout(reservation, groupId, userId, performanceId)
+    }
+
     val activeHoldData = try {
       redisVenueSeatHoldService.findActiveHoldDataByGroupId(groupId)
     } catch (exception: CustomException) {
@@ -57,6 +78,8 @@ class ReservationCheckoutService(
       return existingCheckout(
         reservation = existingReservation,
         groupId = groupId,
+        userId = userId,
+        performanceId = performanceId,
       )
     }
 
@@ -97,11 +120,13 @@ class ReservationCheckoutService(
       return existingCheckout(
         reservation = reservation,
         groupId = groupId,
+        userId = userId,
+        performanceId = performanceId,
       )
     }
 
     try {
-      redisVenueSeatHoldService.transitionForPayment(groupId, paymentExpiresAt)
+      redisVenueSeatHoldService.transitionForPayment(groupId, paymentExpiresAt, reviewToken, reservation.id)
     } catch (exception: CustomException) {
       reservation.status = ReservationStatus.EXPIRED
       if (exception.errorCode == ErrorCode.NOT_FOUND) {
@@ -170,12 +195,12 @@ class ReservationCheckoutService(
     recordReleasedSeatsEvents(reservation)
   }
 
-  private fun existingCheckout(reservation: Reservation, groupId: String): StartCheckoutMessageData {
-    if (reservation.groupId != groupId) {
+  private fun existingCheckout(reservation: Reservation, groupId: String, userId: Long, performanceId: Long): StartCheckoutMessageData {
+    if (reservation.groupId != groupId || reservation.booker.id != userId || reservation.performance.id != performanceId) {
       throw CustomException(ErrorCode.FORBIDDEN, "다른 사용자의 결제 대기 예매입니다.")
     }
 
-    if (reservation.status != ReservationStatus.PAYMENT_PENDING) {
+    if (reservation.status != ReservationStatus.PAYMENT_PENDING || !reservation.paymentExpiresAt.isAfter(LocalDateTime.now())) {
       throw CustomException(ErrorCode.CONFLICT, "이미 종료된 예매입니다.")
     }
 

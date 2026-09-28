@@ -107,18 +107,18 @@ class PerformanceStompControllerTest {
   inner class GetMyHeldSeats {
     @Test
     fun `인증 사용자의 Hold 좌석을 조회해 개인 메시지로 반환한다`() {
-      val command = GetMyGroupHoldsCommand(REQUEST_ID)
+      val command = GetMyGroupHoldsCommand(REQUEST_ID, sessionId = SESSION_ID)
       val heldSeats = listOf(
         VenueSeatHoldDetail(
           holdId = "hold-1",
-          groupId = "$USER_ID:$PERFORMANCE_ID",
+          groupId = "$USER_ID:$PERFORMANCE_ID:$SESSION_ID",
           performanceId = PERFORMANCE_ID,
           venueSeatIds = SEAT_IDS,
           expiresAt = LocalDateTime.of(2026, 9, 10, 12, 5),
         ),
       )
       given(authentication.principal).willReturn(LoginUserResult(USER_ID, UserRole.USER))
-      given(redisVenueSeatHoldService.getMyGroupHolds(USER_ID, PERFORMANCE_ID)).willReturn(heldSeats)
+      given(redisVenueSeatHoldService.getMyGroupHolds(USER_ID, PERFORMANCE_ID, SESSION_ID)).willReturn(heldSeats)
 
       val response = controller.getMyGroupHolds(PERFORMANCE_ID, command, authentication)
 
@@ -128,7 +128,7 @@ class PerformanceStompControllerTest {
           data = heldSeats,
         ),
       )
-      then(redisVenueSeatHoldService).should().getMyGroupHolds(USER_ID, PERFORMANCE_ID)
+      then(redisVenueSeatHoldService).should().getMyGroupHolds(USER_ID, PERFORMANCE_ID, SESSION_ID)
     }
 
     @Test
@@ -179,10 +179,11 @@ class PerformanceStompControllerTest {
       val command = HoldVenueSeatsCommand(
         requestId = REQUEST_ID,
         data = SEAT_IDS,
+        sessionId = SESSION_ID,
       )
       val result = VenueSeatHoldDetail(
         holdId = "hold-1",
-        groupId = "1:$PERFORMANCE_ID",
+        groupId = "1:$PERFORMANCE_ID:$SESSION_ID",
         performanceId = PERFORMANCE_ID,
         venueSeatIds = SEAT_IDS,
         expiresAt = LocalDateTime.of(2026, 9, 10, 12, 5),
@@ -196,6 +197,7 @@ class PerformanceStompControllerTest {
           USER_ID,
           PERFORMANCE_ID,
           SEAT_IDS,
+          SESSION_ID,
         ),
       ).willReturn(result)
 
@@ -210,7 +212,7 @@ class PerformanceStompControllerTest {
 
       then(redisVenueSeatHoldService)
         .should()
-        .holdSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS)
+        .holdSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS, SESSION_ID)
     }
 
     @Test
@@ -247,6 +249,7 @@ class PerformanceStompControllerTest {
       val command = ReleaseVenueSeatsCommand(
         requestId = REQUEST_ID,
         data = SEAT_IDS,
+        sessionId = SESSION_ID,
       )
 
       given(authentication.principal)
@@ -257,6 +260,7 @@ class PerformanceStompControllerTest {
           USER_ID,
           PERFORMANCE_ID,
           SEAT_IDS,
+          SESSION_ID,
         ),
       ).willReturn(SEAT_IDS)
 
@@ -271,7 +275,7 @@ class PerformanceStompControllerTest {
 
       then(redisVenueSeatHoldService)
         .should()
-        .releaseSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS)
+        .releaseSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS, SESSION_ID)
     }
 
     @Test
@@ -309,5 +313,6 @@ class PerformanceStompControllerTest {
     private val REQUEST_ID = UUID.fromString(
       "2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a",
     )
+    private val SESSION_ID = UUID.fromString("88974819-50e7-4127-ae98-b178e3ec2346")
   }
 }

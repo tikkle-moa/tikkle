@@ -8,6 +8,7 @@ import type { RefreshAction, SeatOperation, SeatOperationState } from "./seat-ma
 
 interface UsePerformanceSeatActionsProps {
   performanceId: number;
+  sessionId?: string;
   selectedSeatIdsToHold: number[];
   selectedSeatIdsToRelease: number[];
   seatOperationState: SeatOperationState;
@@ -16,6 +17,7 @@ interface UsePerformanceSeatActionsProps {
 
 export const usePerformanceSeatActions = ({
   performanceId,
+  sessionId,
   selectedSeatIdsToHold,
   selectedSeatIdsToRelease,
   seatOperationState,
@@ -84,9 +86,9 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/get-my-group-holds",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID() },
+      command: { requestId: crypto.randomUUID(), sessionId },
     });
-  }, [performanceId, stompClient, validateSeatHoldAction]);
+  }, [performanceId, sessionId, stompClient, validateSeatHoldAction]);
 
   const handleHoldSeats = useCallback(() => {
     if (!validateSeatHoldAction(stompClient, "hold")) return;
@@ -96,9 +98,9 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/hold-seats",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToHold },
+      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToHold, sessionId },
     });
-  }, [performanceId, selectedSeatIdsToHold, setSeatOperationState, stompClient, validateSeatHoldAction]);
+  }, [performanceId, selectedSeatIdsToHold, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
 
   const handleReleaseSeats = useCallback(() => {
     if (!validateSeatHoldAction(stompClient, "release")) return;
@@ -108,9 +110,9 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/release-seats",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToRelease },
+      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToRelease, sessionId },
     });
-  }, [performanceId, selectedSeatIdsToRelease, setSeatOperationState, stompClient, validateSeatHoldAction]);
+  }, [performanceId, selectedSeatIdsToRelease, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
 
   const visibleSeatOperationState = useMemo(
     () =>

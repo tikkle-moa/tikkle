@@ -91,6 +91,7 @@ describe("usePerformanceSeatSubscriptions", () => {
       const [myGroupHeldSeatInfoBySeatId, setMyGroupHeldSeatInfoBySeatId] = useState(new Map<number, MyGroupHeldSeatInfo>());
       const subscription = usePerformanceSeatSubscriptions({
         performanceId: 10,
+        sessionId: "session-1",
         handleRefreshFinish,
         setSelectedSeatIds,
         setServerTimeOffset,
@@ -113,6 +114,13 @@ describe("usePerformanceSeatSubscriptions", () => {
     expect(result.current.isConnected).toBe(true);
     expect(result.current.connectionStyle.label).toBe("실시간 연결됨");
     expect(client.publish).toHaveBeenCalledTimes(2);
+    expect(client.publish).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        path: "/performances/{performanceId}/get-my-group-holds",
+        command: expect.objectContaining({ sessionId: "session-1" }),
+      }),
+    );
 
     const seatStatus = findSubscription(subscriptions, "get-seat-status");
     act(() =>
@@ -143,7 +151,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     const myHolds = findSubscription(subscriptions, "get-my-group-holds");
     act(() =>
       myHolds.callback({
-        data: [{ holdId: "hold-1", expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] }] as never,
+        data: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] }] as never,
       }),
     );
     expect(result.current.myGroupHeldSeatInfoBySeatId.get(2)?.holdId).toBe("hold-1");
@@ -160,7 +168,10 @@ describe("usePerformanceSeatSubscriptions", () => {
     act(() =>
       event({
         type: "HELD_SEATS",
-        data: [{ id: 3, expiresAt: "2026-09-16T21:00:00" }] as never,
+        data: [
+          { id: 2, expiresAt: "2026-09-16T21:00:00" },
+          { id: 3, expiresAt: "2026-09-16T21:00:00" },
+        ] as never,
       }),
     );
     expect(result.current.heldSeatExpiresAtBySeatId).not.toBe(emptyHeldResult);
@@ -174,6 +185,8 @@ describe("usePerformanceSeatSubscriptions", () => {
     act(() => event({ type: "RESERVATION_CONFIRMED", data: [2, 3] as never }));
     expect(result.current.bookedSeatIds).toEqual(new Set([2, 3]));
     expect(result.current.selectedSeatIds).toEqual(new Set([1]));
+    expect(result.current.heldSeatExpiresAtBySeatId.has(2)).toBe(false);
+    expect(result.current.myGroupHeldSeatInfoBySeatId.has(2)).toBe(false);
     act(() => event({ type: "RESERVATION_CONFIRMED", data: [2] as never }));
 
     unmount();
@@ -203,13 +216,13 @@ describe("usePerformanceSeatSubscriptions", () => {
     const hold = findSubscription(subscriptions, "hold-seats");
     act(() =>
       hold.callback({
-        data: { holdId: "hold-1", expiresAt: "2026-09-16T20:00:00", venueSeatIds: [] } as never,
+        data: { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: "2026-09-16T20:00:00", venueSeatIds: [] } as never,
       }),
     );
     expect(result.current.seatOperationState.status).toBe("success");
     act(() =>
       hold.callback({
-        data: { holdId: "hold-1", expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] } as never,
+        data: { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] } as never,
       }),
     );
     expect(result.current.myGroupHeldSeatInfoBySeatId.size).toBe(2);
