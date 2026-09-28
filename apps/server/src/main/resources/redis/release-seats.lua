@@ -1,10 +1,10 @@
 -- 조회 이후 좌석 소유권이나 Hold 정보가 변경되었다면 해제하지 않습니다.
--- KEYS: holdVenueSeatKey 목록 -> 삭제할 holdDetailKey 목록 -> 갱신할 holdDetailKey 목록 -> holdPerformanceKey -> holdGroupKey
+-- KEYS: holdVenueSeatKey 목록 -> 삭제할 holdDetailKey 목록 -> 갱신할 holdDetailKey 목록 -> 삭제할 holdExpiryKey 목록 -> holdPerformanceKey -> holdGroupKey -> versionKey
 -- ARGV[1]: holdVenueSeatKey 수
 -- ARGV[2]: 삭제할 holdDetailKey 수
 -- ARGV[3]: 갱신할 holdDetailKey 수
 -- 이후 ARGV: 좌석별 예상 holdId 목록 -> 예상 원본 JSON(삭제 -> 갱신) 목록 -> 삭제할 holdId 목록 -> 갱신할 JSON 목록
--- 반환값: 성공 0, 충돌 1
+-- 반환값: "결과 코드:version" (성공 "0:version", 충돌 "1:0")
 
 local venueSeatKeyCount = tonumber(ARGV[1])
 local emptyHoldDetailKeyCount= tonumber(ARGV[2])
@@ -12,8 +12,10 @@ local remainingHoldDetailKeyCount = tonumber(ARGV[3])
 
 local emptyKeyStartIndex = venueSeatKeyCount + 1
 local remainingKeyStartIndex = emptyKeyStartIndex + emptyHoldDetailKeyCount
-local holdPerformanceKey = KEYS[#KEYS - 1]
-local holdGroupKey = KEYS[#KEYS]
+local expiryKeyStartIndex = remainingKeyStartIndex + remainingHoldDetailKeyCount
+local holdPerformanceKey = KEYS[#KEYS - 2]
+local holdGroupKey = KEYS[#KEYS - 1]
+local versionKey = KEYS[#KEYS]
 
 local expectedValueStartIndex = 4
 local emptyHoldIdStartIndex = expectedValueStartIndex + venueSeatKeyCount + emptyHoldDetailKeyCount + remainingHoldDetailKeyCount
@@ -22,15 +24,12 @@ local remainingJsonStartIndex = emptyHoldIdStartIndex + emptyHoldDetailKeyCount
 -- 다른 요청의 부분 해제나 결제 연장 결과를 덮어쓰지 않도록 변경 전에 모두 검증합니다.
 local checkCount = venueSeatKeyCount + emptyHoldDetailKeyCount + remainingHoldDetailKeyCount
 
-local now = redis.call('TIME')
-local nowMillis = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
-
 for i = 0, checkCount - 1 do
   local currentValue = redis.call('GET', KEYS[i + 1])
   local expectedValue = ARGV[expectedValueStartIndex + i]
 
   if currentValue ~= expectedValue then
-    return 1
+    return '1:0'
   end
 end
 
@@ -42,6 +41,7 @@ end
 -- 남은 좌석이 없는 Hold는 본문과 사용자 인덱스에서 함께 제거합니다.
 for i = 0, emptyHoldDetailKeyCount - 1 do
   redis.call('DEL', KEYS[emptyKeyStartIndex + i])
+  redis.call('DEL', KEYS[expiryKeyStartIndex + i])
   redis.call('ZREM', holdPerformanceKey, ARGV[emptyHoldIdStartIndex + i])
   redis.call('ZREM', holdGroupKey, ARGV[emptyHoldIdStartIndex + i])
 end
@@ -50,6 +50,6 @@ end
 for i = 0, remainingHoldDetailKeyCount - 1 do
   redis.call('SET', KEYS[remainingKeyStartIndex + i], ARGV[remainingJsonStartIndex + i], 'KEEPTTL')
 end
-redis.call('ZREMRANGEBYSCORE', holdGroupKey, '-inf', nowMillis)
+local version = redis.call('INCR', versionKey)
 
-return 0
+return '0:' .. version

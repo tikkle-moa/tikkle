@@ -9,13 +9,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentCaptor
-import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.core.ValueOperations
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -24,15 +21,10 @@ import java.time.ZoneOffset
 class PerformanceVenueSeatStompPublisherTest {
   @Mock lateinit var messagingTemplate: SimpMessagingTemplate
 
-  @Mock lateinit var stringRedisTemplate: StringRedisTemplate
-
-  @Mock lateinit var valueOperations: ValueOperations<String, String>
-
   @InjectMocks lateinit var publisher: PerformanceVenueSeatStompPublisher
 
   @Test
   fun `좌석 Hold 이벤트를 공연 좌석 이벤트 topic으로 발행한다`() {
-    givenEventVersion()
     val heldSeats = listOf(
       PerformanceHeldSeatsEvent.HeldSeat(
         id = 101L,
@@ -40,7 +32,7 @@ class PerformanceVenueSeatStompPublisherTest {
       ),
     )
 
-    publisher.publishHeldSeats(PERFORMANCE_ID, heldSeats)
+    publisher.publishHeldSeats(PERFORMANCE_ID, heldSeats, version = EVENT_VERSION)
 
     assertPublishedEvent(
       expectedType = PerformanceHeldSeatsEventType.HELD_SEATS,
@@ -50,9 +42,7 @@ class PerformanceVenueSeatStompPublisherTest {
 
   @Test
   fun `좌석 해제 이벤트를 공연 좌석 이벤트 topic으로 발행한다`() {
-    givenEventVersion()
-
-    publisher.publishReleasedSeats(PERFORMANCE_ID, VENUE_SEAT_IDS)
+    publisher.publishReleasedSeats(PERFORMANCE_ID, VENUE_SEAT_IDS, version = EVENT_VERSION)
 
     assertPublishedEvent(
       expectedType = PerformanceVenueSeatIdsEventType.RELEASED_SEATS,
@@ -62,35 +52,12 @@ class PerformanceVenueSeatStompPublisherTest {
 
   @Test
   fun `예매 확정 이벤트를 공연 좌석 이벤트 topic으로 발행한다`() {
-    givenEventVersion()
-
-    publisher.publishReservationConfirmed(PERFORMANCE_ID, VENUE_SEAT_IDS)
+    publisher.publishReservationConfirmed(PERFORMANCE_ID, VENUE_SEAT_IDS, version = EVENT_VERSION)
 
     assertPublishedEvent(
       expectedType = PerformanceVenueSeatIdsEventType.RESERVATION_CONFIRMED,
       expectedData = VENUE_SEAT_IDS,
     )
-  }
-
-  @Test
-  fun `현재 이벤트 버전을 Redis에서 조회한다`() {
-    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
-    given(valueOperations.get(VERSION_KEY)).willReturn(EVENT_VERSION.toString())
-
-    assertThat(publisher.getCurrentVersion(PERFORMANCE_ID)).isEqualTo(EVENT_VERSION)
-  }
-
-  @Test
-  fun `이벤트 버전이 없으면 0을 반환한다`() {
-    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
-    given(valueOperations.get(VERSION_KEY)).willReturn(null)
-
-    assertThat(publisher.getCurrentVersion(PERFORMANCE_ID)).isZero()
-  }
-
-  private fun givenEventVersion() {
-    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
-    given(valueOperations.increment(VERSION_KEY)).willReturn(EVENT_VERSION)
   }
 
   private fun assertPublishedEvent(expectedType: Any, expectedData: Any) {
@@ -126,7 +93,6 @@ class PerformanceVenueSeatStompPublisherTest {
   companion object {
     private const val PERFORMANCE_ID = 10L
     private const val EVENT_VERSION = 44L
-    private const val VERSION_KEY = "performance:venue-seat-event-version:$PERFORMANCE_ID"
     private val VENUE_SEAT_IDS = listOf(101L, 102L)
   }
 }

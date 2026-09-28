@@ -1,16 +1,18 @@
 -- 해당 그룹에 대한 모든 좌석을 해제하고, holdGroupKey를 삭제합니다.
--- KEYS: holdVenueSeatKey 목록 -> holdDetailKey 목록 -> holdPerformanceKey -> holdGroupKey
+-- KEYS: holdVenueSeatKey 목록 -> holdDetailKey 목록 -> holdExpiryKey 목록 -> holdPerformanceKey -> holdGroupKey -> versionKey
 -- ARGV[1]: holdVenueSeatKey 수
 -- ARGV[2]: holdDetailKey 수
 -- 이후 ARGV: 좌석별 예상 holdId 목록 -> 예상 원본 JSON 목록 -> 삭제할 holdId 목록
--- 반환값: 성공 0, 충돌 1
+-- 반환값: "결과 코드:version" (성공 "0:version", 충돌 "1:0")
 
 local venueSeatKeyCount = tonumber(ARGV[1])
 local holdDetailKeyCount = tonumber(ARGV[2])
 
 local holdDetailKeyStartIndex = venueSeatKeyCount + 1
-local holdPerformanceKey = KEYS[#KEYS - 1]
-local holdGroupKey = KEYS[#KEYS]
+local holdExpiryKeyStartIndex = holdDetailKeyStartIndex + holdDetailKeyCount
+local holdPerformanceKey = KEYS[#KEYS - 2]
+local holdGroupKey = KEYS[#KEYS - 1]
+local versionKey = KEYS[#KEYS]
 
 local expectedValueStartIndex = 3
 local holdIdStartIndex = expectedValueStartIndex + venueSeatKeyCount + holdDetailKeyCount
@@ -21,7 +23,7 @@ for i = 0, venueSeatKeyCount + holdDetailKeyCount - 1 do
 	local expectedValue = ARGV[expectedValueStartIndex + i]
 
 	if currentValue ~= expectedValue then
-		return 1
+		return '1:0'
 	end
 end
 
@@ -33,10 +35,12 @@ end
 -- hold 상세 정보 삭제
 for i = 0, holdDetailKeyCount - 1 do
 	redis.call('DEL', KEYS[holdDetailKeyStartIndex + i])
+	redis.call('DEL', KEYS[holdExpiryKeyStartIndex + i])
 	redis.call('ZREM', holdPerformanceKey, ARGV[holdIdStartIndex + i])
 end
 
 -- 그룹의 hold 목록 삭제
 redis.call('DEL', holdGroupKey)
+local version = redis.call('INCR', versionKey)
 
-return 0
+return '0:' .. version

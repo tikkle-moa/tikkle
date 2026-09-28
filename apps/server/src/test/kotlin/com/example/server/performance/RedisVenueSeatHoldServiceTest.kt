@@ -27,6 +27,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.Mock
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.mockingDetails
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.ValueOperations
@@ -58,7 +59,7 @@ class RedisVenueSeatHoldServiceTest {
   private val objectMapper = ObjectMapper()
   private lateinit var service: RedisVenueSeatHoldService
 
-  private var executeResult: Any? = 0L
+  private var executeResult: Any? = "0:1"
 
   @BeforeEach
   fun setUp() {
@@ -82,7 +83,6 @@ class RedisVenueSeatHoldServiceTest {
   @Test
   fun `서버 시각과 좌석 상태 목록을 반환한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
-    given(performanceVenueSeatStompPublisher.getCurrentVersion(PERFORMANCE_ID)).willReturn(7L)
     given(
       reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
         performanceId = PERFORMANCE_ID,
@@ -95,6 +95,7 @@ class RedisVenueSeatHoldServiceTest {
     given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
     given(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble())).willReturn(setOf("other-hold"))
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get(VERSION_KEY)).willReturn(7L.toString())
     given(valueOperations.get("hold:detail:other-hold")).willReturn(objectMapper.writeValueAsString(otherGroupHold))
     executeResult = objectMapper.writeValueAsString(listOf(myGroupHold))
 
@@ -112,7 +113,6 @@ class RedisVenueSeatHoldServiceTest {
   @Test
   fun `공연별 Hold ZSET에서 상세 정보가 없거나 만료된 Hold는 무시한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
-    given(performanceVenueSeatStompPublisher.getCurrentVersion(PERFORMANCE_ID)).willReturn(7L)
     given(
       reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
         performanceId = PERFORMANCE_ID,
@@ -123,6 +123,7 @@ class RedisVenueSeatHoldServiceTest {
     given(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble()))
       .willReturn(setOf("missing-hold", EXPIRED_HOLD_ID, SAME_GROUP_ACTIVE_HOLD_ID))
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get(VERSION_KEY)).willReturn(7L.toString())
     given(valueOperations.get("hold:detail:missing-hold")).willReturn(null)
     given(valueOperations.get("hold:detail:$EXPIRED_HOLD_ID")).willReturn(
       objectMapper.writeValueAsString(
@@ -155,8 +156,6 @@ class RedisVenueSeatHoldServiceTest {
   @Test
   fun `좌석 상태 조회 중 버전이 계속 변경되면 충돌을 반환한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
-    given(performanceVenueSeatStompPublisher.getCurrentVersion(PERFORMANCE_ID))
-      .willReturn(1L, 2L, 3L, 4L, 5L, 6L)
     given(
       reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
         performanceId = PERFORMANCE_ID,
@@ -165,6 +164,8 @@ class RedisVenueSeatHoldServiceTest {
     ).willReturn(emptyList())
     given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
     given(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble())).willReturn(emptySet())
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get(VERSION_KEY)).willReturn("1", "2", "3", "4", "5", "6")
     executeResult = "[]"
 
     val exception = assertThrows<CustomException> {
@@ -177,7 +178,6 @@ class RedisVenueSeatHoldServiceTest {
   @Test
   fun `공연별 Hold ZSET이 없으면 다른 그룹 점유 좌석을 빈 목록으로 반환한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
-    given(performanceVenueSeatStompPublisher.getCurrentVersion(PERFORMANCE_ID)).willReturn(7L)
     given(
       reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
         performanceId = PERFORMANCE_ID,
@@ -186,6 +186,8 @@ class RedisVenueSeatHoldServiceTest {
     ).willReturn(emptyList())
     given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
     given(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble())).willReturn(null)
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get(VERSION_KEY)).willReturn(7L.toString())
     executeResult = "[]"
 
     val result = service.getSeatStatus(USER_ID, PERFORMANCE_ID)
@@ -194,10 +196,64 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
+  fun `이벤트 version이 없으면 0으로 좌석 상태를 반환한다`() {
+    given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
+    given(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+        performanceId = PERFORMANCE_ID,
+        status = ReservationStatus.SUCCEEDED,
+      ),
+    ).willReturn(emptyList())
+    given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
+    given(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble())).willReturn(emptySet())
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    executeResult = "[]"
+
+    assertThat(service.getSeatStatus(USER_ID, PERFORMANCE_ID).version).isZero()
+  }
+
+  @Test
   fun `공연이 없으면 예외를 던진다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.empty())
     val exception = assertThrows<CustomException> { service.getSeatStatus(USER_ID, PERFORMANCE_ID) }
     assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+  }
+
+  @Test
+  fun `만료된 Hold는 Lua 결과의 version으로 해제 이벤트를 발행한다`() {
+    val hold = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(VENUE_SEAT_ID), LocalDateTime.now().minusMinutes(1))
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get("hold:detail:$HOLD_ID")).willReturn(objectMapper.writeValueAsString(hold))
+    executeResult = """{"version":8,"venueSeatIds":[$VENUE_SEAT_ID]}"""
+
+    service.publishExpiredHold(HOLD_ID)
+
+    val invocation = mockingDetails(performanceVenueSeatStompPublisher).invocations.single()
+    assertThat(invocation.arguments[0]).isEqualTo(PERFORMANCE_ID)
+    assertThat(invocation.arguments[1]).isEqualTo(listOf(VENUE_SEAT_ID))
+    assertThat(invocation.arguments[2]).isEqualTo(8L)
+  }
+
+  @Test
+  fun `만료 알림이 늦게 도착했으면 해제 이벤트를 발행하지 않는다`() {
+    val hold = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(VENUE_SEAT_ID), LocalDateTime.now().minusMinutes(1))
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get("hold:detail:$HOLD_ID")).willReturn(objectMapper.writeValueAsString(hold))
+    executeResult = null
+
+    service.publishExpiredHold(HOLD_ID)
+
+    then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `만료된 Hold 상세가 없으면 해제 이벤트를 발행하지 않는다`() {
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get("hold:detail:$HOLD_ID")).willReturn(null)
+
+    service.publishExpiredHold(HOLD_ID)
+
+    then(performanceVenueSeatStompPublisher).shouldHaveNoInteractions()
   }
 
   @Test
@@ -285,7 +341,7 @@ class RedisVenueSeatHoldServiceTest {
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(listOf(venueSeat(101L)))
     given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L))).willReturn(false)
-    executeResult = 0L
+    executeResult = "0:1"
 
     val result = service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
 
@@ -298,7 +354,7 @@ class RedisVenueSeatHoldServiceTest {
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(listOf(venueSeat(101L)))
     given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L))).willReturn(false)
-    executeResult = 1L
+    executeResult = "1:0"
 
     val exception = assertThrows<CustomException> {
       service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
@@ -376,7 +432,7 @@ class RedisVenueSeatHoldServiceTest {
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
     given(valueOperations.multiGet(listOf("hold:venue-seat:$PERFORMANCE_ID:101"))).willReturn(listOf(HOLD_ID))
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(objectMapper.writeValueAsString(hold)))
-    executeResult = 0L
+    executeResult = "0:2"
 
     assertThat(service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))).containsExactly(101L)
   }
@@ -387,7 +443,7 @@ class RedisVenueSeatHoldServiceTest {
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
     given(valueOperations.multiGet(listOf("hold:venue-seat:$PERFORMANCE_ID:101"))).willReturn(listOf(HOLD_ID))
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(objectMapper.writeValueAsString(hold)))
-    executeResult = 1L
+    executeResult = "1:0"
 
     val exception = assertThrows<CustomException> {
       service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
@@ -402,7 +458,7 @@ class RedisVenueSeatHoldServiceTest {
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
     given(valueOperations.multiGet(listOf("hold:venue-seat:$PERFORMANCE_ID:101"))).willReturn(listOf(HOLD_ID))
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(objectMapper.writeValueAsString(hold)))
-    executeResult = 0L
+    executeResult = "0:2"
 
     assertThat(service.releaseSeats(USER_ID, PERFORMANCE_ID, listOf(101L))).containsExactly(101L)
   }
@@ -426,10 +482,10 @@ class RedisVenueSeatHoldServiceTest {
   fun `Outbox Hold 해제 결과를 상태로 변환한다`() {
     val eventId = UUID.fromString("f2d0a95a-bc20-4f1b-9ac6-7ac89a2e0b73")
     mapOf(
-      0L to OutboxHoldActionResult.APPLIED,
-      1L to OutboxHoldActionResult.REPLACED,
-      2L to OutboxHoldActionResult.EXPIRED,
-      3L to OutboxHoldActionResult.ALREADY_APPLIED,
+      "0:3" to OutboxHoldActionResult.APPLIED,
+      "1:0" to OutboxHoldActionResult.REPLACED,
+      "2:0" to OutboxHoldActionResult.EXPIRED,
+      "3:4" to OutboxHoldActionResult.ALREADY_APPLIED,
     ).forEach { (result, expected) ->
       executeResult = result
 
@@ -441,7 +497,7 @@ class RedisVenueSeatHoldServiceTest {
           venueSeatIds = listOf(101L),
           eventId = eventId,
         ),
-      ).isEqualTo(expected)
+      ).extracting(VenueSeatHoldActionResult::action).isEqualTo(expected)
     }
   }
 
@@ -459,7 +515,7 @@ class RedisVenueSeatHoldServiceTest {
       )
     }
 
-    executeResult = 4L
+    executeResult = "4:0"
 
     assertThrows<IllegalStateException> {
       service.releaseVenueSeats(
@@ -473,11 +529,28 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
+  fun `형식이 올바르지 않은 Lua 결과는 처리하지 않는다`() {
+    listOf("invalid", "invalid:1", "0:invalid").forEach { result ->
+      executeResult = result
+
+      assertThrows<IllegalStateException> {
+        service.releaseVenueSeats(
+          holdId = HOLD_ID,
+          groupId = GROUP_ID,
+          performanceId = PERFORMANCE_ID,
+          venueSeatIds = listOf(101L),
+          eventId = UUID.randomUUID(),
+        )
+      }
+    }
+  }
+
+  @Test
   fun `Outbox Hold 확정 결과를 상태로 변환한다`() {
     mapOf(
-      0L to OutboxHoldActionResult.APPLIED,
-      1L to OutboxHoldActionResult.REPLACED,
-      2L to OutboxHoldActionResult.ALREADY_APPLIED,
+      "0:5" to OutboxHoldActionResult.APPLIED,
+      "1:0" to OutboxHoldActionResult.REPLACED,
+      "2:6" to OutboxHoldActionResult.ALREADY_APPLIED,
     ).forEach { (result, expected) ->
       executeResult = result
 
@@ -487,8 +560,9 @@ class RedisVenueSeatHoldServiceTest {
           groupId = GROUP_ID,
           performanceId = PERFORMANCE_ID,
           venueSeatIds = listOf(101L),
+          eventId = UUID.randomUUID(),
         ),
-      ).isEqualTo(expected)
+      ).extracting(VenueSeatHoldActionResult::action).isEqualTo(expected)
     }
   }
 
@@ -502,10 +576,11 @@ class RedisVenueSeatHoldServiceTest {
         groupId = GROUP_ID,
         performanceId = PERFORMANCE_ID,
         venueSeatIds = listOf(101L),
+        eventId = UUID.randomUUID(),
       )
     }
 
-    executeResult = 3L
+    executeResult = "3:0"
 
     assertThrows<IllegalStateException> {
       service.finalizeVenueSeats(
@@ -513,6 +588,7 @@ class RedisVenueSeatHoldServiceTest {
         groupId = GROUP_ID,
         performanceId = PERFORMANCE_ID,
         venueSeatIds = listOf(101L),
+        eventId = UUID.randomUUID(),
       )
     }
   }
@@ -521,7 +597,7 @@ class RedisVenueSeatHoldServiceTest {
   fun `결제 전환과 전체 해제 스크립트의 성공을 처리한다`() {
     val detail = VenueSeatHoldDetail(HOLD_ID, "$USER_ID:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
-    executeResult = 0L
+    executeResult = "0:7"
 
     assertThat(service.transitionForPayment("$USER_ID:$PERFORMANCE_ID", LocalDateTime.now().plusMinutes(10))).hasSize(1)
     assertThat(service.releaseAllVenueSeats("$USER_ID:$PERFORMANCE_ID")).containsExactly(101L)
@@ -531,7 +607,7 @@ class RedisVenueSeatHoldServiceTest {
   fun `결제 전환과 전체 해제 스크립트 충돌은 CONFLICT로 반환한다`() {
     val detail = VenueSeatHoldDetail(HOLD_ID, "$USER_ID:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
-    executeResult = 1L
+    executeResult = "1:0"
 
     assertThat(
       assertThrows<CustomException> {
@@ -643,10 +719,12 @@ class RedisVenueSeatHoldServiceTest {
   companion object {
     private const val USER_ID = 1L
     private const val PERFORMANCE_ID = 10L
+    private const val VENUE_SEAT_ID = 101L
     private const val VENUE_ID = 20L
     private const val GROUP_ID = "1:10"
     private const val HOLD_ID = "hold-1"
     private const val EXPIRED_HOLD_ID = "hold-expired"
     private const val SAME_GROUP_ACTIVE_HOLD_ID = "hold-same-group-active"
+    private const val VERSION_KEY = "performance:venue-seat-event-version:$PERFORMANCE_ID"
   }
 }

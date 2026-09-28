@@ -6,20 +6,17 @@ import org.springframework.stereotype.Component
 import java.nio.charset.StandardCharsets
 
 @Component
-class RedisVenueSeatHoldExpirationListener(private val performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher) : MessageListener {
+class RedisVenueSeatHoldExpirationListener(private val redisVenueSeatHoldService: RedisVenueSeatHoldService) : MessageListener {
   override fun onMessage(message: Message, pattern: ByteArray?) {
     val key = message.body.toString(StandardCharsets.UTF_8)
 
-    val match = holdSeatKeyPattern.matchEntire(key)
+    val match = holdExpiryKeyPattern.matchEntire(key)
       ?: return
 
-    performanceVenueSeatStompPublisher.publishReleasedSeats(
-      performanceId = match.groupValues[1].toLong(),
-      venueSeatIds = listOf(match.groupValues[2].toLong()),
-    )
+    redisVenueSeatHoldService.publishExpiredHold(match.groupValues[1])
   }
 
   companion object {
-    private val holdSeatKeyPattern = Regex("^hold:venue-seat:(\\d+):(\\d+)$")
+    private val holdExpiryKeyPattern = Regex("^hold:expiry:(.+)$")
   }
 }

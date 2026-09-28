@@ -7,6 +7,7 @@ import com.example.server.outbox.types.OutboxEventType
 import com.example.server.outbox.types.OutboxHoldActionResult
 import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.performance.RedisVenueSeatHoldService
+import com.example.server.performance.VenueSeatHoldActionResult
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -56,8 +57,9 @@ class OutboxEventDispatcherTest {
         groupId = payload.groupId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
+        eventId = java.util.UUID.fromString(event.eventId),
       ),
-    ).willReturn(OutboxHoldActionResult.APPLIED)
+    ).willReturn(VenueSeatHoldActionResult(OutboxHoldActionResult.APPLIED, version = 9L))
 
     dispatcher.dispatch()
 
@@ -65,6 +67,7 @@ class OutboxEventDispatcherTest {
       eventId = java.util.UUID.fromString(event.eventId),
       performanceId = payload.performanceId,
       venueSeatIds = payload.seatIds,
+      version = 9L,
     )
     then(outboxEventService).should().markPublished(event.id, event.processingOwner!!)
   }
