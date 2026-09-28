@@ -10,16 +10,19 @@ const seats = [
 ] as VenueSeatResponse[];
 
 describe("usePerformanceSeatMap", () => {
-  it("복원할 세션 ID가 있으면 유지하고 새 진입에는 세션을 생성한다", () => {
-    const { result, rerender } = renderHook(() => usePerformanceSeatMap({ performanceId: 1, sessionId: "session-1" }));
-    expect(result.current.sessionId).toBe("session-1");
+  it("탭 저장소의 세션을 재사용하고 없으면 공연별 세션을 생성한다", () => {
+    const { result, rerender } = renderHook(() => usePerformanceSeatMap({ performanceId: 1 }));
+    const sessionId = result.current.sessionId;
+    expect(sessionId).toEqual(expect.any(String));
+    expect(sessionStorage.getItem("tikkle.performance-seat-session:1")).toBe(sessionId);
 
     rerender();
-    expect(result.current.sessionId).toBe("session-1");
+    expect(result.current.sessionId).toBe(sessionId);
 
     const freshMap = renderHook(() => usePerformanceSeatMap({ performanceId: 2 }));
     expect(freshMap.result.current.sessionId).toEqual(expect.any(String));
-    expect(freshMap.result.current.sessionId).not.toBe("session-1");
+    expect(freshMap.result.current.sessionId).not.toBe(sessionId);
+    expect(sessionStorage.getItem("tikkle.performance-seat-session:2")).toBe(freshMap.result.current.sessionId);
   });
 
   it("저장된 공연별 세션을 재사용한다", () => {
@@ -28,16 +31,6 @@ describe("usePerformanceSeatMap", () => {
     const { result } = renderHook(() => usePerformanceSeatMap({ performanceId: 3 }));
 
     expect(result.current.sessionId).toBe("stored-session");
-  });
-
-  it("명시적으로 초기화하면 저장된 세션 대신 새 세션을 생성한다", () => {
-    sessionStorage.setItem("tikkle.performance-seat-session:4", "stored-session");
-
-    const { result } = renderHook(() => usePerformanceSeatMap({ performanceId: 4, sessionId: null }));
-
-    expect(result.current.sessionId).toEqual(expect.any(String));
-    expect(result.current.sessionId).not.toBe("stored-session");
-    expect(sessionStorage.getItem("tikkle.performance-seat-session:4")).toBe(result.current.sessionId);
   });
 
   it("선택 가능한 좌석을 토글한다", () => {

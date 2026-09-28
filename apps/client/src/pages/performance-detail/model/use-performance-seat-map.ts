@@ -9,25 +9,15 @@ import { filterSelectableSeatIds } from "./seat-map.utils";
 
 interface UsePerformanceSeatMapProps {
   performanceId?: number;
-  sessionId?: string | null;
 }
 
-export const usePerformanceSeatMap = ({ performanceId = 0, sessionId: initialSessionId }: UsePerformanceSeatMapProps = {}) => {
+export const usePerformanceSeatMap = ({ performanceId = 0 }: UsePerformanceSeatMapProps = {}) => {
   const [sessionId] = useState(() => {
     const storageKey = getPerformanceSeatSessionStorageKey(performanceId);
-    if (initialSessionId === null) return createPerformanceSeatSelectionSession(performanceId);
-
-    if (initialSessionId) {
-      window.sessionStorage.setItem(storageKey, initialSessionId);
-      return initialSessionId;
-    }
-
     const storedSessionId = window.sessionStorage.getItem(storageKey);
     if (storedSessionId) return storedSessionId;
 
-    const createdSessionId = crypto.randomUUID();
-    window.sessionStorage.setItem(storageKey, createdSessionId);
-    return createdSessionId;
+    return createPerformanceSeatSelectionSession(performanceId);
   });
   const [selectedSeatIds, setSelectedSeatIds] = useState<Set<number>>(new Set());
   const [serverTimeOffset, setServerTimeOffset] = useState(0);

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { Link, generatePath, useLocation, useNavigate } from "react-router";
+import { Link, generatePath, useNavigate } from "react-router";
 
 import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 import { ArrowLeft, CalendarDays, Clock3, MapPinned, Ticket } from "lucide-react";
@@ -13,12 +13,11 @@ import { PERFORMANCE_STATUS_MAP } from "@entities/performance";
 import PerformanceDetailSkeleton from "./PerformanceDetailSkeleton";
 import PerformanceSeatMap from "./PerformanceSeatMap";
 
-import { getPerformanceCheckoutNavigation, getSeatSelectionSessionId } from "../model/performance-detail.utils";
+import { getPerformanceCheckoutNavigation } from "../model/performance-detail.utils";
 import { usePerformanceDetail } from "../model/use-performance-detail";
 
 const PerformanceDetailPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { performance, venueDetail, isError, isParamValid, isPending } = usePerformanceDetail();
   const handleCheckout = useCallback(
     (review: BeginCheckoutReviewMessageData) => {
@@ -115,12 +114,7 @@ const PerformanceDetailPage = () => {
         <Ticket className="absolute top-5 right-5 size-8 text-white/10 sm:size-12" aria-hidden />
       </section>
 
-      <PerformanceSeatMap
-        performance={performance}
-        venueDetail={venueDetail}
-        seatSelectionSessionId={getSeatSelectionSessionId(location.state, performance.id)}
-        onCheckout={handleCheckout}
-      />
+      <PerformanceSeatMap performance={performance} venueDetail={venueDetail} onCheckout={handleCheckout} />
     </div>
   );
 };

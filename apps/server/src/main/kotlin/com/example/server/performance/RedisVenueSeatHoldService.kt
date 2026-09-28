@@ -355,6 +355,8 @@ class RedisVenueSeatHoldService(
 
   fun getGroupId(userId: Long, performanceId: Long, sessionId: UUID? = null): String {
     val baseGroupId = "$userId:$performanceId"
+    // 서버가 예매 그룹을 관리하기 전까지 클라이언트 sessionId로 탭별 Hold 범위를 지정한다.
+    // 서버 관리 그룹 세션이 도입되면 여기서 canonical groupId를 만들고 Hold·예매 확인 명령에서 sessionId를 제거한다.
     return sessionId?.let { "$baseGroupId:$it" } ?: baseGroupId
   }
 
