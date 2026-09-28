@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { useStompStore } from "@shared/realtime/stomp.store";
 
-import type { PaymentOrderState } from "@features/payment";
+import { TERMINAL_PAYMENT_ORDER_ERROR_CODES } from "./payment.constants";
+import type { PaymentOrderState } from "./payment.types";
 
 interface UsePaymentOrderProps {
   reservationId: number;
@@ -19,10 +20,12 @@ export const usePaymentOrder = ({ reservationId }: UsePaymentOrderProps) => {
     order: null,
     errorMessage: null,
     isLoading: true,
+    isTerminal: false,
   }));
   const isReservationIdValid = Number.isInteger(reservationId) && reservationId > 0;
 
-  const visibleState = paymentState.key === queryKey ? paymentState : { key: queryKey, order: null, errorMessage: null, isLoading: true };
+  const visibleState =
+    paymentState.key === queryKey ? paymentState : { key: queryKey, order: null, errorMessage: null, isLoading: true, isTerminal: false };
   const order = visibleState.order;
   const errorMessage = !isReservationIdValid ? "올바르지 않은 결제 주문입니다." : visibleState.errorMessage;
   const isLoading = isReservationIdValid && visibleState.isLoading;
@@ -49,6 +52,7 @@ export const usePaymentOrder = ({ reservationId }: UsePaymentOrderProps) => {
           order: message.data,
           errorMessage: null,
           isLoading: false,
+          isTerminal: false,
         });
       },
       errorCallback: (message) => {
@@ -59,6 +63,7 @@ export const usePaymentOrder = ({ reservationId }: UsePaymentOrderProps) => {
           order: null,
           errorMessage: message.error?.message ?? "결제 주문서를 불러오지 못했습니다.",
           isLoading: false,
+          isTerminal: TERMINAL_PAYMENT_ORDER_ERROR_CODES.includes(message.error.code as (typeof TERMINAL_PAYMENT_ORDER_ERROR_CODES)[number]),
         });
       },
     });
@@ -74,5 +79,5 @@ export const usePaymentOrder = ({ reservationId }: UsePaymentOrderProps) => {
     return () => subscription.unsubscribe();
   }, [connectionStatus, isReservationIdValid, queryKey, reservationId, stompClient]);
 
-  return { order, errorMessage, isLoading };
+  return { order, errorMessage, isLoading, isTerminal: visibleState.isTerminal };
 };

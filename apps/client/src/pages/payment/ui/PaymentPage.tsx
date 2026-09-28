@@ -3,24 +3,38 @@ import { ArrowLeft, Clock3 } from "lucide-react";
 import { formatTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentNavigationDialog, PaymentOrderSummary, TossPaymentWidget, usePaymentNavigationGuard } from "@features/payment";
+import { PaymentNavigationDialog, PaymentOrderSummary, TossPaymentWidget } from "@features/payment";
 
+import { usePaymentNavigationGuard } from "../model/use-payment-navigation-guard";
 import { usePaymentPage } from "../model/use-payment-page";
 
 const PaymentPage = () => {
-  const { handleBack, order, errorMessage, isLoading, isReservationIdValid, user } = usePaymentPage();
-  const navigationGuard = usePaymentNavigationGuard({ enabled: isReservationIdValid && !isLoading && !errorMessage && Boolean(order && user) });
+  const { handleBack, order, errorMessage, isLoading, isTerminal, isReservationIdValid, user } = usePaymentPage();
+  const navigationGuard = usePaymentNavigationGuard({ enabled: isReservationIdValid && !isTerminal });
+  const navigationDialog = navigationGuard.isBlocked ? (
+    <PaymentNavigationDialog message={navigationGuard.message} onProceed={navigationGuard.proceed} onStay={navigationGuard.reset} />
+  ) : null;
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;
   }
 
   if (isLoading) {
-    return <DetailMessage title="결제 주문서를 불러오는 중입니다." description="잠시만 기다려 주세요." />;
+    return (
+      <>
+        <DetailMessage title="결제 주문서를 불러오는 중입니다." description="잠시만 기다려 주세요." />
+        {navigationDialog}
+      </>
+    );
   }
 
   if (errorMessage || !order || !user) {
-    return <DetailMessage title="결제 주문서를 불러오지 못했습니다." description={errorMessage ?? "잠시 후 다시 시도해 주세요."} />;
+    return (
+      <>
+        <DetailMessage title="결제 주문서를 불러오지 못했습니다." description={errorMessage ?? "잠시 후 다시 시도해 주세요."} />
+        {navigationDialog}
+      </>
+    );
   }
 
   return (
@@ -49,9 +63,7 @@ const PaymentPage = () => {
           <TossPaymentWidget key={order.orderId} order={order} user={user} />
         </div>
       </div>
-      {navigationGuard.isBlocked && (
-        <PaymentNavigationDialog message={navigationGuard.message} onProceed={navigationGuard.proceed} onStay={navigationGuard.reset} />
-      )}
+      {navigationDialog}
     </>
   );
 };

@@ -18,6 +18,9 @@ vi.mock("react-router", async () => {
 vi.mock("@features/payment", () => ({
   PaymentNavigationDialog: mockPaymentNavigationDialog,
   PaymentOrderSummary: mockPaymentOrderSummary,
+}));
+
+vi.mock("@pages/payment/model/use-payment-navigation-guard", () => ({
   usePaymentNavigationGuard: mockUsePaymentNavigationGuard,
 }));
 
@@ -43,7 +46,7 @@ describe("PaymentCheckoutPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseParams.mockReturnValue({ reservationId: "501" });
-    mockUsePaymentOrder.mockReturnValue({ order, errorMessage: null, isLoading: false });
+    mockUsePaymentOrder.mockReturnValue({ order, errorMessage: null, isLoading: false, isTerminal: false });
     mockUsePaymentNavigationGuard.mockReturnValue({ isBlocked: false, message: "", proceed: vi.fn(), reset: vi.fn() });
     mockPaymentNavigationDialog.mockImplementation(({ message }: { message: string }) => <div role="dialog">{message}</div>);
     mockPaymentOrderSummary.mockImplementation(({ order: summaryOrder }: { order: typeof order }) => (
@@ -86,15 +89,30 @@ describe("PaymentCheckoutPage", () => {
   });
 
   it("주문 조회 중이면 로딩 안내를 표시한다", () => {
-    mockUsePaymentOrder.mockReturnValue({ order: null, errorMessage: null, isLoading: true });
+    mockUsePaymentOrder.mockReturnValue({ order: null, errorMessage: null, isLoading: true, isTerminal: false });
 
     render(<PaymentCheckoutPage />);
 
     expect(screen.getByRole("heading", { name: "결제 준비 정보를 불러오는 중입니다." })).toBeInTheDocument();
   });
 
+  it("주문 조회 중에도 이탈이 차단되면 경고 UI를 표시한다", () => {
+    mockUsePaymentOrder.mockReturnValue({ order: null, errorMessage: null, isLoading: true, isTerminal: false });
+    mockUsePaymentNavigationGuard.mockReturnValue({
+      isBlocked: true,
+      message: "결제 준비 이후에는 좌석을 변경할 수 없습니다.",
+      proceed: vi.fn(),
+      reset: vi.fn(),
+    });
+
+    render(<PaymentCheckoutPage />);
+
+    expect(screen.getByRole("heading", { name: "결제 준비 정보를 불러오는 중입니다." })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent("결제 준비 이후에는 좌석을 변경할 수 없습니다.");
+  });
+
   it("주문 조회 오류이면 오류 안내를 표시한다", () => {
-    mockUsePaymentOrder.mockReturnValue({ order: null, errorMessage: "주문서를 찾을 수 없습니다.", isLoading: false });
+    mockUsePaymentOrder.mockReturnValue({ order: null, errorMessage: "주문서를 찾을 수 없습니다.", isLoading: false, isTerminal: false });
 
     render(<PaymentCheckoutPage />);
 
@@ -103,7 +121,7 @@ describe("PaymentCheckoutPage", () => {
   });
 
   it("주문서가 없고 오류 메시지도 없으면 기본 오류 안내를 표시한다", () => {
-    mockUsePaymentOrder.mockReturnValue({ order: null, errorMessage: null, isLoading: false });
+    mockUsePaymentOrder.mockReturnValue({ order: null, errorMessage: null, isLoading: false, isTerminal: false });
 
     render(<PaymentCheckoutPage />);
 

@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
-import { PAYMENT_NAVIGATION_WARNING_MESSAGE } from "@features/payment/model/payment.constants";
-import { usePaymentNavigationGuard } from "@features/payment/model/use-payment-navigation-guard";
+import { PAYMENT_NAVIGATION_WARNING_MESSAGE } from "@pages/payment/model/payment.constants";
+import { usePaymentNavigationGuard } from "@pages/payment/model/use-payment-navigation-guard";
 
 const useBlocker = vi.hoisted(() => vi.fn());
 

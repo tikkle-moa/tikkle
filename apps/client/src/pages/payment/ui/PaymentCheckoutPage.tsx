@@ -5,8 +5,9 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { PaymentNavigationDialog, PaymentOrderSummary, usePaymentNavigationGuard } from "@features/payment";
+import { PaymentNavigationDialog, PaymentOrderSummary } from "@features/payment";
 
+import { usePaymentNavigationGuard } from "../model/use-payment-navigation-guard";
 import { usePaymentOrder } from "../model/use-payment-order";
 
 const PaymentCheckoutPage = () => {
@@ -14,22 +15,35 @@ const PaymentCheckoutPage = () => {
   const { reservationId } = useParams();
   const id = Number(reservationId);
   const isReservationIdValid = Number.isInteger(id) && id > 0;
-  const { order, errorMessage, isLoading } = usePaymentOrder({ reservationId: id });
+  const { order, errorMessage, isLoading, isTerminal } = usePaymentOrder({ reservationId: id });
   const navigationGuard = usePaymentNavigationGuard({
-    enabled: isReservationIdValid && !isLoading && !errorMessage && Boolean(order),
+    enabled: isReservationIdValid && !isTerminal,
     allowedPathnames: isReservationIdValid ? [generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) })] : [],
   });
+  const navigationDialog = navigationGuard.isBlocked ? (
+    <PaymentNavigationDialog message={navigationGuard.message} onProceed={navigationGuard.proceed} onStay={navigationGuard.reset} />
+  ) : null;
 
   if (!isReservationIdValid) {
     return <DetailMessage title="잘못된 결제 주문입니다." description="결제 주문 번호를 다시 확인해 주세요." />;
   }
 
   if (isLoading) {
-    return <DetailMessage title="결제 준비 정보를 불러오는 중입니다." description="잠시만 기다려 주세요." />;
+    return (
+      <>
+        <DetailMessage title="결제 준비 정보를 불러오는 중입니다." description="잠시만 기다려 주세요." />
+        {navigationDialog}
+      </>
+    );
   }
 
   if (errorMessage || !order) {
-    return <DetailMessage title="결제 준비 정보를 불러오지 못했습니다." description={errorMessage ?? "잠시 후 다시 시도해 주세요."} />;
+    return (
+      <>
+        <DetailMessage title="결제 준비 정보를 불러오지 못했습니다." description={errorMessage ?? "잠시 후 다시 시도해 주세요."} />
+        {navigationDialog}
+      </>
+    );
   }
 
   return (
@@ -60,9 +74,7 @@ const PaymentCheckoutPage = () => {
           <ArrowRight className="size-4" aria-hidden />
         </button>
       </div>
-      {navigationGuard.isBlocked && (
-        <PaymentNavigationDialog message={navigationGuard.message} onProceed={navigationGuard.proceed} onStay={navigationGuard.reset} />
-      )}
+      {navigationDialog}
     </>
   );
 };

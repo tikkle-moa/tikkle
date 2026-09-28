@@ -114,6 +114,26 @@ describe("usePaymentOrder", () => {
 
     expect(result.current.errorMessage).toBe("주문서를 찾을 수 없습니다.");
     expect(result.current.isLoading).toBe(false);
+    expect(result.current.isTerminal).toBe(true);
+  });
+
+  it("현재 사용자가 접근할 수 없는 주문은 결제 guard를 종료한다", async () => {
+    const { result } = renderHook(() => usePaymentOrder({ reservationId: 501 }));
+
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+
+    act(() => {
+      handleError?.({
+        requestId,
+        success: false,
+        error: { code: "FORBIDDEN", message: "주문에 접근할 수 없습니다." },
+      });
+    });
+
+    expect(result.current.errorMessage).toBe("주문에 접근할 수 없습니다.");
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isTerminal).toBe(true);
   });
 
   it("오류 메시지가 없는 주문 조회 실패는 기본 문구를 표시한다", async () => {
@@ -128,6 +148,7 @@ describe("usePaymentOrder", () => {
 
     expect(result.current.errorMessage).toBe("결제 주문서를 불러오지 못했습니다.");
     expect(result.current.isLoading).toBe(false);
+    expect(result.current.isTerminal).toBe(false);
   });
 
   it("현재 요청과 일치하지 않는 응답은 무시한다", async () => {

@@ -19,6 +19,9 @@ vi.mock("@features/payment", () => ({
   PaymentNavigationDialog: mockPaymentNavigationDialog,
   PaymentOrderSummary: mockPaymentOrderSummary,
   TossPaymentWidget: mockTossPaymentWidget,
+}));
+
+vi.mock("@pages/payment/model/use-payment-navigation-guard", () => ({
   usePaymentNavigationGuard: mockUsePaymentNavigationGuard,
 }));
 
@@ -53,6 +56,7 @@ describe("PaymentPage", () => {
       handleBack,
       errorMessage: null,
       isLoading: false,
+      isTerminal: false,
       isReservationIdValid: true,
       order,
       user,
@@ -109,6 +113,7 @@ describe("PaymentPage", () => {
       handleBack,
       errorMessage: null,
       isLoading: true,
+      isTerminal: false,
       isReservationIdValid: true,
       order: null,
       user,
@@ -117,6 +122,29 @@ describe("PaymentPage", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "결제 주문서를 불러오는 중입니다." })).toBeInTheDocument();
+  });
+
+  it("주문 조회 중에도 이탈이 차단되면 경고 UI를 표시한다", () => {
+    mockUsePaymentPage.mockReturnValue({
+      handleBack,
+      errorMessage: null,
+      isLoading: true,
+      isTerminal: false,
+      isReservationIdValid: true,
+      order: null,
+      user,
+    });
+    mockUsePaymentNavigationGuard.mockReturnValue({
+      isBlocked: true,
+      message: "결제 준비 이후에는 좌석을 변경할 수 없습니다.",
+      proceed: vi.fn(),
+      reset: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "결제 주문서를 불러오는 중입니다." })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent("결제 준비 이후에는 좌석을 변경할 수 없습니다.");
   });
 
   it("주문서 오류 메시지를 표시한다", () => {
