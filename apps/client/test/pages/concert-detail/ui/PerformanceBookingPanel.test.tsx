@@ -54,15 +54,17 @@ const onChanged = vi.fn().mockResolvedValue(undefined);
 const renderPerformanceBookingPanel = ({
   concertId = 1,
   isAdmin = false,
+  isLoggedIn = true,
   performances = [],
 }: {
   concertId?: number;
   isAdmin?: boolean;
+  isLoggedIn?: boolean;
   performances?: PerformanceResponse[];
 } = {}) =>
   render(
     <MemoryRouter>
-      <PerformanceBookingPanel concertId={concertId} isAdmin={isAdmin} onChanged={onChanged} performances={performances} />
+      <PerformanceBookingPanel concertId={concertId} isAdmin={isAdmin} isLoggedIn={isLoggedIn} onChanged={onChanged} performances={performances} />
     </MemoryRouter>,
   );
 

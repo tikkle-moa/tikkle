@@ -72,6 +72,22 @@ class PerformanceVenueSeatStompPublisherTest {
     )
   }
 
+  @Test
+  fun `현재 이벤트 버전을 Redis에서 조회한다`() {
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get(VERSION_KEY)).willReturn(EVENT_VERSION.toString())
+
+    assertThat(publisher.getCurrentVersion(PERFORMANCE_ID)).isEqualTo(EVENT_VERSION)
+  }
+
+  @Test
+  fun `이벤트 버전이 없으면 0을 반환한다`() {
+    given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
+    given(valueOperations.get(VERSION_KEY)).willReturn(null)
+
+    assertThat(publisher.getCurrentVersion(PERFORMANCE_ID)).isZero()
+  }
+
   private fun givenEventVersion() {
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
     given(valueOperations.increment(VERSION_KEY)).willReturn(EVENT_VERSION)
