@@ -88,6 +88,32 @@ describe("useStartCheckout", () => {
     expect(result.current.errorMessage).toBe("좌석 점유가 만료되었습니다.");
   });
 
+  it("실패 응답 메시지는 기본 결제 준비 오류를 표시한다", () => {
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() => useStartCheckout({ performanceId: 10, reviewToken, onSuccess }));
+
+    act(() => result.current.startCheckout());
+    const requestId = publish.mock.calls[0][0].command.requestId as string;
+
+    act(() => {
+      handleMessage?.({
+        requestId,
+        success: false,
+        data: {
+          reservationId: 501,
+          orderId: "order-501",
+          orderName: "Tikkle Live",
+          amount: 150_000,
+          paymentExpiresAt: "2026-09-15T13:00:00",
+        },
+      });
+    });
+
+    expect(result.current.isStarting).toBe(false);
+    expect(result.current.errorMessage).toBe("결제 준비를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
   it("성공 응답을 받으면 응답 타이머를 정리한다", () => {
     vi.useFakeTimers();
 
