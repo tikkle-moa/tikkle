@@ -84,7 +84,7 @@ describe("usePerformanceSeatActions", () => {
     });
   });
 
-  it("Hold와 Release 요청을 발행하고 loading 상태로 전환한다", () => {
+  it("Hold 요청을 발행하고 loading 상태로 전환한다", () => {
     const client = setConnectedClient();
     const setSeatOperationState = vi.fn();
     const { result } = renderHook(() =>
@@ -98,10 +98,7 @@ describe("usePerformanceSeatActions", () => {
       }),
     );
 
-    act(() => {
-      result.current.handleHoldSeats();
-      result.current.handleReleaseSeats();
-    });
+    act(() => result.current.handleHoldSeats());
 
     expect(client.publish).toHaveBeenNthCalledWith(
       1,
@@ -111,15 +108,54 @@ describe("usePerformanceSeatActions", () => {
         command: expect.objectContaining({ data: [1, 2] }),
       }),
     );
-    expect(client.publish).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        path: "/performances/{performanceId}/release-seats",
-        command: expect.objectContaining({ data: [3] }),
+    expect(setSeatOperationState).toHaveBeenCalledOnce();
+    expect(setSeatOperationState).toHaveBeenCalledWith({ status: "loading" });
+  });
+
+  it("Hold 처리 중 재클릭하면 중복 요청을 발행하지 않는다", () => {
+    const client = setConnectedClient();
+    const setSeatOperationState = vi.fn();
+    const { result } = renderHook(() =>
+      usePerformanceSeatActions({
+        performanceId: 10,
+        ...requestIdRefs(),
+        selectedSeatIdsToHold: [1, 2],
+        selectedSeatIdsToRelease: [],
+        seatOperationState: { status: "idle" },
+        setSeatOperationState,
       }),
     );
-    expect(setSeatOperationState).toHaveBeenCalledTimes(2);
-    expect(setSeatOperationState).toHaveBeenLastCalledWith({ status: "loading" });
+
+    act(() => {
+      result.current.handleHoldSeats();
+      result.current.handleHoldSeats();
+    });
+
+    expect(client.publish).toHaveBeenCalledOnce();
+    expect(setSeatOperationState).toHaveBeenCalledOnce();
+  });
+
+  it("Release 처리 중 재클릭하면 중복 요청을 발행하지 않는다", () => {
+    const client = setConnectedClient();
+    const setSeatOperationState = vi.fn();
+    const { result } = renderHook(() =>
+      usePerformanceSeatActions({
+        performanceId: 10,
+        ...requestIdRefs(),
+        selectedSeatIdsToHold: [],
+        selectedSeatIdsToRelease: [3],
+        seatOperationState: { status: "idle" },
+        setSeatOperationState,
+      }),
+    );
+
+    act(() => {
+      result.current.handleReleaseSeats();
+      result.current.handleReleaseSeats();
+    });
+
+    expect(client.publish).toHaveBeenCalledOnce();
+    expect(setSeatOperationState).toHaveBeenCalledOnce();
   });
 
   it("좌석 상태 응답을 받은 뒤 지연 상태를 종료한다", () => {
