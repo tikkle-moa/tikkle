@@ -1,4 +1,4 @@
-import { generatePath, useNavigate, useParams } from "react-router";
+import { generatePath } from "react-router";
 
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
@@ -7,14 +7,12 @@ import DetailMessage from "@shared/ui/DetailMessage";
 
 import { PaymentNavigationDialog, PaymentOrderSummary } from "@features/payment";
 
+import { usePaymentCheckoutPage } from "../model/use-payment-checkout-page";
 import { usePaymentNavigationGuard } from "../model/use-payment-navigation-guard";
 import { usePaymentOrder } from "../model/use-payment-order";
 
 const PaymentCheckoutPage = () => {
-  const navigate = useNavigate();
-  const { reservationId } = useParams();
-  const id = Number(reservationId);
-  const isReservationIdValid = Number.isInteger(id) && id > 0;
+  const { id, isReservationIdValid, handleBack, handleContinueToPayment } = usePaymentCheckoutPage();
   const { order, errorMessage, isLoading, isTerminal } = usePaymentOrder({ reservationId: id });
   const navigationGuard = usePaymentNavigationGuard({
     enabled: isReservationIdValid && !isTerminal,
@@ -51,7 +49,7 @@ const PaymentCheckoutPage = () => {
       <div className="mx-auto w-full max-w-3xl pb-6">
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           className="hover:text-brand-primary inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 transition-colors"
         >
           <ArrowLeft className="size-4" aria-hidden />
@@ -68,7 +66,7 @@ const PaymentCheckoutPage = () => {
         <button
           type="button"
           className="bg-brand-primary mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-bold text-white"
-          onClick={() => navigate(generatePath(ROUTE_PATHS.PAYMENT, { reservationId: String(id) }))}
+          onClick={handleContinueToPayment}
         >
           결제하러 가기
           <ArrowRight className="size-4" aria-hidden />

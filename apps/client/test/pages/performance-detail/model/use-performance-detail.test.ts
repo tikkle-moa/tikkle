@@ -1,16 +1,19 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import { usePerformanceDetail } from "@pages/performance-detail/model/use-performance-detail";
 
-const { mockUseParams, mockUsePerformanceDetailQuery, mockUseVenueDetailQuery } = vi.hoisted(() => ({
+const { mockUseParams, mockNavigate, mockUsePerformanceDetailQuery, mockUseVenueDetailQuery } = vi.hoisted(() => ({
   mockUseParams: vi.fn(),
+  mockNavigate: vi.fn(),
   mockUsePerformanceDetailQuery: vi.fn(),
   mockUseVenueDetailQuery: vi.fn(),
 }));
 
-vi.mock("react-router", () => ({
-  useParams: mockUseParams,
-}));
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+  return { ...actual, useNavigate: () => mockNavigate, useParams: mockUseParams };
+});
 
 vi.mock("@entities/performance", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@entities/performance")>();
@@ -49,6 +52,13 @@ const venue = {
   stageHeight: 13,
   createdAt: "2026-08-25T12:00:00",
 };
+const review: BeginCheckoutReviewMessageData = {
+  reviewToken: "review-token",
+  groupId: "group-1",
+  performanceId: 3,
+  venueSeatIds: [101],
+  expiresAt: "2026-09-01T20:00:00.000Z",
+};
 
 describe("usePerformanceDetail", () => {
   beforeEach(() => {
@@ -79,6 +89,17 @@ describe("usePerformanceDetail", () => {
       venueDetail: { venue, venueSeats: [] },
       isError: false,
       isPending: false,
+      handleCheckout: expect.any(Function),
+    });
+  });
+
+  it("예매 확인 성공 시 상세 데이터와 함께 checkout으로 이동한다", () => {
+    const { result } = renderHook(() => usePerformanceDetail());
+
+    act(() => result.current.handleCheckout(review));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/performances/3/checkout", {
+      state: { performance, venue, venueSeats: [], review },
     });
   });
 
@@ -122,7 +143,12 @@ describe("usePerformanceDetail", () => {
       venueDetail: undefined,
       isError: false,
       isPending: false,
+      handleCheckout: expect.any(Function),
     });
+
+    act(() => result.current.handleCheckout(review));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("공연 조회 중에는 로딩 상태를 반환한다", () => {

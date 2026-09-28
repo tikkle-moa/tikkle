@@ -1,7 +1,5 @@
-import { useCallback } from "react";
-import { Link, generatePath, useNavigate } from "react-router";
+import { Link, generatePath } from "react-router";
 
-import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 import { ArrowLeft, CalendarDays, Clock3, MapPinned, Ticket } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
@@ -13,21 +11,10 @@ import { PERFORMANCE_STATUS_MAP } from "@entities/performance";
 import PerformanceDetailSkeleton from "./PerformanceDetailSkeleton";
 import PerformanceSeatMap from "./PerformanceSeatMap";
 
-import { getPerformanceCheckoutNavigation } from "../model/performance-detail.utils";
 import { usePerformanceDetail } from "../model/use-performance-detail";
 
 const PerformanceDetailPage = () => {
-  const navigate = useNavigate();
-  const { performance, venueDetail, isError, isParamValid, isPending } = usePerformanceDetail();
-  const handleCheckout = useCallback(
-    (review: BeginCheckoutReviewMessageData) => {
-      const navigation = getPerformanceCheckoutNavigation({ performance, venueDetail, review });
-      if (!navigation) return;
-
-      navigate(navigation.pathname, { state: navigation.state });
-    },
-    [navigate, performance, venueDetail],
-  );
+  const { performance, venueDetail, isError, isParamValid, isPending, handleCheckout } = usePerformanceDetail();
 
   if (!isParamValid) {
     return <DetailMessage title="잘못된 공연 회차입니다." description="올바르지 않은 공연 회차 ID입니다." />;

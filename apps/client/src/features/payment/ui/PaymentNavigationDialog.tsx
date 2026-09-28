@@ -1,6 +1,6 @@
-import { type SyntheticEvent, useEffect, useRef } from "react";
-
 import { CircleAlert } from "lucide-react";
+
+import { useNativeDialog } from "@shared/model/use-native-dialog";
 
 interface PaymentNavigationDialogProps {
   message: string;
@@ -9,21 +9,7 @@ interface PaymentNavigationDialogProps {
 }
 
 const PaymentNavigationDialog = ({ message, onProceed, onStay }: PaymentNavigationDialogProps) => {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog?.open) dialog?.showModal();
-
-    return () => {
-      if (dialog?.open) dialog.close();
-    };
-  }, []);
-
-  const handleCancel = (event: SyntheticEvent<HTMLDialogElement>) => {
-    event.preventDefault();
-    onStay();
-  };
+  const { dialogRef, handleCancel } = useNativeDialog({ onCancel: onStay });
 
   return (
     <dialog

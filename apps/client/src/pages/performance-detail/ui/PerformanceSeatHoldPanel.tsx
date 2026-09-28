@@ -4,8 +4,6 @@ import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
-import { useCheckoutReview } from "@features/performance-booking";
-
 import PerformanceSeatHoldActions from "./PerformanceSeatHoldActions";
 import PerformanceSeatHoldHeader from "./PerformanceSeatHoldHeader";
 import PerformanceSeatHoldInfo from "./PerformanceSeatHoldInfo";
@@ -56,6 +54,9 @@ const PerformanceSeatHoldPanel = ({
     visibleSeatOperationState,
     isConnected,
     connectionStyle,
+    isCheckoutReviewBeginning,
+    checkoutReviewErrorMessage,
+    handleCheckout,
   } = usePerformanceSeatHoldPanel({
     performanceId,
     sessionId,
@@ -67,21 +68,8 @@ const PerformanceSeatHoldPanel = ({
     setSelectedSeatIds,
     setServerTimeOffset,
     setSeatOperationState,
+    onCheckout,
   });
-  const {
-    isBeginning,
-    errorMessage: checkoutReviewErrorMessage,
-    beginReview,
-  } = useCheckoutReview({
-    performanceId,
-    sessionId,
-    onBeginSuccess: onCheckout,
-  });
-
-  const handleCheckout = () => {
-    if (!onCheckout) return;
-    beginReview();
-  };
 
   return (
     <aside
@@ -102,7 +90,7 @@ const PerformanceSeatHoldPanel = ({
           myGroupHeldSeatTotalPrice={myGroupHeldSeatTotalPrice}
           selectedSeatIdsToReleaseSize={selectedSeatIdsToRelease.length}
           isConnected={isConnected}
-          isCheckoutReviewBeginning={isBeginning}
+          isCheckoutReviewBeginning={isCheckoutReviewBeginning}
           visibleSeatOperationState={visibleSeatOperationState}
           handleCheckout={handleCheckout}
           handleReleaseSeats={handleReleaseSeats}

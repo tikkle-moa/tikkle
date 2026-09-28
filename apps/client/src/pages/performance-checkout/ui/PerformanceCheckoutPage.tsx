@@ -1,31 +1,15 @@
-import { useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router";
-
 import { ArrowLeft, ArrowRight, CalendarDays, Clock3, Info, MapPin, Ticket } from "lucide-react";
 
 import { formatDateTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { useSessionStore } from "@entities/session";
-
-import { formatBookingAmount, getRemainingSeconds, isPerformanceCheckoutLocationState } from "@features/performance-booking";
+import { formatBookingAmount } from "@features/performance-booking";
 
 import PerformanceCheckoutNavigationDialog from "./PerformanceCheckoutNavigationDialog";
 
-import { usePerformanceCheckoutNavigation } from "../model/use-performance-checkout-navigation";
+import { usePerformanceCheckoutPage } from "../model/use-performance-checkout-page";
 
 const PerformanceCheckoutPage = () => {
-  const { performanceId } = useParams();
-  const location = useLocation();
-  const [now, setNow] = useState(() => Date.now());
-  const user = useSessionStore((store) => store.user);
-  const id = Number(performanceId);
-  const state = isPerformanceCheckoutLocationState(location.state, id) ? location.state : null;
-  const performance = state?.performance;
-  const venue = state?.venue;
-  const venueSeats = state?.venueSeats ?? [];
-  const selectedSeatIds = state?.review.venueSeatIds ?? [];
-  const selectedSeats = venueSeats.filter((seat) => selectedSeatIds.includes(seat.id));
   const {
     checkoutErrorMessage,
     isStarting,
@@ -36,19 +20,20 @@ const PerformanceCheckoutPage = () => {
     handleReturnToSeats,
     handleLeaveReview,
     handleStayOnReview,
-  } = usePerformanceCheckoutNavigation({ performanceId: id, review: state?.review ?? null });
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(timer);
-  }, []);
+    user,
+    state,
+    performance,
+    venue,
+    selectedSeatIds,
+    selectedSeats,
+    remainingSeconds,
+    totalAmount,
+  } = usePerformanceCheckoutPage();
 
   if (!state || !performance || !venue || selectedSeats.length !== selectedSeatIds.length) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="공연 상세에서 좌석을 다시 선택해 주세요." />;
   }
 
-  const remainingSeconds = getRemainingSeconds(state.review.expiresAt, now);
-  const totalAmount = selectedSeats.reduce((total, seat) => total + seat.price, 0);
   return (
     <div className="mx-auto w-full max-w-3xl pb-6">
       <button

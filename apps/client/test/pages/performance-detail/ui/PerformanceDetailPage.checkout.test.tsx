@@ -1,4 +1,4 @@
-import { MemoryRouter, useLocation } from "react-router";
+import { MemoryRouter } from "react-router";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,9 +6,9 @@ import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import PerformanceDetailPage from "@pages/performance-detail/ui/PerformanceDetailPage";
 
-const { mockUsePerformanceDetail, mockGetPerformanceCheckoutNavigation } = vi.hoisted(() => ({
+const { mockUsePerformanceDetail, mockHandleCheckout } = vi.hoisted(() => ({
   mockUsePerformanceDetail: vi.fn(),
-  mockGetPerformanceCheckoutNavigation: vi.fn(),
+  mockHandleCheckout: vi.fn(),
 }));
 
 const checkoutReview: BeginCheckoutReviewMessageData = {
@@ -21,10 +21,6 @@ const checkoutReview: BeginCheckoutReviewMessageData = {
 
 vi.mock("@pages/performance-detail/model/use-performance-detail", () => ({
   usePerformanceDetail: mockUsePerformanceDetail,
-}));
-
-vi.mock("@pages/performance-detail/model/performance-detail.utils", () => ({
-  getPerformanceCheckoutNavigation: mockGetPerformanceCheckoutNavigation,
 }));
 
 vi.mock("@pages/performance-detail/ui/PerformanceSeatMap", () => ({
@@ -64,55 +60,26 @@ const pageState = {
   isError: false,
   isParamValid: true,
   isPending: false,
-};
-
-const LocationProbe = () => {
-  const location = useLocation();
-
-  return (
-    <output data-testid="location-path" data-path={location.pathname}>
-      {JSON.stringify(location.state)}
-    </output>
-  );
+  handleCheckout: mockHandleCheckout,
 };
 
 describe("PerformanceDetailPage checkout callback", () => {
   beforeEach(() => {
     mockUsePerformanceDetail.mockReset();
     mockUsePerformanceDetail.mockReturnValue(pageState);
-    mockGetPerformanceCheckoutNavigation.mockReset();
-    mockGetPerformanceCheckoutNavigation.mockReturnValue({ pathname: "/performances/1/checkout", state: { review: checkoutReview } });
   });
 
-  it("점유한 좌석의 예매 정보 확인 callback으로 checkout 상태를 전달한다", async () => {
+  it("점유한 좌석의 예매 정보 확인 callback을 페이지 훅에 전달한다", async () => {
     const user = userEvent.setup();
 
     render(
       <MemoryRouter>
         <PerformanceDetailPage />
-        <LocationProbe />
       </MemoryRouter>,
     );
 
     await user.click(screen.getByRole("button", { name: "예매 정보 확인 테스트" }));
 
-    expect(screen.getByTestId("location-path")).toHaveAttribute("data-path", "/performances/1/checkout");
-    expect(screen.getByTestId("location-path")).toHaveTextContent('"reviewToken":"92334384-52d0-41f2-a3c1-3d54047c35b8"');
-  });
-
-  it("예매 정보가 사라진 상태에서는 checkout으로 이동하지 않는다", async () => {
-    const user = userEvent.setup();
-    mockGetPerformanceCheckoutNavigation.mockReturnValue(null);
-
-    render(
-      <MemoryRouter>
-        <PerformanceDetailPage />
-        <LocationProbe />
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "예매 정보 확인 테스트" }));
-
-    expect(screen.getByTestId("location-path")).toHaveAttribute("data-path", "/");
+    expect(mockHandleCheckout).toHaveBeenCalledWith(checkoutReview);
   });
 });

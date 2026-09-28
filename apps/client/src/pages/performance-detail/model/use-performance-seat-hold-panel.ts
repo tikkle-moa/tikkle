@@ -1,6 +1,10 @@
 import { type Dispatch, type SetStateAction, useEffect } from "react";
 
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
+
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
+
+import { useCheckoutReview } from "@features/performance-booking";
 
 import type { SeatOperationState } from "./seat-map.types";
 import { usePerformanceSeatActions } from "./use-performance-seat-actions";
@@ -18,6 +22,7 @@ interface UsePerformanceSeatHoldPanelProps {
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
+  onCheckout?: (review: BeginCheckoutReviewMessageData) => void;
 }
 
 export const usePerformanceSeatHoldPanel = ({
@@ -31,6 +36,7 @@ export const usePerformanceSeatHoldPanel = ({
   setSelectedSeatIds,
   setServerTimeOffset,
   setSeatOperationState,
+  onCheckout,
 }: UsePerformanceSeatHoldPanelProps) => {
   const {
     myGroupHolds,
@@ -73,6 +79,21 @@ export const usePerformanceSeatHoldPanel = ({
     setMyGroupHeldSeatInfoBySeatId,
   });
 
+  const {
+    isBeginning: isCheckoutReviewBeginning,
+    errorMessage: checkoutReviewErrorMessage,
+    beginReview,
+  } = useCheckoutReview({
+    performanceId,
+    sessionId,
+    onBeginSuccess: onCheckout,
+  });
+
+  const handleCheckout = () => {
+    if (!onCheckout) return;
+    beginReview();
+  };
+
   useEffect(() => {
     if (selectedSeatIdsToHold.length === 0) return;
 
@@ -98,5 +119,8 @@ export const usePerformanceSeatHoldPanel = ({
     visibleSeatOperationState,
     isConnected,
     connectionStyle,
+    isCheckoutReviewBeginning,
+    checkoutReviewErrorMessage,
+    handleCheckout,
   };
 };
