@@ -14,7 +14,7 @@ import PerformanceSeatMap from "./PerformanceSeatMap";
 import { usePerformanceDetail } from "../model/use-performance-detail";
 
 const PerformanceDetailPage = () => {
-  const { performance, venueDetail, isError, isParamValid, isPending } = usePerformanceDetail();
+  const { performance, venueDetail, isError, isParamValid, isPending, handleCheckout } = usePerformanceDetail();
 
   if (!isParamValid) {
     return <DetailMessage title="잘못된 공연 회차입니다." description="올바르지 않은 공연 회차 ID입니다." />;
@@ -101,7 +101,7 @@ const PerformanceDetailPage = () => {
         <Ticket className="absolute top-5 right-5 size-8 text-white/10 sm:size-12" aria-hidden />
       </section>
 
-      <PerformanceSeatMap performance={performance} venueDetail={venueDetail} />
+      <PerformanceSeatMap performance={performance} venueDetail={venueDetail} onCheckout={handleCheckout} />
     </div>
   );
 };

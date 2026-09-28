@@ -10,9 +10,13 @@ export type PerformanceIdHoldMinusSeats = HoldVenueSeatsMessage | StompFailureMe
 
 export type PerformanceIdReleaseMinusSeats = ReleaseVenueSeatsMessage | StompFailureMessage;
 
+export type ReservationBeginMinusCheckoutMinusReview = BeginCheckoutReviewMessage | StompFailureMessage;
+
 export type ReservationCancelMinusPayment = CancelCheckoutMessage | StompFailureMessage;
 
 export type ReservationConfirmMinusPayment = ConfirmPaymentMessage | StompFailureMessage;
+
+export type ReservationEndMinusCheckoutMinusReview = EndCheckoutReviewMessage | StompFailureMessage;
 
 export type ReservationGetMinusPaymentMinusOrder = PaymentOrderMessage | StompFailureMessage;
 
@@ -60,6 +64,7 @@ export interface StompError {
 
 export interface PerformanceSeatStatusCommand {
   requestId: string;
+  sessionId: string | null;
 }
 
 export interface HoldVenueSeatsMessage {
@@ -71,6 +76,7 @@ export interface HoldVenueSeatsMessage {
 export interface HoldVenueSeatsCommand {
   data: number[];
   requestId: string;
+  sessionId: string | null;
 }
 
 export interface ReleaseVenueSeatsMessage {
@@ -82,6 +88,33 @@ export interface ReleaseVenueSeatsMessage {
 export interface ReleaseVenueSeatsCommand {
   data: number[];
   requestId: string;
+  sessionId: string | null;
+}
+
+export interface BeginCheckoutReviewMessage {
+  data: BeginCheckoutReviewMessageData;
+  requestId: string;
+  success: boolean;
+}
+
+export interface BeginCheckoutReviewMessageData {
+  expiresAt: string;
+  groupId: string;
+  performanceId: number;
+  reviewToken: string;
+  sessionId: string | null;
+  venueSeatIds: number[];
+}
+
+export interface BeginCheckoutReviewCommand {
+  data: BeginCheckoutReviewData;
+  requestId: string;
+}
+
+export interface BeginCheckoutReviewData {
+  performanceId: number;
+  reviewToken: string;
+  sessionId: string | null;
 }
 
 export interface CancelCheckoutMessage {
@@ -127,6 +160,28 @@ export interface ConfirmPaymentData {
   amount: number;
   orderId: string;
   paymentKey: string;
+}
+
+export interface EndCheckoutReviewMessage {
+  data: EndCheckoutReviewMessageData;
+  requestId: string;
+  success: boolean;
+}
+
+export interface EndCheckoutReviewMessageData {
+  canResumeHold: boolean;
+  performanceId: number;
+}
+
+export interface EndCheckoutReviewCommand {
+  data: EndCheckoutReviewData;
+  requestId: string;
+}
+
+export interface EndCheckoutReviewData {
+  groupId: string | null;
+  performanceId: number;
+  reviewToken: string;
 }
 
 export interface PaymentOrderMessage {
@@ -185,7 +240,9 @@ export interface StartCheckoutCommand {
 }
 
 export interface StartCheckoutData {
+  groupId: string | null;
   performanceId: number;
+  reviewToken: string;
 }
 
 export interface PerformanceHeldSeatsEvent {

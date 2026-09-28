@@ -66,7 +66,7 @@ const VenueMap = ({
                 className="rounded-full border border-violet-200 bg-white px-2.5 py-1 text-[11px] font-bold text-violet-700 transition hover:bg-violet-50 focus-visible:ring-2 focus-visible:ring-violet-200 focus-visible:outline-none"
                 onClick={() => onSeatSelectionChange?.(new Set())}
               >
-                전체 선택 해제
+                전체 선택 취소
               </button>
             )}
 

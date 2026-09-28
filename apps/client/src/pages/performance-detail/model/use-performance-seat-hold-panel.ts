@@ -1,6 +1,10 @@
 import { type Dispatch, type SetStateAction, useEffect, useRef } from "react";
 
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
+
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
+
+import { useCheckoutReview } from "@features/performance-booking";
 
 import type { PerformanceSeatRequestIds, SeatOperationState } from "./seat-map.types";
 import { usePerformanceSeatActions } from "./use-performance-seat-actions";
@@ -9,6 +13,7 @@ import { usePerformanceSeatSubscriptions } from "./use-performance-seat-subscrip
 
 interface UsePerformanceSeatHoldPanelProps {
   performanceId: number;
+  sessionId: string;
   venueSeats: VenueSeatResponse[];
   venueSeatStates: Map<number, VenueSeatState>;
   selectedSeatIds: Set<number>;
@@ -17,10 +22,12 @@ interface UsePerformanceSeatHoldPanelProps {
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
+  onCheckout?: (review: BeginCheckoutReviewMessageData) => void;
 }
 
 export const usePerformanceSeatHoldPanel = ({
   performanceId,
+  sessionId,
   venueSeats,
   venueSeatStates,
   selectedSeatIds,
@@ -29,6 +36,7 @@ export const usePerformanceSeatHoldPanel = ({
   setSelectedSeatIds,
   setServerTimeOffset,
   setSeatOperationState,
+  onCheckout,
 }: UsePerformanceSeatHoldPanelProps) => {
   const performanceSeatRequestIdsRef = useRef<PerformanceSeatRequestIds>({
     seatStatus: null,
@@ -59,6 +67,7 @@ export const usePerformanceSeatHoldPanel = ({
     usePerformanceSeatActions({
       performanceId,
       performanceSeatRequestIdsRef,
+      sessionId,
       selectedSeatIdsToHold,
       selectedSeatIdsToRelease,
       seatOperationState,
@@ -68,6 +77,7 @@ export const usePerformanceSeatHoldPanel = ({
   const { isConnected, connectionStyle } = usePerformanceSeatSubscriptions({
     performanceId,
     performanceSeatRequestIdsRef,
+    sessionId,
     handleRefreshFinish,
     setSelectedSeatIds,
     setServerTimeOffset,
@@ -76,6 +86,21 @@ export const usePerformanceSeatHoldPanel = ({
     setHeldSeatExpiresAtBySeatId,
     setMyGroupHeldSeatInfoBySeatId,
   });
+
+  const {
+    isBeginning: isCheckoutReviewBeginning,
+    errorMessage: checkoutReviewErrorMessage,
+    beginReview,
+  } = useCheckoutReview({
+    performanceId,
+    sessionId,
+    onBeginSuccess: onCheckout,
+  });
+
+  const handleCheckout = () => {
+    if (!onCheckout) return;
+    beginReview();
+  };
 
   useEffect(() => {
     if (selectedSeatIdsToHold.length === 0) return;
@@ -102,5 +127,8 @@ export const usePerformanceSeatHoldPanel = ({
     visibleSeatOperationState,
     isConnected,
     connectionStyle,
+    isCheckoutReviewBeginning,
+    checkoutReviewErrorMessage,
+    handleCheckout,
   };
 };

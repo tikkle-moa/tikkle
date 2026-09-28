@@ -31,7 +31,7 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
     authentication: Authentication,
   ): PerformanceSeatStatusMessage {
     val user = loginUser(authentication)
-    val result = redisVenueSeatHoldService.getSeatStatus(user.userId, performanceId)
+    val result = redisVenueSeatHoldService.getSeatStatus(user.userId, performanceId, command.sessionId)
 
     return PerformanceSeatStatusMessage(
       requestId = command.requestId,
@@ -50,7 +50,7 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
     authentication: Authentication,
   ): HoldVenueSeatsMessage {
     val user = loginUser(authentication)
-    val result = redisVenueSeatHoldService.holdSeats(user.userId, performanceId, command.data)
+    val result = redisVenueSeatHoldService.holdSeats(user.userId, performanceId, command.data, command.sessionId)
 
     return HoldVenueSeatsMessage(
       requestId = command.requestId,
@@ -69,7 +69,7 @@ class PerformanceStompController(private val redisVenueSeatHoldService: RedisVen
     authentication: Authentication,
   ): ReleaseVenueSeatsMessage {
     val user = loginUser(authentication)
-    redisVenueSeatHoldService.releaseSeats(user.userId, performanceId, command.data)
+    redisVenueSeatHoldService.releaseSeats(user.userId, performanceId, command.data, command.sessionId)
 
     return ReleaseVenueSeatsMessage(
       requestId = command.requestId,

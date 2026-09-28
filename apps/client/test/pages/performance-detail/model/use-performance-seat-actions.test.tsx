@@ -11,6 +11,7 @@ const setConnectedClient = () => {
 };
 
 const requestIdRefs = () => ({
+  sessionId: "session-1",
   performanceSeatRequestIdsRef: {
     current: {
       seatStatus: null as string | null,
@@ -105,7 +106,7 @@ describe("usePerformanceSeatActions", () => {
       expect.objectContaining({
         path: "/performances/{performanceId}/hold-seats",
         pathParams: { performanceId: 10 },
-        command: expect.objectContaining({ data: [1, 2] }),
+        command: expect.objectContaining({ data: [1, 2], sessionId: "session-1" }),
       }),
     );
     expect(setSeatOperationState).toHaveBeenCalledOnce();

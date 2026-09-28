@@ -1,12 +1,15 @@
 import { act, renderHook } from "@testing-library/react";
+import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import { usePerformanceSeatHoldPanel } from "@pages/performance-detail/model/use-performance-seat-hold-panel";
 
-const { mockAvailability, mockActions, mockSubscriptions, handleHoldSeats } = vi.hoisted(() => ({
+const { mockAvailability, mockActions, mockSubscriptions, mockCheckoutReview, handleHoldSeats, beginReview } = vi.hoisted(() => ({
   mockAvailability: vi.fn(),
   mockActions: vi.fn(),
   mockSubscriptions: vi.fn(),
+  mockCheckoutReview: vi.fn(),
   handleHoldSeats: vi.fn(),
+  beginReview: vi.fn(),
 }));
 
 vi.mock("@pages/performance-detail/model/use-performance-seat-availability", () => ({
@@ -18,9 +21,13 @@ vi.mock("@pages/performance-detail/model/use-performance-seat-actions", () => ({
 vi.mock("@pages/performance-detail/model/use-performance-seat-subscriptions", () => ({
   usePerformanceSeatSubscriptions: mockSubscriptions,
 }));
+vi.mock("@features/performance-booking", () => ({
+  useCheckoutReview: mockCheckoutReview,
+}));
 
 const props = {
   performanceId: 10,
+  sessionId: "session-1",
   venueSeats: [],
   venueSeatStates: new Map(),
   selectedSeatIds: new Set<number>(),
@@ -29,6 +36,13 @@ const props = {
   setSelectedSeatIds: vi.fn(),
   setServerTimeOffset: vi.fn(),
   setSeatOperationState: vi.fn(),
+};
+const review: BeginCheckoutReviewMessageData = {
+  reviewToken: "review-token",
+  groupId: "group-1",
+  performanceId: 10,
+  venueSeatIds: [101],
+  expiresAt: "2026-09-01T20:00:00.000Z",
 };
 
 const setMocks = (selectedSeatIdsToHold: number[]) => {
@@ -60,12 +74,13 @@ const setMocks = (selectedSeatIdsToHold: number[]) => {
       dotClassName: "",
     },
   });
+  mockCheckoutReview.mockReturnValue({ isBeginning: false, errorMessage: null, beginReview });
 };
 
 describe("usePerformanceSeatHoldPanel", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.useFakeTimers();
-    handleHoldSeats.mockClear();
   });
 
   afterEach(() => vi.useRealTimers());
@@ -74,6 +89,8 @@ describe("usePerformanceSeatHoldPanel", () => {
     setMocks([]);
     renderHook(() => usePerformanceSeatHoldPanel(props));
 
+    expect(mockActions).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1" }));
+    expect(mockSubscriptions).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1" }));
     act(() => vi.advanceTimersByTime(500));
     expect(handleHoldSeats).not.toHaveBeenCalled();
   });
@@ -96,5 +113,29 @@ describe("usePerformanceSeatHoldPanel", () => {
     unmount();
     expect(clearTimeout).toHaveBeenCalledOnce();
     expect(handleHoldSeats).not.toHaveBeenCalled();
+  });
+
+  it("예매 정보 확인을 시작하고 성공 결과를 checkout 콜백에 전달한다", () => {
+    const onCheckout = vi.fn();
+    setMocks([]);
+    const { result } = renderHook(() => usePerformanceSeatHoldPanel({ ...props, onCheckout }));
+
+    act(() => result.current.handleCheckout());
+
+    expect(beginReview).toHaveBeenCalledOnce();
+    const checkoutReviewOptions = mockCheckoutReview.mock.calls[0][0];
+    act(() => checkoutReviewOptions.onBeginSuccess(review));
+    expect(onCheckout).toHaveBeenCalledWith(review);
+    expect(result.current.isCheckoutReviewBeginning).toBe(false);
+    expect(result.current.checkoutReviewErrorMessage).toBeNull();
+  });
+
+  it("checkout 콜백이 없으면 예매 정보 확인을 시작하지 않는다", () => {
+    setMocks([]);
+    const { result } = renderHook(() => usePerformanceSeatHoldPanel(props));
+
+    act(() => result.current.handleCheckout());
+
+    expect(beginReview).not.toHaveBeenCalled();
   });
 });

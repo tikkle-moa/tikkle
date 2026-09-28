@@ -1,9 +1,13 @@
 import type { StompHeaders } from "@stomp/stompjs";
 import type {
+  BeginCheckoutReviewCommand,
+  BeginCheckoutReviewMessage,
   CancelCheckoutMessage,
   CancelPaymentCommand,
   ConfirmPaymentCommand,
   ConfirmPaymentMessage,
+  EndCheckoutReviewCommand,
+  EndCheckoutReviewMessage,
   GetPaymentOrderCommand,
   HoldVenueSeatsCommand,
   HoldVenueSeatsMessage,
@@ -44,6 +48,14 @@ interface StompPaths {
   "/reservation/start-checkout": {
     command: StartCheckoutCommand;
     message: StartCheckoutMessage;
+  };
+  "/reservation/begin-checkout-review": {
+    command: BeginCheckoutReviewCommand;
+    message: BeginCheckoutReviewMessage;
+  };
+  "/reservation/end-checkout-review": {
+    command: EndCheckoutReviewCommand;
+    message: EndCheckoutReviewMessage;
   };
   "/reservation/get-payment-order": {
     command: GetPaymentOrderCommand;

@@ -1,8 +1,9 @@
 import { StrictMode } from "react";
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 
+import { useTossPaymentWidget } from "@features/payment/model/use-toss-payment-widget";
 import TossPaymentWidget from "@features/payment/ui/TossPaymentWidget";
 
 vi.mock("@tosspayments/tosspayments-sdk", () => ({
@@ -156,6 +157,22 @@ describe("TossPaymentWidget", () => {
     });
 
     expect(widgets.renderPaymentMethods).not.toHaveBeenCalled();
+  });
+
+  it("위젯이 준비되기 전 결제 요청은 무시한다", async () => {
+    const load = createDeferred<never>();
+    vi.mocked(loadTossPayments).mockReturnValue(load.promise as never);
+
+    const { result, unmount } = renderHook(() => useTossPaymentWidget({ order, user }));
+
+    await act(async () => {
+      await result.current.handlePaymentRequest();
+    });
+
+    expect(result.current.isRequesting).toBe(false);
+    unmount();
+    load.reject(new Error("Toss unavailable"));
+    await load.promise.catch(() => undefined);
   });
 
   it("결제수단 위젯 렌더링 중 언마운트되면 위젯을 정리한다", async () => {

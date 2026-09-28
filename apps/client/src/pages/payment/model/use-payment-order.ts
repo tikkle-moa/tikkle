@@ -1,46 +1,43 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useStompStore } from "@shared/realtime/stomp.store";
 
-import { type PaymentOrderState, createPaymentOrderFixture } from "@features/payment";
+import { TERMINAL_PAYMENT_ORDER_ERROR_CODES } from "./payment.constants";
+import type { PaymentOrderState } from "./payment.types";
 
 interface UsePaymentOrderProps {
   reservationId: number;
-  fixture?: boolean;
 }
 
-export const usePaymentOrder = ({ reservationId, fixture = false }: UsePaymentOrderProps) => {
+export const usePaymentOrder = ({ reservationId }: UsePaymentOrderProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getStompClient = useStompStore((state) => state.getStompClient);
   const requestIdRef = useRef<string | null>(null);
-  const queryKey = `${reservationId}:${fixture ? "fixture" : "server"}`;
+  const queryKey = String(reservationId);
   const [paymentState, setPaymentState] = useState<PaymentOrderState>(() => ({
     key: queryKey,
     order: null,
     errorMessage: null,
     isLoading: true,
+    isTerminal: false,
   }));
   const isReservationIdValid = Number.isInteger(reservationId) && reservationId > 0;
-  const fixtureOrder = useMemo(
-    () => (fixture && isReservationIdValid ? createPaymentOrderFixture(reservationId) : null),
-    [fixture, isReservationIdValid, reservationId],
-  );
 
-  const visibleState = paymentState.key === queryKey ? paymentState : { key: queryKey, order: null, errorMessage: null, isLoading: true };
-  const order = fixtureOrder ?? visibleState.order;
+  const visibleState =
+    paymentState.key === queryKey ? paymentState : { key: queryKey, order: null, errorMessage: null, isLoading: true, isTerminal: false };
+  const order = visibleState.order;
   const errorMessage = !isReservationIdValid ? "올바르지 않은 결제 주문입니다." : visibleState.errorMessage;
-  const isLoading = !isReservationIdValid || fixture ? false : visibleState.isLoading;
+  const isLoading = isReservationIdValid && visibleState.isLoading;
 
   useEffect(() => {
-    if (fixture) return;
     getStompClient();
-  }, [fixture, getStompClient]);
+  }, [getStompClient]);
 
   useEffect(() => {
     requestIdRef.current = null;
 
-    if (!isReservationIdValid || fixture || !stompClient || connectionStatus !== "connected") return;
+    if (!isReservationIdValid || !stompClient || connectionStatus !== "connected") return;
 
     const requestId = crypto.randomUUID();
     requestIdRef.current = requestId;
@@ -55,6 +52,7 @@ export const usePaymentOrder = ({ reservationId, fixture = false }: UsePaymentOr
           order: message.data,
           errorMessage: null,
           isLoading: false,
+          isTerminal: false,
         });
       },
       errorCallback: (message) => {
@@ -65,6 +63,7 @@ export const usePaymentOrder = ({ reservationId, fixture = false }: UsePaymentOr
           order: null,
           errorMessage: message.error?.message ?? "결제 주문서를 불러오지 못했습니다.",
           isLoading: false,
+          isTerminal: TERMINAL_PAYMENT_ORDER_ERROR_CODES.includes(message.error.code as (typeof TERMINAL_PAYMENT_ORDER_ERROR_CODES)[number]),
         });
       },
     });
@@ -78,7 +77,7 @@ export const usePaymentOrder = ({ reservationId, fixture = false }: UsePaymentOr
     });
 
     return () => subscription.unsubscribe();
-  }, [connectionStatus, fixture, isReservationIdValid, queryKey, reservationId, stompClient]);
+  }, [connectionStatus, isReservationIdValid, queryKey, reservationId, stompClient]);
 
-  return { order, errorMessage, isLoading, isFixture: fixture };
+  return { order, errorMessage, isLoading, isTerminal: visibleState.isTerminal };
 };

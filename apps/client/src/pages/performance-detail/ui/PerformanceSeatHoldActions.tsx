@@ -1,9 +1,6 @@
 import { memo } from "react";
-import { Link } from "react-router";
 
 import { ChevronRight, CircleAlert, LoaderCircle, RotateCcw, TicketCheck } from "lucide-react";
-
-import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import type { SeatOperationState } from "../model/seat-map.types";
 
@@ -12,7 +9,9 @@ interface PerformanceSeatHoldActionsProps {
   myGroupHeldSeatTotalPrice: number;
   selectedSeatIdsToReleaseSize: number;
   isConnected: boolean;
+  isCheckoutReviewBeginning: boolean;
   visibleSeatOperationState: SeatOperationState;
+  handleCheckout: () => void;
   handleReleaseSeats: () => void;
 }
 
@@ -21,29 +20,35 @@ const PerformanceSeatHoldActions = ({
   myGroupHeldSeatTotalPrice,
   selectedSeatIdsToReleaseSize,
   isConnected,
+  isCheckoutReviewBeginning,
   visibleSeatOperationState,
+  handleCheckout,
   handleReleaseSeats,
 }: PerformanceSeatHoldActionsProps) => {
   return (
     <>
       {myGroupHeldSeatSize > 0 && (
-        <Link
-          to={ROUTE_PATHS.PAYMENT_FIXTURE_CHECKOUT}
-          className="group flex items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 px-4 py-3.5 transition hover:border-violet-200 hover:bg-violet-50 focus-visible:ring-2 focus-visible:ring-violet-200 focus-visible:ring-offset-2 focus-visible:outline-none"
+        <button
+          type="button"
+          onClick={handleCheckout}
+          disabled={!isConnected || isCheckoutReviewBeginning}
+          className="group flex w-full items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 px-4 py-3.5 text-left transition hover:border-violet-200 hover:bg-violet-50 focus-visible:ring-2 focus-visible:ring-violet-200 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-violet-600 shadow-sm">
             <TicketCheck className="size-4" aria-hidden />
           </span>
 
           <span className="min-w-0 flex-1">
-            <span className="block text-xs font-extrabold text-slate-800">결제하러 가기</span>
+            <span className="block text-xs font-extrabold text-slate-800">
+              {isCheckoutReviewBeginning ? "예매 정보 불러오는 중..." : "예매 정보 확인하기"}
+            </span>
             <span className="mt-0.5 block text-[11px] text-slate-500">
               선택 좌석 {myGroupHeldSeatSize}석 · {myGroupHeldSeatTotalPrice.toLocaleString()}원
             </span>
           </span>
 
           <ChevronRight className="size-4 shrink-0 text-violet-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
-        </Link>
+        </button>
       )}
       {selectedSeatIdsToReleaseSize > 0 && (
         <div className="grid grid-cols-1 gap-2">

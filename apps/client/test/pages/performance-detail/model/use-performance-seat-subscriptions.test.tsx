@@ -49,6 +49,7 @@ const findSubscription = (subscriptions: SubscriptionConfig[], suffix: string) =
 };
 
 const requestIdRefs = () => ({
+  sessionId: "session-1",
   performanceSeatRequestIdsRef: {
     current: {
       seatStatus: null as string | null,
@@ -197,7 +198,10 @@ describe("usePerformanceSeatSubscriptions", () => {
       event({
         version: 3,
         type: "HELD_SEATS",
-        data: [{ id: 3, expiresAt: "2026-09-16T21:00:00" }] as never,
+        data: [
+          { id: 2, expiresAt: "2026-09-16T21:00:00" },
+          { id: 3, expiresAt: "2026-09-16T21:00:00" },
+        ] as never,
       }),
     );
     expect(result.current.heldSeatExpiresAtBySeatId).not.toBe(emptyHeldResult);

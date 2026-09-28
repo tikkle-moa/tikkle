@@ -8,6 +8,7 @@ import { getConnectionStyle } from "./seat-map.utils";
 interface UsePerformanceSeatSubscriptionsProps {
   performanceId: number;
   performanceSeatRequestIdsRef: RefObject<PerformanceSeatRequestIds>;
+  sessionId: string;
   handleRefreshFinish: (state: SeatOperationState) => void;
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
@@ -20,6 +21,7 @@ interface UsePerformanceSeatSubscriptionsProps {
 export const usePerformanceSeatSubscriptions = ({
   performanceId,
   performanceSeatRequestIdsRef,
+  sessionId,
   handleRefreshFinish,
   setSelectedSeatIds,
   setServerTimeOffset,
@@ -59,7 +61,7 @@ export const usePerformanceSeatSubscriptions = ({
       stompClient.publish({
         path: "/performances/{performanceId}/get-seat-status",
         pathParams: { performanceId },
-        command: { requestId },
+        command: { requestId, sessionId },
       });
     };
 
@@ -89,8 +91,8 @@ export const usePerformanceSeatSubscriptions = ({
         setHeldSeatExpiresAtBySeatId(new Map(message.data.otherGroupHoldSeats.map(({ id, expiresAt }) => [id, new Date(expiresAt)])));
         setMyGroupHeldSeatInfoBySeatId(
           new Map(
-            message.data.myGroupHolds.flatMap(({ holdId, expiresAt, venueSeatIds }) =>
-              venueSeatIds.map((venueSeatId) => [venueSeatId, { holdId, expiresAt: new Date(expiresAt) }]),
+            message.data.myGroupHolds.flatMap(({ groupId, holdId, performanceId, expiresAt, venueSeatIds }) =>
+              venueSeatIds.map((venueSeatId) => [venueSeatId, { groupId, holdId, performanceId, expiresAt: new Date(expiresAt) }]),
             ),
           ),
         );
@@ -146,6 +148,16 @@ export const usePerformanceSeatSubscriptions = ({
             break;
           }
           case "RESERVATION_CONFIRMED": {
+            setHeldSeatExpiresAtBySeatId((current) => {
+              const updated = new Map(current);
+              event.data.forEach((seatId) => updated.delete(seatId));
+              return current.size === updated.size ? current : updated;
+            });
+            setMyGroupHeldSeatInfoBySeatId((current) => {
+              const updated = new Map(current);
+              event.data.forEach((seatId) => updated.delete(seatId));
+              return current.size === updated.size ? current : updated;
+            });
             setBookedSeatIds((current) => {
               const updated = new Set(current);
               event.data.forEach((seatId) => updated.add(seatId));
@@ -179,6 +191,7 @@ export const usePerformanceSeatSubscriptions = ({
     setSelectedSeatIds,
     setServerTimeOffset,
     stompClient,
+    sessionId,
   ]);
 
   useEffect(() => {
@@ -192,10 +205,10 @@ export const usePerformanceSeatSubscriptions = ({
 
         setMyGroupHeldSeatInfoBySeatId((current) => {
           if (message.data.venueSeatIds.length === 0) return current;
-          const holdId = message.data.holdId;
+          const { groupId, holdId, performanceId } = message.data;
           const expiresAt = new Date(message.data.expiresAt);
           const updated = new Map(current);
-          message.data.venueSeatIds.forEach((seatId) => updated.set(seatId, { holdId, expiresAt }));
+          message.data.venueSeatIds.forEach((seatId) => updated.set(seatId, { groupId, holdId, performanceId, expiresAt }));
           return updated;
         });
         setSeatOperationState({ status: "success" });
