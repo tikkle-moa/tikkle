@@ -7,7 +7,7 @@ import { START_CHECKOUT_MAX_REQUEST_ATTEMPTS, START_CHECKOUT_RESPONSE_TIMEOUT_MS
 interface UseStartCheckoutProps {
   performanceId: number;
   reviewToken: string;
-  groupId?: string;
+  groupId: string | null;
   onSuccess: (reservationId: number) => void;
   enabled?: boolean;
 }
@@ -91,7 +91,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, groupId, onSucces
           waitForResponse();
           activeClient.publish({
             path: "/reservation/start-checkout",
-            command: { requestId, data: { performanceId, reviewToken, ...(groupId ? { groupId } : {}) } },
+            command: { requestId, data: { performanceId, reviewToken, groupId } },
           });
           return;
         }
@@ -106,7 +106,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, groupId, onSucces
     waitForResponse();
     stompClient.publish({
       path: "/reservation/start-checkout",
-      command: { requestId, data: { performanceId, reviewToken, ...(groupId ? { groupId } : {}) } },
+      command: { requestId, data: { performanceId, reviewToken, groupId } },
     });
   };
 

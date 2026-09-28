@@ -64,7 +64,7 @@ describe("useCheckoutReview", () => {
     });
     expect(result.current.isBeginning).toBe(true);
     act(() => result.current.beginReview());
-    act(() => result.current.endReview(command.command.data.reviewToken));
+    act(() => result.current.endReview(command.command.data.reviewToken, review.groupId));
     expect(publish).toHaveBeenCalledTimes(1);
 
     act(() => {
@@ -142,7 +142,7 @@ describe("useCheckoutReview", () => {
 
   it("BEGIN 오류와 서버 스냅샷 불일치를 표시한다", () => {
     const onBeginSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onBeginSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onBeginSuccess }));
 
     act(() => result.current.beginReview());
     const command = publish.mock.calls[0][0].command;
@@ -168,7 +168,7 @@ describe("useCheckoutReview", () => {
     vi.useFakeTimers();
     vi.spyOn(window, "clearTimeout").mockImplementation(() => undefined);
 
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
     act(() => result.current.beginReview());
 
@@ -181,6 +181,7 @@ describe("useCheckoutReview", () => {
         success: true,
         data: {
           groupId: "1:10",
+          sessionId: null,
           performanceId: 10,
           venueSeatIds: [101],
           expiresAt: "2026-09-22T13:00:00",
@@ -199,7 +200,7 @@ describe("useCheckoutReview", () => {
 
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
     const onBeginSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onBeginSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onBeginSuccess }));
 
     act(() => result.current.beginReview());
 
@@ -211,6 +212,7 @@ describe("useCheckoutReview", () => {
         success: true,
         data: {
           groupId: "1:10",
+          sessionId: null,
           performanceId: 10,
           venueSeatIds: [101],
           expiresAt: "2026-09-22T13:00:00",
@@ -225,7 +227,7 @@ describe("useCheckoutReview", () => {
 
   it("END에 토큰과 그룹 ID를 전달하고 성공 시 완료 콜백을 호출한다", () => {
     const onEndSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onEndSuccess }));
 
     act(() => result.current.endReview("review-token", "1:10:session-1"));
     const command = publish.mock.calls[0][0];
@@ -244,7 +246,7 @@ describe("useCheckoutReview", () => {
 
   it("END가 기존 점유를 복원할 수 없다고 응답하면 그 상태를 전달한다", () => {
     const onEndSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onEndSuccess }));
 
     act(() => result.current.endReview("review-token", "1:10:session-1"));
     const requestId = publish.mock.calls[0][0].command.requestId as string;
@@ -255,9 +257,9 @@ describe("useCheckoutReview", () => {
 
   it("END 성공 응답의 공연 ID가 다르면 복귀 오류를 표시한다", () => {
     const onEndSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onEndSuccess }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
 
     const requestId = publish.mock.calls[0][0].command.requestId as string;
 
@@ -276,7 +278,7 @@ describe("useCheckoutReview", () => {
 
   it("END 응답 유실도 같은 토큰으로 재전송하고 최종 타임아웃을 표시한다", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
     act(() => result.current.endReview("review-token", "1:10:session-1"));
     const command = publish.mock.calls[0][0].command;
@@ -290,9 +292,9 @@ describe("useCheckoutReview", () => {
   });
 
   it("END 오류를 표시하고 연결되지 않으면 BEGIN과 END를 전송하지 않는다", () => {
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
     const requestId = publish.mock.calls[0][0].command.requestId as string;
     act(() => {
       handleEndError?.({ requestId, success: false, error: { code: "CONFLICT", message: "결제 대기 중입니다." } });
@@ -301,7 +303,7 @@ describe("useCheckoutReview", () => {
 
     act(() => useStompStore.setState({ stompClient: null, connectionStatus: "disconnected" }));
     act(() => result.current.beginReview());
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
     expect(publish).toHaveBeenCalledTimes(1);
     expect(result.current.errorMessage).toBe("서버 연결 후 다시 시도해 주세요.");
   });
@@ -310,9 +312,9 @@ describe("useCheckoutReview", () => {
     vi.useFakeTimers();
 
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
 
     const requestId = publish.mock.calls[0][0].command.requestId;
 
@@ -332,9 +334,9 @@ describe("useCheckoutReview", () => {
     vi.useFakeTimers();
     vi.spyOn(window, "clearTimeout").mockImplementation(() => undefined);
 
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
 
     const requestId = publish.mock.calls[0][0].command.requestId;
 
@@ -355,7 +357,7 @@ describe("useCheckoutReview", () => {
     vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
     const onBeginSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onBeginSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onBeginSuccess }));
 
     act(() => result.current.beginReview());
     const command = publish.mock.calls[0][0].command;
@@ -376,7 +378,7 @@ describe("useCheckoutReview", () => {
   it("BEGIN 오류 응답에 타이머 ID가 없으면 clearTimeout 없이 실패 처리한다", () => {
     vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
     act(() => result.current.beginReview());
     const requestId = publish.mock.calls[0][0].command.requestId;
@@ -398,9 +400,9 @@ describe("useCheckoutReview", () => {
     vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
     const onEndSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onEndSuccess }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
     const requestId = publish.mock.calls[0][0].command.requestId;
 
     expect(handleEndMessage).toBeDefined();
@@ -413,9 +415,9 @@ describe("useCheckoutReview", () => {
   it("END 오류 응답에 타이머 ID가 없으면 clearTimeout 없이 실패 처리한다", () => {
     vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
     const requestId = publish.mock.calls[0][0].command.requestId;
 
     expect(handleEndError).toBeDefined();
@@ -434,16 +436,16 @@ describe("useCheckoutReview", () => {
   it("END 응답 중 언마운트하면 END 타이머를 정리한다", () => {
     vi.useFakeTimers();
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
-    const { result, unmount } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result, unmount } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
     unmount();
 
     expect(clearTimeoutSpy).toHaveBeenCalled();
   });
 
   it("BEGIN과 END의 오래된 오류 응답은 현재 요청을 변경하지 않는다", () => {
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
     act(() => result.current.beginReview());
     const beginRequestId = publish.mock.calls[0][0].command.requestId;
@@ -465,7 +467,7 @@ describe("useCheckoutReview", () => {
       });
     });
 
-    act(() => result.current.endReview("review-token"));
+    act(() => result.current.endReview("review-token", "1:10:session-1"));
     const endRequestId = publish.mock.calls[1][0].command.requestId;
     expect(handleEndMessage).toBeDefined();
     expect(handleEndError).toBeDefined();
@@ -491,7 +493,7 @@ describe("useCheckoutReview", () => {
 
   it("언마운트 시 구독과 응답 대기 타이머를 정리한다", () => {
     vi.useFakeTimers();
-    const { result, unmount } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
+    const { result, unmount } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
 
     act(() => result.current.beginReview());
     unmount();
