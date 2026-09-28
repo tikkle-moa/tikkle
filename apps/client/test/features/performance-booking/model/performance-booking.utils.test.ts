@@ -1,4 +1,5 @@
 import {
+  clearPerformanceCheckoutReviewToken,
   clearPerformanceSeatSelectionSession,
   createPerformanceSeatSelectionSession,
   formatBookingAmount,
@@ -32,6 +33,14 @@ describe("performance-booking.utils", () => {
     vi.unstubAllGlobals();
   });
 
+  it("브라우저 전역이 없으면 예매 확인 토큰 삭제를 건너뛴다", () => {
+    vi.stubGlobal("window", undefined);
+
+    expect(() => clearPerformanceCheckoutReviewToken(10, "session-10", "review-10")).not.toThrow();
+
+    vi.unstubAllGlobals();
+  });
+
   it("공연별 새 좌석 선택 세션을 생성하고 저장한다", () => {
     const sessionId = createPerformanceSeatSelectionSession(10);
 
@@ -59,6 +68,23 @@ describe("performance-booking.utils", () => {
 
     expect(sessionStorage.getItem(getPerformanceSeatSessionStorageKey(13))).toBeNull();
     expect(getOrCreatePerformanceCheckoutReviewToken(13, sessionId)).not.toBe(reviewToken);
+  });
+
+  it("현재 세션의 예매 확인 토큰만 삭제한다", () => {
+    const sessionId = "session-14";
+    const reviewToken = getOrCreatePerformanceCheckoutReviewToken(14, sessionId);
+
+    clearPerformanceCheckoutReviewToken(14, sessionId, "another-review-token");
+    expect(getOrCreatePerformanceCheckoutReviewToken(14, sessionId)).toBe(reviewToken);
+
+    clearPerformanceCheckoutReviewToken(14, sessionId, reviewToken);
+    expect(getOrCreatePerformanceCheckoutReviewToken(14, sessionId)).not.toBe(reviewToken);
+  });
+
+  it("좌석 선택 세션이 없으면 예매 확인 토큰 삭제를 건너뛴다", () => {
+    clearPerformanceSeatSelectionSession(15);
+
+    expect(sessionStorage.getItem(getPerformanceSeatSessionStorageKey(15))).toBeNull();
   });
 
   it("금액과 점유 남은 시간을 포맷한다", () => {
