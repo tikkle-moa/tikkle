@@ -63,6 +63,11 @@ class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMess
     )
   }
 
+  fun getCurrentVersion(performanceId: Long): Long {
+    val version = stringRedisTemplate.opsForValue().get(versionKey(performanceId))?.toLong() ?: 0L
+    return version
+  }
+
   private fun getVersion(performanceId: Long): Long {
     val version = stringRedisTemplate.opsForValue().increment(versionKey(performanceId))
     return version

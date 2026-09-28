@@ -9,7 +9,9 @@ local holdDetailKeyPrefix = ARGV[1]
 local now = redis.call('TIME')
 local nowMillis = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
 
-local holdIds = redis.call('ZRANGEBYSCORE', holdGroupKey, nowMillis, '+inf')
+redis.call('ZREMRANGEBYSCORE', holdGroupKey, '-inf', nowMillis)
+
+local holdIds = redis.call('ZRANGEBYSCORE', holdGroupKey, nowMillis + 1, '+inf')
 
 local heldSeatsJson = {}
 

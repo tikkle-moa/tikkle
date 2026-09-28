@@ -1,5 +1,5 @@
 -- 결제 전환을 위한 Lua 스크립트입니다.
--- KEYS: holdVenueSeatKey 목록 -> holdDetailKey 목록 -> holdGroupKey
+-- KEYS: holdVenueSeatKey 목록 -> holdDetailKey 목록 -> holdPerformanceKey -> holdGroupKey
 -- ARGV[1]: holdVenueSeatKey 수
 -- ARGV[2]: holdDetailKey 수
 -- ARGV[3]: 만료 시각(epoch millis)
@@ -11,6 +11,7 @@ local holdDetailKeyCount = tonumber(ARGV[2])
 local expiresAt = tonumber(ARGV[3])
 
 local holdDetailKeyStartIndex = venueSeatKeyCount + 1
+local holdPerformanceKey = KEYS[#KEYS - 1]
 local holdGroupKey = KEYS[#KEYS]
 
 local expectedValueStartIndex = 4
@@ -43,7 +44,13 @@ end
 -- Hold 본문과 그룹 인덱스의 만료 시각도 함께 갱신합니다.
 for i = 0, holdDetailKeyCount - 1 do
   redis.call('SET', KEYS[holdDetailKeyStartIndex + i], ARGV[updatedJsonStartIndex + i], 'PXAT', expiresAt)
+  redis.call('ZADD', holdPerformanceKey, expiresAt, ARGV[updatedHoldIdStartIndex + i])
   redis.call('ZADD', holdGroupKey, expiresAt, ARGV[updatedHoldIdStartIndex + i])
+end
+local performanceTtl = redis.call('PTTL', holdPerformanceKey)
+local requestedPerformanceTtl = expiresAt + 60000 - nowMillis
+if performanceTtl < requestedPerformanceTtl then
+  redis.call('PEXPIREAT', holdPerformanceKey, expiresAt + 60000)
 end
 redis.call('PEXPIREAT', holdGroupKey, expiresAt + 60000)
 redis.call('ZREMRANGEBYSCORE', holdGroupKey, '-inf', nowMillis)

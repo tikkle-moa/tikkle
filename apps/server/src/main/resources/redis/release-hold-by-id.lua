@@ -1,5 +1,5 @@
 -- Outbox HOLD_RELEASED 이벤트를 특정 Hold에만 적용합니다.
--- KEYS: holdVenueSeatKey 목록 -> holdDetailKey -> holdGroupKey -> outbox marker key
+-- KEYS: holdVenueSeatKey 목록 -> holdDetailKey -> holdPerformanceKey -> holdGroupKey -> outbox marker key
 -- ARGV[1]: 예상 holdId
 -- ARGV[2]: 좌석 키 수
 -- ARGV[3]: outbox event ID
@@ -7,8 +7,9 @@
 
 local seatCount = tonumber(ARGV[2])
 local holdDetailKey = KEYS[seatCount + 1]
-local holdGroupKey = KEYS[seatCount + 2]
-local markerKey = KEYS[seatCount + 3]
+local holdPerformanceKey = KEYS[seatCount + 2]
+local holdGroupKey = KEYS[seatCount + 3]
+local markerKey = KEYS[seatCount + 4]
 local expectedHoldId = ARGV[1]
 local missingSeatCount = 0
 
@@ -26,6 +27,8 @@ for i = 1, seatCount do
 end
 
 if missingSeatCount == seatCount then
+  redis.call('ZREM', holdPerformanceKey, expectedHoldId)
+  redis.call('ZREM', holdGroupKey, expectedHoldId)
   return 2
 end
 
@@ -38,6 +41,7 @@ for i = 1, seatCount do
 end
 
 redis.call('DEL', holdDetailKey)
+redis.call('ZREM', holdPerformanceKey, expectedHoldId)
 redis.call('ZREM', holdGroupKey, expectedHoldId)
 redis.call('SET', markerKey, 'APPLIED', 'PX', 86400000)
 

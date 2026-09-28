@@ -1,5 +1,5 @@
 -- 조회 이후 좌석 소유권이나 Hold 정보가 변경되었다면 해제하지 않습니다.
--- KEYS: holdVenueSeatKey 목록 -> 삭제할 holdDetailKey 목록 -> 갱신할 holdDetailKey 목록 -> holdGroupKey
+-- KEYS: holdVenueSeatKey 목록 -> 삭제할 holdDetailKey 목록 -> 갱신할 holdDetailKey 목록 -> holdPerformanceKey -> holdGroupKey
 -- ARGV[1]: holdVenueSeatKey 수
 -- ARGV[2]: 삭제할 holdDetailKey 수
 -- ARGV[3]: 갱신할 holdDetailKey 수
@@ -12,6 +12,7 @@ local remainingHoldDetailKeyCount = tonumber(ARGV[3])
 
 local emptyKeyStartIndex = venueSeatKeyCount + 1
 local remainingKeyStartIndex = emptyKeyStartIndex + emptyHoldDetailKeyCount
+local holdPerformanceKey = KEYS[#KEYS - 1]
 local holdGroupKey = KEYS[#KEYS]
 
 local expectedValueStartIndex = 4
@@ -41,6 +42,7 @@ end
 -- 남은 좌석이 없는 Hold는 본문과 사용자 인덱스에서 함께 제거합니다.
 for i = 0, emptyHoldDetailKeyCount - 1 do
   redis.call('DEL', KEYS[emptyKeyStartIndex + i])
+  redis.call('ZREM', holdPerformanceKey, ARGV[emptyHoldIdStartIndex + i])
   redis.call('ZREM', holdGroupKey, ARGV[emptyHoldIdStartIndex + i])
 end
 

@@ -1,5 +1,5 @@
 -- Outbox RESERVATION_CONFIRMED 이벤트를 특정 Hold에만 적용합니다.
--- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdGroupKey
+-- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdPerformanceKey -> holdGroupKey
 -- ARGV[1]: 예상 holdId
 -- ARGV[2]: 좌석 키 수
 -- 반환값: 0=확정, 1=좌석 소유권 충돌, 2=이미 확정·해제됨
@@ -7,7 +7,8 @@
 local seatCount = tonumber(ARGV[2])
 local finalizingKeyStartIndex = seatCount + 1
 local holdDetailKey = KEYS[seatCount * 2 + 1]
-local holdGroupKey = KEYS[seatCount * 2 + 2]
+local holdPerformanceKey = KEYS[seatCount * 2 + 2]
+local holdGroupKey = KEYS[seatCount * 2 + 3]
 local expectedHoldId = ARGV[1]
 local missingSeatCount = 0
 
@@ -21,6 +22,8 @@ for i = 1, seatCount do
 end
 
 if missingSeatCount == seatCount then
+  redis.call('ZREM', holdPerformanceKey, expectedHoldId)
+  redis.call('ZREM', holdGroupKey, expectedHoldId)
   return 2
 end
 
@@ -40,6 +43,7 @@ for i = 1, seatCount do
 end
 
 redis.call('DEL', holdDetailKey)
+redis.call('ZREM', holdPerformanceKey, expectedHoldId)
 redis.call('ZREM', holdGroupKey, expectedHoldId)
 
 return 0
