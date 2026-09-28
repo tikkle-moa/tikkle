@@ -4,8 +4,6 @@
  * Do not make direct changes to this file.
  */
 
-export type PerformanceIdGetMinusMyMinusGroupMinusHolds = GetMyGroupHoldsMessage | StompFailureMessage;
-
 export type PerformanceIdGetMinusSeatMinusStatus = PerformanceSeatStatusMessage | StompFailureMessage;
 
 export type PerformanceIdHoldMinusSeats = HoldVenueSeatsMessage | StompFailureMessage;
@@ -22,10 +20,18 @@ export type ReservationStartMinusCheckout = StartCheckoutMessage | StompFailureM
 
 export type PerformanceSeatEvent = PerformanceHeldSeatsEvent | PerformanceVenueSeatIdsEvent;
 
-export interface GetMyGroupHoldsMessage {
-  data: VenueSeatHoldDetail[];
+export interface PerformanceSeatStatusMessage {
+  data: PerformanceSeatStatusMessageData;
   requestId: string;
   success: boolean;
+}
+
+export interface PerformanceSeatStatusMessageData {
+  bookedSeatIds: number[];
+  myGroupHolds: VenueSeatHoldDetail[];
+  otherGroupHoldSeats: HeldSeat[];
+  serverTime: string;
+  version: number;
 }
 
 export interface VenueSeatHoldDetail {
@@ -34,6 +40,11 @@ export interface VenueSeatHoldDetail {
   holdId: string;
   performanceId: number;
   venueSeatIds: number[];
+}
+
+export interface HeldSeat {
+  expiresAt: string;
+  id: number;
 }
 
 export interface StompFailureMessage {
@@ -45,27 +56,6 @@ export interface StompFailureMessage {
 export interface StompError {
   code: string;
   message: string;
-}
-
-export interface GetMyGroupHoldsCommand {
-  requestId: string;
-}
-
-export interface PerformanceSeatStatusMessage {
-  data: PerformanceSeatStatusMessageData;
-  requestId: string;
-  success: boolean;
-}
-
-export interface PerformanceSeatStatusMessageData {
-  bookedSeatIds: number[];
-  heldSeats: HeldSeat[];
-  serverTime: string;
-}
-
-export interface HeldSeat {
-  expiresAt: string;
-  id: number;
 }
 
 export interface PerformanceSeatStatusCommand {

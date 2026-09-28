@@ -1,8 +1,8 @@
-import { type Dispatch, type SetStateAction, useEffect } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useRef } from "react";
 
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
-import type { SeatOperationState } from "./seat-map.types";
+import type { PerformanceSeatRequestIds, SeatOperationState } from "./seat-map.types";
 import { usePerformanceSeatActions } from "./use-performance-seat-actions";
 import { usePerformanceSeatAvailability } from "./use-performance-seat-availability";
 import { usePerformanceSeatSubscriptions } from "./use-performance-seat-subscriptions";
@@ -30,6 +30,12 @@ export const usePerformanceSeatHoldPanel = ({
   setServerTimeOffset,
   setSeatOperationState,
 }: UsePerformanceSeatHoldPanelProps) => {
+  const performanceSeatRequestIdsRef = useRef<PerformanceSeatRequestIds>({
+    seatStatus: null,
+    hold: null,
+    release: null,
+  });
+
   const {
     myGroupHolds,
     myGroupHeldSeatInfoBySeatId,
@@ -52,6 +58,7 @@ export const usePerformanceSeatHoldPanel = ({
   const { isRefreshing, refreshError, visibleSeatOperationState, handleHoldSeats, handleReleaseSeats, handleRefresh, handleRefreshFinish } =
     usePerformanceSeatActions({
       performanceId,
+      performanceSeatRequestIdsRef,
       selectedSeatIdsToHold,
       selectedSeatIdsToRelease,
       seatOperationState,
@@ -60,6 +67,7 @@ export const usePerformanceSeatHoldPanel = ({
 
   const { isConnected, connectionStyle } = usePerformanceSeatSubscriptions({
     performanceId,
+    performanceSeatRequestIdsRef,
     handleRefreshFinish,
     setSelectedSeatIds,
     setServerTimeOffset,

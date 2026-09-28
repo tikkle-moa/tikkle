@@ -4,8 +4,6 @@ import type {
   CancelPaymentCommand,
   ConfirmPaymentCommand,
   ConfirmPaymentMessage,
-  GetMyGroupHoldsCommand,
-  GetMyGroupHoldsMessage,
   GetPaymentOrderCommand,
   HoldVenueSeatsCommand,
   HoldVenueSeatsMessage,
@@ -27,11 +25,6 @@ interface StompPaths {
   "/performances/{performanceId}/get-seat-status": {
     command: PerformanceSeatStatusCommand;
     message: PerformanceSeatStatusMessage;
-    path: { performanceId: number };
-  };
-  "/performances/{performanceId}/get-my-group-holds": {
-    command: GetMyGroupHoldsCommand;
-    message: GetMyGroupHoldsMessage;
     path: { performanceId: number };
   };
   "/performances/{performanceId}/hold-seats": {

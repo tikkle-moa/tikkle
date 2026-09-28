@@ -9,9 +9,13 @@ export interface MyGroupHoldInfo {
   venueSeatIds: number[];
 }
 
-export type SeatOperation = "hold" | "release";
+export interface PerformanceSeatRequestIds {
+  seatStatus: string | null;
+  hold: string | null;
+  release: string | null;
+}
 
-export type RefreshAction = "seatStatus" | "myHeldSeats";
+export type SeatOperation = "hold" | "release";
 
 export type SeatOperationState =
   | {
