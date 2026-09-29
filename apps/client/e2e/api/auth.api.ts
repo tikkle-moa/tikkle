@@ -15,12 +15,12 @@ export const createTestUser = (role: UserRole) => ({
 
 const encode = (value: object | string) => Buffer.from(typeof value === "string" ? value : JSON.stringify(value)).toString("base64url");
 
-const createAccessToken = (role: UserRole) => {
+const createAccessToken = (role: UserRole, tokenId: string = randomUUID()) => {
   const secret = process.env.E2E_JWT_SECRET ?? "e2e-jwt-secret-key-must-be-at-least-32-bytes";
 
   const now = Math.floor(Date.now() / 1000);
   const header = encode({ alg: "HS256", typ: "JWT" });
-  const payload = encode({ jti: randomUUID(), sub: role === "ADMIN" ? "1" : "2", type: "ACCESS", role, iat: now, exp: now + 3600 });
+  const payload = encode({ jti: tokenId, sub: role === "ADMIN" ? "1" : "2", type: "ACCESS", role, iat: now, exp: now + 3600 });
   const unsignedToken = `${header}.${payload}`;
   const signature = createHmac("sha256", secret).update(unsignedToken).digest("base64url");
 
@@ -40,15 +40,15 @@ export const mockOAuthSession = async (page: Page, role: UserRole) => {
   );
 };
 
-export const setApiRole = async (page: Page, role: UserRole) => {
+export const setApiRole = async (page: Page, role: UserRole, tokenId?: string) => {
   const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
   await page.context().addCookies([
-    { name: "access_token", value: createAccessToken(role), url: baseURL, httpOnly: true, sameSite: "Lax" },
+    { name: "access_token", value: createAccessToken(role, tokenId), url: baseURL, httpOnly: true, sameSite: "Lax" },
     { name: "XSRF-TOKEN", value: TEST_CSRF_TOKEN, url: baseURL, sameSite: "Lax" },
   ]);
 };
 
-export const authenticatePage = async (page: Page, role: UserRole) => {
-  await setApiRole(page, role);
+export const authenticatePage = async (page: Page, role: UserRole, tokenId?: string) => {
+  await setApiRole(page, role, tokenId);
   await mockOAuthSession(page, role);
 };

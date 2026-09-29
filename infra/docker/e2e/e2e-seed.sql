@@ -1,7 +1,37 @@
--- e2e-seed.sql
 -- E2E 전용 테스트 DB 시드
 
 SET NAMES utf8mb4;
+
+INSERT INTO
+    users (
+        id,
+        email,
+        nickname,
+        profile_image_url,
+        role,
+        created_at
+    )
+VALUES (
+        1,
+        'admin@example.com',
+        'E2E 관리자',
+        NULL,
+        'ADMIN',
+        NOW()
+    ),
+    (
+        2,
+        'user@example.com',
+        'E2E 사용자',
+        NULL,
+        'USER',
+        NOW()
+    )
+ON DUPLICATE KEY UPDATE
+    email = VALUES(email),
+    nickname = VALUES(nickname),
+    profile_image_url = VALUES(profile_image_url),
+    role = VALUES(role);
 
 INSERT INTO
     venues (
@@ -163,6 +193,22 @@ VALUES (
         'E2E 종료 회차',
         DATE_SUB(NOW(), INTERVAL 30 DAY),
         DATE_SUB(NOW(), INTERVAL 60 DAY),
+        NOW()
+    ),
+    (
+        900002,
+        900000,
+        'E2E 예매 주문 회차',
+        DATE_ADD(NOW(), INTERVAL 32 DAY),
+        DATE_SUB(NOW(), INTERVAL 1 DAY),
+        NOW()
+    ),
+    (
+        900003,
+        900000,
+        'E2E 결제 오류 회차',
+        DATE_ADD(NOW(), INTERVAL 33 DAY),
+        DATE_SUB(NOW(), INTERVAL 1 DAY),
         NOW()
     )
 ON DUPLICATE KEY UPDATE

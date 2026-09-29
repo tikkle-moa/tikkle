@@ -34,4 +34,16 @@ export const E2E_SEED_PERFORMANCES = {
     concertId: E2E_SEED_CONCERTS.normal.id,
     name: "E2E 종료 회차",
   },
+  reservationCheckout: {
+    id: 900002,
+    concertId: E2E_SEED_CONCERTS.normal.id,
+    venueId: E2E_SEED_VENUES.normal.id,
+    name: "E2E 예매 주문 회차",
+  },
+  paymentConfirmationFailure: {
+    id: 900003,
+    concertId: E2E_SEED_CONCERTS.normal.id,
+    venueId: E2E_SEED_VENUES.normal.id,
+    name: "E2E 결제 오류 회차",
+  },
 } as const;
