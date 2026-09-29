@@ -1,7 +1,8 @@
 import { type Browser, type Page, expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
-import { authenticatePage } from "../api/auth.api";
-import { E2E_SEED_PERFORMANCES } from "../config/e2e-seed-data.config";
+import { authenticatePage, createApiAuthHeaders } from "../api/auth.api";
+import { createVenue } from "../api/venue.api";
 
 interface CapturedStompMessage {
   success?: boolean;
@@ -20,6 +21,54 @@ interface CheckoutResult {
 
 const USER_TOKEN_ID = "00000000-0000-4000-8000-000000000002";
 const SEAT_LABEL = "A구역 1열 1번";
+
+const createCheckoutScenario = async (page: Page) => {
+  const venue = await createVenue(page, "E2E 예매 테스트 공연장", [
+    {
+      sectionName: "A구역",
+      seatNumber: 1,
+      seatLabel: SEAT_LABEL,
+      price: 150_000,
+      positionX: 20,
+      positionY: 30,
+    },
+  ]);
+  const concertRequest = {
+    title: `E2E 예매 테스트 공연 ${randomUUID()}`,
+    genre: "INDIE",
+    venueId: venue.venue.id,
+    posterUrl: null,
+    description: "예매 및 결제 E2E 검증용 데이터입니다.",
+  };
+  const concertResponse = await page.request.post("/api/concerts", {
+    headers: createApiAuthHeaders("ADMIN"),
+    data: concertRequest,
+  });
+  const concertBody = await concertResponse.json();
+
+  expect(concertResponse.status(), JSON.stringify(concertBody)).toBe(201);
+  expect(concertBody).toMatchObject({ success: true, data: concertRequest });
+
+  const performanceRequest = {
+    concertId: concertBody.data.id as number,
+    name: `E2E 예매 테스트 회차 ${randomUUID()}`,
+    startsAt: "2099-01-20T19:00:00",
+    bookingOpensAt: null,
+  };
+  const performanceResponse = await page.request.post("/api/performances", {
+    headers: createApiAuthHeaders("ADMIN"),
+    data: performanceRequest,
+  });
+  const performanceBody = await performanceResponse.json();
+
+  expect(performanceResponse.status(), JSON.stringify(performanceBody)).toBe(201);
+  expect(performanceBody).toMatchObject({ success: true, data: performanceRequest });
+
+  return {
+    performanceId: performanceBody.data.id as number,
+    performanceName: performanceRequest.name,
+  };
+};
 
 const findSeat = (page: Page) => page.getByRole("button", { name: new RegExp(SEAT_LABEL) }).first();
 
@@ -111,37 +160,35 @@ const cancelPayment = async (page: Page, reservationId: number) => {
 };
 
 test.describe("실제 브라우저 예매 및 결제 흐름", () => {
-  test.skip(({ browserName }) => browserName !== "chromium", "공유 E2E 결제 시드는 Chromium에서 한 번만 검증합니다.");
-
-  test("좌석을 선택해 결제 주문을 확인하고 결제 취소 결과를 표시한다", async ({ browser }) => {
-    const { context, page, stompMessages } = await createBookingPage(browser);
+  test("좌석을 선택해 결제 주문을 확인하고 결제 취소 결과를 표시한다", async ({ browser, page }) => {
+    const performance = await createCheckoutScenario(page);
+    const { context, page: bookingPage, stompMessages } = await createBookingPage(browser);
 
     try {
-      const performance = E2E_SEED_PERFORMANCES.reservationCheckout;
-      const checkout = await bookSeatToPaymentOrder(page, stompMessages, performance.id, performance.name);
+      const checkout = await bookSeatToPaymentOrder(bookingPage, stompMessages, performance.performanceId, performance.performanceName);
 
-      await cancelPayment(page, checkout.reservationId);
+      await cancelPayment(bookingPage, checkout.reservationId);
     } finally {
       await context.close();
     }
   });
 
-  test("주문 금액과 다른 결제 승인 콜백은 거부하고 오류를 표시한다", async ({ browser }) => {
-    const { context, page, stompMessages } = await createBookingPage(browser);
+  test("주문 금액과 다른 결제 승인 콜백은 거부하고 오류를 표시한다", async ({ browser, page }) => {
+    const performance = await createCheckoutScenario(page);
+    const { context, page: bookingPage, stompMessages } = await createBookingPage(browser);
 
     try {
-      const performance = E2E_SEED_PERFORMANCES.paymentConfirmationFailure;
-      const checkout = await bookSeatToPaymentOrder(page, stompMessages, performance.id, performance.name);
-      const successUrl = new URL("/payments/success", page.url());
+      const checkout = await bookSeatToPaymentOrder(bookingPage, stompMessages, performance.performanceId, performance.performanceName);
+      const successUrl = new URL("/payments/success", bookingPage.url());
       successUrl.searchParams.set("paymentKey", "e2e-invalid-amount-payment");
       successUrl.searchParams.set("orderId", checkout.orderId);
       successUrl.searchParams.set("amount", String(checkout.amount + 1));
 
-      await page.goto(successUrl.toString());
-      await expect(page.getByRole("heading", { name: "결제 승인에 실패했습니다." })).toBeVisible();
-      await expect(page.getByText("결제 금액이 일치하지 않습니다.")).toBeVisible();
+      await bookingPage.goto(successUrl.toString());
+      await expect(bookingPage.getByRole("heading", { name: "결제 승인에 실패했습니다." })).toBeVisible();
+      await expect(bookingPage.getByText("결제 금액이 일치하지 않습니다.")).toBeVisible();
 
-      await cancelPayment(page, checkout.reservationId);
+      await cancelPayment(bookingPage, checkout.reservationId);
     } finally {
       await context.close();
     }

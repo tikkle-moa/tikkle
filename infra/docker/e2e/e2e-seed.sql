@@ -194,22 +194,6 @@ VALUES (
         DATE_SUB(NOW(), INTERVAL 30 DAY),
         DATE_SUB(NOW(), INTERVAL 60 DAY),
         NOW()
-    ),
-    (
-        900002,
-        900000,
-        'E2E 예매 주문 회차',
-        DATE_ADD(NOW(), INTERVAL 32 DAY),
-        DATE_SUB(NOW(), INTERVAL 1 DAY),
-        NOW()
-    ),
-    (
-        900003,
-        900000,
-        'E2E 결제 오류 회차',
-        DATE_ADD(NOW(), INTERVAL 33 DAY),
-        DATE_SUB(NOW(), INTERVAL 1 DAY),
-        NOW()
     )
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
