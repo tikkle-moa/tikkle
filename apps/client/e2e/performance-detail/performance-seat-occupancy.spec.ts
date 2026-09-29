@@ -128,6 +128,10 @@ const cleanupOccupancyScenario = async (page: Page, scenario: OccupancyScenario)
 
 const getSeat = (page: Page, seatId: number) => page.locator(`[data-seat-id="${seatId}"]`);
 
+const waitForAvailableSeats = async (page: Page, seatIds: readonly number[]) => {
+  await Promise.all(seatIds.map((seatId) => expect(getSeat(page, seatId)).toHaveAttribute("data-seat-status", "available")));
+};
+
 const encodeRedisCommand = (...parts: string[]) =>
   `*${parts.length}\r\n${parts.map((part) => `$${Buffer.byteLength(part)}\r\n${part}\r\n`).join("")}`;
 
@@ -241,12 +245,13 @@ test.describe("공연 좌석 점유", () => {
     try {
       const seats = scenario.venueSeats.slice(0, 2);
       await openOccupancyPage(firstPage, scenario.performanceId);
+      await waitForAvailableSeats(
+        firstPage,
+        seats.map((seat) => seat.id),
+      );
 
       for (const seat of seats) {
         await getSeat(firstPage, seat.id).click();
-      }
-
-      for (const seat of seats) {
         await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
       }
       const myHolds = firstPage.getByRole("region", { name: "내 점유 좌석" });
@@ -275,6 +280,7 @@ test.describe("공연 좌석 점유", () => {
     try {
       const seat = scenario.venueSeats[0];
       await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await Promise.all([getSeat(firstPage, seat.id).click(), getSeat(secondPage, seat.id).click()]);
 
@@ -308,6 +314,7 @@ test.describe("공연 좌석 점유", () => {
     try {
       const seat = scenario.venueSeats[0];
       await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await getSeat(firstPage, seat.id).click();
       await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
