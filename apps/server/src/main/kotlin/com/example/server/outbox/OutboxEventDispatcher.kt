@@ -84,14 +84,16 @@ class OutboxEventDispatcher(
           groupId = payload.groupId,
           performanceId = payload.performanceId,
           venueSeatIds = payload.seatIds,
+          eventId = eventId,
         )
-        if (result == OutboxHoldActionResult.REPLACED) {
+        if (result.action == OutboxHoldActionResult.REPLACED) {
           error("예매 확정 대상 Hold의 좌석 소유권이 변경되었습니다.")
         }
 
         performanceVenueSeatStompPublisher.publishReservationConfirmed(
           performanceId = payload.performanceId,
           venueSeatIds = payload.seatIds,
+          version = result.version,
           eventId = eventId,
         )
       }
@@ -105,12 +107,13 @@ class OutboxEventDispatcher(
           eventId = eventId,
         )
         if (
-          result == OutboxHoldActionResult.APPLIED ||
-          result == OutboxHoldActionResult.ALREADY_APPLIED
+          result.action == OutboxHoldActionResult.APPLIED ||
+          result.action == OutboxHoldActionResult.ALREADY_APPLIED
         ) {
           performanceVenueSeatStompPublisher.publishReleasedSeats(
             performanceId = payload.performanceId,
             venueSeatIds = payload.seatIds,
+            version = result.version,
             eventId = eventId,
           )
         }

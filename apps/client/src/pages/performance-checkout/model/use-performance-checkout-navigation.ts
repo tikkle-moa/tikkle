@@ -62,7 +62,7 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
     endReview,
   } = useCheckoutReview({
     performanceId,
-    sessionId: review?.sessionId,
+    sessionId: review?.sessionId ?? null,
     onEndSuccess: handleReviewEnd,
   });
 
@@ -107,7 +107,7 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
   } = useStartCheckout({
     performanceId,
     reviewToken: review?.reviewToken ?? "",
-    groupId: review?.groupId,
+    groupId: review?.groupId ?? null,
     enabled: Boolean(review),
     onSuccess: handleCheckoutSuccess,
   });

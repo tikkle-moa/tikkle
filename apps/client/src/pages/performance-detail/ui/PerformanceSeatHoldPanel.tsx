@@ -14,7 +14,7 @@ import { usePerformanceSeatHoldPanel } from "../model/use-performance-seat-hold-
 
 interface PerformanceSeatHoldPanelProps {
   performanceId: number;
-  sessionId?: string;
+  sessionId: string;
   venueSeats: VenueSeatResponse[];
   venueSeatStates: Map<number, VenueSeatState>;
   selectedSeatIds: Set<number>;

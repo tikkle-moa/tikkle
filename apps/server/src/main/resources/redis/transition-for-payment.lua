@@ -1,18 +1,22 @@
 -- 결제 전환을 위한 Lua 스크립트입니다.
--- KEYS: holdVenueSeatKey 목록 -> holdDetailKey 목록 -> holdGroupKey -> holdGroupControlKey
+-- KEYS: holdVenueSeatKey 목록 -> holdDetailKey 목록 -> holdExpiryKey 목록 -> holdPerformanceKey -> holdGroupKey -> versionKey -> holdGroupControlKey
 -- ARGV[1]: holdVenueSeatKey 수
 -- ARGV[2]: holdDetailKey 수
 -- ARGV[3]: 만료 시각(epoch millis)
 -- 이후 ARGV: 좌석별 예상 holdId 목록 -> 예상 원본 JSON 목록 -> 갱신할 JSON 목록 -> 갱신할 holdId 목록 -> reviewToken -> reservationId
--- 반환값: 성공 0, 충돌 또는 유효하지 않은 만료 시각 1
+-- 반환값: "결과 코드:version" (성공 "0:version", 충돌 또는 유효하지 않은 만료 시각 "1:0")
 
 local venueSeatKeyCount = tonumber(ARGV[1])
 local holdDetailKeyCount = tonumber(ARGV[2])
 local expiresAt = tonumber(ARGV[3])
 
 local holdDetailKeyStartIndex = venueSeatKeyCount + 1
-local holdGroupKey = KEYS[#KEYS - 1]
+local holdExpiryKeyStartIndex = holdDetailKeyStartIndex + holdDetailKeyCount
+local holdPerformanceKey = KEYS[#KEYS - 3]
+local holdGroupKey = KEYS[#KEYS - 2]
+local versionKey = KEYS[#KEYS - 1]
 local holdGroupControlKey = KEYS[#KEYS]
+local stateRetentionMillis = 86400000
 
 local expectedValueStartIndex = 4
 local updatedJsonStartIndex = expectedValueStartIndex + venueSeatKeyCount + holdDetailKeyCount
@@ -25,27 +29,27 @@ local now = redis.call('TIME')
 local nowMillis = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
 
 if not expiresAt or expiresAt <= nowMillis then
-  return 1
+  return '1:0'
 end
 
 local reviewJson = redis.call('GET', holdGroupControlKey)
 if not reviewJson then
-  return 1
+  return '1:0'
 end
 local review = cjson.decode(reviewJson)
 if review.phase ~= 'REVIEW' or review.reviewToken ~= reviewToken then
-  return 1
+  return '1:0'
 end
 
 local activeHoldIds = redis.call('ZRANGEBYSCORE', holdGroupKey, nowMillis + 1, '+inf')
 if #activeHoldIds ~= holdDetailKeyCount or #review.holdIds ~= holdDetailKeyCount or #review.venueSeatIds ~= venueSeatKeyCount then
-  return 1
+  return '1:0'
 end
 table.sort(activeHoldIds)
 table.sort(review.holdIds)
 for i = 1, holdDetailKeyCount do
   if activeHoldIds[i] ~= review.holdIds[i] then
-    return 1
+    return '1:0'
   end
 end
 
@@ -56,7 +60,7 @@ end
 for i = 1, venueSeatKeyCount do
   local seatId = string.match(KEYS[i], ':(%d+)$')
   if not reviewedSeatIds[seatId] then
-    return 1
+    return '1:0'
   end
   reviewedSeatIds[seatId] = nil
 end
@@ -67,22 +71,34 @@ for i = 0, venueSeatKeyCount + holdDetailKeyCount - 1 do
   local expectedValue = ARGV[expectedValueStartIndex + i]
 
   if currentValue ~= expectedValue then
-    return 1
+    return '1:0'
   end
 end
 
--- 모든 좌석의 만료 시각을 동일하게 갱신합니다.
+-- 상태 키는 만료 알림 이후 정리할 수 있도록 충분히 오래 보존합니다.
+local stateExpiresAt = expiresAt + stateRetentionMillis
 for i = 1, venueSeatKeyCount do
-  redis.call('PEXPIREAT', KEYS[i], expiresAt)
+  redis.call('PEXPIREAT', KEYS[i], stateExpiresAt)
 end
 
--- Hold 본문과 그룹 인덱스의 만료 시각도 함께 갱신합니다.
+-- Hold 본문, 만료 트리거, 인덱스의 만료 시각을 함께 갱신합니다.
 for i = 0, holdDetailKeyCount - 1 do
-  redis.call('SET', KEYS[holdDetailKeyStartIndex + i], ARGV[updatedJsonStartIndex + i], 'PXAT', expiresAt)
+  redis.call('SET', KEYS[holdDetailKeyStartIndex + i], ARGV[updatedJsonStartIndex + i], 'PXAT', stateExpiresAt)
+  redis.call('PEXPIREAT', KEYS[holdExpiryKeyStartIndex + i], expiresAt)
+  redis.call('ZADD', holdPerformanceKey, expiresAt, ARGV[updatedHoldIdStartIndex + i])
   redis.call('ZADD', holdGroupKey, expiresAt, ARGV[updatedHoldIdStartIndex + i])
 end
-redis.call('PEXPIREAT', holdGroupKey, expiresAt + 60000)
-redis.call('ZREMRANGEBYSCORE', holdGroupKey, '-inf', nowMillis)
+local performanceTtl = redis.call('PTTL', holdPerformanceKey)
+local requestedPerformanceTtl = stateExpiresAt - nowMillis
+if performanceTtl < requestedPerformanceTtl then
+  redis.call('PEXPIREAT', holdPerformanceKey, stateExpiresAt)
+end
+local groupTtl = redis.call('PTTL', holdGroupKey)
+if groupTtl < requestedPerformanceTtl then
+  redis.call('PEXPIREAT', holdGroupKey, stateExpiresAt)
+end
+local version = redis.call('INCR', versionKey)
+
 redis.call('SET', holdGroupControlKey, cjson.encode({phase = 'PAYMENT', reservationId = reservationId}), 'PXAT', expiresAt)
 
-return 0
+return '0:' .. version

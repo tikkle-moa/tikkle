@@ -7,6 +7,12 @@ import java.util.UUID
 data class PerformanceSeatStatusMessage(override val requestId: UUID, override val data: PerformanceSeatStatusMessageData) :
   StompSuccessMessage<PerformanceSeatStatusMessageData>
 
-data class PerformanceSeatStatusMessageData(val serverTime: LocalDateTime, val bookedSeatIds: List<Long>, val heldSeats: List<HeldSeat>) {
+data class PerformanceSeatStatusMessageData(
+  val version: Long,
+  val serverTime: LocalDateTime,
+  val bookedSeatIds: List<Long>,
+  val otherGroupHoldSeats: List<HeldSeat>,
+  val myGroupHolds: List<VenueSeatHoldDetail>,
+) {
   data class HeldSeat(val id: Long, val expiresAt: LocalDateTime)
 }

@@ -10,7 +10,7 @@ import { clearPerformanceCheckoutReviewToken, getOrCreatePerformanceCheckoutRevi
 
 interface UseCheckoutReviewProps {
   performanceId: number;
-  sessionId?: string;
+  sessionId: string | null;
   onBeginSuccess?: (review: BeginCheckoutReviewMessageData) => void;
   onEndSuccess?: (canResumeHold: boolean) => void;
 }
@@ -155,7 +155,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
     });
   };
 
-  const endReview = (reviewToken: string, groupId?: string) => {
+  const endReview = (reviewToken: string, groupId: string) => {
     if (beginRequestRef.current || endRequestRef.current) return;
     if (!stompClient || connectionStatus !== "connected") {
       setErrorMessage("서버 연결 후 다시 시도해 주세요.");

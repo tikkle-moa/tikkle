@@ -55,6 +55,7 @@ const venue = {
 const review: BeginCheckoutReviewMessageData = {
   reviewToken: "review-token",
   groupId: "group-1",
+  sessionId: "session-1",
   performanceId: 3,
   venueSeatIds: [101],
   expiresAt: "2026-09-01T20:00:00.000Z",

@@ -214,6 +214,7 @@ describe("PerformanceSeatHoldPanel", () => {
       <MemoryRouter>
         <PerformanceSeatHoldPanel
           performanceId={1}
+          sessionId="session-1"
           venueSeats={[seat]}
           venueSeatStates={new Map()}
           selectedSeatIds={new Set()}

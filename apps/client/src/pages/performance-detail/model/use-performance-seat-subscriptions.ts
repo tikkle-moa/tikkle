@@ -1,14 +1,15 @@
-import { type Dispatch, type SetStateAction, useEffect, useMemo } from "react";
+import { type Dispatch, type RefObject, type SetStateAction, useEffect, useMemo, useRef } from "react";
 
 import { useStompStore } from "@shared/realtime/stomp.store";
 
-import type { MyGroupHeldSeatInfo, RefreshAction, SeatOperationState } from "./seat-map.types";
+import type { MyGroupHeldSeatInfo, PerformanceSeatRequestIds, SeatOperationState } from "./seat-map.types";
 import { getConnectionStyle } from "./seat-map.utils";
 
 interface UsePerformanceSeatSubscriptionsProps {
   performanceId: number;
-  sessionId?: string;
-  handleRefreshFinish: (action: RefreshAction, state: SeatOperationState) => void;
+  performanceSeatRequestIdsRef: RefObject<PerformanceSeatRequestIds>;
+  sessionId: string;
+  handleRefreshFinish: (state: SeatOperationState) => void;
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
@@ -19,6 +20,7 @@ interface UsePerformanceSeatSubscriptionsProps {
 
 export const usePerformanceSeatSubscriptions = ({
   performanceId,
+  performanceSeatRequestIdsRef,
   sessionId,
   handleRefreshFinish,
   setSelectedSeatIds,
@@ -32,6 +34,18 @@ export const usePerformanceSeatSubscriptions = ({
   const getStompClient = useStompStore((state) => state.getStompClient);
   const isConnected = useStompStore((state) => state.connectionStatus === "connected");
   const connectionStyle = useMemo(() => getConnectionStyle(isConnected), [isConnected]);
+  const latestSeatVersionRef = useRef<number | null>(null);
+  const requiredSeatVersionRef = useRef<number | null>(null);
+  const hasSeatStatusRef = useRef(false);
+
+  useEffect(() => {
+    latestSeatVersionRef.current = null;
+    requiredSeatVersionRef.current = null;
+    hasSeatStatusRef.current = false;
+    performanceSeatRequestIdsRef.current.seatStatus = null;
+    performanceSeatRequestIdsRef.current.hold = null;
+    performanceSeatRequestIdsRef.current.release = null;
+  }, [performanceId, performanceSeatRequestIdsRef]);
 
   useEffect(() => {
     if (isConnected) return;
@@ -41,57 +55,75 @@ export const usePerformanceSeatSubscriptions = ({
   useEffect(() => {
     if (!isConnected || !stompClient) return;
 
+    const requestSeatStatus = () => {
+      const requestId = crypto.randomUUID();
+      performanceSeatRequestIdsRef.current.seatStatus = requestId;
+      stompClient.publish({
+        path: "/performances/{performanceId}/get-seat-status",
+        pathParams: { performanceId },
+        command: { requestId, sessionId },
+      });
+    };
+
     const seatStatusSubscription = stompClient.subscribe({
       path: "/performances/{performanceId}/get-seat-status",
       pathParams: { performanceId },
       callback: (message) => {
+        if (message.requestId !== performanceSeatRequestIdsRef.current.seatStatus) return;
+        const latestVersion = latestSeatVersionRef.current;
+        const requiredVersion = requiredSeatVersionRef.current;
+        if (requiredVersion !== null && message.data.version < requiredVersion) {
+          requestSeatStatus();
+          return;
+        }
+        if (latestVersion !== null && message.data.version < latestVersion) {
+          requiredSeatVersionRef.current = latestVersion;
+          requestSeatStatus();
+          return;
+        }
+
+        latestSeatVersionRef.current = message.data.version;
+        requiredSeatVersionRef.current = null;
+        hasSeatStatusRef.current = true;
         const serverTime = Date.parse(message.data.serverTime);
         if (Number.isFinite(serverTime)) setServerTimeOffset(serverTime - Date.now());
         setBookedSeatIds(new Set(message.data.bookedSeatIds));
-        setHeldSeatExpiresAtBySeatId(new Map(message.data.heldSeats.map(({ id, expiresAt }) => [id, new Date(expiresAt)])));
-
-        handleRefreshFinish("seatStatus", { status: "success" });
-      },
-      errorCallback: (errorMessage) => {
-        handleRefreshFinish("seatStatus", { status: "error", message: errorMessage.error.message });
-      },
-    });
-
-    stompClient.publish({
-      path: "/performances/{performanceId}/get-seat-status",
-      pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID() },
-    });
-
-    const myHeldSeatsSubscription = stompClient.subscribe({
-      path: "/performances/{performanceId}/get-my-group-holds",
-      pathParams: { performanceId },
-      callback: (message) => {
+        setHeldSeatExpiresAtBySeatId(new Map(message.data.otherGroupHoldSeats.map(({ id, expiresAt }) => [id, new Date(expiresAt)])));
         setMyGroupHeldSeatInfoBySeatId(
           new Map(
-            message.data.flatMap(({ groupId, holdId, performanceId, expiresAt, venueSeatIds }) =>
+            message.data.myGroupHolds.flatMap(({ groupId, holdId, performanceId, expiresAt, venueSeatIds }) =>
               venueSeatIds.map((venueSeatId) => [venueSeatId, { groupId, holdId, performanceId, expiresAt: new Date(expiresAt) }]),
             ),
           ),
         );
 
-        handleRefreshFinish("myHeldSeats", { status: "success" });
+        handleRefreshFinish({ status: "success" });
       },
       errorCallback: (errorMessage) => {
-        handleRefreshFinish("myHeldSeats", { status: "error", message: errorMessage.error.message });
+        if (errorMessage.requestId !== performanceSeatRequestIdsRef.current.seatStatus) return;
+        handleRefreshFinish({ status: "error", message: errorMessage.error.message });
       },
-    });
-
-    stompClient.publish({
-      path: "/performances/{performanceId}/get-my-group-holds",
-      pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), ...(sessionId ? { sessionId } : {}) },
     });
 
     const seatEventSubscription = stompClient.subscribeEvent({
       path: "/performances/{performanceId}/seat-events",
       pathParams: { performanceId },
       callback: (event) => {
+        const latestVersion = latestSeatVersionRef.current;
+        if (!hasSeatStatusRef.current || latestVersion === null) {
+          requiredSeatVersionRef.current = Math.max(requiredSeatVersionRef.current ?? -1, event.version);
+          requestSeatStatus();
+          return;
+        }
+        if (event.version <= latestVersion) return;
+        if (event.version !== latestVersion + 1) {
+          requiredSeatVersionRef.current = event.version;
+          requestSeatStatus();
+          return;
+        }
+
+        latestSeatVersionRef.current = event.version;
+
         switch (event.type) {
           case "HELD_SEATS": {
             setHeldSeatExpiresAtBySeatId((current) => {
@@ -142,22 +174,24 @@ export const usePerformanceSeatSubscriptions = ({
       },
     });
 
+    requestSeatStatus();
+
     return () => {
       seatStatusSubscription.unsubscribe();
-      myHeldSeatsSubscription.unsubscribe();
       seatEventSubscription.unsubscribe();
     };
   }, [
     handleRefreshFinish,
     isConnected,
     performanceId,
-    sessionId,
+    performanceSeatRequestIdsRef,
     setBookedSeatIds,
     setMyGroupHeldSeatInfoBySeatId,
     setHeldSeatExpiresAtBySeatId,
     setSelectedSeatIds,
     setServerTimeOffset,
     stompClient,
+    sessionId,
   ]);
 
   useEffect(() => {
@@ -167,6 +201,8 @@ export const usePerformanceSeatSubscriptions = ({
       path: "/performances/{performanceId}/hold-seats",
       pathParams: { performanceId },
       callback: (message) => {
+        if (message.requestId !== performanceSeatRequestIdsRef.current.hold) return;
+
         setMyGroupHeldSeatInfoBySeatId((current) => {
           if (message.data.venueSeatIds.length === 0) return current;
           const { groupId, holdId, performanceId } = message.data;
@@ -178,6 +214,7 @@ export const usePerformanceSeatSubscriptions = ({
         setSeatOperationState({ status: "success" });
       },
       errorCallback: (errorMessage) => {
+        if (errorMessage.requestId !== performanceSeatRequestIdsRef.current.hold) return;
         setSeatOperationState({ status: "error", message: errorMessage.error.message });
       },
     });
@@ -186,6 +223,8 @@ export const usePerformanceSeatSubscriptions = ({
       path: "/performances/{performanceId}/release-seats",
       pathParams: { performanceId },
       callback: (message) => {
+        if (message.requestId !== performanceSeatRequestIdsRef.current.release) return;
+
         setMyGroupHeldSeatInfoBySeatId((current) => {
           const updated = new Map(current);
           message.data.forEach((seatId) => updated.delete(seatId));
@@ -199,6 +238,7 @@ export const usePerformanceSeatSubscriptions = ({
         setSeatOperationState({ status: "success" });
       },
       errorCallback: (errorMessage) => {
+        if (errorMessage.requestId !== performanceSeatRequestIdsRef.current.release) return;
         setSeatOperationState({ status: "error", message: errorMessage.error.message });
       },
     });
@@ -207,7 +247,15 @@ export const usePerformanceSeatSubscriptions = ({
       holdSeatsSubscription.unsubscribe();
       releaseSeatsSubscription.unsubscribe();
     };
-  }, [isConnected, performanceId, setMyGroupHeldSeatInfoBySeatId, setSeatOperationState, setSelectedSeatIds, stompClient]);
+  }, [
+    isConnected,
+    performanceId,
+    performanceSeatRequestIdsRef,
+    setMyGroupHeldSeatInfoBySeatId,
+    setSeatOperationState,
+    setSelectedSeatIds,
+    stompClient,
+  ]);
 
   return {
     isConnected,

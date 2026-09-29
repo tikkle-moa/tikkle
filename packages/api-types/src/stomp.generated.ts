@@ -4,8 +4,6 @@
  * Do not make direct changes to this file.
  */
 
-export type PerformanceIdGetMinusMyMinusGroupMinusHolds = GetMyGroupHoldsMessage | StompFailureMessage;
-
 export type PerformanceIdGetMinusSeatMinusStatus = PerformanceSeatStatusMessage | StompFailureMessage;
 
 export type PerformanceIdHoldMinusSeats = HoldVenueSeatsMessage | StompFailureMessage;
@@ -26,10 +24,18 @@ export type ReservationStartMinusCheckout = StartCheckoutMessage | StompFailureM
 
 export type PerformanceSeatEvent = PerformanceHeldSeatsEvent | PerformanceVenueSeatIdsEvent;
 
-export interface GetMyGroupHoldsMessage {
-  data: VenueSeatHoldDetail[];
+export interface PerformanceSeatStatusMessage {
+  data: PerformanceSeatStatusMessageData;
   requestId: string;
   success: boolean;
+}
+
+export interface PerformanceSeatStatusMessageData {
+  bookedSeatIds: number[];
+  myGroupHolds: VenueSeatHoldDetail[];
+  otherGroupHoldSeats: HeldSeat[];
+  serverTime: string;
+  version: number;
 }
 
 export interface VenueSeatHoldDetail {
@@ -38,6 +44,11 @@ export interface VenueSeatHoldDetail {
   holdId: string;
   performanceId: number;
   venueSeatIds: number[];
+}
+
+export interface HeldSeat {
+  expiresAt: string;
+  id: number;
 }
 
 export interface StompFailureMessage {
@@ -51,30 +62,9 @@ export interface StompError {
   message: string;
 }
 
-export interface GetMyGroupHoldsCommand {
-  requestId: string;
-  sessionId?: string;
-}
-
-export interface PerformanceSeatStatusMessage {
-  data: PerformanceSeatStatusMessageData;
-  requestId: string;
-  success: boolean;
-}
-
-export interface PerformanceSeatStatusMessageData {
-  bookedSeatIds: number[];
-  heldSeats: HeldSeat[];
-  serverTime: string;
-}
-
-export interface HeldSeat {
-  expiresAt: string;
-  id: number;
-}
-
 export interface PerformanceSeatStatusCommand {
   requestId: string;
+  sessionId: string | null;
 }
 
 export interface HoldVenueSeatsMessage {
@@ -86,7 +76,7 @@ export interface HoldVenueSeatsMessage {
 export interface HoldVenueSeatsCommand {
   data: number[];
   requestId: string;
-  sessionId?: string;
+  sessionId: string | null;
 }
 
 export interface ReleaseVenueSeatsMessage {
@@ -98,7 +88,7 @@ export interface ReleaseVenueSeatsMessage {
 export interface ReleaseVenueSeatsCommand {
   data: number[];
   requestId: string;
-  sessionId?: string;
+  sessionId: string | null;
 }
 
 export interface BeginCheckoutReviewMessage {
@@ -112,7 +102,7 @@ export interface BeginCheckoutReviewMessageData {
   groupId: string;
   performanceId: number;
   reviewToken: string;
-  sessionId?: string;
+  sessionId: string | null;
   venueSeatIds: number[];
 }
 
@@ -124,7 +114,7 @@ export interface BeginCheckoutReviewCommand {
 export interface BeginCheckoutReviewData {
   performanceId: number;
   reviewToken: string;
-  sessionId?: string;
+  sessionId: string | null;
 }
 
 export interface CancelCheckoutMessage {
@@ -189,7 +179,7 @@ export interface EndCheckoutReviewCommand {
 }
 
 export interface EndCheckoutReviewData {
-  groupId?: string;
+  groupId: string | null;
   performanceId: number;
   reviewToken: string;
 }
@@ -250,7 +240,7 @@ export interface StartCheckoutCommand {
 }
 
 export interface StartCheckoutData {
-  groupId?: string;
+  groupId: string | null;
   performanceId: number;
   reviewToken: string;
 }

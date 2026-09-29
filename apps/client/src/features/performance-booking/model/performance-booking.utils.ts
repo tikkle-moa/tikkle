@@ -60,6 +60,7 @@ const isCheckoutReview = (value: unknown): value is PerformanceCheckoutLocationS
     typeof review.reviewToken === "string" &&
     review.reviewToken.length > 0 &&
     typeof review.groupId === "string" &&
+    (review.sessionId === null || typeof review.sessionId === "string") &&
     typeof review.performanceId === "number" &&
     Array.isArray(review.venueSeatIds) &&
     review.venueSeatIds.length > 0 &&

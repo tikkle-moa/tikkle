@@ -10,6 +10,17 @@ const setConnectedClient = () => {
   return client;
 };
 
+const requestIdRefs = () => ({
+  sessionId: "session-1",
+  performanceSeatRequestIdsRef: {
+    current: {
+      seatStatus: null as string | null,
+      hold: null as string | null,
+      release: null as string | null,
+    },
+  },
+});
+
 describe("usePerformanceSeatActions", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -26,6 +37,7 @@ describe("usePerformanceSeatActions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
+        ...requestIdRefs(),
         selectedSeatIdsToHold: [],
         selectedSeatIdsToRelease: [],
         seatOperationState: { status: "idle" },
@@ -54,6 +66,7 @@ describe("usePerformanceSeatActions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
+        ...requestIdRefs(),
         selectedSeatIdsToHold: [1],
         selectedSeatIdsToRelease: [2],
         seatOperationState: { status: "idle" },
@@ -72,13 +85,13 @@ describe("usePerformanceSeatActions", () => {
     });
   });
 
-  it("Hold와 Release 요청을 발행하고 loading 상태로 전환한다", () => {
+  it("Hold 요청을 발행하고 loading 상태로 전환한다", () => {
     const client = setConnectedClient();
     const setSeatOperationState = vi.fn();
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
-        sessionId: "session-1",
+        ...requestIdRefs(),
         selectedSeatIdsToHold: [1, 2],
         selectedSeatIdsToRelease: [3],
         seatOperationState: { status: "idle" },
@@ -86,10 +99,7 @@ describe("usePerformanceSeatActions", () => {
       }),
     );
 
-    act(() => {
-      result.current.handleHoldSeats();
-      result.current.handleReleaseSeats();
-    });
+    act(() => result.current.handleHoldSeats());
 
     expect(client.publish).toHaveBeenNthCalledWith(
       1,
@@ -99,23 +109,62 @@ describe("usePerformanceSeatActions", () => {
         command: expect.objectContaining({ data: [1, 2], sessionId: "session-1" }),
       }),
     );
-    expect(client.publish).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        path: "/performances/{performanceId}/release-seats",
-        command: expect.objectContaining({ data: [3], sessionId: "session-1" }),
-      }),
-    );
-    expect(setSeatOperationState).toHaveBeenCalledTimes(2);
-    expect(setSeatOperationState).toHaveBeenLastCalledWith({ status: "loading" });
+    expect(setSeatOperationState).toHaveBeenCalledOnce();
+    expect(setSeatOperationState).toHaveBeenCalledWith({ status: "loading" });
   });
 
-  it("새로고침 응답 두 종류를 받은 뒤 지연 상태를 종료한다", () => {
+  it("Hold 처리 중 재클릭하면 중복 요청을 발행하지 않는다", () => {
+    const client = setConnectedClient();
+    const setSeatOperationState = vi.fn();
+    const { result } = renderHook(() =>
+      usePerformanceSeatActions({
+        performanceId: 10,
+        ...requestIdRefs(),
+        selectedSeatIdsToHold: [1, 2],
+        selectedSeatIdsToRelease: [],
+        seatOperationState: { status: "idle" },
+        setSeatOperationState,
+      }),
+    );
+
+    act(() => {
+      result.current.handleHoldSeats();
+      result.current.handleHoldSeats();
+    });
+
+    expect(client.publish).toHaveBeenCalledOnce();
+    expect(setSeatOperationState).toHaveBeenCalledOnce();
+  });
+
+  it("Release 처리 중 재클릭하면 중복 요청을 발행하지 않는다", () => {
+    const client = setConnectedClient();
+    const setSeatOperationState = vi.fn();
+    const { result } = renderHook(() =>
+      usePerformanceSeatActions({
+        performanceId: 10,
+        ...requestIdRefs(),
+        selectedSeatIdsToHold: [],
+        selectedSeatIdsToRelease: [3],
+        seatOperationState: { status: "idle" },
+        setSeatOperationState,
+      }),
+    );
+
+    act(() => {
+      result.current.handleReleaseSeats();
+      result.current.handleReleaseSeats();
+    });
+
+    expect(client.publish).toHaveBeenCalledOnce();
+    expect(setSeatOperationState).toHaveBeenCalledOnce();
+  });
+
+  it("좌석 상태 응답을 받은 뒤 지연 상태를 종료한다", () => {
     const client = setConnectedClient();
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
-        sessionId: "session-1",
+        ...requestIdRefs(),
         selectedSeatIdsToHold: [],
         selectedSeatIdsToRelease: [],
         seatOperationState: { status: "idle" },
@@ -128,29 +177,19 @@ describe("usePerformanceSeatActions", () => {
     act(() => result.current.handleRefresh());
     expect(client.publish).not.toHaveBeenCalled();
 
-    act(() => result.current.handleRefreshFinish("seatStatus", { status: "success" }));
-    expect(result.current.isRefreshing).toBe(true);
-    act(() => result.current.handleRefreshFinish("myHeldSeats", { status: "success" }));
+    act(() => result.current.handleRefreshFinish({ status: "success" }));
     act(() => vi.advanceTimersByTime(500));
     expect(result.current.isRefreshing).toBe(false);
 
     act(() => result.current.handleRefresh());
     expect(result.current.isRefreshing).toBe(true);
-    expect(client.publish).toHaveBeenCalledTimes(2);
-    expect(client.publish).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        path: "/performances/{performanceId}/get-my-group-holds",
-        command: expect.objectContaining({ sessionId: "session-1" }),
-      }),
-    );
+    expect(client.publish).toHaveBeenCalledTimes(1);
 
-    act(() => result.current.handleRefreshFinish("seatStatus", { status: "success" }));
-    act(() => result.current.handleRefreshFinish("myHeldSeats", { status: "success" }));
+    act(() => result.current.handleRefreshFinish({ status: "success" }));
     act(() => vi.advanceTimersByTime(500));
     expect(result.current.isRefreshing).toBe(false);
 
-    act(() => result.current.handleRefreshFinish("seatStatus", { status: "success" }));
+    act(() => result.current.handleRefreshFinish({ status: "success" }));
     expect(result.current.isRefreshing).toBe(false);
   });
 
@@ -159,6 +198,7 @@ describe("usePerformanceSeatActions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
+        ...requestIdRefs(),
         selectedSeatIdsToHold: [],
         selectedSeatIdsToRelease: [],
         seatOperationState: { status: "idle" },
@@ -167,14 +207,41 @@ describe("usePerformanceSeatActions", () => {
     );
 
     act(() =>
-      result.current.handleRefreshFinish("seatStatus", {
+      result.current.handleRefreshFinish({
         status: "error",
         message: "조회에 실패했습니다.",
       }),
     );
 
     expect(result.current.isRefreshing).toBe(false);
-    expect(result.current.refreshError).toBe("좌석 상태: 조회에 실패했습니다.");
+    expect(result.current.refreshError).toBe("조회에 실패했습니다.");
+  });
+
+  it("백그라운드 좌석 상태 조회가 실패해도 동기화 오류를 표시한다", () => {
+    setConnectedClient();
+    const { result } = renderHook(() =>
+      usePerformanceSeatActions({
+        performanceId: 10,
+        ...requestIdRefs(),
+        selectedSeatIdsToHold: [],
+        selectedSeatIdsToRelease: [],
+        seatOperationState: { status: "idle" },
+        setSeatOperationState: vi.fn(),
+      }),
+    );
+
+    act(() => result.current.handleRefreshFinish({ status: "success" }));
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current.isRefreshing).toBe(false);
+
+    act(() =>
+      result.current.handleRefreshFinish({
+        status: "error",
+        message: "백그라운드 조회에 실패했습니다.",
+      }),
+    );
+
+    expect(result.current.refreshError).toBe("백그라운드 조회에 실패했습니다.");
   });
 
   it("지연 종료 대기 중 실패하면 즉시 종료하고 예약된 종료 처리를 무시한다", () => {
@@ -182,6 +249,7 @@ describe("usePerformanceSeatActions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
+        ...requestIdRefs(),
         selectedSeatIdsToHold: [],
         selectedSeatIdsToRelease: [],
         seatOperationState: { status: "idle" },
@@ -189,17 +257,16 @@ describe("usePerformanceSeatActions", () => {
       }),
     );
 
-    act(() => result.current.handleRefreshFinish("seatStatus", { status: "success" }));
-    act(() => result.current.handleRefreshFinish("myHeldSeats", { status: "success" }));
+    act(() => result.current.handleRefreshFinish({ status: "success" }));
     act(() =>
-      result.current.handleRefreshFinish("myHeldSeats", {
+      result.current.handleRefreshFinish({
         status: "error",
         message: "조회에 실패했습니다.",
       }),
     );
 
     expect(result.current.isRefreshing).toBe(false);
-    expect(result.current.refreshError).toBe("내 점유 좌석: 조회에 실패했습니다.");
+    expect(result.current.refreshError).toBe("조회에 실패했습니다.");
 
     act(() => vi.advanceTimersByTime(500));
     expect(result.current.isRefreshing).toBe(false);
@@ -210,6 +277,7 @@ describe("usePerformanceSeatActions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatActions({
         performanceId: 10,
+        ...requestIdRefs(),
         selectedSeatIdsToHold: [],
         selectedSeatIdsToRelease: [],
         seatOperationState: { status: "loading" },
@@ -223,5 +291,36 @@ describe("usePerformanceSeatActions", () => {
       status: "error",
       message: "실시간 연결이 끊겼습니다.",
     });
+  });
+
+  it("처리 중 연결이 끊긴 뒤 재연결되면 Hold를 다시 요청할 수 있다", () => {
+    const client = setConnectedClient();
+    const requestRefs = requestIdRefs();
+    requestRefs.performanceSeatRequestIdsRef.current.hold = "pending-hold";
+    const setSeatOperationState = vi.fn();
+    const { result } = renderHook(() =>
+      usePerformanceSeatActions({
+        performanceId: 10,
+        ...requestRefs,
+        selectedSeatIdsToHold: [1],
+        selectedSeatIdsToRelease: [],
+        seatOperationState: { status: "loading" },
+        setSeatOperationState,
+      }),
+    );
+
+    act(() => useStompStore.setState({ stompClient: client as never, connectionStatus: "disconnected" }));
+    expect(requestRefs.performanceSeatRequestIdsRef.current.hold).toBeNull();
+    expect(setSeatOperationState).toHaveBeenCalledWith({ status: "error", message: "실시간 연결이 끊겼습니다." });
+
+    act(() => useStompStore.setState({ stompClient: client as never, connectionStatus: "connected" }));
+    act(() => result.current.handleHoldSeats());
+
+    expect(client.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "/performances/{performanceId}/hold-seats",
+        pathParams: { performanceId: 10 },
+      }),
+    );
   });
 });

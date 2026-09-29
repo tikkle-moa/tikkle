@@ -13,7 +13,14 @@ import {
 const performance = { id: 10, venueId: 1, name: "Tikkle Live", startsAt: "2026-09-01T19:00:00" };
 const venue = { id: 1, name: "티끌홀" };
 const venueSeats = [{ id: 101, sectionName: "A구역", seatLabel: "1번", price: 150_000 }];
-const review = { reviewToken: "review-1", groupId: "group-1", performanceId: 10, venueSeatIds: [101], expiresAt: "2026-09-16T20:00:00" };
+const review = {
+  reviewToken: "review-1",
+  groupId: "group-1",
+  sessionId: "session-1",
+  performanceId: 10,
+  venueSeatIds: [101],
+  expiresAt: "2026-09-16T20:00:00",
+};
 
 describe("performance-booking.utils", () => {
   it("공연별 좌석 선택 세션 키를 생성하고 삭제한다", () => {
@@ -105,6 +112,7 @@ describe("performance-booking.utils", () => {
     expect(isPerformanceCheckoutLocationState({ ...state, review: null }, 10)).toBe(false);
     expect(isPerformanceCheckoutLocationState({ ...state, review: { ...review, reviewToken: "" } }, 10)).toBe(false);
     expect(isPerformanceCheckoutLocationState({ ...state, review: { ...review, groupId: null } }, 10)).toBe(false);
+    expect(isPerformanceCheckoutLocationState({ ...state, review: { ...review, sessionId: 42 } }, 10)).toBe(false);
     expect(isPerformanceCheckoutLocationState({ ...state, review: { ...review, expiresAt: null } }, 10)).toBe(false);
     expect(isPerformanceCheckoutLocationState({ ...state, review: { ...review, performanceId: 11 } }, 10)).toBe(false);
     expect(isPerformanceCheckoutLocationState({ ...state, venueSeats: [] }, 10)).toBe(false);

@@ -15,11 +15,12 @@ import { usePerformanceBookingPanel } from "../model/use-performance-booking-pan
 interface PerformanceBookingPanelProps {
   concertId: number;
   isAdmin: boolean;
+  isLoggedIn: boolean;
   onChanged: () => Promise<unknown>;
   performances: PerformanceResponse[];
 }
 
-const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }: PerformanceBookingPanelProps) => {
+const PerformanceBookingPanel = ({ concertId, isAdmin, isLoggedIn, onChanged, performances }: PerformanceBookingPanelProps) => {
   const {
     editingPerformanceIds,
     isCreateOpen,
@@ -86,6 +87,7 @@ const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }
 
             const { label: statusLabel, className: statusClassName } = PERFORMANCE_STATUS_MAP[performance.status];
             const isDisabled = performance.status === "ENDED";
+            const isClickable = isLoggedIn && !isDisabled;
             const content = (
               <>
                 <div className="min-w-0 grow">
@@ -117,7 +119,7 @@ const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }
             return (
               <li className={`group ${isDisabled ? "-mx-5 bg-gray-50 px-5" : ""}`} key={performance.id}>
                 <div className="flex items-center gap-2">
-                  {isDisabled ? (
+                  {!isClickable ? (
                     <div aria-disabled="true" className="flex min-w-0 grow cursor-not-allowed items-center gap-3 py-4 opacity-80">
                       {content}
                     </div>
@@ -156,7 +158,7 @@ const PerformanceBookingPanel = ({ concertId, isAdmin, onChanged, performances }
                     </div>
                   )}
 
-                  {!isDisabled && (
+                  {isClickable && (
                     <Link
                       aria-label={`${performance.name} 상세 보기`}
                       className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-gray-300 transition hover:bg-violet-50 hover:text-violet-500"

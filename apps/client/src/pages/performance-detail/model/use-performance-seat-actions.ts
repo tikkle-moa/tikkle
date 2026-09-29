@@ -1,14 +1,14 @@
-import { type Dispatch, type SetStateAction, useCallback, useMemo, useRef, useState } from "react";
+import { type Dispatch, type RefObject, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type StompClient from "@shared/realtime/stomp-client";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
-import { REFRESH_ACTION_MAP } from "./seat-map.constants";
-import type { RefreshAction, SeatOperation, SeatOperationState } from "./seat-map.types";
+import type { PerformanceSeatRequestIds, SeatOperation, SeatOperationState } from "./seat-map.types";
 
 interface UsePerformanceSeatActionsProps {
   performanceId: number;
-  sessionId?: string;
+  performanceSeatRequestIdsRef: RefObject<PerformanceSeatRequestIds>;
+  sessionId: string;
   selectedSeatIdsToHold: number[];
   selectedSeatIdsToRelease: number[];
   seatOperationState: SeatOperationState;
@@ -17,6 +17,7 @@ interface UsePerformanceSeatActionsProps {
 
 export const usePerformanceSeatActions = ({
   performanceId,
+  performanceSeatRequestIdsRef,
   sessionId,
   selectedSeatIdsToHold,
   selectedSeatIdsToRelease,
@@ -28,24 +29,34 @@ export const usePerformanceSeatActions = ({
 
   const [isRefreshing, setIsRefreshing] = useState(true);
   const isRefreshingRef = useRef(true);
-  const refreshStateRef = useRef<Record<RefreshAction, SeatOperationState>>({
-    seatStatus: { status: "loading" },
-    myHeldSeats: { status: "loading" },
-  });
+  const isSeatOperationPendingRef = useRef(seatOperationState.status === "loading");
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
-  const handleRefreshFinish = useCallback((action: RefreshAction, state: SeatOperationState) => {
-    if (!isRefreshingRef.current) return;
-    refreshStateRef.current[action] = state;
+  useEffect(() => {
+    isSeatOperationPendingRef.current = seatOperationState.status === "loading";
+  }, [seatOperationState.status]);
 
+  useEffect(() => {
+    if (isConnected || !isSeatOperationPendingRef.current) return;
+
+    isSeatOperationPendingRef.current = false;
+    performanceSeatRequestIdsRef.current.hold = null;
+    performanceSeatRequestIdsRef.current.release = null;
+    setSeatOperationState({ status: "error", message: "실시간 연결이 끊겼습니다." });
+  }, [isConnected, performanceSeatRequestIdsRef, setSeatOperationState]);
+
+  const handleRefreshFinish = useCallback((state: SeatOperationState) => {
     if (state.status === "error") {
-      setRefreshError(`${REFRESH_ACTION_MAP[action]}: ${state.message}`);
+      setRefreshError(state.message);
+      if (!isRefreshingRef.current) return;
+
       isRefreshingRef.current = false;
       setIsRefreshing(false);
       return;
     }
 
-    if (refreshStateRef.current.seatStatus.status === "loading" || refreshStateRef.current.myHeldSeats.status === "loading") return;
+    if (!isRefreshingRef.current) return;
+
     setTimeout(() => {
       if (!isRefreshingRef.current) return;
       isRefreshingRef.current = false;
@@ -56,6 +67,7 @@ export const usePerformanceSeatActions = ({
   const validateSeatHoldAction = useCallback(
     (stompClient: StompClient | null, action?: SeatOperation): stompClient is StompClient => {
       if (!action && isRefreshingRef.current) return false;
+      if (action && isSeatOperationPendingRef.current) return false;
       if ((action === "hold" && selectedSeatIdsToHold.length === 0) || (action === "release" && selectedSeatIdsToRelease.length === 0)) {
         setSeatOperationState({ status: "error", message: `${action === "hold" ? "점유" : "해제"}할 좌석을 먼저 선택해 주세요.` });
         return false;
@@ -72,47 +84,48 @@ export const usePerformanceSeatActions = ({
   const handleRefresh = useCallback(() => {
     if (!validateSeatHoldAction(stompClient)) return;
 
-    refreshStateRef.current = { seatStatus: { status: "loading" }, myHeldSeats: { status: "loading" } };
     setRefreshError(null);
     isRefreshingRef.current = true;
     setIsRefreshing(true);
 
+    const requestId = crypto.randomUUID();
+    performanceSeatRequestIdsRef.current.seatStatus = requestId;
     stompClient.publish({
       path: "/performances/{performanceId}/get-seat-status",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID() },
+      command: { requestId, sessionId },
     });
-
-    stompClient.publish({
-      path: "/performances/{performanceId}/get-my-group-holds",
-      pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), sessionId },
-    });
-  }, [performanceId, sessionId, stompClient, validateSeatHoldAction]);
+  }, [performanceId, performanceSeatRequestIdsRef, sessionId, stompClient, validateSeatHoldAction]);
 
   const handleHoldSeats = useCallback(() => {
     if (!validateSeatHoldAction(stompClient, "hold")) return;
 
+    isSeatOperationPendingRef.current = true;
     setSeatOperationState({ status: "loading" });
 
+    const requestId = crypto.randomUUID();
+    performanceSeatRequestIdsRef.current.hold = requestId;
     stompClient.publish({
       path: "/performances/{performanceId}/hold-seats",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToHold, sessionId },
+      command: { requestId, data: selectedSeatIdsToHold, sessionId },
     });
-  }, [performanceId, selectedSeatIdsToHold, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
+  }, [performanceId, performanceSeatRequestIdsRef, selectedSeatIdsToHold, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
 
   const handleReleaseSeats = useCallback(() => {
     if (!validateSeatHoldAction(stompClient, "release")) return;
 
+    isSeatOperationPendingRef.current = true;
     setSeatOperationState({ status: "loading" });
 
+    const requestId = crypto.randomUUID();
+    performanceSeatRequestIdsRef.current.release = requestId;
     stompClient.publish({
       path: "/performances/{performanceId}/release-seats",
       pathParams: { performanceId },
-      command: { requestId: crypto.randomUUID(), data: selectedSeatIdsToRelease, sessionId },
+      command: { requestId, data: selectedSeatIdsToRelease, sessionId },
     });
-  }, [performanceId, selectedSeatIdsToRelease, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
+  }, [performanceId, performanceSeatRequestIdsRef, selectedSeatIdsToRelease, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
 
   const visibleSeatOperationState = useMemo(
     () =>
