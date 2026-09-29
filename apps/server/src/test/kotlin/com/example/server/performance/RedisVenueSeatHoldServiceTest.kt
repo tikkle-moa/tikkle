@@ -613,9 +613,9 @@ class RedisVenueSeatHoldServiceTest {
   @Test
   fun `Outbox Hold 확정 결과를 상태로 변환한다`() {
     mapOf(
-      "0:5" to OutboxHoldActionResult.APPLIED,
-      "1:0" to OutboxHoldActionResult.REPLACED,
-      "2:6" to OutboxHoldActionResult.ALREADY_APPLIED,
+      "0:5" to VenueSeatHoldActionResult(OutboxHoldActionResult.APPLIED, 5L),
+      "1:0" to VenueSeatHoldActionResult(OutboxHoldActionResult.REPLACED, 0L),
+      "2:6" to VenueSeatHoldActionResult(OutboxHoldActionResult.ALREADY_APPLIED, 6L),
     ).forEach { (result, expected) ->
       executeResult = result
 
@@ -627,7 +627,7 @@ class RedisVenueSeatHoldServiceTest {
           venueSeatIds = listOf(101L),
           eventId = UUID.randomUUID(),
         ),
-      ).extracting(VenueSeatHoldActionResult::action).isEqualTo(expected)
+      ).isEqualTo(expected)
     }
   }
 

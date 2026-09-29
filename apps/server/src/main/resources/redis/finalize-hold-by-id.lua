@@ -32,12 +32,9 @@ end
 if missingSeatCount == seatCount then
   redis.call('DEL', holdDetailKey)
   redis.call('DEL', holdExpiryKey)
-  local removedPerformance = redis.call('ZREM', holdPerformanceKey, expectedHoldId)
-  local removedGroup = redis.call('ZREM', holdGroupKey, expectedHoldId)
-  local version = tonumber(redis.call('GET', versionKey)) or 0
-  if removedPerformance + removedGroup > 0 then
-    version = redis.call('INCR', versionKey)
-  end
+  redis.call('ZREM', holdPerformanceKey, expectedHoldId)
+  redis.call('ZREM', holdGroupKey, expectedHoldId)
+  local version = redis.call('INCR', versionKey)
   redis.call('SET', markerKey, version, 'PX', 86400000)
   return '2:' .. version
 end
