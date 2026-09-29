@@ -1,55 +1,53 @@
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 
 const composeArgs = ["compose", "-f", "infra/docker/e2e/docker-compose.yaml"];
 const playwrightArgs = process.argv.slice(2);
 let receivedSignal;
-let cleanupStarted = false;
+let activeProcess;
 
-process.once("SIGINT", () => {
-  receivedSignal = "SIGINT";
-});
-process.once("SIGTERM", () => {
-  receivedSignal = "SIGTERM";
-});
-
-const runDockerCompose = (args) => {
-  const result = spawnSync("docker", [...composeArgs, ...args], {
-    stdio: "inherit",
-  });
-
-  if (result.signal) {
-    receivedSignal ??= result.signal;
-    return receivedSignal === "SIGINT" ? 130 : 143;
-  }
-
-  return result.status ?? 1;
+const handleSignal = (signal) => {
+  receivedSignal ??= signal;
+  activeProcess?.kill(signal);
 };
 
-const cleanup = () => {
-  if (cleanupStarted) return;
+process.on("SIGINT", () => handleSignal("SIGINT"));
+process.on("SIGTERM", () => handleSignal("SIGTERM"));
 
-  cleanupStarted = true;
-  runDockerCompose(["down"]);
+const runDockerCompose = (args) => {
+  return new Promise((resolve) => {
+    const child = spawn("docker", [...composeArgs, ...args], {
+      stdio: "inherit",
+    });
+
+    activeProcess = child;
+
+    child.once("close", (code) => {
+      if (activeProcess === child) activeProcess = undefined;
+      resolve(code ?? 1);
+    });
+  });
 };
 
 let exitCode = 1;
 
 try {
-  exitCode = runDockerCompose([
-    "up",
-    "-d",
-    "--build",
-    "--wait",
-    "client",
-    "server",
-  ]);
-
-  if (exitCode === 0 && !receivedSignal) {
-    exitCode = runDockerCompose(["run", "--rm", "--no-deps", "seed"]);
+  if (!receivedSignal) {
+    exitCode = await runDockerCompose([
+      "up",
+      "-d",
+      "--build",
+      "--wait",
+      "client",
+      "server",
+    ]);
   }
 
   if (exitCode === 0 && !receivedSignal) {
-    exitCode = runDockerCompose([
+    exitCode = await runDockerCompose(["run", "--rm", "--no-deps", "seed"]);
+  }
+
+  if (exitCode === 0 && !receivedSignal) {
+    exitCode = await runDockerCompose([
       "run",
       "--rm",
       "--build",
@@ -65,7 +63,7 @@ try {
     ]);
   }
 } finally {
-  cleanup();
+  await runDockerCompose(["down"]);
 }
 
 process.exit(
