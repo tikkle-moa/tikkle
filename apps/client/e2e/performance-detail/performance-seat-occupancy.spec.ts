@@ -1,6 +1,8 @@
 import { type Browser, type Page, expect, test } from "@playwright/test";
+import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { Socket } from "node:net";
+import { promisify } from "node:util";
 
 import { createApiAuthHeaders, createTestSession, mockOAuthSession } from "../api/auth.api";
 import { deleteConcert } from "../api/concert.api";
@@ -49,6 +51,8 @@ const SCENARIO_SEATS: E2ECreateVenueSeat[] = [
     positionY: 30,
   },
 ];
+
+const execFileAsync = promisify(execFile);
 
 const createPerformance = async (page: Page, concertId: number) => {
   const request = {
@@ -132,6 +136,44 @@ const waitForAvailableSeats = async (page: Page, seatIds: readonly number[]) => 
   await Promise.all(seatIds.map((seatId) => expect(getSeat(page, seatId)).toHaveAttribute("data-seat-status", "available")));
 };
 
+const redisCommand = async (...args: string[]) => {
+  const { stdout } = await execFileAsync("redis-cli", ["-h", "redis", "-a", "tikkle_e2e_redis_password", "--no-auth-warning", "--raw", ...args]);
+  return stdout.trim();
+};
+
+const expirePerformanceHolds = async (performanceId: number) => {
+  const holdIds = (await redisCommand("ZRANGE", `hold:performance:${performanceId}`, "0", "-1")).split("\n").filter(Boolean);
+
+  expect(holdIds.length).toBeGreaterThan(0);
+  await Promise.all(
+    holdIds.map(async (holdId) => {
+      await redisCommand("ZADD", `hold:performance:${performanceId}`, "0", holdId);
+      expect(await redisCommand("PEXPIRE", `hold:expiry:${holdId}`, "100")).toBe("1");
+    }),
+  );
+};
+
+const deleteReservation = async (reservationId: number) => {
+  if (!Number.isInteger(reservationId) || reservationId <= 0) {
+    throw new Error(`Invalid reservation ID: ${reservationId}`);
+  }
+
+  await execFileAsync(
+    "mysql",
+    [
+      "--default-character-set=utf8mb4",
+      "-h",
+      "mysql",
+      "-u",
+      "tikkle_e2e",
+      "tikkle_e2e",
+      "-e",
+      `DELETE FROM reservation_seats WHERE reservation_id = ${reservationId};\nDELETE FROM reservations WHERE id = ${reservationId};`,
+    ],
+    { env: { ...process.env, MYSQL_PWD: "tikkle_e2e_password" } },
+  );
+};
+
 const encodeRedisCommand = (...parts: string[]) =>
   `*${parts.length}\r\n${parts.map((part) => `$${Buffer.byteLength(part)}\r\n${part}\r\n`).join("")}`;
 
@@ -192,7 +234,7 @@ const openOccupancyPage = async (page: Page, performanceId: number) => {
   });
   await page.goto(`/performances/${performanceId}`);
 
-  await expect(page.locator('[role="status"]')).toContainText("실시간 연결됨");
+  await expect(page.locator('[role="status"]')).toContainText("실시간 연결됨", { timeout: 15_000 });
 };
 
 const createUserPages = async (browser: Browser) => {
@@ -331,6 +373,67 @@ test.describe("공연 좌석 점유", () => {
       await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
       await expect(secondPage.getByRole("region", { name: "내 점유 좌석" })).toContainText(seat.seatLabel);
     } finally {
+      await Promise.all([firstContext.close(), secondContext.close()]);
+      await cleanupOccupancyScenario(page, scenario);
+    }
+  });
+
+  test("점유 시간이 만료되면 다른 사용자에게 해제 상태를 실시간 반영하고 다시 점유할 수 있다", async ({ browser, page }) => {
+    const scenario = await createOccupancyScenario(page);
+    const { firstContext, secondContext, firstPage, secondPage } = await createUserPages(browser);
+
+    try {
+      const seat = scenario.venueSeats[0];
+      await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
+
+      await getSeat(firstPage, seat.id).click();
+      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_other_group");
+      await firstPage.getByRole("button", { name: "전체 선택 취소" }).click();
+
+      await expirePerformanceHolds(scenario.performanceId);
+
+      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "available");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available");
+
+      await getSeat(secondPage, seat.id).click();
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
+    } finally {
+      await Promise.all([firstContext.close(), secondContext.close()]);
+      await cleanupOccupancyScenario(page, scenario);
+    }
+  });
+
+  test("결제 대기 시간이 만료되면 다른 사용자에게 해제 상태를 실시간 반영하고 다시 점유할 수 있다", async ({ browser, page }) => {
+    const scenario = await createOccupancyScenario(page);
+    const { firstContext, secondContext, firstPage, secondPage } = await createUserPages(browser);
+    let reservationId: number | undefined;
+
+    try {
+      const seat = scenario.venueSeats[0];
+      await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
+
+      await getSeat(firstPage, seat.id).click();
+      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_other_group");
+
+      await firstPage.getByRole("button", { name: "예매 정보 확인하기" }).click();
+      await expect(firstPage).toHaveURL(new RegExp(`/performances/${scenario.performanceId}/checkout$`));
+      await firstPage.getByRole("button", { name: "예매 정보 확정하기" }).click();
+      await expect(firstPage).toHaveURL(/\/payments\/\d+\/checkout$/);
+
+      reservationId = Number(new URL(firstPage.url()).pathname.split("/")[2]);
+      expect(Number.isInteger(reservationId) && reservationId > 0).toBe(true);
+
+      await expirePerformanceHolds(scenario.performanceId);
+
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available");
+      await getSeat(secondPage, seat.id).click();
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
+    } finally {
+      if (reservationId) await deleteReservation(reservationId);
       await Promise.all([firstContext.close(), secondContext.close()]);
       await cleanupOccupancyScenario(page, scenario);
     }
