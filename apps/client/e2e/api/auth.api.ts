@@ -15,16 +15,26 @@ export const createTestUser = (role: UserRole) => ({
 
 const encode = (value: object | string) => Buffer.from(typeof value === "string" ? value : JSON.stringify(value)).toString("base64url");
 
-const createAccessToken = (role: UserRole) => {
+const createAccessToken = (role: UserRole, tokenId = randomUUID()) => {
   const secret = process.env.E2E_JWT_SECRET ?? "e2e-jwt-secret-key-must-be-at-least-32-bytes";
 
   const now = Math.floor(Date.now() / 1000);
   const header = encode({ alg: "HS256", typ: "JWT" });
-  const payload = encode({ jti: randomUUID(), sub: role === "ADMIN" ? "1" : "2", type: "ACCESS", role, iat: now, exp: now + 3600 });
+  const payload = encode({ jti: tokenId, sub: role === "ADMIN" ? "1" : "2", type: "ACCESS", role, iat: now, exp: now + 3600 });
   const unsignedToken = `${header}.${payload}`;
   const signature = createHmac("sha256", secret).update(unsignedToken).digest("base64url");
 
   return `${unsignedToken}.${signature}`;
+};
+
+export const createTestSession = (role: UserRole) => {
+  const tokenId = randomUUID();
+
+  return {
+    accessToken: createAccessToken(role, tokenId),
+    tokenId,
+    userId: role === "ADMIN" ? 1 : 2,
+  };
 };
 
 export const createApiAuthHeaders = (role: UserRole) => ({
