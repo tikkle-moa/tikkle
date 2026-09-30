@@ -21,6 +21,32 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
     JOIN FETCH r.performance p
     JOIN FETCH p.concert c
     JOIN FETCH c.venue
+    WHERE r.booker.id = :userId
+    ORDER BY r.createdAt DESC, r.id DESC
+    """,
+  )
+  fun findAllByBookerIdOrderByCreatedAtDesc(@Param("userId") userId: Long): List<Reservation>
+
+  @Query(
+    """
+    SELECT r
+    FROM Reservation r
+    JOIN FETCH r.performance p
+    JOIN FETCH p.concert c
+    JOIN FETCH c.venue
+    JOIN FETCH r.booker
+    WHERE r.id = :reservationId
+    """,
+  )
+  fun findReservationDetailsById(@Param("reservationId") reservationId: Long): Reservation?
+
+  @Query(
+    """
+    SELECT r
+    FROM Reservation r
+    JOIN FETCH r.performance p
+    JOIN FETCH p.concert c
+    JOIN FETCH c.venue
     WHERE r.id = :reservationId
     """,
   )
