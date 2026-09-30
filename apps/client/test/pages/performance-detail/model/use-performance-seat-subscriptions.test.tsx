@@ -211,10 +211,11 @@ describe("usePerformanceSeatSubscriptions", () => {
     act(() => event({ version: 5, type: "RELEASED_SEATS", data: [1, 3] as never }));
     expect(result.current.heldSeatExpiresAtBySeatId.has(1)).toBe(false);
     expect(result.current.myGroupHeldSeatInfoBySeatId.has(1)).toBe(false);
+    expect(result.current.selectedSeatIds).toEqual(new Set([2]));
 
     act(() => event({ version: 6, type: "RESERVATION_CONFIRMED", data: [2, 3] as never }));
     expect(result.current.bookedSeatIds).toEqual(new Set([2, 3]));
-    expect(result.current.selectedSeatIds).toEqual(new Set([1]));
+    expect(result.current.selectedSeatIds).toEqual(new Set());
     act(() => event({ version: 7, type: "RESERVATION_CONFIRMED", data: [2] as never }));
     act(() => event({ version: 9, type: "RESERVATION_CONFIRMED", data: [1] as never }));
     expect(client.publish).toHaveBeenCalledTimes(3);

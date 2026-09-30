@@ -145,6 +145,11 @@ export const usePerformanceSeatSubscriptions = ({
               event.data.forEach((seatId) => updated.delete(seatId));
               return current.size === updated.size ? current : updated;
             });
+            setSelectedSeatIds((current) => {
+              const updated = new Set(current);
+              event.data.forEach((seatId) => updated.delete(seatId));
+              return current.size === updated.size ? current : updated;
+            });
             break;
           }
           case "RESERVATION_CONFIRMED": {
