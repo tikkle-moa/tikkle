@@ -40,7 +40,12 @@ class ReservationServiceTest {
       performance = reservation.performance,
       venueSeat = venueSeat(),
     )
-    given(reservationRepository.findAllByBookerIdOrderByCreatedAtDesc(USER_ID)).willReturn(listOf(reservation))
+    given(
+      reservationRepository.findAllByBookerIdAndStatusNotOrderByCreatedAtDesc(
+        USER_ID,
+        ReservationStatus.PAYMENT_PENDING,
+      ),
+    ).willReturn(listOf(reservation))
     given(reservationSeatRepository.findAllDetailsByReservationIds(listOf(RESERVATION_ID))).willReturn(listOf(seat))
 
     val result = service.getMyReservations(USER_ID)

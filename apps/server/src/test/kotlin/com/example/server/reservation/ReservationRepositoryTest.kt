@@ -183,6 +183,42 @@ class ReservationRepositoryTest {
     assertThat(result).containsExactly(seats[0].id, seats[1].id, seats[2].id)
   }
 
+  @Test
+  fun `내 예매 목록은 결제 대기 예매를 제외한다`() {
+    val fixture = createFixture()
+    val performance = performanceRepository.findById(fixture.performanceId).orElseThrow()
+    val user = userRepository.findById(fixture.userId).orElseThrow()
+    reservationRepository.save(
+      reservation(
+        performance = performance,
+        user = user,
+        status = ReservationStatus.PAYMENT_PENDING,
+      ),
+    )
+    reservationRepository.save(
+      reservation(
+        performance = performance,
+        user = user,
+        status = ReservationStatus.SUCCEEDED,
+      ),
+    )
+    reservationRepository.save(
+      reservation(
+        performance = performance,
+        user = user,
+        status = ReservationStatus.REFUNDED,
+      ),
+    )
+
+    val result = reservationRepository.findAllByBookerIdAndStatusNotOrderByCreatedAtDesc(
+      userId = user.id,
+      excludedStatus = ReservationStatus.PAYMENT_PENDING,
+    )
+
+    assertThat(result.map { it.status })
+      .containsExactlyInAnyOrder(ReservationStatus.SUCCEEDED, ReservationStatus.REFUNDED)
+  }
+
   private fun insertPaymentPending(performanceId: Long, userId: Long, groupId: String, orderId: String) {
     reservationRepository.insertPaymentPendingIfAbsent(
       performanceId = performanceId,
