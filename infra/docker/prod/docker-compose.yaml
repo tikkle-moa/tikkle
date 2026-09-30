@@ -80,6 +80,8 @@ services:
       - tikkle-network
     image: mysql:8.4
     container_name: tikkle-mysql
+    ports:
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
       MYSQL_USER: ${MYSQL_USER:?MYSQL_USER is required}
