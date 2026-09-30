@@ -19,6 +19,7 @@ import org.mockito.Mock
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.never
 import org.mockito.junit.jupiter.MockitoExtension
+import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class ReservationCancellationServiceTest {
@@ -36,14 +37,14 @@ class ReservationCancellationServiceTest {
     given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(attempt)
     given(transactionService.complete(attempt)).willReturn(result)
 
-    val actual = service.cancelReservation(USER_ID, RESERVATION_ID, refundAccount)
+    val actual = service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, refundAccount)
 
     assertThat(actual).isEqualTo(result)
     val order = inOrder(paymentGateway, transactionService)
     order.verify(paymentGateway).cancel(
       PAYMENT_KEY,
       "사용자 요청으로 예매를 취소했습니다.",
-      "reservation-cancel-$RESERVATION_ID",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
       refundAccount,
     )
     order.verify(transactionService).complete(attempt)
@@ -62,7 +63,7 @@ class ReservationCancellationServiceTest {
     )
 
     val thrown = assertThrows<IllegalStateException> {
-      service.cancelReservation(USER_ID, RESERVATION_ID, null)
+      service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, null)
     }
 
     assertThat(thrown).isSameAs(failure)
@@ -70,11 +71,45 @@ class ReservationCancellationServiceTest {
   }
 
   @Test
+  fun `환불 계좌를 보완한 재요청은 새 멱등키로 Toss에 전달한다`() {
+    val attempt = attempt()
+    val refundAccount = RefundReceiveAccount("088", "0123456789", "홍길동")
+    val result = ReservationCancellationMessageData(RESERVATION_ID, ReservationStatus.REFUNDED)
+    given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(attempt, attempt)
+    given(transactionService.complete(attempt)).willReturn(result)
+    willThrow(IllegalStateException("환불 계좌 정보가 필요합니다.")).given(paymentGateway).cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID",
+      null,
+    )
+
+    assertThrows<IllegalStateException> {
+      service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, null)
+    }
+    val actual = service.cancelReservation(USER_ID, RESERVATION_ID, RETRY_REQUEST_ID, refundAccount)
+
+    assertThat(actual).isEqualTo(result)
+    then(paymentGateway).should().cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID",
+      null,
+    )
+    then(paymentGateway).should().cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID-$RETRY_REQUEST_ID",
+      refundAccount,
+    )
+  }
+
+  @Test
   fun `이미 환불된 예매의 재요청은 Toss를 다시 호출하지 않는다`() {
     val result = ReservationCancellationMessageData(RESERVATION_ID, ReservationStatus.REFUNDED)
     given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(null)
 
-    assertThat(service.cancelReservation(USER_ID, RESERVATION_ID, null)).isEqualTo(result)
+    assertThat(service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, null)).isEqualTo(result)
 
     then(paymentGateway).shouldHaveNoInteractions()
     then(transactionService).should(never()).complete(attempt())
@@ -130,5 +165,7 @@ class ReservationCancellationServiceTest {
     const val PAYMENT_KEY = "payment-key"
     const val ORDER_ID = "order-id"
     const val AMOUNT = 66_000
+    val REQUEST_ID = UUID.fromString("2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a")
+    val RETRY_REQUEST_ID = UUID.fromString("4a5d6f70-6e6d-4c21-8d73-5d3f7d6c8d1a")
   }
 }

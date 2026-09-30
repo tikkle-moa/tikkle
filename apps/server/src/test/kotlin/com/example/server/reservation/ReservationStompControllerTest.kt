@@ -331,7 +331,7 @@ class ReservationStompControllerTest {
         data = ReservationCancellationData(RESERVATION_ID, refundAccount),
       )
       val result = ReservationCancellationMessageData(RESERVATION_ID, ReservationStatus.REFUNDED)
-      given(reservationCancellationService.cancelReservation(USER_ID, RESERVATION_ID, refundAccount)).willReturn(result)
+      given(reservationCancellationService.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, refundAccount)).willReturn(result)
 
       val response = controller.cancelReservation(request, authentication)
 
