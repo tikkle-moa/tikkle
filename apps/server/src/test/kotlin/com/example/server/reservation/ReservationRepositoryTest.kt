@@ -142,6 +142,7 @@ class ReservationRepositoryTest {
         venueSeat(venue, seatNumber = 1),
         venueSeat(venue, seatNumber = 2),
         venueSeat(venue, seatNumber = 3),
+        venueSeat(venue, seatNumber = 4),
       ),
     )
     val succeededReservation = reservationRepository.save(
@@ -149,6 +150,13 @@ class ReservationRepositoryTest {
         performance = performance,
         user = user,
         status = ReservationStatus.SUCCEEDED,
+      ),
+    )
+    val cancellationPendingReservation = reservationRepository.save(
+      reservation(
+        performance = performance,
+        user = user,
+        status = ReservationStatus.CANCELLATION_PENDING,
       ),
     )
     val pendingReservation = reservationRepository.save(
@@ -162,16 +170,17 @@ class ReservationRepositoryTest {
       listOf(
         ReservationSeat(reservation = succeededReservation, performance = performance, venueSeat = seats[1]),
         ReservationSeat(reservation = succeededReservation, performance = performance, venueSeat = seats[0]),
-        ReservationSeat(reservation = pendingReservation, performance = performance, venueSeat = seats[2]),
+        ReservationSeat(reservation = cancellationPendingReservation, performance = performance, venueSeat = seats[2]),
+        ReservationSeat(reservation = pendingReservation, performance = performance, venueSeat = seats[3]),
       ),
     )
 
-    val result = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+    val result = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
       performanceId = performance.id,
-      status = ReservationStatus.SUCCEEDED,
+      statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
     )
 
-    assertThat(result).containsExactly(seats[0].id, seats[1].id)
+    assertThat(result).containsExactly(seats[0].id, seats[1].id, seats[2].id)
   }
 
   private fun insertPaymentPending(performanceId: Long, userId: Long, groupId: String, orderId: String) {

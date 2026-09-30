@@ -86,9 +86,9 @@ class RedisVenueSeatHoldServiceTest {
   fun `서버 시각과 좌석 상태 목록을 반환한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
     given(
-      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
         performanceId = PERFORMANCE_ID,
-        status = ReservationStatus.SUCCEEDED,
+        statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       ),
     ).willReturn(listOf(1L, 3L))
     val expiresAt = LocalDateTime.now().plusMinutes(4)
@@ -113,12 +113,33 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
+  fun `취소 좌석 해제 결과에서 버전과 실제 해제한 좌석을 반환한다`() {
+    executeResult = "0:8|101,102"
+
+    val result = service.releaseCancelledReservationSeats(
+      groupId = GROUP_ID,
+      performanceId = PERFORMANCE_ID,
+      venueSeatIds = listOf(101L, 102L),
+      cancelledAtEpochMillis = System.currentTimeMillis(),
+      eventId = UUID.fromString("e5c91ae3-27d0-4b06-9660-6f303f72c12c"),
+    )
+
+    assertThat(result).isEqualTo(
+      CancelledReservationSeatReleaseResult(
+        OutboxHoldActionResult.APPLIED,
+        version = 8L,
+        releasedVenueSeatIds = listOf(101L, 102L),
+      ),
+    )
+  }
+
+  @Test
   fun `이미 예매한 그룹의 Hold는 좌석 상태에 포함하지 않는다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
     given(
-      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
         performanceId = PERFORMANCE_ID,
-        status = ReservationStatus.SUCCEEDED,
+        statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       ),
     ).willReturn(emptyList())
     given(reservationRepository.existsByGroupId(GROUP_ID)).willReturn(true)
@@ -136,9 +157,9 @@ class RedisVenueSeatHoldServiceTest {
   fun `공연별 Hold ZSET에서 상세 정보가 없거나 만료된 Hold는 무시한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
     given(
-      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
         performanceId = PERFORMANCE_ID,
-        status = ReservationStatus.SUCCEEDED,
+        statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       ),
     ).willReturn(listOf(1L, 3L))
     given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
@@ -193,9 +214,9 @@ class RedisVenueSeatHoldServiceTest {
   fun `좌석 상태 조회 중 버전이 계속 변경되면 충돌을 반환한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
     given(
-      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
         performanceId = PERFORMANCE_ID,
-        status = ReservationStatus.SUCCEEDED,
+        statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       ),
     ).willReturn(emptyList())
     given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
@@ -215,9 +236,9 @@ class RedisVenueSeatHoldServiceTest {
   fun `공연별 Hold ZSET이 없으면 다른 그룹 점유 좌석을 빈 목록으로 반환한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
     given(
-      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
         performanceId = PERFORMANCE_ID,
-        status = ReservationStatus.SUCCEEDED,
+        statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       ),
     ).willReturn(emptyList())
     given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
@@ -235,9 +256,9 @@ class RedisVenueSeatHoldServiceTest {
   fun `이벤트 version이 없으면 0으로 좌석 상태를 반환한다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
     given(
-      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
         performanceId = PERFORMANCE_ID,
-        status = ReservationStatus.SUCCEEDED,
+        statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       ),
     ).willReturn(emptyList())
     given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
@@ -377,7 +398,13 @@ class RedisVenueSeatHoldServiceTest {
   fun `이미 예매된 좌석이 있으면 점유를 생성하지 않는다`() {
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(listOf(venueSeat(101L)))
-    given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L))).willReturn(true)
+    given(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+        PERFORMANCE_ID,
+        listOf(101L),
+        ReservationStatus.BOOKED_SEAT_STATUSES,
+      ),
+    ).willReturn(true)
 
     val exception = assertThrows<CustomException> {
       service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
@@ -390,7 +417,13 @@ class RedisVenueSeatHoldServiceTest {
   fun `점유 스크립트가 성공하면 Hold detail을 반환한다`() {
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(listOf(venueSeat(101L)))
-    given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L))).willReturn(false)
+    given(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+        PERFORMANCE_ID,
+        listOf(101L),
+        ReservationStatus.BOOKED_SEAT_STATUSES,
+      ),
+    ).willReturn(false)
     executeResult = "0:1"
 
     val result = service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
@@ -403,7 +436,13 @@ class RedisVenueSeatHoldServiceTest {
   fun `점유 스크립트가 충돌하면 CONFLICT를 반환한다`() {
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(listOf(venueSeat(101L)))
-    given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L))).willReturn(false)
+    given(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+        PERFORMANCE_ID,
+        listOf(101L),
+        ReservationStatus.BOOKED_SEAT_STATUSES,
+      ),
+    ).willReturn(false)
     executeResult = "1:0"
 
     val exception = assertThrows<CustomException> {
@@ -417,7 +456,13 @@ class RedisVenueSeatHoldServiceTest {
   fun `점유 스크립트가 결과 없이 끝나면 충돌을 반환한다`() {
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(listOf(venueSeat(101L)))
-    given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L))).willReturn(false)
+    given(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+        PERFORMANCE_ID,
+        listOf(101L),
+        ReservationStatus.BOOKED_SEAT_STATUSES,
+      ),
+    ).willReturn(false)
     executeResult = null
 
     val exception = assertThrows<CustomException> {

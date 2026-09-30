@@ -1,5 +1,6 @@
 package com.example.server.outbox
 
+import com.example.server.outbox.dto.PaymentCancelledSeatEventPayload
 import com.example.server.outbox.entity.OutboxEvent
 import com.example.server.outbox.repository.OutboxEventRepository
 import com.example.server.outbox.types.OutboxEventStatus
@@ -37,13 +38,13 @@ class OutboxEventServiceTest {
     val hold = hold()
     given(objectMapper.writeValueAsString(any<Any>())).willReturn(PAYLOAD)
 
-    service.recordReservationConfirmed(RESERVATION_ID, hold)
+    service.recordPaymentConfirmed(RESERVATION_ID, hold)
 
     val captor = ArgumentCaptor.forClass(OutboxEvent::class.java)
     then(outboxEventRepository).should().save(captor.capture())
     val event = captor.value
     assertThat(event.eventKey).isEqualTo("reservation:$RESERVATION_ID:reservation-confirmed:${hold.holdId}")
-    assertThat(event.eventType.name).isEqualTo("RESERVATION_CONFIRMED")
+    assertThat(event.eventType.name).isEqualTo("PAYMENT_CONFIRMED")
     assertThat(event.status).isEqualTo(OutboxEventStatus.PENDING)
     assertThat(event.payload).isEqualTo(PAYLOAD)
     assertThat(event.eventId).isNotBlank()
@@ -63,6 +64,32 @@ class OutboxEventServiceTest {
     assertThat(event.eventType).isEqualTo(OutboxEventType.RELEASED_SEATS)
     assertThat(event.status).isEqualTo(OutboxEventStatus.PENDING)
     assertThat(event.payload).isEqualTo(PAYLOAD)
+  }
+
+  @Test
+  fun `환불 완료 이벤트는 취소 좌석과 생성 시각을 Outbox에 저장한다`() {
+    given(objectMapper.writeValueAsString(any<Any>())).willReturn(PAYLOAD)
+
+    service.recordPaymentCancelled(
+      reservationId = RESERVATION_ID,
+      groupId = GROUP_ID,
+      performanceId = PERFORMANCE_ID,
+      venueSeatIds = listOf(101L, 102L),
+    )
+
+    val captor = ArgumentCaptor.forClass(OutboxEvent::class.java)
+    then(outboxEventRepository).should().save(captor.capture())
+    val event = captor.value
+    assertThat(event.eventKey).isEqualTo("reservation:$RESERVATION_ID:reservation-cancelled")
+    assertThat(event.eventType).isEqualTo(OutboxEventType.PAYMENT_CANCELLED)
+    assertThat(event.payload).isEqualTo(PAYLOAD)
+    val payloadCaptor = ArgumentCaptor.forClass(PaymentCancelledSeatEventPayload::class.java)
+    then(objectMapper).should().writeValueAsString(payloadCaptor.capture())
+    assertThat(payloadCaptor.value.reservationId).isEqualTo(RESERVATION_ID)
+    assertThat(payloadCaptor.value.groupId).isEqualTo(GROUP_ID)
+    assertThat(payloadCaptor.value.performanceId).isEqualTo(PERFORMANCE_ID)
+    assertThat(payloadCaptor.value.seatIds).containsExactly(101L, 102L)
+    assertThat(payloadCaptor.value.cancelledAtEpochMillis).isPositive()
   }
 
   @Test
@@ -322,7 +349,7 @@ class OutboxEventServiceTest {
     aggregateType = "RESERVATION",
     aggregateId = RESERVATION_ID,
     performanceId = PERFORMANCE_ID,
-    eventType = OutboxEventType.RESERVATION_CONFIRMED,
+    eventType = OutboxEventType.PAYMENT_CONFIRMED,
     payload = PAYLOAD,
     status = OutboxEventStatus.PROCESSING,
     attemptCount = attemptCount,
