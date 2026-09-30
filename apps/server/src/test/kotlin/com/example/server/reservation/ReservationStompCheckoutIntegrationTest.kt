@@ -223,6 +223,60 @@ class ReservationStompCheckoutIntegrationTest {
   }
 
   @Test
+  fun `같은 결제 승인 요청을 재전송해도 예매와 결제 처리는 중복되지 않는다`() {
+    val client = connect(fixture.userA, fixture.sessionIdA)
+    val holdQueue = "/user/queue/performances/${fixture.performance.id}/hold-seats"
+    client.subscribe(holdQueue)
+    client.awaitSubscriptions()
+    assertThat(holdSeat(client, fixture.sessionIdA, fixture.seats.first().id).path("success").asBoolean()).isTrue()
+
+    val checkout = prepareCheckout(client, fixture.sessionIdA, fixture.seats.first().id)
+    val paymentKey = "test-idempotent-payment-${UUID.randomUUID()}"
+    given(paymentGateway.confirm(anyString(), anyString(), anyInt())).willAnswer { invocation ->
+      ExternalPayment(
+        paymentKey = invocation.arguments[0] as String,
+        orderId = invocation.arguments[1] as String,
+        amount = invocation.arguments[2] as Int,
+        status = ExternalPaymentStatus.DONE,
+      )
+    }
+
+    val firstResponse = confirmPayment(client, checkout, paymentKey)
+    val retryResponse = confirmPayment(client, checkout, paymentKey)
+
+    assertThat(firstResponse.path("success").asBoolean()).isTrue()
+    assertThat(retryResponse.path("success").asBoolean()).isTrue()
+    assertThat(firstResponse.path("data").path("status").asString()).isEqualTo(ReservationStatus.SUCCEEDED.name)
+    assertThat(retryResponse.path("data").path("status").asString()).isEqualTo(ReservationStatus.SUCCEEDED.name)
+    assertThat(firstResponse.path("data").path("reservationId").asLong()).isEqualTo(checkout.reservationId)
+    assertThat(retryResponse.path("data").path("reservationId").asLong()).isEqualTo(checkout.reservationId)
+    assertThat(reservationRepository.findById(checkout.reservationId).orElseThrow().paymentKey).isEqualTo(paymentKey)
+    assertThat(
+      jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM reservations WHERE performance_id = ?",
+        Long::class.java,
+        fixture.performance.id,
+      ),
+    ).isEqualTo(1L)
+    assertThat(
+      jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM reservations WHERE payment_key = ?",
+        Long::class.java,
+        paymentKey,
+      ),
+    ).isEqualTo(1L)
+    assertThat(
+      jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM reservation_seats WHERE reservation_id = ?",
+        Long::class.java,
+        checkout.reservationId,
+      ),
+    ).isEqualTo(1L)
+    verify(paymentGateway, times(1)).confirm(anyString(), anyString(), anyInt())
+    client.assertNoPendingResponses()
+  }
+
+  @Test
   fun `결제 금액이 예매 금액과 다르면 승인을 거부하고 결제 대기를 유지한다`() {
     val client = connect(fixture.userA, fixture.sessionIdA)
     val holdQueue = "/user/queue/performances/${fixture.performance.id}/hold-seats"
@@ -272,6 +326,15 @@ class ReservationStompCheckoutIntegrationTest {
   private fun completeCheckout(client: StompTestClient, sessionId: UUID, expectedSeatId: Long): JsonNode {
     val checkout = prepareCheckout(client, sessionId, expectedSeatId)
     val paymentKey = "test-payment-${UUID.randomUUID()}"
+    return confirmPayment(client, checkout, paymentKey)
+      .also { assertThat(it.path("success").asBoolean()).isTrue() }
+  }
+
+  private fun confirmPayment(
+    client: StompTestClient,
+    checkout: PreparedCheckout,
+    paymentKey: String,
+  ): JsonNode {
     return client.sendAndAwait(
       destination = "/api/reservation/confirm-payment",
       responseDestination = "/user/queue/reservation/confirm-payment",
@@ -281,7 +344,7 @@ class ReservationStompCheckoutIntegrationTest {
         "orderId" to checkout.orderId,
         "amount" to checkout.amount,
       ),
-    ).also { assertThat(it.path("success").asBoolean()).isTrue() }
+    )
   }
 
   private fun prepareCheckout(client: StompTestClient, sessionId: UUID, expectedSeatId: Long): PreparedCheckout {
