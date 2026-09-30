@@ -1,0 +1,1 @@
+export const VENUE_LIST_SKELETON_COUNT = 6;

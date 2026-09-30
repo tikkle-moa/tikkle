@@ -1,0 +1,375 @@
+package com.example.server.reservation
+
+import com.example.server.global.exception.CustomException
+import com.example.server.global.exception.ErrorCode
+import com.example.server.outbox.OutboxEventService
+import com.example.server.performance.RedisVenueSeatHoldService
+import com.example.server.reservation.dto.ConfirmPaymentMessageData
+import com.example.server.reservation.entity.ReservationSeat
+import com.example.server.reservation.payment.dto.ActiveHoldsSnapshot
+import com.example.server.reservation.payment.dto.PaymentConfirmationAttempt
+import com.example.server.reservation.payment.dto.PaymentConfirmationCompletion
+import com.example.server.reservation.payment.dto.PaymentConfirmationStart
+import com.example.server.reservation.payment.dto.PaymentReconciliationTarget
+import com.example.server.reservation.repository.ReservationRepository
+import com.example.server.reservation.repository.ReservationSeatRepository
+import com.example.server.reservation.types.ReservationStatus
+import com.example.server.venue.repository.VenueSeatRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
+
+@Service
+class ReservationPaymentConfirmationService(
+  private val reservationRepository: ReservationRepository,
+  private val reservationSeatRepository: ReservationSeatRepository,
+  private val venueSeatRepository: VenueSeatRepository,
+  private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
+  private val outboxEventService: OutboxEventService,
+) {
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  fun begin(userId: Long, paymentKey: String, orderId: String, amount: Int): PaymentConfirmationStart {
+    val reservation = reservationRepository.findByOrderIdForUpdate(orderId)
+      ?: throw CustomException(
+        ErrorCode.NOT_FOUND,
+        "결제 대상 예매를 찾을 수 없습니다.",
+      )
+
+    if (reservation.booker.id != userId) {
+      throw CustomException(ErrorCode.FORBIDDEN)
+    }
+
+    when (reservation.status) {
+      ReservationStatus.SUCCEEDED -> {
+        if (
+          reservation.paymentKey == paymentKey &&
+          reservation.amount == amount
+        ) {
+          return PaymentConfirmationStart.AlreadySucceeded(
+            ConfirmPaymentMessageData.from(reservation),
+          )
+        }
+
+        throw CustomException(ErrorCode.CONFLICT, "이미 종료된 결제입니다.")
+      }
+
+      ReservationStatus.PAYMENT_CONFIRMING ->
+        throw CustomException(
+          ErrorCode.CONFLICT,
+          "결제 승인 결과를 확인하고 있습니다.",
+        )
+
+      ReservationStatus.REFUND_REQUIRED ->
+        throw CustomException(
+          ErrorCode.CONFLICT,
+          "결제 취소 또는 환불 확인이 필요합니다.",
+        )
+
+      ReservationStatus.FAILED,
+      ReservationStatus.CANCELLED,
+      ReservationStatus.EXPIRED,
+      ReservationStatus.REFUNDED,
+      ->
+        throw CustomException(ErrorCode.CONFLICT, "이미 종료된 결제 요청입니다.")
+
+      ReservationStatus.PAYMENT_PENDING -> Unit
+    }
+
+    if (reservation.amount != amount) {
+      throw CustomException(ErrorCode.BAD_REQUEST, "결제 금액이 일치하지 않습니다.")
+    }
+
+    if (!reservation.paymentExpiresAt.isAfter(LocalDateTime.now())) {
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
+    }
+
+    val activeHoldData = try {
+      redisVenueSeatHoldService.findActiveHoldDataByGroupId(reservation.groupId)
+    } catch (exception: CustomException) {
+      if (exception.errorCode == ErrorCode.NOT_FOUND) {
+        throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
+      }
+
+      throw exception
+    }
+
+    if (activeHoldData.performanceId != reservation.performance.id) {
+      throw CustomException(
+        ErrorCode.CONFLICT,
+        "예매와 좌석 점유의 공연 회차가 일치하지 않습니다.",
+      )
+    }
+
+    if (activeHoldData.holdDetails.any { it.groupId != reservation.groupId || it.performanceId != reservation.performance.id }) {
+      throw CustomException(ErrorCode.CONFLICT, "예매와 좌석 점유 정보가 일치하지 않습니다.")
+    }
+
+    val venueSeatIds = activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
+    if (venueSeatIds.distinct().size != venueSeatIds.size) {
+      throw CustomException(ErrorCode.CONFLICT, "중복된 좌석 점유 정보가 포함되어 있습니다.")
+    }
+
+    val venueSeats = venueSeatRepository.findAllByVenueIdAndIdIn(
+      venueId = reservation.performance.concert.venue.id,
+      venueSeatIds = venueSeatIds,
+    )
+
+    if (venueSeats.size != venueSeatIds.size) {
+      throw CustomException(ErrorCode.NOT_FOUND, "공연장 좌석을 찾을 수 없습니다.")
+    }
+
+    if (venueSeats.sumOf { it.price } != reservation.amount) {
+      throw CustomException(ErrorCode.CONFLICT, "좌석 점유 정보가 결제 금액과 일치하지 않습니다.")
+    }
+
+    if (
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(
+        performanceId = reservation.performance.id,
+        venueSeatIds = venueSeatIds,
+      )
+    ) {
+      throw CustomException(ErrorCode.CONFLICT, "이미 예매된 좌석이 포함되어 있습니다.")
+    }
+
+    reservation.status = ReservationStatus.PAYMENT_CONFIRMING
+    reservation.paymentAttemptKey = paymentKey
+    reservation.paymentConfirmingAt = LocalDateTime.now()
+
+    return PaymentConfirmationStart.Ready(
+      PaymentConfirmationAttempt(
+        reservationId = reservation.id,
+        paymentKey = paymentKey,
+      ),
+    )
+  }
+
+  @Transactional
+  fun complete(attempt: PaymentConfirmationAttempt): PaymentConfirmationCompletion {
+    val reservation = reservationRepository.findByIdForUpdate(
+      attempt.reservationId,
+    ) ?: throw CustomException(
+      ErrorCode.NOT_FOUND,
+      "결제 대상 예매를 찾을 수 없습니다.",
+    )
+
+    if (reservation.status == ReservationStatus.SUCCEEDED) {
+      return PaymentConfirmationCompletion.Succeeded(
+        result = ConfirmPaymentMessageData.from(reservation),
+        holds = null,
+      )
+    }
+
+    if (reservation.status == ReservationStatus.REFUND_REQUIRED) {
+      return PaymentConfirmationCompletion.RefundRequired(
+        holds = null,
+      )
+    }
+
+    if (reservation.status != ReservationStatus.PAYMENT_CONFIRMING) {
+      throw CustomException(
+        ErrorCode.CONFLICT,
+        "결제 승인 상태가 아닙니다.",
+      )
+    }
+
+    if (reservation.paymentAttemptKey != attempt.paymentKey) {
+      throw IllegalStateException("결제 승인 시도 키가 일치하지 않습니다.")
+    }
+
+    val holds = findActiveHoldsSnapshot(
+      groupId = reservation.groupId,
+      expectedPerformanceId = reservation.performance.id,
+    )
+
+    if (
+      holds == null ||
+      !reservation.paymentExpiresAt.isAfter(LocalDateTime.now())
+    ) {
+      reservation.status = ReservationStatus.REFUND_REQUIRED
+
+      return PaymentConfirmationCompletion.RefundRequired(
+        holds = holds,
+      )
+    }
+
+    val venueSeats = venueSeatRepository.findAllByVenueIdAndIdIn(
+      venueId = reservation.performance.concert.venue.id,
+      venueSeatIds = holds.venueSeatIds,
+    )
+
+    if (
+      venueSeats.size != holds.venueSeatIds.size ||
+      venueSeats.sumOf { it.price } != reservation.amount ||
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(
+        performanceId = reservation.performance.id,
+        venueSeatIds = holds.venueSeatIds,
+      )
+    ) {
+      reservation.status = ReservationStatus.REFUND_REQUIRED
+
+      return PaymentConfirmationCompletion.RefundRequired(
+        holds = holds,
+      )
+    }
+
+    reservation.status = ReservationStatus.SUCCEEDED
+    reservation.paymentKey = attempt.paymentKey
+
+    reservationSeatRepository.saveAll(
+      venueSeats.map { venueSeat ->
+        ReservationSeat(
+          reservation = reservation,
+          performance = reservation.performance,
+          venueSeat = venueSeat,
+        )
+      },
+    )
+
+    holds.holdDetails.forEach { hold ->
+      outboxEventService.recordReservationConfirmed(
+        reservationId = reservation.id,
+        hold = hold,
+      )
+    }
+
+    return PaymentConfirmationCompletion.Succeeded(
+      result = ConfirmPaymentMessageData.from(reservation),
+      holds = holds,
+    )
+  }
+
+  @Transactional
+  fun markRefundRequired(attempt: PaymentConfirmationAttempt): Boolean {
+    val reservation = reservationRepository.findByIdForUpdate(
+      attempt.reservationId,
+    ) ?: return false
+
+    if (reservation.paymentAttemptKey != attempt.paymentKey) {
+      return false
+    }
+
+    if (reservation.status == ReservationStatus.REFUND_REQUIRED) {
+      return true
+    }
+
+    if (reservation.status != ReservationStatus.PAYMENT_CONFIRMING) {
+      return false
+    }
+
+    reservation.status = ReservationStatus.REFUND_REQUIRED
+    return true
+  }
+
+  @Transactional
+  fun completeRefund(attempt: PaymentConfirmationAttempt): ActiveHoldsSnapshot? {
+    val reservation = reservationRepository.findByIdForUpdate(
+      attempt.reservationId,
+    ) ?: return null
+
+    if (
+      reservation.status != ReservationStatus.REFUND_REQUIRED ||
+      reservation.paymentAttemptKey != attempt.paymentKey
+    ) {
+      return null
+    }
+
+    val holds = findActiveHoldsSnapshot(reservation.groupId)
+
+    reservation.status = ReservationStatus.REFUNDED
+
+    holds?.holdDetails?.forEach { hold ->
+      outboxEventService.recordReleasedSeats(
+        reservationId = reservation.id,
+        hold = hold,
+      )
+    }
+
+    return holds
+  }
+
+  fun findReconciliationTarget(reservationId: Long): PaymentReconciliationTarget? {
+    val reservation = reservationRepository.findById(reservationId)
+      .orElse(null)
+      ?: return null
+
+    if (
+      reservation.status != ReservationStatus.PAYMENT_CONFIRMING &&
+      reservation.status != ReservationStatus.REFUND_REQUIRED
+    ) {
+      return null
+    }
+
+    val paymentKey = reservation.paymentAttemptKey
+      ?: return null
+
+    return PaymentReconciliationTarget(
+      reservationId = reservation.id,
+      status = reservation.status,
+      paymentKey = paymentKey,
+      orderId = reservation.orderId,
+      amount = reservation.amount,
+    )
+  }
+
+  @Transactional
+  fun markPaymentFailed(attempt: PaymentConfirmationAttempt): ActiveHoldsSnapshot? {
+    val reservation = reservationRepository.findByIdForUpdate(
+      attempt.reservationId,
+    ) ?: return null
+
+    if (
+      reservation.status != ReservationStatus.PAYMENT_CONFIRMING ||
+      reservation.paymentAttemptKey != attempt.paymentKey
+    ) {
+      return null
+    }
+
+    val holds = findActiveHoldsSnapshot(reservation.groupId)
+
+    reservation.status = ReservationStatus.FAILED
+
+    holds?.holdDetails?.forEach { hold ->
+      outboxEventService.recordReleasedSeats(
+        reservationId = reservation.id,
+        hold = hold,
+      )
+    }
+
+    return holds
+  }
+
+  private fun findActiveHoldsSnapshot(groupId: String, expectedPerformanceId: Long? = null): ActiveHoldsSnapshot? {
+    val activeHoldData = try {
+      redisVenueSeatHoldService.findActiveHoldDataByGroupId(groupId)
+    } catch (exception: CustomException) {
+      if (exception.errorCode == ErrorCode.NOT_FOUND) {
+        return null
+      }
+
+      throw exception
+    }
+
+    if (
+      activeHoldData.holdDetails.any {
+        it.groupId != groupId ||
+          it.performanceId != activeHoldData.performanceId ||
+          (expectedPerformanceId != null && it.performanceId != expectedPerformanceId)
+      }
+    ) {
+      return null
+    }
+
+    val venueSeatIds = activeHoldData.holdVenueSeatEntries.map { it.venueSeatId }
+    if (venueSeatIds.distinct().size != venueSeatIds.size) {
+      return null
+    }
+
+    return ActiveHoldsSnapshot(
+      groupId = groupId,
+      performanceId = activeHoldData.performanceId,
+      venueSeatIds = venueSeatIds,
+      holdDetails = activeHoldData.holdDetails,
+    )
+  }
+}

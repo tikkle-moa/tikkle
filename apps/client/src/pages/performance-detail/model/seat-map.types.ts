@@ -1,0 +1,41 @@
+export interface MyGroupHeldSeatInfo {
+  groupId: string;
+  holdId: string;
+  performanceId: number;
+  expiresAt: Date;
+}
+
+export interface MyGroupHoldInfo {
+  groupId: string;
+  holdId: string;
+  performanceId: number;
+  expiresAt: Date;
+  venueSeatIds: number[];
+}
+
+export interface PerformanceSeatRequestIds {
+  seatStatus: string | null;
+  hold: string | null;
+  release: string | null;
+}
+
+export type SeatOperation = "hold" | "release";
+
+export type SeatOperationState =
+  | {
+      status: "idle" | "loading" | "success";
+      message?: never;
+    }
+  | {
+      status: "error";
+      message: string;
+    };
+
+export type SeatOperationStatus = SeatOperationState["status"];
+
+export interface ConnectionStyle {
+  label: string;
+  description: string;
+  className: string;
+  dotClassName: string;
+}

@@ -1,0 +1,97 @@
+import { createBrowserRouter } from "react-router";
+
+import { ROUTE_PATHS } from "@shared/config/router.config";
+
+import { ConcertDetailPage } from "@pages/concert-detail";
+import { ConcertEditPage } from "@pages/concert-edit";
+import { ConcertListPage } from "@pages/concert-list";
+import { ConcertNewPage } from "@pages/concert-new";
+import { HomePage } from "@pages/home";
+import { LoginPage } from "@pages/login";
+import { FavoritePage, MyPage, ReservationPage } from "@pages/my";
+import { PaymentCheckoutPage, PaymentFailPage, PaymentPage, PaymentSuccessPage } from "@pages/payment";
+import { PerformanceCheckoutPage } from "@pages/performance-checkout";
+import { PerformanceDetailPage } from "@pages/performance-detail";
+import { PerformanceNewPage } from "@pages/performance-new";
+import { SearchPage } from "@pages/search";
+import { VenueDetailPage } from "@pages/venue-detail";
+import { VenueEditPage } from "@pages/venue-edit";
+import { VenueListPage } from "@pages/venue-list";
+import { VenueNewPage } from "@pages/venue-new";
+
+import AdminGuard from "./AdminGuard";
+import AppLayout from "./AppLayout";
+import AuthGuard from "./AuthGuard";
+import GuestGuard from "./GuestGuard";
+import PaymentLayout from "./PaymentLayout";
+import RootLayout from "./RootLayout";
+
+export const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
+      {
+        element: <GuestGuard />,
+        children: [
+          {
+            path: ROUTE_PATHS.LOGIN,
+            element: <LoginPage />,
+          },
+        ],
+      },
+      {
+        element: <AppLayout showSecondaryHeader />,
+        children: [
+          { path: ROUTE_PATHS.HOME, element: <HomePage /> },
+          { path: ROUTE_PATHS.CONCERT_LIST, element: <ConcertListPage /> },
+          { path: ROUTE_PATHS.CONCERT_DETAIL, element: <ConcertDetailPage /> },
+          { path: ROUTE_PATHS.VENUE_LIST, element: <VenueListPage /> },
+          { path: ROUTE_PATHS.VENUE_DETAIL, element: <VenueDetailPage /> },
+          {
+            element: <AuthGuard />,
+            children: [{ path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> }],
+          },
+          {
+            element: <AdminGuard />,
+            children: [
+              { path: ROUTE_PATHS.VENUE_NEW, element: <VenueNewPage /> },
+              { path: ROUTE_PATHS.VENUE_EDIT, element: <VenueEditPage /> },
+              { path: ROUTE_PATHS.CONCERT_NEW, element: <ConcertNewPage /> },
+              { path: ROUTE_PATHS.CONCERT_EDIT, element: <ConcertEditPage /> },
+              { path: ROUTE_PATHS.PERFORMANCE_NEW, element: <PerformanceNewPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <AppLayout />,
+        children: [
+          { path: ROUTE_PATHS.SEARCH, element: <SearchPage /> },
+          { path: ROUTE_PATHS.MY, element: <MyPage /> },
+          {
+            element: <AuthGuard />,
+            children: [
+              { path: ROUTE_PATHS.MY_FAVORITES, element: <FavoritePage /> },
+              { path: ROUTE_PATHS.MY_RESERVATIONS, element: <ReservationPage /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <PaymentLayout />,
+        children: [
+          {
+            element: <AuthGuard />,
+            children: [
+              { path: ROUTE_PATHS.PERFORMANCE_CHECKOUT, element: <PerformanceCheckoutPage /> },
+              { path: ROUTE_PATHS.PAYMENT_CHECKOUT, element: <PaymentCheckoutPage /> },
+              { path: ROUTE_PATHS.PAYMENT, element: <PaymentPage /> },
+              { path: ROUTE_PATHS.PAYMENT_SUCCESS, element: <PaymentSuccessPage /> },
+              { path: ROUTE_PATHS.PAYMENT_FAIL, element: <PaymentFailPage /> },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]);
