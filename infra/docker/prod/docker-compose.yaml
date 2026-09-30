@@ -48,6 +48,8 @@ services:
     env_file:
       - .env
     environment:
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: "-Duser.timezone=Asia/Seoul"
       LOAD_DOTENV: "false"
       APP_PRODUCTION: "true"
       SERVER_BASE_URL: https://${DOMAIN_NAME:?DOMAIN_NAME is required}
@@ -82,6 +84,7 @@ services:
     container_name: tikkle-mysql
     ports:
       - "127.0.0.1:3306:3306"
+    command: ["mysqld", "--default-time-zone=+09:00"]
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
       MYSQL_USER: ${MYSQL_USER:?MYSQL_USER is required}
