@@ -2,11 +2,6 @@ import { spawn } from "node:child_process";
 
 const composeArgs = ["compose", "-f", "infra/docker/e2e/docker-compose.yaml"];
 const playwrightArgs = process.argv.slice(2);
-const redisPassword = "tikkle_e2e_redis_password";
-const bookingSessions = [
-  ["00000000-0000-4000-8000-000000000001", "1"],
-  ["00000000-0000-4000-8000-000000000002", "2"],
-];
 let receivedSignal;
 let activeProcess;
 
@@ -55,23 +50,9 @@ try {
   }
 
   if (exitCode === 0 && !receivedSignal) {
-    for (const [tokenId, userId] of bookingSessions) {
-      exitCode = await runDockerCompose([
-        "exec",
-        "-T",
-        "redis",
-        "redis-cli",
-        "-a",
-        redisPassword,
-        "SET",
-        `auth:refresh:${tokenId}`,
-        userId,
-        "EX",
-        "3600",
-      ]);
-
-      if (exitCode !== 0 || receivedSignal) break;
-    }
+    exitCode = await runCommand(process.execPath, [
+      "infra/docker/e2e/seed-redis.mjs",
+    ]);
   }
 
   if (exitCode === 0 && !receivedSignal) {

@@ -1,12 +1,13 @@
 import { type Browser, type Page, expect, test } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { Socket } from "node:net";
 import { promisify } from "node:util";
 
-import { createApiAuthHeaders, createTestSession, mockOAuthSession } from "../api/auth.api";
+import { authenticatePage, createApiAuthHeaders } from "../api/auth.api";
 import { deleteConcert } from "../api/concert.api";
 import { type E2ECreateVenueSeat, createVenue, deleteVenue } from "../api/venue.api";
+import { E2E_AUTH_SESSIONS } from "../config/e2e-auth-sessions.config";
+import { deleteReservationsForPerformance } from "../fixtures/reservation.fixture";
 
 interface PerformanceResponse {
   id: number;
@@ -125,6 +126,7 @@ const createOccupancyScenario = async (page: Page): Promise<OccupancyScenario> =
 };
 
 const cleanupOccupancyScenario = async (page: Page, scenario: OccupancyScenario) => {
+  await deleteReservationsForPerformance(scenario.performanceId);
   await deletePerformance(page, scenario.performanceId);
   await deleteConcert(page, scenario.concertId);
   await deleteVenue(page, scenario.venueId);
@@ -153,72 +155,8 @@ const expirePerformanceHolds = async (performanceId: number) => {
   );
 };
 
-const deleteReservation = async (reservationId: number) => {
-  if (!Number.isInteger(reservationId) || reservationId <= 0) {
-    throw new Error(`Invalid reservation ID: ${reservationId}`);
-  }
-
-  await execFileAsync(
-    "mysql",
-    [
-      "--default-character-set=utf8mb4",
-      "-h",
-      "mysql",
-      "-u",
-      "tikkle_e2e",
-      "tikkle_e2e",
-      "-e",
-      `DELETE FROM reservation_seats WHERE reservation_id = ${reservationId};\nDELETE FROM reservations WHERE id = ${reservationId};`,
-    ],
-    { env: { ...process.env, MYSQL_PWD: "tikkle_e2e_password" } },
-  );
-};
-
-const encodeRedisCommand = (...parts: string[]) =>
-  `*${parts.length}\r\n${parts.map((part) => `$${Buffer.byteLength(part)}\r\n${part}\r\n`).join("")}`;
-
-const registerStompSession = (tokenId: string, userId: number) =>
-  new Promise<void>((resolve, reject) => {
-    const socket = new Socket();
-    let response = "";
-
-    const closeWithError = (error: Error) => {
-      socket.destroy();
-      reject(error);
-    };
-
-    socket.on("error", closeWithError);
-    socket.on("data", (chunk) => {
-      response += chunk.toString();
-      if (response.includes("\r\n-")) {
-        closeWithError(new Error(`Redis session registration failed: ${response}`));
-        return;
-      }
-      if (response.includes("+OK\r\n+OK\r\n")) {
-        socket.end();
-        resolve();
-      }
-    });
-    socket.connect(6379, "redis", () => {
-      socket.write(
-        encodeRedisCommand("AUTH", "tikkle_e2e_redis_password") + encodeRedisCommand("SET", `auth:refresh:${tokenId}`, String(userId), "EX", "3600"),
-      );
-    });
-  });
-
-const openOccupancyPage = async (page: Page, performanceId: number) => {
-  const session = createTestSession("USER");
-  await registerStompSession(session.tokenId, session.userId);
-  await page.context().addCookies([
-    {
-      name: "access_token",
-      value: session.accessToken,
-      url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173",
-      httpOnly: true,
-      sameSite: "Lax",
-    },
-  ]);
-  await mockOAuthSession(page, "USER");
+const openOccupancyPage = async (page: Page, performanceId: number, tokenId: string) => {
+  await authenticatePage(page, "USER", tokenId);
   await page.addInitScript(() => {
     if (typeof crypto.randomUUID === "function") return;
 
@@ -235,6 +173,14 @@ const openOccupancyPage = async (page: Page, performanceId: number) => {
   await page.goto(`/performances/${performanceId}`);
 
   await expect(page.locator('[role="status"]')).toContainText("실시간 연결됨", { timeout: 15_000 });
+};
+
+const openOccupancyPages = async (firstPage: Page, secondPage: Page, performanceId: number) => {
+  const [firstSession, secondSession] = E2E_AUTH_SESSIONS.occupancy;
+  await Promise.all([
+    openOccupancyPage(firstPage, performanceId, firstSession.tokenId),
+    openOccupancyPage(secondPage, performanceId, secondSession.tokenId),
+  ]);
 };
 
 const createUserPages = async (browser: Browser) => {
@@ -259,7 +205,7 @@ test.describe("공연 좌석 점유", () => {
 
     try {
       const seat = scenario.venueSeats[0];
-      await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await openOccupancyPages(firstPage, secondPage, scenario.performanceId);
 
       const firstSeat = getSeat(firstPage, seat.id);
       const secondSeat = getSeat(secondPage, seat.id);
@@ -286,7 +232,7 @@ test.describe("공연 좌석 점유", () => {
 
     try {
       const seats = scenario.venueSeats.slice(0, 2);
-      await openOccupancyPage(firstPage, scenario.performanceId);
+      await openOccupancyPage(firstPage, scenario.performanceId, E2E_AUTH_SESSIONS.occupancy[0].tokenId);
       await waitForAvailableSeats(
         firstPage,
         seats.map((seat) => seat.id),
@@ -321,7 +267,7 @@ test.describe("공연 좌석 점유", () => {
 
     try {
       const seat = scenario.venueSeats[0];
-      await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await openOccupancyPages(firstPage, secondPage, scenario.performanceId);
       await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await Promise.all([getSeat(firstPage, seat.id).click(), getSeat(secondPage, seat.id).click()]);
@@ -355,7 +301,7 @@ test.describe("공연 좌석 점유", () => {
 
     try {
       const seat = scenario.venueSeats[0];
-      await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await openOccupancyPages(firstPage, secondPage, scenario.performanceId);
       await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await getSeat(firstPage, seat.id).click();
@@ -384,7 +330,7 @@ test.describe("공연 좌석 점유", () => {
 
     try {
       const seat = scenario.venueSeats[0];
-      await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await openOccupancyPages(firstPage, secondPage, scenario.performanceId);
       await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await getSeat(firstPage, seat.id).click();
@@ -408,11 +354,9 @@ test.describe("공연 좌석 점유", () => {
   test("결제 대기 시간이 만료되면 다른 사용자에게 해제 상태를 실시간 반영하고 다시 점유할 수 있다", async ({ browser, page }) => {
     const scenario = await createOccupancyScenario(page);
     const { firstContext, secondContext, firstPage, secondPage } = await createUserPages(browser);
-    let reservationId: number | undefined;
-
     try {
       const seat = scenario.venueSeats[0];
-      await Promise.all([openOccupancyPage(firstPage, scenario.performanceId), openOccupancyPage(secondPage, scenario.performanceId)]);
+      await openOccupancyPages(firstPage, secondPage, scenario.performanceId);
       await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await getSeat(firstPage, seat.id).click();
@@ -424,16 +368,12 @@ test.describe("공연 좌석 점유", () => {
       await firstPage.getByRole("button", { name: "예매 정보 확정하기" }).click();
       await expect(firstPage).toHaveURL(/\/payments\/\d+\/checkout$/);
 
-      reservationId = Number(new URL(firstPage.url()).pathname.split("/")[2]);
-      expect(Number.isInteger(reservationId) && reservationId > 0).toBe(true);
-
       await expirePerformanceHolds(scenario.performanceId);
 
       await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available");
       await getSeat(secondPage, seat.id).click();
       await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
     } finally {
-      if (reservationId) await deleteReservation(reservationId);
       await Promise.all([firstContext.close(), secondContext.close()]);
       await cleanupOccupancyScenario(page, scenario);
     }

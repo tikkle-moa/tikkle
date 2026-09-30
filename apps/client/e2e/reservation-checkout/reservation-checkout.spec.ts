@@ -1,8 +1,8 @@
-import { type Browser, type Page, expect, test } from "@playwright/test";
-import { randomUUID } from "node:crypto";
+import { type Browser, type Page, expect } from "@playwright/test";
 
-import { authenticatePage, createApiAuthHeaders } from "../api/auth.api";
-import { createVenue } from "../api/venue.api";
+import { authenticatePage } from "../api/auth.api";
+import { E2E_AUTH_SESSIONS } from "../config/e2e-auth-sessions.config";
+import { RESERVATION_CHECKOUT_SEAT_LABEL, test } from "../fixtures/reservation-checkout.fixture";
 
 interface CapturedStompMessage {
   success?: boolean;
@@ -10,6 +10,7 @@ interface CapturedStompMessage {
     reservationId?: number;
     orderId?: string;
     amount?: number;
+    status?: string;
   };
 }
 
@@ -19,58 +20,7 @@ interface CheckoutResult {
   amount: number;
 }
 
-const USER_TOKEN_ID = "00000000-0000-4000-8000-000000000002";
-const SEAT_LABEL = "A구역 1열 1번";
-
-const createCheckoutScenario = async (page: Page) => {
-  const venue = await createVenue(page, "E2E 예매 테스트 공연장", [
-    {
-      sectionName: "A구역",
-      seatNumber: 1,
-      seatLabel: SEAT_LABEL,
-      price: 150_000,
-      positionX: 20,
-      positionY: 30,
-    },
-  ]);
-  const concertRequest = {
-    title: `E2E 예매 테스트 공연 ${randomUUID()}`,
-    genre: "INDIE",
-    venueId: venue.venue.id,
-    posterUrl: null,
-    description: "예매 및 결제 E2E 검증용 데이터입니다.",
-  };
-  const concertResponse = await page.request.post("/api/concerts", {
-    headers: createApiAuthHeaders("ADMIN"),
-    data: concertRequest,
-  });
-  const concertBody = await concertResponse.json();
-
-  expect(concertResponse.status(), JSON.stringify(concertBody)).toBe(201);
-  expect(concertBody).toMatchObject({ success: true, data: concertRequest });
-
-  const performanceRequest = {
-    concertId: concertBody.data.id as number,
-    name: `E2E 예매 테스트 회차 ${randomUUID()}`,
-    startsAt: "2099-01-20T19:00:00",
-    bookingOpensAt: null,
-  };
-  const performanceResponse = await page.request.post("/api/performances", {
-    headers: createApiAuthHeaders("ADMIN"),
-    data: performanceRequest,
-  });
-  const performanceBody = await performanceResponse.json();
-
-  expect(performanceResponse.status(), JSON.stringify(performanceBody)).toBe(201);
-  expect(performanceBody).toMatchObject({ success: true, data: performanceRequest });
-
-  return {
-    performanceId: performanceBody.data.id as number,
-    performanceName: performanceRequest.name,
-  };
-};
-
-const findSeat = (page: Page) => page.getByRole("button", { name: new RegExp(SEAT_LABEL) }).first();
+const findSeat = (page: Page) => page.getByRole("button", { name: new RegExp(RESERVATION_CHECKOUT_SEAT_LABEL) }).first();
 
 const captureStompMessages = (page: Page) => {
   const messages: CapturedStompMessage[] = [];
@@ -96,7 +46,9 @@ const captureStompMessages = (page: Page) => {
 };
 
 const createBookingPage = async (browser: Browser) => {
-  const context = await browser.newContext();
+  const context = await browser.newContext({
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173",
+  });
   const page = await context.newPage();
   await page.addInitScript(() => {
     if (typeof crypto.randomUUID === "function") return;
@@ -111,7 +63,7 @@ const createBookingPage = async (browser: Browser) => {
       },
     });
   });
-  await authenticatePage(page, "USER", USER_TOKEN_ID);
+  await authenticatePage(page, "USER", E2E_AUTH_SESSIONS.checkout.tokenId);
   const stompMessages = captureStompMessages(page);
 
   return { context, page, stompMessages };
@@ -133,12 +85,12 @@ const bookSeatToPaymentOrder = async (
   await page.getByRole("button", { name: "예매 정보 확인하기" }).click();
   await expect(page).toHaveURL(new RegExp(`/performances/${performanceId}/checkout$`));
   await expect(page.getByRole("heading", { name: "예매자와 공연 정보를 확인해 주세요" })).toBeVisible();
-  await expect(page.getByText(new RegExp(SEAT_LABEL))).toBeVisible();
+  await expect(page.getByText(new RegExp(RESERVATION_CHECKOUT_SEAT_LABEL))).toBeVisible();
 
   await page.getByRole("button", { name: "예매 정보 확정하기" }).click();
   await expect(page).toHaveURL(/\/payments\/\d+\/checkout$/);
   await expect(page.getByRole("heading", { name: "결제 주문을 확인해 주세요" })).toBeVisible();
-  await expect(page.getByText(new RegExp(SEAT_LABEL))).toBeVisible();
+  await expect(page.getByText(new RegExp(RESERVATION_CHECKOUT_SEAT_LABEL))).toBeVisible();
 
   await expect.poll(() => stompMessages.some((message) => message.success && message.data?.reservationId && message.data.orderId)).toBe(true);
   const startCheckoutMessage = stompMessages.find((message) => message.success && message.data?.reservationId && message.data.orderId);
@@ -154,43 +106,60 @@ const bookSeatToPaymentOrder = async (
   return { reservationId, orderId, amount };
 };
 
-const cancelPayment = async (page: Page, reservationId: number) => {
+const cancelPayment = async (page: Page, stompMessages: CapturedStompMessage[], reservationId: number, performanceId: number) => {
   await page.goto(`/payments/fail?reservationId=${reservationId}`);
   await expect(page.getByRole("heading", { name: "결제가 취소되었습니다" })).toBeVisible();
+  await expect
+    .poll(() => stompMessages.some((message) => message.data?.reservationId === reservationId && message.data.status === "CANCELLED"))
+    .toBe(true);
+
+  await page.goto(`/performances/${performanceId}`);
+  await expect(findSeat(page)).toHaveAttribute("data-seat-status", "available");
 };
 
 test.describe("실제 브라우저 예매 및 결제 흐름", () => {
-  test("좌석을 선택해 결제 주문을 확인하고 결제 취소 결과를 표시한다", async ({ browser, page }) => {
-    const performance = await createCheckoutScenario(page);
-    const { context, page: bookingPage, stompMessages } = await createBookingPage(browser);
+  test("좌석을 선택해 결제 주문을 확인하고 결제 취소 후 예매와 좌석 상태를 되돌린다", async ({ browser, checkoutScenario }) => {
+    let context: Awaited<ReturnType<typeof createBookingPage>>["context"] | undefined;
 
     try {
-      const checkout = await bookSeatToPaymentOrder(bookingPage, stompMessages, performance.performanceId, performance.performanceName);
-
-      await cancelPayment(bookingPage, checkout.reservationId);
+      const booking = await createBookingPage(browser);
+      context = booking.context;
+      const checkout = await bookSeatToPaymentOrder(
+        booking.page,
+        booking.stompMessages,
+        checkoutScenario.performanceId,
+        checkoutScenario.performanceName,
+      );
+      await cancelPayment(booking.page, booking.stompMessages, checkout.reservationId, checkoutScenario.performanceId);
     } finally {
-      await context.close();
+      await context?.close();
     }
   });
 
-  test("주문 금액과 다른 결제 승인 콜백은 거부하고 오류를 표시한다", async ({ browser, page }) => {
-    const performance = await createCheckoutScenario(page);
-    const { context, page: bookingPage, stompMessages } = await createBookingPage(browser);
+  test("주문 금액과 다른 결제 승인 콜백은 거부하고 오류를 표시한다", async ({ browser, checkoutScenario }) => {
+    let context: Awaited<ReturnType<typeof createBookingPage>>["context"] | undefined;
 
     try {
-      const checkout = await bookSeatToPaymentOrder(bookingPage, stompMessages, performance.performanceId, performance.performanceName);
-      const successUrl = new URL("/payments/success", bookingPage.url());
+      const booking = await createBookingPage(browser);
+      context = booking.context;
+      const checkout = await bookSeatToPaymentOrder(
+        booking.page,
+        booking.stompMessages,
+        checkoutScenario.performanceId,
+        checkoutScenario.performanceName,
+      );
+      const successUrl = new URL("/payments/success", booking.page.url());
       successUrl.searchParams.set("paymentKey", "e2e-invalid-amount-payment");
       successUrl.searchParams.set("orderId", checkout.orderId);
       successUrl.searchParams.set("amount", String(checkout.amount + 1));
 
-      await bookingPage.goto(successUrl.toString());
-      await expect(bookingPage.getByRole("heading", { name: "결제 승인에 실패했습니다." })).toBeVisible();
-      await expect(bookingPage.getByText("결제 금액이 일치하지 않습니다.")).toBeVisible();
+      await booking.page.goto(successUrl.toString());
+      await expect(booking.page.getByRole("heading", { name: "결제 승인에 실패했습니다." })).toBeVisible();
+      await expect(booking.page.getByText("결제 금액이 일치하지 않습니다.")).toBeVisible();
 
-      await cancelPayment(bookingPage, checkout.reservationId);
+      await cancelPayment(booking.page, booking.stompMessages, checkout.reservationId, checkoutScenario.performanceId);
     } finally {
-      await context.close();
+      await context?.close();
     }
   });
 });
