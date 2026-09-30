@@ -208,9 +208,9 @@ class ReservationStompCheckoutIntegrationTest {
       ),
     ).isEqualTo(2L)
     assertThat(
-      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
-        performanceId,
-        ReservationStatus.SUCCEEDED,
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
+        performanceId = performanceId,
+        statuses = listOf(ReservationStatus.SUCCEEDED),
       ),
     ).containsExactlyInAnyOrder(seatA.id, seatB.id)
     reservationIds.forEach { reservationId ->
@@ -302,9 +302,9 @@ class ReservationStompCheckoutIntegrationTest {
     assertThat(reservationRepository.findById(checkout.reservationId).orElseThrow().status)
       .isEqualTo(ReservationStatus.PAYMENT_PENDING)
     assertThat(
-      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatus(
-        fixture.performance.id,
-        ReservationStatus.SUCCEEDED,
+      reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
+        performanceId = fixture.performance.id,
+        statuses = listOf(ReservationStatus.SUCCEEDED),
       ),
     ).isEmpty()
     verify(paymentGateway, never()).confirm(anyString(), anyString(), anyInt())
