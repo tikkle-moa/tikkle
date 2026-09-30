@@ -27,6 +27,16 @@ const createAccessToken = (role: UserRole, tokenId: string = randomUUID()) => {
   return `${unsignedToken}.${signature}`;
 };
 
+export const createTestSession = (role: UserRole) => {
+  const tokenId = randomUUID();
+
+  return {
+    accessToken: createAccessToken(role, tokenId),
+    tokenId,
+    userId: role === "ADMIN" ? 1 : 2,
+  };
+};
+
 export const createApiAuthHeaders = (role: UserRole) => ({
   Cookie: `access_token=${createAccessToken(role)}; XSRF-TOKEN=${TEST_CSRF_TOKEN}`,
   "X-XSRF-TOKEN": TEST_CSRF_TOKEN,

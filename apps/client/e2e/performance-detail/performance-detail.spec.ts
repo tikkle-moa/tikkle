@@ -1,9 +1,27 @@
 import { expect, test } from "@playwright/test";
 
 import { VENUE_SEAT_HEIGHT, VENUE_SEAT_WIDTH } from "../../src/entities/venue/model/venue.constants";
+import { authenticatePage } from "../api/auth.api";
 import { E2E_SEED_PERFORMANCES, E2E_SEED_VENUES } from "../config/e2e-seed-data.config";
 
 test.describe("공연 회차 상세", () => {
+  test.beforeEach(async ({ page }) => {
+    await authenticatePage(page, "USER");
+    await page.addInitScript(() => {
+      if (typeof crypto.randomUUID === "function") return;
+
+      Object.defineProperty(crypto, "randomUUID", {
+        value: () => {
+          const bytes = crypto.getRandomValues(new Uint8Array(16));
+          bytes[6] = (bytes[6] & 0x0f) | 0x40;
+          bytes[8] = (bytes[8] & 0x3f) | 0x80;
+          const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+          return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        },
+      });
+    });
+  });
+
   test("정상 회차에 접근하면 공연 정보와 좌석 배치를 표시한다", async ({ page }) => {
     const responsePromise = page.waitForResponse(
       (response) => response.url().endsWith(`/api/performances/${E2E_SEED_PERFORMANCES.upcoming.id}`) && response.request().method() === "GET",
@@ -30,7 +48,8 @@ test.describe("공연 회차 상세", () => {
       `/concerts/${E2E_SEED_PERFORMANCES.upcoming.concertId}`,
     );
     await expect(page.getByRole("heading", { name: "좌석 배치 정보" })).toBeVisible();
-    await expect(page.getByText(`${E2E_SEED_VENUES.normal.name} · 전체 4석`)).toBeVisible();
+    await expect(page.getByText(E2E_SEED_VENUES.normal.name, { exact: true })).toBeVisible();
+    await expect(page.getByText("전체 4석", { exact: true })).toBeVisible();
   });
 
   test("공연장 API 좌석 데이터와 좌석 배치 화면 표시가 일치한다", async ({ page }) => {
