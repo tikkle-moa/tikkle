@@ -59,20 +59,21 @@ class ReservationCancellationService(
     }
   }
 
-  private fun cancelPayment(attempt: ReservationCancellationAttempt, refundReceiveAccount: RefundReceiveAccount? = null, requestId: UUID? = null) {
+  private fun cancelPayment(
+    attempt: ReservationCancellationAttempt,
+    refundReceiveAccount: RefundReceiveAccount? = null,
+    requestId: UUID = UUID.randomUUID(),
+  ) {
+    // STOMP 재전송은 같은 requestId를 쓰고, Toss 상태 확인 후의 대사 재시도는 새 UUID를 사용합니다.
     paymentGateway.cancel(
       paymentKey = attempt.paymentKey,
       cancelReason = CANCEL_REASON,
-      idempotencyKey = idempotencyKey(attempt.reservationId, requestId, refundReceiveAccount),
+      idempotencyKey = idempotencyKey(attempt.reservationId, requestId),
       refundReceiveAccount = refundReceiveAccount,
     )
   }
 
-  private fun idempotencyKey(reservationId: Long, requestId: UUID?, refundReceiveAccount: RefundReceiveAccount?): String {
-    val reservationKey = "reservation-cancel-$reservationId"
-    // 수정된 환불 계좌 요청은 새 STOMP 요청 ID로 구분하고, 계좌 없는 재시도는 대사 작업과 같은 키를 씁니다.
-    return if (refundReceiveAccount == null) reservationKey else "$reservationKey-${requireNotNull(requestId)}"
-  }
+  private fun idempotencyKey(reservationId: Long, requestId: UUID) = "reservation-cancel-$reservationId-$requestId"
 
   private companion object {
     const val CANCEL_REASON = "사용자 요청으로 예매를 취소했습니다."
