@@ -156,6 +156,7 @@ class ReservationStompController(
       data = reservationCancellationService.cancelReservation(
         userId = user.userId,
         reservationId = request.data.reservationId,
+        requestId = request.requestId,
         refundReceiveAccount = request.data.refundReceiveAccount,
       ),
     )
