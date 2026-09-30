@@ -13,9 +13,9 @@ const handleSignal = (signal) => {
 process.on("SIGINT", () => handleSignal("SIGINT"));
 process.on("SIGTERM", () => handleSignal("SIGTERM"));
 
-const runDockerCompose = (args) => {
+const runCommand = (command, args) => {
   return new Promise((resolve) => {
-    const child = spawn("docker", [...composeArgs, ...args], {
+    const child = spawn(command, args, {
       stdio: "inherit",
     });
 
@@ -27,6 +27,9 @@ const runDockerCompose = (args) => {
     });
   });
 };
+
+const runDockerCompose = (args) =>
+  runCommand("docker", [...composeArgs, ...args]);
 
 let exitCode = 1;
 
