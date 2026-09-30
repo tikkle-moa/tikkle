@@ -1,5 +1,6 @@
 package com.example.server.outbox
 
+import com.example.server.outbox.dto.PaymentCancelledSeatEventPayload
 import com.example.server.outbox.dto.ReservationSeatEventPayload
 import com.example.server.outbox.entity.OutboxEvent
 import com.example.server.outbox.repository.OutboxEventRepository
@@ -17,11 +18,11 @@ import java.util.UUID
 @Service
 class OutboxEventService(private val outboxEventRepository: OutboxEventRepository, private val objectMapper: ObjectMapper) {
   @Transactional(propagation = Propagation.MANDATORY)
-  fun recordReservationConfirmed(reservationId: Long, hold: VenueSeatHoldDetail) {
+  fun recordPaymentConfirmed(reservationId: Long, hold: VenueSeatHoldDetail) {
     record(
       reservationId = reservationId,
       hold = hold,
-      eventType = OutboxEventType.RESERVATION_CONFIRMED,
+      eventType = OutboxEventType.PAYMENT_CONFIRMED,
       eventKey = "reservation:$reservationId:reservation-confirmed:${hold.holdId}",
     )
   }
@@ -33,6 +34,32 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
       hold = hold,
       eventType = OutboxEventType.RELEASED_SEATS,
       eventKey = "reservation:$reservationId:released-seats:${hold.holdId}",
+    )
+  }
+
+  @Transactional(propagation = Propagation.MANDATORY)
+  fun recordPaymentCancelled(reservationId: Long, groupId: String, performanceId: Long, venueSeatIds: List<Long>) {
+    val occurredAt = LocalDateTime.now()
+    val cancelledAtEpochMillis = System.currentTimeMillis()
+    val payload = PaymentCancelledSeatEventPayload(
+      reservationId = reservationId,
+      groupId = groupId,
+      performanceId = performanceId,
+      seatIds = venueSeatIds,
+      cancelledAtEpochMillis = cancelledAtEpochMillis,
+    )
+
+    outboxEventRepository.save(
+      OutboxEvent(
+        eventKey = "reservation:$reservationId:reservation-cancelled",
+        aggregateType = AGGREGATE_TYPE_RESERVATION,
+        aggregateId = reservationId,
+        performanceId = performanceId,
+        eventType = OutboxEventType.PAYMENT_CANCELLED,
+        payload = objectMapper.writeValueAsString(payload),
+        occurredAt = occurredAt,
+        nextAttemptAt = occurredAt,
+      ),
     )
   }
 

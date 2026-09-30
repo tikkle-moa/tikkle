@@ -1,9 +1,10 @@
 -- 신규 좌석의 점유 충돌 여부를 먼저 확인하여 일부 좌석만 점유되는 상황을 방지합니다.
--- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdExpiryKey -> holdPerformanceKey -> holdGroupKey -> versionKey -> holdGroupControlKey
+-- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdExpiryKey -> holdPerformanceKey -> holdGroupKey -> versionKey -> holdGroupControlKey -> holdCreatedAtKey
 -- ARGV[1]: holdId
 -- ARGV[2]: hold 만료 시각 (epoch millis)
 -- ARGV[3]: SeatHoldDetail 객체의 JSON 문자열
 -- ARGV[4]: holdVenueSeatKey 수 (finalizingVenueSeatKey 수도 동일)
+-- ARGV[5]: Hold 생성 시각 (epoch millis)
 -- 반환값: "결과 코드:version" (성공 "0:version", 충돌 또는 유효하지 않은 만료 시각 "1:0")
 
 local holdId = ARGV[1]
@@ -11,13 +12,15 @@ local holdDetailJson = ARGV[3]
 local expiresAt = tonumber(ARGV[2])
 local venueSeatKeyCount = tonumber(ARGV[4])
 
-local holdDetailKeyIndex = #KEYS - 5
-local holdExpiryKey = KEYS[#KEYS - 4]
-local holdPerformanceKey = KEYS[#KEYS - 3]
-local holdGroupKey = KEYS[#KEYS - 2]
-local versionKey = KEYS[#KEYS - 1]
+local holdDetailKeyIndex = #KEYS - 6
+local holdExpiryKey = KEYS[#KEYS - 5]
+local holdPerformanceKey = KEYS[#KEYS - 4]
+local holdGroupKey = KEYS[#KEYS - 3]
+local versionKey = KEYS[#KEYS - 2]
+local holdGroupControlKey = KEYS[#KEYS - 1]
+local holdCreatedAtKey = KEYS[#KEYS]
 local stateRetentionMillis = 86400000
-if redis.call('EXISTS', KEYS[#KEYS]) == 1 then
+if redis.call('EXISTS', holdGroupControlKey) == 1 then
   return '1:0'
 end
 
@@ -56,6 +59,8 @@ for i = 1, venueSeatKeyCount do
 end
 
 redis.call('SET', KEYS[holdDetailKeyIndex], holdDetailJson, 'PXAT', stateExpiresAt)
+-- 지연된 환불 해제 이벤트가 이후 생성된 Hold까지 지우지 않도록 생성 시각을 보존합니다.
+redis.call('SET', holdCreatedAtKey, ARGV[5], 'PXAT', stateExpiresAt)
 redis.call('SET', holdExpiryKey, holdId, 'PXAT', expiresAt)
 redis.call('ZADD', holdPerformanceKey, expiresAt, holdId)
 redis.call('ZADD', holdGroupKey, expiresAt, holdId)

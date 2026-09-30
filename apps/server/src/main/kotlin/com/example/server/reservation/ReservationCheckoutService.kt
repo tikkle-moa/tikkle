@@ -152,6 +152,9 @@ class ReservationCheckoutService(
       ReservationStatus.PAYMENT_CONFIRMING ->
         throw CustomException(ErrorCode.CONFLICT, "결제 승인 결과를 확인하고 있습니다.")
 
+      ReservationStatus.CANCELLATION_PENDING ->
+        throw CustomException(ErrorCode.CONFLICT, "예매 취소 결과를 확인하고 있습니다.")
+
       ReservationStatus.REFUND_REQUIRED ->
         throw CustomException(ErrorCode.CONFLICT, "결제 취소 또는 환불 확인이 필요합니다.")
 
