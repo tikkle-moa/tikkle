@@ -330,22 +330,16 @@ class ReservationStompCheckoutIntegrationTest {
       .also { assertThat(it.path("success").asBoolean()).isTrue() }
   }
 
-  private fun confirmPayment(
-    client: StompTestClient,
-    checkout: PreparedCheckout,
-    paymentKey: String,
-  ): JsonNode {
-    return client.sendAndAwait(
-      destination = "/api/reservation/confirm-payment",
-      responseDestination = "/user/queue/reservation/confirm-payment",
-      requestId = UUID.randomUUID(),
-      data = mapOf(
-        "paymentKey" to paymentKey,
-        "orderId" to checkout.orderId,
-        "amount" to checkout.amount,
-      ),
-    )
-  }
+  private fun confirmPayment(client: StompTestClient, checkout: PreparedCheckout, paymentKey: String): JsonNode = client.sendAndAwait(
+    destination = "/api/reservation/confirm-payment",
+    responseDestination = "/user/queue/reservation/confirm-payment",
+    requestId = UUID.randomUUID(),
+    data = mapOf(
+      "paymentKey" to paymentKey,
+      "orderId" to checkout.orderId,
+      "amount" to checkout.amount,
+    ),
+  )
 
   private fun prepareCheckout(client: StompTestClient, sessionId: UUID, expectedSeatId: Long): PreparedCheckout {
     val performanceId = fixture.performance.id
