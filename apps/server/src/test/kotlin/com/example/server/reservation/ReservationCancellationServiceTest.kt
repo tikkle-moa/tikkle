@@ -7,10 +7,16 @@ import com.example.server.reservation.payment.dto.RefundReceiveAccount
 import com.example.server.reservation.payment.dto.ReservationCancellationAttempt
 import com.example.server.reservation.payment.types.ExternalPaymentStatus
 import com.example.server.reservation.types.ReservationStatus
+import com.example.server.support.captureNonNull
+import com.example.server.support.eqNonNull
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.isNull
+import org.mockito.ArgumentMatchers.nullable
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.BDDMockito.willThrow
@@ -18,6 +24,8 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import java.util.UUID
 
@@ -58,7 +66,7 @@ class ReservationCancellationServiceTest {
     willThrow(failure).given(paymentGateway).cancel(
       PAYMENT_KEY,
       "사용자 요청으로 예매를 취소했습니다.",
-      "reservation-cancel-$RESERVATION_ID",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
       null,
     )
 
@@ -80,7 +88,7 @@ class ReservationCancellationServiceTest {
     willThrow(IllegalStateException("환불 계좌 정보가 필요합니다.")).given(paymentGateway).cancel(
       PAYMENT_KEY,
       "사용자 요청으로 예매를 취소했습니다.",
-      "reservation-cancel-$RESERVATION_ID",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
       null,
     )
 
@@ -93,7 +101,7 @@ class ReservationCancellationServiceTest {
     then(paymentGateway).should().cancel(
       PAYMENT_KEY,
       "사용자 요청으로 예매를 취소했습니다.",
-      "reservation-cancel-$RESERVATION_ID",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
       null,
     )
     then(paymentGateway).should().cancel(
@@ -124,7 +132,12 @@ class ReservationCancellationServiceTest {
     service.reconcileCancellation(RESERVATION_ID)
 
     then(transactionService).should().complete(attempt)
-    then(paymentGateway).should(never()).cancel(PAYMENT_KEY, "사용자 요청으로 예매를 취소했습니다.", "reservation-cancel-$RESERVATION_ID", null)
+    verify(paymentGateway, never()).cancel(
+      eqNonNull(PAYMENT_KEY),
+      eqNonNull("사용자 요청으로 예매를 취소했습니다."),
+      anyString(),
+      nullable(RefundReceiveAccount::class.java),
+    )
   }
 
   @Test
@@ -135,7 +148,12 @@ class ReservationCancellationServiceTest {
 
     service.reconcileCancellation(RESERVATION_ID)
 
-    then(paymentGateway).should(never()).cancel(PAYMENT_KEY, "사용자 요청으로 예매를 취소했습니다.", "reservation-cancel-$RESERVATION_ID", null)
+    verify(paymentGateway, never()).cancel(
+      eqNonNull(PAYMENT_KEY),
+      eqNonNull("사용자 요청으로 예매를 취소했습니다."),
+      anyString(),
+      nullable(RefundReceiveAccount::class.java),
+    )
     then(transactionService).should(never()).complete(attempt)
   }
 
@@ -149,9 +167,39 @@ class ReservationCancellationServiceTest {
 
     service.reconcileCancellation(RESERVATION_ID)
 
-    then(paymentGateway).should(never())
-      .cancel(PAYMENT_KEY, "사용자 요청으로 예매를 취소했습니다.", "reservation-cancel-$RESERVATION_ID", null)
+    verify(paymentGateway, never()).cancel(
+      eqNonNull(PAYMENT_KEY),
+      eqNonNull("사용자 요청으로 예매를 취소했습니다."),
+      anyString(),
+      nullable(RefundReceiveAccount::class.java),
+    )
     then(transactionService).should(never()).complete(attempt)
+  }
+
+  @Test
+  fun `Toss 상태 대사 재시도마다 새로운 멱등키를 사용한다`() {
+    val attempt = attempt()
+    val result = ReservationCancellationMessageData(RESERVATION_ID, ReservationStatus.REFUNDED)
+    given(transactionService.findPending(RESERVATION_ID)).willReturn(attempt, attempt)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(
+      externalPayment(ExternalPaymentStatus.DONE),
+      externalPayment(ExternalPaymentStatus.DONE),
+    )
+    given(transactionService.complete(attempt)).willReturn(result)
+
+    service.reconcileCancellation(RESERVATION_ID)
+    service.reconcileCancellation(RESERVATION_ID)
+
+    val idempotencyKeys = ArgumentCaptor.forClass(String::class.java)
+    verify(paymentGateway, times(2)).cancel(
+      eqNonNull(PAYMENT_KEY),
+      eqNonNull("사용자 요청으로 예매를 취소했습니다."),
+      captureNonNull(idempotencyKeys, ""),
+      isNull(RefundReceiveAccount::class.java),
+    )
+    assertThat(idempotencyKeys.allValues)
+      .allMatch { it.startsWith("reservation-cancel-$RESERVATION_ID-") }
+      .doesNotHaveDuplicates()
   }
 
   private fun attempt() = ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)

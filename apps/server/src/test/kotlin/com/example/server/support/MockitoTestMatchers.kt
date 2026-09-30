@@ -1,5 +1,6 @@
 package com.example.server.support
 
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers
 
 /**
@@ -17,5 +18,21 @@ inline fun <reified T> any(): T = ArgumentMatchers.any()
  */
 fun <T : Any> anyNonNull(type: Class<T>, fallback: T): T {
   ArgumentMatchers.any(type)
+  return fallback
+}
+
+/**
+ * eq matcher를 등록한 뒤 Kotlin non-null 파라미터에 전달할 기대값을 반환한다.
+ */
+fun <T : Any> eqNonNull(value: T): T {
+  ArgumentMatchers.eq(value)
+  return value
+}
+
+/**
+ * captor matcher를 등록한 뒤 Kotlin non-null 파라미터에 전달할 대체값을 반환한다.
+ */
+fun <T : Any> captureNonNull(captor: ArgumentCaptor<T>, fallback: T): T {
+  captor.capture()
   return fallback
 }
