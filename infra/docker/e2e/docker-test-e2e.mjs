@@ -50,12 +50,6 @@ try {
   }
 
   if (exitCode === 0 && !receivedSignal) {
-    exitCode = await runCommand(process.execPath, [
-      "infra/docker/e2e/seed-redis.mjs",
-    ]);
-  }
-
-  if (exitCode === 0 && !receivedSignal) {
     exitCode = await runDockerCompose([
       "run",
       "--rm",

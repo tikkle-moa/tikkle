@@ -1,13 +1,12 @@
 import { type Browser, type Page, expect, test } from "@playwright/test";
-import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { promisify } from "node:util";
 
 import { authenticatePage, createApiAuthHeaders } from "../api/auth.api";
 import { deleteConcert } from "../api/concert.api";
 import { type E2ECreateVenueSeat, createVenue, deleteVenue } from "../api/venue.api";
 import { E2E_AUTH_SESSIONS } from "../config/e2e-auth-sessions.config";
 import { deleteReservationsForPerformance } from "../fixtures/reservation.fixture";
+import { redisCommand } from "../helpers/redis.helper";
 
 interface PerformanceResponse {
   id: number;
@@ -52,8 +51,6 @@ const SCENARIO_SEATS: E2ECreateVenueSeat[] = [
     positionY: 30,
   },
 ];
-
-const execFileAsync = promisify(execFile);
 
 const createPerformance = async (page: Page, concertId: number) => {
   const request = {
@@ -136,11 +133,6 @@ const getSeat = (page: Page, seatId: number) => page.locator(`[data-seat-id="${s
 
 const waitForAvailableSeats = async (page: Page, seatIds: readonly number[]) => {
   await Promise.all(seatIds.map((seatId) => expect(getSeat(page, seatId)).toHaveAttribute("data-seat-status", "available")));
-};
-
-const redisCommand = async (...args: string[]) => {
-  const { stdout } = await execFileAsync("redis-cli", ["-h", "redis", "-a", "tikkle_e2e_redis_password", "--no-auth-warning", "--raw", ...args]);
-  return stdout.trim();
 };
 
 const expirePerformanceHolds = async (performanceId: number) => {
