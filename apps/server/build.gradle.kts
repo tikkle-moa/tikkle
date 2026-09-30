@@ -194,6 +194,7 @@ tasks.jacocoTestReport {
       classDirectories.files.map {
         fileTree(it) {
           include(
+            "**/OutboxEventDispatcher*",
             "**/*Controller*",
             "**/*Scheduler*",
             "**/*Service*",
