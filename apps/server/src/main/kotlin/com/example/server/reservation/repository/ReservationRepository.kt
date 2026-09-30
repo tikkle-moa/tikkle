@@ -22,10 +22,14 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
     JOIN FETCH p.concert c
     JOIN FETCH c.venue
     WHERE r.booker.id = :userId
+      AND r.status <> :excludedStatus
     ORDER BY r.createdAt DESC, r.id DESC
     """,
   )
-  fun findAllByBookerIdOrderByCreatedAtDesc(@Param("userId") userId: Long): List<Reservation>
+  fun findAllByBookerIdAndStatusNotOrderByCreatedAtDesc(
+    @Param("userId") userId: Long,
+    @Param("excludedStatus") excludedStatus: ReservationStatus,
+  ): List<Reservation>
 
   @Query(
     """

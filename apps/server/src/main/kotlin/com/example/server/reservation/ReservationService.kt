@@ -5,6 +5,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.reservation.dto.MyReservationResponse
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
+import com.example.server.reservation.types.ReservationStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -15,7 +16,10 @@ class ReservationService(
 ) {
   @Transactional(readOnly = true)
   fun getMyReservations(userId: Long): List<MyReservationResponse> {
-    val reservations = reservationRepository.findAllByBookerIdOrderByCreatedAtDesc(userId)
+    val reservations = reservationRepository.findAllByBookerIdAndStatusNotOrderByCreatedAtDesc(
+      userId = userId,
+      excludedStatus = ReservationStatus.PAYMENT_PENDING,
+    )
     if (reservations.isEmpty()) return emptyList()
 
     val seatsByReservationId = reservationSeatRepository
