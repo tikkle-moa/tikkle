@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component
 class ReservationPaymentReconciliationScheduler(
   private val reservationRepository: ReservationRepository,
   private val reservationPaymentService: ReservationPaymentService,
+  private val reservationCancellationService: ReservationCancellationService,
 ) {
   private val log = LoggerFactory.getLogger(
     ReservationPaymentReconciliationScheduler::class.java,
@@ -46,7 +47,11 @@ class ReservationPaymentReconciliationScheduler(
 
     reservations.forEach { reservation ->
       runCatching {
-        reservationPaymentService.reconcilePayment(reservation.id)
+        if (reservation.status == ReservationStatus.CANCELLATION_PENDING) {
+          reservationCancellationService.reconcileCancellation(reservation.id)
+        } else {
+          reservationPaymentService.reconcilePayment(reservation.id)
+        }
       }.onFailure { exception ->
         hasFailure = true
         log.error(
@@ -71,6 +76,7 @@ class ReservationPaymentReconciliationScheduler(
     val RECONCILIATION_STATUSES = setOf(
       ReservationStatus.PAYMENT_CONFIRMING,
       ReservationStatus.REFUND_REQUIRED,
+      ReservationStatus.CANCELLATION_PENDING,
     )
   }
 }

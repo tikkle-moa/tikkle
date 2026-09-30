@@ -14,6 +14,8 @@ import com.example.server.reservation.dto.EndCheckoutReviewMessage
 import com.example.server.reservation.dto.EndCheckoutReviewMessageData
 import com.example.server.reservation.dto.GetPaymentOrderCommand
 import com.example.server.reservation.dto.PaymentOrderMessage
+import com.example.server.reservation.dto.ReservationCancellationCommand
+import com.example.server.reservation.dto.ReservationCancellationMessage
 import com.example.server.reservation.dto.StartCheckoutCommand
 import com.example.server.reservation.dto.StartCheckoutMessage
 import jakarta.validation.Valid
@@ -28,6 +30,7 @@ class ReservationStompController(
   private val reservationCheckoutService: ReservationCheckoutService,
   private val reservationPaymentOrderService: ReservationPaymentOrderService,
   private val reservationPaymentService: ReservationPaymentService,
+  private val reservationCancellationService: ReservationCancellationService,
 ) {
   @MessageMapping("/reservation/begin-checkout-review")
   @SendToUser(
@@ -136,6 +139,24 @@ class ReservationStompController(
       data = reservationCheckoutService.cancelCheckout(
         userId = user.userId,
         reservationId = request.data.reservationId,
+      ),
+    )
+  }
+
+  @MessageMapping("/reservation/cancel-reservation")
+  @SendToUser(
+    value = ["/queue/reservation/cancel-reservation"],
+    broadcast = false,
+  )
+  fun cancelReservation(@Payload @Valid request: ReservationCancellationCommand, authentication: Authentication): ReservationCancellationMessage {
+    val user = loginUser(authentication)
+
+    return ReservationCancellationMessage(
+      requestId = request.requestId,
+      data = reservationCancellationService.cancelReservation(
+        userId = user.userId,
+        reservationId = request.data.reservationId,
+        refundReceiveAccount = request.data.refundReceiveAccount,
       ),
     )
   }
