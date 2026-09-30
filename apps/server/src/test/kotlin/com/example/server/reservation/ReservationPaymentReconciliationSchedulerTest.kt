@@ -25,6 +25,9 @@ class ReservationPaymentReconciliationSchedulerTest {
   @Mock
   lateinit var reservationPaymentService: ReservationPaymentService
 
+  @Mock
+  lateinit var reservationCancellationService: ReservationCancellationService
+
   @InjectMocks
   lateinit var scheduler: ReservationPaymentReconciliationScheduler
 
@@ -54,6 +57,17 @@ class ReservationPaymentReconciliationSchedulerTest {
     then(reservationPaymentService)
       .should()
       .reconcilePayment(SECOND_RESERVATION_ID)
+  }
+
+  @Test
+  fun `취소 대기 예매는 취소 상태를 대사한다`() {
+    val pendingCancellation = reservation(FIRST_RESERVATION_ID, ReservationStatus.CANCELLATION_PENDING)
+    givenReconciliationTargets(reservations = listOf(pendingCancellation))
+
+    scheduler.reconcilePaymentReservations()
+
+    then(reservationCancellationService).should().reconcileCancellation(FIRST_RESERVATION_ID)
+    then(reservationPaymentService).shouldHaveNoInteractions()
   }
 
   @Test
@@ -104,6 +118,7 @@ class ReservationPaymentReconciliationSchedulerTest {
         statuses = setOf(
           ReservationStatus.PAYMENT_CONFIRMING,
           ReservationStatus.REFUND_REQUIRED,
+          ReservationStatus.CANCELLATION_PENDING,
         ),
         id = FIRST_RESERVATION_ID,
         limit = Limit.of(BATCH_SIZE),
@@ -144,7 +159,11 @@ class ReservationPaymentReconciliationSchedulerTest {
       .apply { isAccessible = true }
 
     assertThat(getter.invoke(companion)).isEqualTo(
-      setOf(ReservationStatus.PAYMENT_CONFIRMING, ReservationStatus.REFUND_REQUIRED),
+      setOf(
+        ReservationStatus.PAYMENT_CONFIRMING,
+        ReservationStatus.REFUND_REQUIRED,
+        ReservationStatus.CANCELLATION_PENDING,
+      ),
     )
   }
 
@@ -154,6 +173,7 @@ class ReservationPaymentReconciliationSchedulerTest {
         statuses = setOf(
           ReservationStatus.PAYMENT_CONFIRMING,
           ReservationStatus.REFUND_REQUIRED,
+          ReservationStatus.CANCELLATION_PENDING,
         ),
         id = cursorId,
         limit = Limit.of(BATCH_SIZE),
@@ -161,8 +181,9 @@ class ReservationPaymentReconciliationSchedulerTest {
     ).willReturn(reservations)
   }
 
-  private fun reservation(id: Long): Reservation = mock(Reservation::class.java).also {
+  private fun reservation(id: Long, status: ReservationStatus? = null): Reservation = mock(Reservation::class.java).also {
     given(it.id).willReturn(id)
+    status?.let { value -> given(it.status).willReturn(value) }
   }
 
   companion object {
