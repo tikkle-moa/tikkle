@@ -24,6 +24,7 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
 class ReservationCancellationTransactionServiceTest {
@@ -44,6 +45,54 @@ class ReservationCancellationTransactionServiceTest {
 
     assertThat(attempt).isEqualTo(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
     assertThat(reservation.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
+  }
+
+  @Test
+  fun `없는 예매의 취소 시작은 NOT_FOUND를 반환한다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(null)
+
+    val exception = assertThrows<CustomException> { service.begin(USER_ID, RESERVATION_ID) }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+  }
+
+  @Test
+  fun `이미 환불된 예매는 취소 시도를 만들지 않는다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+      .willReturn(reservation(status = ReservationStatus.REFUNDED))
+
+    assertThat(service.begin(USER_ID, RESERVATION_ID)).isNull()
+  }
+
+  @Test
+  fun `취소 대기 예매 재요청은 같은 결제 시도를 반환한다`() {
+    val reservation = reservation(status = ReservationStatus.CANCELLATION_PENDING)
+    val expected = ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+    given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(reservation))
+
+    assertThat(service.begin(USER_ID, RESERVATION_ID)).isEqualTo(expected)
+    assertThat(service.findPending(RESERVATION_ID)).isEqualTo(expected)
+  }
+
+  @Test
+  fun `결제 대기 예매는 취소를 시작할 수 없다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+      .willReturn(reservation(status = ReservationStatus.PAYMENT_PENDING))
+
+    val exception = assertThrows<CustomException> { service.begin(USER_ID, RESERVATION_ID) }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+  }
+
+  @Test
+  fun `결제 키가 없는 예매는 취소를 시작할 수 없다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+      .willReturn(reservation(paymentKey = null))
+
+    val exception = assertThrows<CustomException> { service.begin(USER_ID, RESERVATION_ID) }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
   }
 
   @Test
@@ -98,6 +147,58 @@ class ReservationCancellationTransactionServiceTest {
   }
 
   @Test
+  fun `없는 예매의 취소 완료는 NOT_FOUND를 반환한다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(null)
+
+    val exception = assertThrows<CustomException> {
+      service.complete(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+  }
+
+  @Test
+  fun `취소 대기 상태가 아니면 취소 완료를 반영하지 않는다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation())
+
+    val exception = assertThrows<CustomException> {
+      service.complete(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(reservationSeatRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `좌석이 없는 예매 취소는 Outbox 이벤트를 기록하지 않는다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+      .willReturn(reservation(status = ReservationStatus.CANCELLATION_PENDING))
+    given(reservationSeatRepository.findVenueSeatIdsByReservationId(RESERVATION_ID)).willReturn(emptyList())
+
+    val result = service.complete(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+
+    assertThat(result.status).isEqualTo(ReservationStatus.REFUNDED)
+    then(outboxEventService).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `없는 예매나 취소 대기 상태가 아닌 예매는 대사 대상으로 조회되지 않는다`() {
+    given(reservationRepository.findById(RESERVATION_ID))
+      .willReturn(Optional.empty(), Optional.of(reservation()))
+
+    assertThat(service.findPending(RESERVATION_ID)).isNull()
+    assertThat(service.findPending(RESERVATION_ID)).isNull()
+  }
+
+  @Test
+  fun `결제 키가 없는 취소 대기 예매는 대사 대상으로 조회되지 않는다`() {
+    given(reservationRepository.findById(RESERVATION_ID))
+      .willReturn(Optional.of(reservation(status = ReservationStatus.CANCELLATION_PENDING, paymentKey = null)))
+
+    assertThat(service.findPending(RESERVATION_ID)).isNull()
+  }
+
+  @Test
   fun `다른 결제 시도 키로 취소 완료를 반영하지 않는다`() {
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
       .willReturn(reservation(status = ReservationStatus.CANCELLATION_PENDING))
@@ -114,6 +215,7 @@ class ReservationCancellationTransactionServiceTest {
     status: ReservationStatus = ReservationStatus.SUCCEEDED,
     booker: User = User(USER_ID, "user@example.com", "사용자"),
     performanceStartsAt: LocalDateTime = LocalDateTime.now().plusDays(1),
+    paymentKey: String? = PAYMENT_KEY,
   ) = Reservation(
     id = RESERVATION_ID,
     performance = Performance(
@@ -129,7 +231,7 @@ class ReservationCancellationTransactionServiceTest {
     amount = AMOUNT,
     status = status,
     paymentExpiresAt = LocalDateTime.now().plusMinutes(10),
-    paymentKey = PAYMENT_KEY,
+    paymentKey = paymentKey,
   )
 
   private fun venue() = Venue(

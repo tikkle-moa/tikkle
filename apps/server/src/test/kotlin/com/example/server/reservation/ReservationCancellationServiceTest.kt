@@ -202,7 +202,81 @@ class ReservationCancellationServiceTest {
       .doesNotHaveDuplicates()
   }
 
+  @Test
+  fun `취소 대사 대상이 없으면 Toss 결제를 조회하지 않는다`() {
+    given(transactionService.findPending(RESERVATION_ID)).willReturn(null)
+
+    service.reconcileCancellation(RESERVATION_ID)
+
+    then(paymentGateway).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `Toss 결제를 찾지 못하면 취소를 완료하지 않는다`() {
+    val attempt = attempt()
+    given(transactionService.findPending(RESERVATION_ID)).willReturn(attempt)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(null)
+
+    service.reconcileCancellation(RESERVATION_ID)
+
+    then(transactionService).should(never()).complete(attempt)
+    verifyNoTossCancellation()
+  }
+
+  @Test
+  fun `Toss 결제 키가 다르면 취소 대사를 건너뛴다`() {
+    val attempt = attempt()
+    given(transactionService.findPending(RESERVATION_ID)).willReturn(attempt)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.DONE).copy(paymentKey = "other-key"))
+
+    service.reconcileCancellation(RESERVATION_ID)
+
+    then(transactionService).should(never()).complete(attempt)
+    verifyNoTossCancellation()
+  }
+
+  @Test
+  fun `Toss 주문 ID가 다르면 취소 대사를 건너뛴다`() {
+    val attempt = attempt()
+    given(transactionService.findPending(RESERVATION_ID)).willReturn(attempt)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.DONE).copy(orderId = "other-order"))
+
+    service.reconcileCancellation(RESERVATION_ID)
+
+    then(transactionService).should(never()).complete(attempt)
+    verifyNoTossCancellation()
+  }
+
+  @Test
+  fun `아직 취소할 수 없는 Toss 상태는 대사 후처리를 하지 않는다`() {
+    val attempt = attempt()
+    given(transactionService.findPending(RESERVATION_ID)).willReturn(attempt)
+
+    listOf(
+      ExternalPaymentStatus.READY,
+      ExternalPaymentStatus.IN_PROGRESS,
+      ExternalPaymentStatus.WAITING_FOR_DEPOSIT,
+      ExternalPaymentStatus.ABORTED,
+      ExternalPaymentStatus.EXPIRED,
+    ).forEach { status ->
+      given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(status))
+      service.reconcileCancellation(RESERVATION_ID)
+    }
+
+    then(transactionService).should(never()).complete(attempt)
+    verifyNoTossCancellation()
+  }
+
   private fun attempt() = ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+
+  private fun verifyNoTossCancellation() {
+    verify(paymentGateway, never()).cancel(
+      anyString(),
+      anyString(),
+      anyString(),
+      nullable(RefundReceiveAccount::class.java),
+    )
+  }
 
   private fun externalPayment(status: ExternalPaymentStatus, amount: Int = AMOUNT, method: String? = null) =
     ExternalPayment(PAYMENT_KEY, ORDER_ID, amount, status, method)

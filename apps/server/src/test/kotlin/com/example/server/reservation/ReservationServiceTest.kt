@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
+import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
@@ -59,6 +60,35 @@ class ReservationServiceTest {
     assertThat(response.seats).containsExactly(com.example.server.reservation.dto.ReservationSeatResponse("A", "A-12"))
     assertThat(response.amount).isEqualTo(66_000)
     assertThat(response.status).isEqualTo(ReservationStatus.SUCCEEDED)
+  }
+
+  @Test
+  fun `예매가 없으면 빈 목록을 반환한다`() {
+    given(
+      reservationRepository.findAllByBookerIdAndStatusNotOrderByCreatedAtDesc(
+        USER_ID,
+        ReservationStatus.PAYMENT_PENDING,
+      ),
+    ).willReturn(emptyList())
+
+    assertThat(service.getMyReservations(USER_ID)).isEmpty()
+    then(reservationSeatRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `좌석 상세가 없는 예매는 빈 좌석 목록을 반환한다`() {
+    val reservation = reservation()
+    given(
+      reservationRepository.findAllByBookerIdAndStatusNotOrderByCreatedAtDesc(
+        USER_ID,
+        ReservationStatus.PAYMENT_PENDING,
+      ),
+    ).willReturn(listOf(reservation))
+    given(reservationSeatRepository.findAllDetailsByReservationIds(listOf(RESERVATION_ID))).willReturn(emptyList())
+
+    val result = service.getMyReservations(USER_ID)
+
+    assertThat(result.single().seats).isEmpty()
   }
 
   @Test

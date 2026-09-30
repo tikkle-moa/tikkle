@@ -134,6 +134,52 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
+  fun `이미 처리된 취소 좌석 해제와 빈 좌석 결과를 반환한다`() {
+    executeResult = "3:9|"
+
+    val result = service.releaseCancelledReservationSeats(
+      groupId = GROUP_ID,
+      performanceId = PERFORMANCE_ID,
+      venueSeatIds = listOf(101L),
+      cancelledAtEpochMillis = System.currentTimeMillis(),
+      eventId = UUID.fromString("e5c91ae3-27d0-4b06-9660-6f303f72c12c"),
+    )
+
+    assertThat(result).isEqualTo(
+      CancelledReservationSeatReleaseResult(
+        OutboxHoldActionResult.ALREADY_APPLIED,
+        version = 9L,
+        releasedVenueSeatIds = emptyList(),
+      ),
+    )
+  }
+
+  @Test
+  fun `취소 좌석 해제 Lua 결과가 없거나 잘못된 형식이면 예외를 던진다`() {
+    listOf<Any?>(
+      null,
+      "invalid",
+      "invalid-code:8|101",
+      "0:invalid-marker",
+      "0:invalid-version|101",
+      "0:8|invalid-seat-id",
+      "4:8|101",
+    ).forEach { result ->
+      executeResult = result
+
+      assertThrows<IllegalStateException> {
+        service.releaseCancelledReservationSeats(
+          groupId = GROUP_ID,
+          performanceId = PERFORMANCE_ID,
+          venueSeatIds = listOf(101L),
+          cancelledAtEpochMillis = System.currentTimeMillis(),
+          eventId = UUID.fromString("e5c91ae3-27d0-4b06-9660-6f303f72c12c"),
+        )
+      }
+    }
+  }
+
+  @Test
   fun `이미 예매한 그룹의 Hold는 좌석 상태에 포함하지 않는다`() {
     given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.of(performance()))
     given(
