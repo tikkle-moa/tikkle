@@ -1,34 +1,53 @@
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 
 const composeArgs = ["compose", "-f", "infra/docker/e2e/docker-compose.yaml"];
 const playwrightArgs = process.argv.slice(2);
+let receivedSignal;
+let activeProcess;
+
+const handleSignal = (signal) => {
+  receivedSignal ??= signal;
+  activeProcess?.kill(signal);
+};
+
+process.on("SIGINT", () => handleSignal("SIGINT"));
+process.on("SIGTERM", () => handleSignal("SIGTERM"));
 
 const runDockerCompose = (args) => {
-  const result = spawnSync("docker", [...composeArgs, ...args], {
-    stdio: "inherit",
-  });
+  return new Promise((resolve) => {
+    const child = spawn("docker", [...composeArgs, ...args], {
+      stdio: "inherit",
+    });
 
-  return result.status ?? 1;
+    activeProcess = child;
+
+    child.once("close", (code) => {
+      if (activeProcess === child) activeProcess = undefined;
+      resolve(code ?? 1);
+    });
+  });
 };
 
 let exitCode = 1;
 
 try {
-  exitCode = runDockerCompose([
-    "up",
-    "-d",
-    "--build",
-    "--wait",
-    "client",
-    "server",
-  ]);
-
-  if (exitCode === 0) {
-    exitCode = runDockerCompose(["run", "--rm", "seed"]);
+  if (!receivedSignal) {
+    exitCode = await runDockerCompose([
+      "up",
+      "-d",
+      "--build",
+      "--wait",
+      "client",
+      "server",
+    ]);
   }
 
-  if (exitCode === 0) {
-    exitCode = runDockerCompose([
+  if (exitCode === 0 && !receivedSignal) {
+    exitCode = await runDockerCompose(["run", "--rm", "--no-deps", "seed"]);
+  }
+
+  if (exitCode === 0 && !receivedSignal) {
+    exitCode = await runDockerCompose([
       "run",
       "--rm",
       "--build",
@@ -44,7 +63,13 @@ try {
     ]);
   }
 } finally {
-  runDockerCompose(["down"]);
+  await runDockerCompose(["down"]);
 }
 
-process.exit(exitCode);
+process.exit(
+  receivedSignal === "SIGINT"
+    ? 130
+    : receivedSignal === "SIGTERM"
+      ? 143
+      : exitCode,
+);

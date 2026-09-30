@@ -2,7 +2,10 @@ FROM mcr.microsoft.com/playwright:v1.62.0-noble
 
 WORKDIR /workspace
 
-RUN corepack enable
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends default-mysql-client redis-tools \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/client/package.json ./apps/client/package.json
