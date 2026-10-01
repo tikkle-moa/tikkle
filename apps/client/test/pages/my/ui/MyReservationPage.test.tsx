@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { formatDateTime } from "@shared/lib/date.utils";
+
 import type { MyReservation } from "@entities/reservation";
 
 import MyReservationPage from "@pages/my/ui/MyReservationPage";
@@ -145,6 +147,7 @@ describe("MyReservationPage", () => {
     expect(poster).toHaveStyle({ display: "none" });
 
     expect(container.querySelector('time[datetime="2026-12-18T19:00:00"]')).toBeInTheDocument();
+    expect(screen.getAllByText(formatDateTime("2026-12-18T19:00:00"))).toHaveLength(statusCases.length);
     expect(screen.queryByText("R석 A-12")).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(mockGet).toHaveBeenCalledTimes(1);

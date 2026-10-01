@@ -1,17 +1,8 @@
 import { Music2 } from "lucide-react";
 
+import { formatDateTime } from "@shared/lib/date.utils";
+
 import { MY_RESERVATION_STATUS_MAP, useMyReservations } from "@entities/reservation";
-
-const dateTimeFormatter = new Intl.DateTimeFormat("ko-KR", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  weekday: "short",
-  hour: "numeric",
-  minute: "2-digit",
-});
-
-const formatDateTime = (value: string) => dateTimeFormatter.format(new Date(value));
 
 const MyReservationPage = () => {
   const { data: myReservations, isError, isLoading, refetch } = useMyReservations();
