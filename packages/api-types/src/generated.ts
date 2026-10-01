@@ -28,6 +28,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/reservations/{reservationId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 내 예매 취소
+     * @description 공연 시작 전 본인 예매를 전액 취소합니다. 환불 계좌 입력이 필요한 경우 상태를 반환하며, 계좌를 입력해 다시 요청할 수 있습니다.
+     */
+    post: operations["cancelReservation"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/performances": {
     parameters: {
       query?: never;
@@ -200,6 +220,46 @@ export interface paths {
     patch: operations["update_1"];
     trace?: never;
   };
+  "/api/reservations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 내 예매 목록 조회
+     * @description 로그인한 사용자의 예매를 예매 시각 내림차순으로 반환합니다.
+     */
+    get: operations["getMyReservations"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/reservations/{reservationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 내 예매 상세 조회
+     * @description 예매의 공연·회차·공연장·좌석·금액·상태 정보를 반환합니다.
+     */
+    get: operations["getMyReservation"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/auth/oauth/{oauth_provider}": {
     parameters: {
       query?: never;
@@ -335,6 +395,45 @@ export interface components {
       positionY: number;
       /** Format: date-time */
       createdAt: string;
+    };
+    /** CancelReservationRequest */
+    CancelReservationRequest: {
+      /** Format: uuid */
+      requestId: string;
+      refundReceiveAccount: components["schemas"]["RefundReceiveAccount"] | null;
+    };
+    /** RefundReceiveAccount */
+    RefundReceiveAccount: {
+      bank: string;
+      accountNumber: string;
+      holderName: string;
+    };
+    /** ReservationCancellationResult */
+    ReservationCancellationResult: {
+      /** Format: int64 */
+      reservationId: number;
+      status: components["schemas"]["ReservationStatus"];
+    };
+    /**
+     * ReservationStatus
+     * @enum {string}
+     */
+    ReservationStatus:
+      | "PAYMENT_PENDING"
+      | "PAYMENT_CONFIRMING"
+      | "CANCELLATION_PENDING"
+      | "REFUND_ACCOUNT_REQUIRED"
+      | "SUCCEEDED"
+      | "FAILED"
+      | "CANCELLED"
+      | "EXPIRED"
+      | "REFUND_REQUIRED"
+      | "REFUNDED";
+    /** Success */
+    SuccessReservationCancellationResult: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["ReservationCancellationResult"];
     };
     /** CreatePerformanceRequest */
     CreatePerformanceRequest: {
@@ -481,6 +580,39 @@ export interface components {
       venueSeatCount: number;
       /** Format: int64 */
       concertCount: number;
+    };
+    /** MyReservationResponse */
+    MyReservationResponse: {
+      /** Format: int64 */
+      id: number;
+      concertTitle: string;
+      performanceName: string;
+      /** Format: date-time */
+      performanceStartsAt: string;
+      venueName: string;
+      seats: components["schemas"]["ReservationSeatResponse"][];
+      /** Format: int32 */
+      amount: number;
+      status: components["schemas"]["ReservationStatus"];
+      /** Format: date-time */
+      createdAt: string;
+    };
+    /** ReservationSeatResponse */
+    ReservationSeatResponse: {
+      sectionName: string;
+      seatLabel: string;
+    };
+    /** Success */
+    SuccessListMyReservationResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["MyReservationResponse"][];
+    };
+    /** Success */
+    SuccessMyReservationResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["MyReservationResponse"];
     };
     /** Success */
     SuccessListPerformanceResponse: {
@@ -661,6 +793,113 @@ export interface operations {
            *       "error": {
            *         "code": 403,
            *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  cancelReservation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        reservationId: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CancelReservationRequest"];
+      };
+    };
+    responses: {
+      /** @description 예매 취소 또는 환불 계좌 입력 필요 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessReservationCancellationResult"];
+        };
+      };
+      /** @description 결제 취소 결과 대사 중 */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessReservationCancellationResult"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 다른 사용자의 예매 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 예매 내역을 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 현재 상태에서 취소할 수 없음 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 409,
+           *         "message": "예상치 못한 충돌이 발생했습니다."
            *       }
            *     }
            */
@@ -1622,6 +1861,120 @@ export interface operations {
         };
       };
       /** @description 콘서트를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  getMyReservations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 예매 목록 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessListMyReservationResponse"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  getMyReservation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        reservationId: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 예매 상세 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessMyReservationResponse"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 다른 사용자의 예매 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 예매 내역을 찾을 수 없음 */
       404: {
         headers: {
           [name: string]: unknown;
