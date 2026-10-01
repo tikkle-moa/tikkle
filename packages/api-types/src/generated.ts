@@ -586,6 +586,7 @@ export interface components {
       /** Format: int64 */
       id: number;
       concertTitle: string;
+      posterUrl: string | null;
       performanceName: string;
       /** Format: date-time */
       performanceStartsAt: string;
