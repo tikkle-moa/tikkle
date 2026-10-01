@@ -18,6 +18,7 @@ class GroupService(private val userRepository: UserRepository, private val redis
     return GroupChatEventData(
       groupId = groupId,
       senderNickname = user.nickname,
+      senderProfileImageUrl = user.profileImageUrl,
       content = data.content,
       sentAt = OffsetDateTime.now(ZoneOffset.UTC),
     )
