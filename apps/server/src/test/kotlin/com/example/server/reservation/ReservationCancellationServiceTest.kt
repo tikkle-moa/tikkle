@@ -85,6 +85,130 @@ class ReservationCancellationServiceTest {
   }
 
   @Test
+  fun `Toss 취소와 결제 조회가 모두 실패하면 취소 대기 상태를 반환한다`() {
+    val attempt = attempt()
+    given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(attempt)
+    willThrow(IllegalStateException("결제 취소 실패")).given(paymentGateway).cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
+      null,
+    )
+    willThrow(IllegalStateException("결제 조회 실패")).given(paymentGateway).find(PAYMENT_KEY)
+
+    val result = service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, null)
+
+    assertThat(result.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
+    then(transactionService).should(never()).complete(attempt)
+  }
+
+  @Test
+  fun `Toss 취소 요청이 실패해도 조회 결과가 이미 취소 상태면 환불을 확정한다`() {
+    val attempt = attempt()
+    val result = ReservationCancellationResult(RESERVATION_ID, ReservationStatus.REFUNDED)
+    given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(attempt)
+    given(transactionService.complete(attempt)).willReturn(result)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
+    willThrow(IllegalStateException("취소 응답 유실")).given(paymentGateway).cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
+      null,
+    )
+
+    assertThat(service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, null)).isEqualTo(result)
+
+    then(transactionService).should().complete(attempt)
+  }
+
+  @Test
+  fun `Toss 조회 결제 금액이 예매 정보와 다르면 취소 대기를 유지한다`() {
+    val attempt = attempt()
+    given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(attempt)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.DONE, amount = AMOUNT + 1))
+    willThrow(IllegalStateException("취소 응답 유실")).given(paymentGateway).cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
+      null,
+    )
+
+    val result = service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, null)
+
+    assertThat(result.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
+    then(transactionService).should(never()).complete(attempt)
+    then(transactionService).should(never()).requireRefundAccount(attempt)
+  }
+
+  @Test
+  fun `환불 계좌를 보냈거나 결제 수단이 가상계좌가 아니면 입력 필요 상태로 바꾸지 않는다`() {
+    val attempt = attempt()
+    val refundAccount = RefundReceiveAccount("088", "0123456789", "홍길동")
+    given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(attempt, attempt)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(
+      externalPayment(ExternalPaymentStatus.DONE, method = "가상계좌"),
+      externalPayment(ExternalPaymentStatus.DONE, method = "카드"),
+    )
+    willThrow(IllegalStateException("결제 취소 실패")).given(paymentGateway).cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
+      refundAccount,
+    )
+    willThrow(IllegalStateException("결제 취소 실패")).given(paymentGateway).cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID-$RETRY_REQUEST_ID",
+      null,
+    )
+
+    val withAccount = service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, refundAccount)
+    val nonVirtualAccount = service.cancelReservation(USER_ID, RESERVATION_ID, RETRY_REQUEST_ID, null)
+
+    assertThat(withAccount.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
+    assertThat(nonVirtualAccount.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
+    then(transactionService).should(never()).requireRefundAccount(attempt)
+  }
+
+  @Test
+  fun `입금 전 가상계좌 취소 실패는 환불 계좌 입력 필요 상태가 아니다`() {
+    val attempt = attempt()
+    given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(attempt)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.READY, method = "가상계좌"))
+    willThrow(IllegalStateException("아직 입금 전입니다.")).given(paymentGateway).cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
+      null,
+    )
+
+    val result = service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, null)
+
+    assertThat(result.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
+    then(transactionService).should(never()).requireRefundAccount(attempt)
+  }
+
+  @Test
+  fun `부분 취소된 가상계좌도 환불 계좌 입력 상태로 전환한다`() {
+    val attempt = attempt()
+    val result = ReservationCancellationResult(RESERVATION_ID, ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+    given(transactionService.begin(USER_ID, RESERVATION_ID)).willReturn(attempt)
+    given(paymentGateway.find(PAYMENT_KEY)).willReturn(
+      externalPayment(ExternalPaymentStatus.PARTIAL_CANCELED, method = "가상계좌"),
+    )
+    given(transactionService.requireRefundAccount(attempt)).willReturn(result)
+    willThrow(IllegalStateException("환불 계좌 정보가 필요합니다.")).given(paymentGateway).cancel(
+      PAYMENT_KEY,
+      "사용자 요청으로 예매를 취소했습니다.",
+      "reservation-cancel-$RESERVATION_ID-$REQUEST_ID",
+      null,
+    )
+
+    assertThat(service.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, null)).isEqualTo(result)
+    then(transactionService).should().requireRefundAccount(attempt)
+  }
+
+  @Test
   fun `환불 계좌를 보완한 재요청은 새 멱등키로 Toss에 전달한다`() {
     val attempt = attempt()
     val refundAccount = RefundReceiveAccount("088", "0123456789", "홍길동")

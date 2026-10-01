@@ -158,6 +158,62 @@ class ReservationCancellationTransactionServiceTest {
   }
 
   @Test
+  fun `없는 예매는 환불 계좌 입력 필요 상태로 전환할 수 없다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(null)
+
+    val exception = assertThrows<CustomException> {
+      service.requireRefundAccount(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+  }
+
+  @Test
+  fun `이미 환불된 예매를 환불 계좌 입력 필요 상태로 바꾸지 않는다`() {
+    val reservation = reservation(status = ReservationStatus.REFUNDED)
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+
+    val result = service.requireRefundAccount(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+
+    assertThat(result.status).isEqualTo(ReservationStatus.REFUNDED)
+    assertThat(reservation.status).isEqualTo(ReservationStatus.REFUNDED)
+  }
+
+  @Test
+  fun `취소 대기와 환불 계좌 입력 필요가 아닌 상태는 계좌 입력 전환을 거부한다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation())
+
+    val exception = assertThrows<CustomException> {
+      service.requireRefundAccount(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+  }
+
+  @Test
+  fun `다른 결제 키의 취소 대기는 환불 계좌 입력 상태로 전환하지 않는다`() {
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID))
+      .willReturn(reservation(status = ReservationStatus.CANCELLATION_PENDING))
+
+    val exception = assertThrows<CustomException> {
+      service.requireRefundAccount(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, "other-payment", ORDER_ID, AMOUNT))
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+  }
+
+  @Test
+  fun `이미 환불 계좌 입력이 필요한 예매는 같은 상태를 반환한다`() {
+    val reservation = reservation(status = ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+
+    val result = service.requireRefundAccount(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+
+    assertThat(result.status).isEqualTo(ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+    assertThat(reservation.status).isEqualTo(ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+  }
+
+  @Test
   fun `이미 환불 완료 상태면 취소 완료 처리를 반복하지 않는다`() {
     val reservation = reservation(status = ReservationStatus.REFUNDED)
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
