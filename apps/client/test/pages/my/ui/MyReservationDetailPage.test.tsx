@@ -14,6 +14,7 @@ vi.mock("@pages/my/model/use-my-reservation", () => ({ useMyReservation: mockUse
 const reservation = {
   id: 501,
   concertTitle: "아이유 콘서트",
+  posterUrl: "https://example.com/iu-poster.jpg",
   performanceName: "금요일 공연",
   performanceStartsAt: "2026-12-18T19:00:00",
   venueName: "티클 아레나",
@@ -45,6 +46,7 @@ describe("MyReservationDetailPage", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: reservation.concertTitle })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "아이유 콘서트 포스터" })).toHaveAttribute("src", reservation.posterUrl);
     expect(screen.getByText("예매 번호 501")).toBeInTheDocument();
     expect(screen.getByText("티클 아레나")).toBeInTheDocument();
     expect(screen.getByText("R석 A-12")).toBeInTheDocument();
@@ -60,6 +62,22 @@ describe("MyReservationDetailPage", () => {
     renderPage();
 
     expect(screen.getByText("좌석 정보 없음")).toBeInTheDocument();
+  });
+
+  it("포스터가 없으면 이미지 요소를 표시하지 않는다", () => {
+    mockUseMyReservation.mockReturnValue({ ...detailState, reservation: { ...reservation, posterUrl: null } });
+    renderPage();
+
+    expect(screen.queryByRole("img", { name: "아이유 콘서트 포스터" })).not.toBeInTheDocument();
+  });
+
+  it("포스터 이미지 로드가 실패하면 기본 아이콘을 남긴다", () => {
+    renderPage();
+    const poster = screen.getByRole("img", { name: "아이유 콘서트 포스터" });
+
+    fireEvent.error(poster);
+
+    expect(poster).toHaveStyle({ display: "none" });
   });
 
   it("상세 정보를 불러오는 동안 로딩 상태를 표시한다", () => {

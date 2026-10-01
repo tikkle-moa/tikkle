@@ -90,6 +90,7 @@ class ReservationControllerTest {
     }.andExpect {
       status { isOk() }
       jsonPath("$.data.id") { value(RESERVATION_ID) }
+      jsonPath("$.data.posterUrl") { value("https://example.com/poster.jpg") }
     }
   }
 

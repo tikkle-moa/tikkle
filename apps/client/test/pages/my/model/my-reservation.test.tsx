@@ -21,6 +21,7 @@ vi.mock("@shared/api", () => ({
 const reservation = {
   id: 501,
   concertTitle: "아이유 콘서트",
+  posterUrl: "https://example.com/iu-poster.jpg",
   performanceName: "금요일 공연",
   performanceStartsAt: "2026-12-18T19:00:00",
   venueName: "티클 아레나",
