@@ -13,7 +13,7 @@ import java.time.ZoneOffset
 class GroupService(private val userRepository: UserRepository, private val redisGroupService: RedisGroupService) {
   fun createGroupChatMessage(userId: Long, data: GroupChatData): GroupChatEventData {
     val user = userRepository.findById(userId).orElseThrow { CustomException(ErrorCode.FORBIDDEN, "사용자를 찾을 수 없습니다.") }
-    val groupId = redisGroupService.getGroupId(userId, data.performanceId)
+    val groupId = redisGroupService.getGroupId(userId, data.performanceId) ?: throw CustomException(ErrorCode.FORBIDDEN, "사용자가 속한 그룹을 찾을 수 없습니다.")
 
     return GroupChatEventData(
       groupId = groupId,
