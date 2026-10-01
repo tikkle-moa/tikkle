@@ -9,6 +9,7 @@ import java.util.UUID
 data class ReservationStatusChangedEvent(
   override val eventId: UUID,
   override val occurredAt: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
+  override val version: Long = occurredAt.toInstant().toEpochMilli(),
   override val type: ReservationStatusChangedEventType = ReservationStatusChangedEventType.STATUS_CHANGED,
   override val data: ReservationStatusChangedEventData,
 ) : StompEvent<ReservationStatusChangedEventType, ReservationStatusChangedEventData>

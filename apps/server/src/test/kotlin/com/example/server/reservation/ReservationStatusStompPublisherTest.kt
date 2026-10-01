@@ -33,6 +33,7 @@ class ReservationStatusStompPublisherTest {
       eventCaptor.capture(),
     )
     assertThat(eventCaptor.value.eventId).isEqualTo(eventId)
+    assertThat(eventCaptor.value.version).isGreaterThan(0L)
     assertThat(eventCaptor.value.type).isEqualTo(ReservationStatusChangedEventType.STATUS_CHANGED)
     assertThat(eventCaptor.value.data)
       .isEqualTo(ReservationStatusChangedEventData(RESERVATION_ID, ReservationStatus.REFUND_ACCOUNT_REQUIRED))
