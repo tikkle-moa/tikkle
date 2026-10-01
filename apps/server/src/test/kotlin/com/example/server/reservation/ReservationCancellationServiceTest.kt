@@ -7,6 +7,7 @@ import com.example.server.reservation.payment.dto.RefundReceiveAccount
 import com.example.server.reservation.payment.dto.ReservationCancellationAttempt
 import com.example.server.reservation.payment.types.ExternalPaymentStatus
 import com.example.server.reservation.types.ReservationStatus
+import com.example.server.support.anyNonNull
 import com.example.server.support.captureNonNull
 import com.example.server.support.eqNonNull
 import org.assertj.core.api.Assertions.assertThat
@@ -75,7 +76,12 @@ class ReservationCancellationServiceTest {
 
     assertThat(result.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
     then(transactionService).should(never()).complete(attempt)
-    then(statusStompPublisher).should().publish(USER_ID, RESERVATION_ID, ReservationStatus.CANCELLATION_PENDING)
+    then(statusStompPublisher).should().publish(
+      eqNonNull(USER_ID),
+      eqNonNull(RESERVATION_ID),
+      eqNonNull(ReservationStatus.CANCELLATION_PENDING),
+      anyNonNull(UUID::class.java, UUID(0L, 0L)),
+    )
   }
 
   @Test
@@ -128,6 +134,9 @@ class ReservationCancellationServiceTest {
   fun `Toss가 이미 취소한 결제는 로컬 예매 상태를 환불 완료로 맞춘다`() {
     val attempt = attempt()
     given(transactionService.findPending(RESERVATION_ID)).willReturn(attempt)
+    given(transactionService.complete(attempt)).willReturn(
+      ReservationCancellationResult(RESERVATION_ID, ReservationStatus.REFUNDED),
+    )
     given(paymentGateway.find(PAYMENT_KEY)).willReturn(externalPayment(ExternalPaymentStatus.CANCELED))
 
     service.reconcileCancellation(RESERVATION_ID)
@@ -177,7 +186,12 @@ class ReservationCancellationServiceTest {
       nullable(RefundReceiveAccount::class.java),
     )
     then(transactionService).should().requireRefundAccount(attempt)
-    then(statusStompPublisher).should().publish(USER_ID, RESERVATION_ID, ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+    then(statusStompPublisher).should().publish(
+      eqNonNull(USER_ID),
+      eqNonNull(RESERVATION_ID),
+      eqNonNull(ReservationStatus.REFUND_ACCOUNT_REQUIRED),
+      anyNonNull(UUID::class.java, UUID(0L, 0L)),
+    )
   }
 
   @Test

@@ -115,6 +115,7 @@ class SecurityConfig(
 
   private fun configureReservationAuthorization(auth: AuthorizationRegistry) {
     auth.requestMatchers(HttpMethod.GET, "/api/reservations", "/api/reservations/*").authenticated()
+    auth.requestMatchers(HttpMethod.POST, "/api/reservations/*/cancel").authenticated()
   }
 
   @Bean

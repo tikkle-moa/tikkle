@@ -22,6 +22,7 @@ import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
@@ -101,6 +102,7 @@ class ReservationControllerTest {
 
     mockMvc.post("/api/reservations/$RESERVATION_ID/cancel") {
       with(authentication(userAuth))
+      with(csrf())
       contentType = MediaType.APPLICATION_JSON
       content = """{"requestId":"$requestId"}"""
     }.andExpect {
@@ -119,6 +121,7 @@ class ReservationControllerTest {
 
     mockMvc.post("/api/reservations/$RESERVATION_ID/cancel") {
       with(authentication(userAuth))
+      with(csrf())
       contentType = MediaType.APPLICATION_JSON
       content = """{"requestId":"$requestId"}"""
     }.andExpect {
