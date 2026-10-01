@@ -2,12 +2,13 @@ import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
+import { formatDateTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
 
 import MyReservationSkeleton from "./MyReservationSkeleton";
 
 import { MY_RESERVATION_STATUS_LABELS } from "../model/my-reservation-detail.constants";
-import { formatReservationAmount, formatReservationDate } from "../model/my-reservation.utils";
+import { formatReservationAmount } from "../model/my-reservation.utils";
 import { useMyReservationDetail } from "../model/use-my-reservation-detail";
 
 const MyReservationDetailPage = () => {
@@ -68,7 +69,7 @@ const MyReservationDetailPage = () => {
         <dl className="mt-6 divide-y divide-gray-100 border-y border-gray-100 text-sm">
           <div className="flex justify-between gap-4 py-3">
             <dt className="shrink-0 text-gray-500">공연 일시</dt>
-            <dd className="text-right font-medium text-gray-900">{formatReservationDate(reservation.performanceStartsAt)}</dd>
+            <dd className="text-right font-medium text-gray-900">{formatDateTime(reservation.performanceStartsAt)}</dd>
           </div>
           <div className="flex justify-between gap-4 py-3">
             <dt className="shrink-0 text-gray-500">공연장</dt>
@@ -82,7 +83,7 @@ const MyReservationDetailPage = () => {
           </div>
           <div className="flex justify-between gap-4 py-3">
             <dt className="shrink-0 text-gray-500">예매 일시</dt>
-            <dd className="text-right font-medium text-gray-900">{formatReservationDate(reservation.createdAt)}</dd>
+            <dd className="text-right font-medium text-gray-900">{formatDateTime(reservation.createdAt)}</dd>
           </div>
           <div className="flex justify-between gap-4 py-3">
             <dt className="shrink-0 text-gray-500">결제 금액</dt>
