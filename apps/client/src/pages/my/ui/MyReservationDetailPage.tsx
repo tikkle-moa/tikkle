@@ -1,6 +1,8 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 
+import { Music2 } from "lucide-react";
+
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import { formatDateTime } from "@shared/lib/date.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
@@ -53,11 +55,26 @@ const MyReservationDetailPage = () => {
 
       <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5 sm:p-7">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-violet-700">예매 번호 {reservation.id}</p>
-            <h1 id="reservation-detail-title" className="mt-2 text-2xl font-bold text-gray-900">
-              {reservation.concertTitle}
-            </h1>
+          <div className="flex min-w-0 gap-4">
+            <div className="relative flex h-32 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-violet-50 text-violet-300">
+              <Music2 aria-hidden="true" size={28} />
+              {reservation.posterUrl && (
+                <img
+                  alt={`${reservation.concertTitle} 포스터`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  src={reservation.posterUrl}
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-violet-700">예매 번호 {reservation.id}</p>
+              <h1 id="reservation-detail-title" className="mt-2 text-2xl font-bold text-gray-900">
+                {reservation.concertTitle}
+              </h1>
+            </div>
           </div>
           <span className="shrink-0 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
             {MY_RESERVATION_STATUS_LABELS[reservation.status]}
