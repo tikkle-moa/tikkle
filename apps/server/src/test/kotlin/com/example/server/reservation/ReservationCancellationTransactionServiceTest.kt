@@ -43,7 +43,7 @@ class ReservationCancellationTransactionServiceTest {
 
     val attempt = service.begin(USER_ID, RESERVATION_ID)
 
-    assertThat(attempt).isEqualTo(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+    assertThat(attempt).isEqualTo(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
     assertThat(reservation.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
   }
 
@@ -67,12 +67,23 @@ class ReservationCancellationTransactionServiceTest {
   @Test
   fun `취소 대기 예매 재요청은 같은 결제 시도를 반환한다`() {
     val reservation = reservation(status = ReservationStatus.CANCELLATION_PENDING)
-    val expected = ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+    val expected = ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
     given(reservationRepository.findById(RESERVATION_ID)).willReturn(Optional.of(reservation))
 
     assertThat(service.begin(USER_ID, RESERVATION_ID)).isEqualTo(expected)
     assertThat(service.findPending(RESERVATION_ID)).isEqualTo(expected)
+  }
+
+  @Test
+  fun `환불 계좌 입력 필요 상태의 재요청은 취소 대기로 되돌린다`() {
+    val reservation = reservation(status = ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+
+    val attempt = service.begin(USER_ID, RESERVATION_ID)
+
+    assertThat(attempt).isEqualTo(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+    assertThat(reservation.status).isEqualTo(ReservationStatus.CANCELLATION_PENDING)
   }
 
   @Test
@@ -118,7 +129,7 @@ class ReservationCancellationTransactionServiceTest {
   @Test
   fun `환불 완료 후 좌석 이력을 유지하고 해제 이벤트를 기록한다`() {
     val reservation = reservation(status = ReservationStatus.CANCELLATION_PENDING)
-    val attempt = ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+    val attempt = ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
     given(reservationSeatRepository.findVenueSeatIdsByReservationId(RESERVATION_ID)).willReturn(listOf(101L, 102L))
 
@@ -135,11 +146,23 @@ class ReservationCancellationTransactionServiceTest {
   }
 
   @Test
+  fun `취소 대기에서 환불 계좌 입력 필요 상태로 전환한다`() {
+    val reservation = reservation(status = ReservationStatus.CANCELLATION_PENDING)
+    val attempt = ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
+    given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
+
+    val result = service.requireRefundAccount(attempt)
+
+    assertThat(result.status).isEqualTo(ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+    assertThat(reservation.status).isEqualTo(ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+  }
+
+  @Test
   fun `이미 환불 완료 상태면 취소 완료 처리를 반복하지 않는다`() {
     val reservation = reservation(status = ReservationStatus.REFUNDED)
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
 
-    val result = service.complete(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+    val result = service.complete(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
 
     assertThat(result.status).isEqualTo(ReservationStatus.REFUNDED)
     then(reservationSeatRepository).shouldHaveNoInteractions()
@@ -151,7 +174,7 @@ class ReservationCancellationTransactionServiceTest {
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(null)
 
     val exception = assertThrows<CustomException> {
-      service.complete(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+      service.complete(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
@@ -162,7 +185,7 @@ class ReservationCancellationTransactionServiceTest {
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation())
 
     val exception = assertThrows<CustomException> {
-      service.complete(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+      service.complete(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
@@ -175,7 +198,7 @@ class ReservationCancellationTransactionServiceTest {
       .willReturn(reservation(status = ReservationStatus.CANCELLATION_PENDING))
     given(reservationSeatRepository.findVenueSeatIdsByReservationId(RESERVATION_ID)).willReturn(emptyList())
 
-    val result = service.complete(ReservationCancellationAttempt(RESERVATION_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
+    val result = service.complete(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT))
 
     assertThat(result.status).isEqualTo(ReservationStatus.REFUNDED)
     then(outboxEventService).shouldHaveNoInteractions()
@@ -204,7 +227,7 @@ class ReservationCancellationTransactionServiceTest {
       .willReturn(reservation(status = ReservationStatus.CANCELLATION_PENDING))
 
     val exception = assertThrows<CustomException> {
-      service.complete(ReservationCancellationAttempt(RESERVATION_ID, "other-payment", ORDER_ID, AMOUNT))
+      service.complete(ReservationCancellationAttempt(RESERVATION_ID, USER_ID, "other-payment", ORDER_ID, AMOUNT))
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)

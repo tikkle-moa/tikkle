@@ -4,6 +4,7 @@ ALTER TABLE reservations
         'PAYMENT_PENDING',
         'PAYMENT_CONFIRMING',
         'CANCELLATION_PENDING',
+        'REFUND_ACCOUNT_REQUIRED',
         'SUCCEEDED',
         'FAILED',
         'CANCELLED',

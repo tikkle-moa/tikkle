@@ -9,6 +9,7 @@ import com.example.server.config.properties.JwtProperties
 import com.example.server.global.security.RestAccessDeniedHandler
 import com.example.server.global.security.RestAuthenticationEntryPoint
 import com.example.server.reservation.dto.MyReservationResponse
+import com.example.server.reservation.dto.ReservationCancellationResult
 import com.example.server.reservation.dto.ReservationSeatResponse
 import com.example.server.reservation.types.ReservationStatus
 import org.junit.jupiter.api.BeforeEach
@@ -17,6 +18,7 @@ import org.mockito.BDDMockito.given
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
@@ -24,7 +26,9 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import java.time.LocalDateTime
+import java.util.UUID
 
 @WebMvcTest(ReservationController::class)
 @Import(
@@ -37,6 +41,8 @@ class ReservationControllerTest {
   @Autowired lateinit var mockMvc: MockMvc
 
   @MockitoBean lateinit var reservationService: ReservationService
+
+  @MockitoBean lateinit var reservationCancellationService: ReservationCancellationService
 
   @MockitoBean lateinit var appProperties: AppProperties
 
@@ -82,6 +88,42 @@ class ReservationControllerTest {
     }.andExpect {
       status { isOk() }
       jsonPath("$.data.id") { value(RESERVATION_ID) }
+    }
+  }
+
+  @Test
+  fun `예매 취소는 REST 요청으로 서비스에 위임하고 상태를 반환한다`() {
+    val requestId = UUID.fromString("06349b76-0c49-49a7-812e-79b81f515fa8")
+    val result = ReservationCancellationResult(RESERVATION_ID, ReservationStatus.REFUND_ACCOUNT_REQUIRED)
+    given(
+      reservationCancellationService.cancelReservation(USER_ID, RESERVATION_ID, requestId, null),
+    ).willReturn(result)
+
+    mockMvc.post("/api/reservations/$RESERVATION_ID/cancel") {
+      with(authentication(userAuth))
+      contentType = MediaType.APPLICATION_JSON
+      content = """{"requestId":"$requestId"}"""
+    }.andExpect {
+      status { isOk() }
+      jsonPath("$.data.reservationId") { value(RESERVATION_ID) }
+      jsonPath("$.data.status") { value("REFUND_ACCOUNT_REQUIRED") }
+    }
+  }
+
+  @Test
+  fun `취소 결과 대사가 필요하면 Accepted와 취소 대기 상태를 반환한다`() {
+    val requestId = UUID.fromString("06349b76-0c49-49a7-812e-79b81f515fa8")
+    given(
+      reservationCancellationService.cancelReservation(USER_ID, RESERVATION_ID, requestId, null),
+    ).willReturn(ReservationCancellationResult(RESERVATION_ID, ReservationStatus.CANCELLATION_PENDING))
+
+    mockMvc.post("/api/reservations/$RESERVATION_ID/cancel") {
+      with(authentication(userAuth))
+      contentType = MediaType.APPLICATION_JSON
+      content = """{"requestId":"$requestId"}"""
+    }.andExpect {
+      status { isAccepted() }
+      jsonPath("$.data.status") { value("CANCELLATION_PENDING") }
     }
   }
 

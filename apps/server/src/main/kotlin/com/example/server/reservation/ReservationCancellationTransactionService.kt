@@ -3,7 +3,7 @@ package com.example.server.reservation
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.outbox.OutboxEventService
-import com.example.server.reservation.dto.ReservationCancellationMessageData
+import com.example.server.reservation.dto.ReservationCancellationResult
 import com.example.server.reservation.payment.dto.ReservationCancellationAttempt
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
@@ -35,6 +35,8 @@ class ReservationCancellationTransactionService(
         throw CustomException(ErrorCode.CONFLICT, "공연 시작 후에는 예매를 취소할 수 없습니다.")
       }
       reservation.status = ReservationStatus.CANCELLATION_PENDING
+    } else if (reservation.status == ReservationStatus.REFUND_ACCOUNT_REQUIRED) {
+      reservation.status = ReservationStatus.CANCELLATION_PENDING
     } else if (reservation.status != ReservationStatus.CANCELLATION_PENDING) {
       throw CustomException(ErrorCode.CONFLICT, "결제 완료된 예매만 취소할 수 있습니다.")
     }
@@ -44,6 +46,7 @@ class ReservationCancellationTransactionService(
 
     return ReservationCancellationAttempt(
       reservationId = reservation.id,
+      userId = reservation.booker.id,
       paymentKey = paymentKey,
       orderId = reservation.orderId,
       amount = reservation.amount,
@@ -51,12 +54,12 @@ class ReservationCancellationTransactionService(
   }
 
   @Transactional
-  fun complete(attempt: ReservationCancellationAttempt): ReservationCancellationMessageData {
+  fun complete(attempt: ReservationCancellationAttempt): ReservationCancellationResult {
     val reservation = reservationRepository.findByIdForUpdate(attempt.reservationId)
       ?: throw CustomException(ErrorCode.NOT_FOUND, "예매 내역을 찾을 수 없습니다.")
 
     if (reservation.status == ReservationStatus.REFUNDED) {
-      return ReservationCancellationMessageData(reservation.id, reservation.status)
+      return ReservationCancellationResult(reservation.id, reservation.status)
     }
 
     if (
@@ -78,7 +81,27 @@ class ReservationCancellationTransactionService(
       )
     }
 
-    return ReservationCancellationMessageData(reservation.id, reservation.status)
+    return ReservationCancellationResult(reservation.id, reservation.status)
+  }
+
+  @Transactional
+  fun requireRefundAccount(attempt: ReservationCancellationAttempt): ReservationCancellationResult {
+    val reservation = reservationRepository.findByIdForUpdate(attempt.reservationId)
+      ?: throw CustomException(ErrorCode.NOT_FOUND, "예매 내역을 찾을 수 없습니다.")
+
+    if (reservation.status == ReservationStatus.REFUNDED) {
+      return ReservationCancellationResult(reservation.id, reservation.status)
+    }
+
+    if (
+      reservation.status !in setOf(ReservationStatus.CANCELLATION_PENDING, ReservationStatus.REFUND_ACCOUNT_REQUIRED) ||
+      reservation.paymentKey != attempt.paymentKey
+    ) {
+      throw CustomException(ErrorCode.CONFLICT, "예매 취소 상태가 아닙니다.")
+    }
+
+    reservation.status = ReservationStatus.REFUND_ACCOUNT_REQUIRED
+    return ReservationCancellationResult(reservation.id, reservation.status)
   }
 
   @Transactional(readOnly = true)
@@ -89,6 +112,7 @@ class ReservationCancellationTransactionService(
     val paymentKey = reservation.paymentKey ?: return null
     return ReservationCancellationAttempt(
       reservationId = reservation.id,
+      userId = reservation.booker.id,
       paymentKey = paymentKey,
       orderId = reservation.orderId,
       amount = reservation.amount,

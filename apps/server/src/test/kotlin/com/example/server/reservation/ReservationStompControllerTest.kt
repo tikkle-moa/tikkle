@@ -25,15 +25,10 @@ import com.example.server.reservation.dto.GetPaymentOrderData
 import com.example.server.reservation.dto.PaymentOrderMessage
 import com.example.server.reservation.dto.PaymentOrderMessageData
 import com.example.server.reservation.dto.PaymentOrderSeatData
-import com.example.server.reservation.dto.ReservationCancellationCommand
-import com.example.server.reservation.dto.ReservationCancellationData
-import com.example.server.reservation.dto.ReservationCancellationMessage
-import com.example.server.reservation.dto.ReservationCancellationMessageData
 import com.example.server.reservation.dto.StartCheckoutCommand
 import com.example.server.reservation.dto.StartCheckoutData
 import com.example.server.reservation.dto.StartCheckoutMessage
 import com.example.server.reservation.dto.StartCheckoutMessageData
-import com.example.server.reservation.payment.dto.RefundReceiveAccount
 import com.example.server.reservation.types.ReservationStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -63,9 +58,6 @@ class ReservationStompControllerTest {
 
   @Mock
   lateinit var reservationPaymentService: ReservationPaymentService
-
-  @Mock
-  lateinit var reservationCancellationService: ReservationCancellationService
 
   @InjectMocks
   lateinit var controller: ReservationStompController
@@ -316,31 +308,6 @@ class ReservationStompControllerTest {
         requestType = CancelPaymentCommand::class.java,
         messageMapping = "/reservation/cancel-payment",
         responseDestination = "/queue/reservation/cancel-payment",
-      )
-    }
-  }
-
-  @Nested
-  @DisplayName("CANCEL_RESERVATION")
-  inner class CancelReservation {
-    @Test
-    fun `예매 취소 서비스에 위임하고 Toss 가상계좌 환불 정보를 전달한다`() {
-      val refundAccount = RefundReceiveAccount("은행코드", "0123456789", "홍길동")
-      val request = ReservationCancellationCommand(
-        requestId = REQUEST_ID,
-        data = ReservationCancellationData(RESERVATION_ID, refundAccount),
-      )
-      val result = ReservationCancellationMessageData(RESERVATION_ID, ReservationStatus.REFUNDED)
-      given(reservationCancellationService.cancelReservation(USER_ID, RESERVATION_ID, REQUEST_ID, refundAccount)).willReturn(result)
-
-      val response = controller.cancelReservation(request, authentication)
-
-      assertThat(response).isEqualTo(ReservationCancellationMessage(REQUEST_ID, result))
-      assertEndpoint(
-        methodName = "cancelReservation",
-        requestType = ReservationCancellationCommand::class.java,
-        messageMapping = "/reservation/cancel-reservation",
-        responseDestination = "/queue/reservation/cancel-reservation",
       )
     }
   }

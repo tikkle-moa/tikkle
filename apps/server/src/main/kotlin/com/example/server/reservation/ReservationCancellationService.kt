@@ -1,7 +1,8 @@
 package com.example.server.reservation
 
-import com.example.server.reservation.dto.ReservationCancellationMessageData
+import com.example.server.reservation.dto.ReservationCancellationResult
 import com.example.server.reservation.payment.PaymentGateway
+import com.example.server.reservation.payment.dto.ExternalPayment
 import com.example.server.reservation.payment.dto.RefundReceiveAccount
 import com.example.server.reservation.payment.dto.ReservationCancellationAttempt
 import com.example.server.reservation.payment.types.ExternalPaymentStatus
@@ -13,41 +14,60 @@ import java.util.UUID
 class ReservationCancellationService(
   private val transactionService: ReservationCancellationTransactionService,
   private val paymentGateway: PaymentGateway,
+  private val statusStompPublisher: ReservationStatusStompPublisher,
 ) {
   fun cancelReservation(
     userId: Long,
     reservationId: Long,
     requestId: UUID,
     refundReceiveAccount: RefundReceiveAccount?,
-  ): ReservationCancellationMessageData {
+  ): ReservationCancellationResult {
     val attempt = transactionService.begin(userId, reservationId)
-      ?: return ReservationCancellationMessageData(reservationId, ReservationStatus.REFUNDED)
+      ?: return ReservationCancellationResult(reservationId, ReservationStatus.REFUNDED)
 
-    cancelPayment(attempt, refundReceiveAccount, requestId)
-    return transactionService.complete(attempt)
+    statusStompPublisher.publish(attempt.userId, reservationId, ReservationStatus.CANCELLATION_PENDING)
+
+    try {
+      cancelPayment(attempt, refundReceiveAccount, requestId)
+    } catch (_: Exception) {
+      val payment = runCatching { paymentGateway.find(attempt.paymentKey) }.getOrNull()
+      if (payment != null && isSamePayment(payment, attempt)) {
+        if (payment.status == ExternalPaymentStatus.CANCELED) {
+          return completeAndPublish(attempt)
+        }
+
+        if (
+          refundReceiveAccount == null &&
+          payment.method == VIRTUAL_ACCOUNT_METHOD &&
+          payment.status in setOf(ExternalPaymentStatus.DONE, ExternalPaymentStatus.PARTIAL_CANCELED)
+        ) {
+          return requireRefundAccountAndPublish(attempt)
+        }
+      }
+
+      return ReservationCancellationResult(reservationId, ReservationStatus.CANCELLATION_PENDING)
+    }
+
+    return completeAndPublish(attempt)
   }
 
   fun reconcileCancellation(reservationId: Long) {
     val attempt = transactionService.findPending(reservationId) ?: return
     val payment = paymentGateway.find(attempt.paymentKey) ?: return
 
-    if (
-      payment.paymentKey != attempt.paymentKey ||
-      payment.orderId != attempt.orderId ||
-      payment.amount != attempt.amount
-    ) {
-      return
-    }
-
-    if (payment.status != ExternalPaymentStatus.CANCELED && payment.method == VIRTUAL_ACCOUNT_METHOD) return
+    if (!isSamePayment(payment, attempt)) return
 
     when (payment.status) {
-      ExternalPaymentStatus.CANCELED -> transactionService.complete(attempt)
+      ExternalPaymentStatus.CANCELED -> completeAndPublish(attempt)
       ExternalPaymentStatus.DONE,
       ExternalPaymentStatus.PARTIAL_CANCELED,
       -> {
-        cancelPayment(attempt)
-        transactionService.complete(attempt)
+        if (payment.method == VIRTUAL_ACCOUNT_METHOD) {
+          requireRefundAccountAndPublish(attempt)
+        } else {
+          cancelPayment(attempt)
+          completeAndPublish(attempt)
+        }
       }
 
       ExternalPaymentStatus.READY,
@@ -59,12 +79,27 @@ class ReservationCancellationService(
     }
   }
 
+  private fun completeAndPublish(attempt: ReservationCancellationAttempt): ReservationCancellationResult {
+    val result = transactionService.complete(attempt)
+    statusStompPublisher.publish(attempt.userId, attempt.reservationId, result.status)
+    return result
+  }
+
+  private fun requireRefundAccountAndPublish(attempt: ReservationCancellationAttempt): ReservationCancellationResult {
+    val result = transactionService.requireRefundAccount(attempt)
+    statusStompPublisher.publish(attempt.userId, attempt.reservationId, result.status)
+    return result
+  }
+
+  private fun isSamePayment(payment: ExternalPayment, attempt: ReservationCancellationAttempt) =
+    payment.paymentKey == attempt.paymentKey && payment.orderId == attempt.orderId && payment.amount == attempt.amount
+
   private fun cancelPayment(
     attempt: ReservationCancellationAttempt,
     refundReceiveAccount: RefundReceiveAccount? = null,
     requestId: UUID = UUID.randomUUID(),
   ) {
-    // STOMP 재전송은 같은 requestId를 쓰고, Toss 상태 확인 후의 대사 재시도는 새 UUID를 사용합니다.
+    // REST 재전송은 같은 requestId를 쓰고, Toss 상태 확인 후의 대사 재시도는 새 UUID를 사용합니다.
     paymentGateway.cancel(
       paymentKey = attempt.paymentKey,
       cancelReason = CANCEL_REASON,

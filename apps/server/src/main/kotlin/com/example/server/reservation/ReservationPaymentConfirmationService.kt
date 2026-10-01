@@ -56,6 +56,7 @@ class ReservationPaymentConfirmationService(
 
       ReservationStatus.PAYMENT_CONFIRMING,
       ReservationStatus.CANCELLATION_PENDING,
+      ReservationStatus.REFUND_ACCOUNT_REQUIRED,
       ->
         throw CustomException(
           ErrorCode.CONFLICT,
