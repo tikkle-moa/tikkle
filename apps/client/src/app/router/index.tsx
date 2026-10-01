@@ -8,7 +8,7 @@ import { ConcertListPage } from "@pages/concert-list";
 import { ConcertNewPage } from "@pages/concert-new";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
-import { FavoritePage, MyPage, MyReservationPage } from "@pages/my";
+import { FavoritePage, MyPage, MyReservationDetailPage, MyReservationPage } from "@pages/my";
 import { PaymentCheckoutPage, PaymentFailPage, PaymentPage, PaymentSuccessPage } from "@pages/payment";
 import { PerformanceCheckoutPage } from "@pages/performance-checkout";
 import { PerformanceDetailPage } from "@pages/performance-detail";
@@ -73,6 +73,7 @@ export const router = createBrowserRouter([
             children: [
               { path: ROUTE_PATHS.MY_FAVORITES, element: <FavoritePage /> },
               { path: ROUTE_PATHS.MY_RESERVATIONS, element: <MyReservationPage /> },
+              { path: ROUTE_PATHS.MY_RESERVATION_DETAIL, element: <MyReservationDetailPage /> },
             ],
           },
         ],
