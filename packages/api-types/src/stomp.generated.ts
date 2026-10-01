@@ -129,7 +129,16 @@ export interface CancelCheckoutMessageData {
 }
 
 export type ReservationStatus =
-  "PAYMENT_PENDING" | "PAYMENT_CONFIRMING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "EXPIRED" | "REFUND_REQUIRED" | "REFUNDED";
+  | "PAYMENT_PENDING"
+  | "PAYMENT_CONFIRMING"
+  | "CANCELLATION_PENDING"
+  | "REFUND_ACCOUNT_REQUIRED"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "CANCELLED"
+  | "EXPIRED"
+  | "REFUND_REQUIRED"
+  | "REFUNDED";
 
 export interface CancelPaymentCommand {
   data: CancelPaymentData;
@@ -264,5 +273,20 @@ export interface PerformanceVenueSeatIdsEvent {
 }
 
 export type PerformanceVenueSeatIdsEventType = "RELEASED_SEATS" | "RESERVATION_CONFIRMED";
+
+export interface ReservationStatusChangedEvent {
+  data: ReservationStatusChangedEventData;
+  eventId: string;
+  occurredAt: string;
+  type: ReservationStatusChangedEventType;
+  version: number;
+}
+
+export interface ReservationStatusChangedEventData {
+  reservationId: number;
+  status: ReservationStatus;
+}
+
+export type ReservationStatusChangedEventType = "STATUS_CHANGED";
 
 export type PerformanceSeatEventType = PerformanceSeatEvent["type"];

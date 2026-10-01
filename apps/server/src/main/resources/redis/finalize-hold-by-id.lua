@@ -1,4 +1,4 @@
--- Outbox RESERVATION_CONFIRMED 이벤트를 특정 Hold에만 적용합니다.
+-- Outbox PAYMENT_CONFIRMED 이벤트를 특정 Hold에만 적용합니다.
 -- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdExpiryKey -> holdPerformanceKey -> holdGroupKey -> outbox marker key -> versionKey
 -- ARGV[1]: 예상 holdId
 -- ARGV[2]: 좌석 키 수

@@ -61,7 +61,13 @@ class ReservationPaymentConfirmationServiceTest {
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L)))
       .willReturn(listOf(venueSeat(101, 66_000), venueSeat(102, 66_000)))
-    given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L, 102L))).willReturn(false)
+    given(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+        PERFORMANCE_ID,
+        listOf(101L, 102L),
+        ReservationStatus.BOOKED_SEAT_STATUSES,
+      ),
+    ).willReturn(false)
 
     val result = service.begin(USER_ID, PAYMENT_KEY, ORDER_ID, AMOUNT)
 
@@ -283,7 +289,13 @@ class ReservationPaymentConfirmationServiceTest {
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L)))
       .willReturn(listOf(venueSeat(101, 66_000), venueSeat(102, 66_000)))
-    given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L, 102L)))
+    given(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+        PERFORMANCE_ID,
+        listOf(101L, 102L),
+        ReservationStatus.BOOKED_SEAT_STATUSES,
+      ),
+    )
       .willReturn(true)
 
     val exception = assertThrows<CustomException> {
@@ -301,7 +313,13 @@ class ReservationPaymentConfirmationServiceTest {
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(active)
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L)))
       .willReturn(listOf(venueSeat(101, 66_000), venueSeat(102, 66_000)))
-    given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L, 102L))).willReturn(false)
+    given(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+        PERFORMANCE_ID,
+        listOf(101L, 102L),
+        ReservationStatus.BOOKED_SEAT_STATUSES,
+      ),
+    ).willReturn(false)
 
     val result = service.complete(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))
 
@@ -311,7 +329,7 @@ class ReservationPaymentConfirmationServiceTest {
     assertThat(reservation.status).isEqualTo(ReservationStatus.SUCCEEDED)
     assertThat(reservation.paymentKey).isEqualTo(PAYMENT_KEY)
     then(reservationSeatRepository).should().saveAll(any<Iterable<ReservationSeat>>())
-    then(outboxEventService).should().recordReservationConfirmed(RESERVATION_ID, active.holdDetails.single())
+    then(outboxEventService).should().recordPaymentConfirmed(RESERVATION_ID, active.holdDetails.single())
   }
 
   @Test
@@ -532,7 +550,13 @@ class ReservationPaymentConfirmationServiceTest {
     given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L, 102L)))
       .willReturn(listOf(venueSeat(101, 66_000), venueSeat(102, 66_000)))
-    given(reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(PERFORMANCE_ID, listOf(101L, 102L)))
+    given(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+        PERFORMANCE_ID,
+        listOf(101L, 102L),
+        ReservationStatus.BOOKED_SEAT_STATUSES,
+      ),
+    )
       .willReturn(true)
 
     val result = service.complete(PaymentConfirmationAttempt(RESERVATION_ID, PAYMENT_KEY))

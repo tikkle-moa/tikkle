@@ -1,12 +1,16 @@
 package com.example.server.outbox
 
 import com.example.server.config.properties.OutboxDispatcherProperties
+import com.example.server.outbox.dto.PaymentCancelledSeatEventPayload
 import com.example.server.outbox.dto.ReservationSeatEventPayload
 import com.example.server.outbox.entity.OutboxEvent
 import com.example.server.outbox.types.OutboxEventType
 import com.example.server.outbox.types.OutboxHoldActionResult
 import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.performance.RedisVenueSeatHoldService
+import com.example.server.reservation.repository.ReservationRepository
+import com.example.server.reservation.repository.ReservationSeatRepository
+import com.example.server.reservation.types.ReservationStatus
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
@@ -25,6 +29,8 @@ class OutboxEventDispatcher(
   private val outboxEventService: OutboxEventService,
   private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
   private val performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher,
+  private val reservationRepository: ReservationRepository,
+  private val reservationSeatRepository: ReservationSeatRepository,
   private val objectMapper: ObjectMapper,
   private val properties: OutboxDispatcherProperties,
 ) {
@@ -74,11 +80,15 @@ class OutboxEventDispatcher(
   }
 
   private fun process(event: OutboxEvent) {
-    val payload = objectMapper.readValue(event.payload, ReservationSeatEventPayload::class.java)
     val eventId = UUID.fromString(event.eventId)
 
     when (event.eventType) {
-      OutboxEventType.RESERVATION_CONFIRMED -> {
+      OutboxEventType.PAYMENT_CONFIRMED -> {
+        val payload = objectMapper.readValue(event.payload, ReservationSeatEventPayload::class.java)
+        if (reservationRepository.findById(payload.reservationId).orElse(null)?.status != ReservationStatus.SUCCEEDED) {
+          return
+        }
+
         val result = redisVenueSeatHoldService.finalizeVenueSeats(
           holdId = payload.holdId,
           groupId = payload.groupId,
@@ -90,6 +100,10 @@ class OutboxEventDispatcher(
           error("예매 확정 대상 Hold의 좌석 소유권이 변경되었습니다.")
         }
 
+        if (reservationRepository.findById(payload.reservationId).orElse(null)?.status != ReservationStatus.SUCCEEDED) {
+          return
+        }
+
         performanceVenueSeatStompPublisher.publishReservationConfirmed(
           performanceId = payload.performanceId,
           venueSeatIds = payload.seatIds,
@@ -99,6 +113,7 @@ class OutboxEventDispatcher(
       }
 
       OutboxEventType.RELEASED_SEATS -> {
+        val payload = objectMapper.readValue(event.payload, ReservationSeatEventPayload::class.java)
         val result = redisVenueSeatHoldService.releaseVenueSeats(
           holdId = payload.holdId,
           groupId = payload.groupId,
@@ -113,6 +128,36 @@ class OutboxEventDispatcher(
           performanceVenueSeatStompPublisher.publishReleasedSeats(
             performanceId = payload.performanceId,
             venueSeatIds = payload.seatIds,
+            version = result.version,
+            eventId = eventId,
+          )
+        }
+      }
+
+      OutboxEventType.PAYMENT_CANCELLED -> {
+        val cancellation = objectMapper.readValue(event.payload, PaymentCancelledSeatEventPayload::class.java)
+        val result = redisVenueSeatHoldService.releaseCancelledReservationSeats(
+          groupId = cancellation.groupId,
+          performanceId = cancellation.performanceId,
+          venueSeatIds = cancellation.seatIds,
+          cancelledAtEpochMillis = cancellation.cancelledAtEpochMillis,
+          eventId = eventId,
+        )
+        val currentlyBookedSeatIds = if (result.releasedVenueSeatIds.isEmpty()) {
+          emptySet()
+        } else {
+          reservationSeatRepository
+            .findVenueSeatIdsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
+              performanceId = cancellation.performanceId,
+              venueSeatIds = result.releasedVenueSeatIds,
+              statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
+            ).toSet()
+        }
+        val releasedVenueSeatIds = result.releasedVenueSeatIds.filterNot { it in currentlyBookedSeatIds }
+        if (releasedVenueSeatIds.isNotEmpty()) {
+          performanceVenueSeatStompPublisher.publishReleasedSeats(
+            performanceId = cancellation.performanceId,
+            venueSeatIds = releasedVenueSeatIds,
             version = result.version,
             eventId = eventId,
           )

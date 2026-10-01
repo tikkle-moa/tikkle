@@ -54,7 +54,10 @@ class ReservationPaymentConfirmationService(
         throw CustomException(ErrorCode.CONFLICT, "이미 종료된 결제입니다.")
       }
 
-      ReservationStatus.PAYMENT_CONFIRMING ->
+      ReservationStatus.PAYMENT_CONFIRMING,
+      ReservationStatus.CANCELLATION_PENDING,
+      ReservationStatus.REFUND_ACCOUNT_REQUIRED,
+      ->
         throw CustomException(
           ErrorCode.CONFLICT,
           "결제 승인 결과를 확인하고 있습니다.",
@@ -124,9 +127,10 @@ class ReservationPaymentConfirmationService(
     }
 
     if (
-      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
         performanceId = reservation.performance.id,
         venueSeatIds = venueSeatIds,
+        statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       )
     ) {
       throw CustomException(ErrorCode.CONFLICT, "이미 예매된 좌석이 포함되어 있습니다.")
@@ -201,9 +205,10 @@ class ReservationPaymentConfirmationService(
     if (
       venueSeats.size != holds.venueSeatIds.size ||
       venueSeats.sumOf { it.price } != reservation.amount ||
-      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdIn(
+      reservationSeatRepository.existsByPerformanceIdAndVenueSeatIdInAndReservationStatusIn(
         performanceId = reservation.performance.id,
         venueSeatIds = holds.venueSeatIds,
+        statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       )
     ) {
       reservation.status = ReservationStatus.REFUND_REQUIRED
@@ -225,9 +230,8 @@ class ReservationPaymentConfirmationService(
         )
       },
     )
-
     holds.holdDetails.forEach { hold ->
-      outboxEventService.recordReservationConfirmed(
+      outboxEventService.recordPaymentConfirmed(
         reservationId = reservation.id,
         hold = hold,
       )

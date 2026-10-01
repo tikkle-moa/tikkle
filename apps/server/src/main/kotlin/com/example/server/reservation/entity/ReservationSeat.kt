@@ -19,7 +19,6 @@ import java.time.LocalDateTime
 @Table(
   name = "reservation_seats",
   uniqueConstraints = [
-    UniqueConstraint(name = "uq_reservation_performance_venue_seat", columnNames = ["performance_id", "venue_seat_id"]),
     UniqueConstraint(name = "uq_reservation_venue_seat", columnNames = ["reservation_id", "venue_seat_id"]),
   ],
 )

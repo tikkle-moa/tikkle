@@ -4,6 +4,7 @@ import com.example.server.config.properties.TossPaymentsProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.reservation.payment.dto.ExternalPayment
+import com.example.server.reservation.payment.dto.RefundReceiveAccount
 import com.example.server.reservation.payment.types.ExternalPaymentStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -183,6 +184,36 @@ class TossPaymentClientTest {
     }
 
     @Test
+    fun `가상계좌 취소 요청에 환불 계좌 정보를 전송한다`() {
+      mockServer.expect(method(HttpMethod.POST))
+        .andExpect(requestTo("$BASE_URL/v1/payments/$PAYMENT_KEY/cancel"))
+        .andExpect(
+          content().json(
+            """
+            {
+              "cancelReason": "$CANCEL_REASON",
+              "refundReceiveAccount": {
+                "bank": "088",
+                "accountNumber": "0123456789",
+                "holderName": "홍길동"
+              }
+            }
+            """.trimIndent(),
+          ),
+        )
+        .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess())
+
+      tossPaymentClient.cancel(
+        paymentKey = PAYMENT_KEY,
+        cancelReason = CANCEL_REASON,
+        idempotencyKey = IDEMPOTENCY_KEY,
+        refundReceiveAccount = RefundReceiveAccount("088", "0123456789", "홍길동"),
+      )
+
+      mockServer.verify()
+    }
+
+    @Test
     fun `Toss 취소 호출이 실패하면 BAD_GATEWAY 예외로 변환한다`() {
       mockServer.expect(method(HttpMethod.POST))
         .andRespond(withServerError())
@@ -221,7 +252,8 @@ class TossPaymentClientTest {
               "paymentKey": "$PAYMENT_KEY",
               "orderId": "$ORDER_ID",
               "totalAmount": $AMOUNT,
-              "status": "DONE"
+              "status": "DONE",
+              "method": "가상계좌"
             }
             """.trimIndent(),
             MediaType.APPLICATION_JSON,
@@ -236,6 +268,7 @@ class TossPaymentClientTest {
           orderId = ORDER_ID,
           amount = AMOUNT,
           status = ExternalPaymentStatus.DONE,
+          method = "가상계좌",
         ),
       )
       mockServer.verify()

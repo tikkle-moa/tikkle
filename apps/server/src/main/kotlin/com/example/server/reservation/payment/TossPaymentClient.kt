@@ -4,7 +4,9 @@ import com.example.server.config.properties.TossPaymentsProperties
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.reservation.payment.dto.ExternalPayment
+import com.example.server.reservation.payment.dto.RefundReceiveAccount
 import com.example.server.reservation.payment.types.ExternalPaymentStatus
+import com.fasterxml.jackson.annotation.JsonInclude
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
@@ -50,7 +52,7 @@ class TossPaymentClient(restClientBuilder: RestClient.Builder, private val prope
     }
   }
 
-  override fun cancel(paymentKey: String, cancelReason: String, idempotencyKey: String) {
+  override fun cancel(paymentKey: String, cancelReason: String, idempotencyKey: String, refundReceiveAccount: RefundReceiveAccount?) {
     try {
       restClient.post()
         .uri("/v1/payments/{paymentKey}/cancel", paymentKey)
@@ -62,6 +64,7 @@ class TossPaymentClient(restClientBuilder: RestClient.Builder, private val prope
         .body(
           TossPaymentCancelRequest(
             cancelReason = cancelReason,
+            refundReceiveAccount = refundReceiveAccount,
           ),
         )
         .retrieve()
@@ -106,16 +109,24 @@ class TossPaymentClient(restClientBuilder: RestClient.Builder, private val prope
     }
   }
 
-  private data class TossPaymentResponse(val paymentKey: String, val orderId: String, val totalAmount: Int, val status: ExternalPaymentStatus)
+  private data class TossPaymentResponse(
+    val paymentKey: String,
+    val orderId: String,
+    val totalAmount: Int,
+    val status: ExternalPaymentStatus,
+    val method: String? = null,
+  )
 
   private fun TossPaymentResponse.toPayment() = ExternalPayment(
     paymentKey = paymentKey,
     orderId = orderId,
     amount = totalAmount,
     status = status,
+    method = method,
   )
 }
 
 private data class TossPaymentConfirmRequest(val paymentKey: String, val orderId: String, val amount: Int)
 
-private data class TossPaymentCancelRequest(val cancelReason: String)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+private data class TossPaymentCancelRequest(val cancelReason: String, val refundReceiveAccount: RefundReceiveAccount?)
