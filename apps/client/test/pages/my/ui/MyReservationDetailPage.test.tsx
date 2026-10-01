@@ -3,6 +3,8 @@ import { MemoryRouter } from "react-router";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { formatDateTime } from "@shared/lib/date.utils";
+
 import MyReservationDetailPage from "@pages/my/ui/MyReservationDetailPage";
 
 const mockUseMyReservation = vi.hoisted(() => vi.fn());
@@ -46,6 +48,8 @@ describe("MyReservationDetailPage", () => {
     expect(screen.getByText("예매 번호 501")).toBeInTheDocument();
     expect(screen.getByText("티클 아레나")).toBeInTheDocument();
     expect(screen.getByText("R석 A-12")).toBeInTheDocument();
+    expect(screen.getByText(formatDateTime(reservation.performanceStartsAt))).toBeInTheDocument();
+    expect(screen.getByText(formatDateTime(reservation.createdAt))).toBeInTheDocument();
     expect(screen.getByText("66,000원")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "예매 취소" }));
     expect(detailState.handleCancel).toHaveBeenCalledOnce();
