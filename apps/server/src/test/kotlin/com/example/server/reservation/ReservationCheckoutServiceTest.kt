@@ -524,7 +524,7 @@ class ReservationCheckoutServiceTest {
   @ParameterizedTest
   @EnumSource(
     value = ReservationStatus::class,
-    names = ["PAYMENT_CONFIRMING", "REFUND_REQUIRED", "SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED", "REFUNDED"],
+    names = ["PAYMENT_CONFIRMING", "CANCELLATION_PENDING", "REFUND_REQUIRED", "SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED", "REFUNDED"],
   )
   fun `종료 또는 진행 중인 예매는 취소할 수 없다`(status: ReservationStatus) {
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation(status = status))
