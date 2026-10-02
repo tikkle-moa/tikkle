@@ -20,6 +20,7 @@ export const useMyReservationDetail = () => {
   const isParamValid = Number.isInteger(id) && id > 0;
   const queryClient = useQueryClient();
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isCancelConfirmationOpen, setIsCancelConfirmationOpen] = useState(false);
   const [bank, setBank] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [holderName, setHolderName] = useState("");
@@ -99,9 +100,16 @@ export const useMyReservationDetail = () => {
   };
 
   const handleCancel = () => {
-    if (!window.confirm("이 예매를 취소할까요?")) return;
+    if (isCancelling) return;
+    setIsCancelConfirmationOpen(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setIsCancelConfirmationOpen(false);
     void cancelReservation();
   };
+
+  const handleDismissCancel = () => setIsCancelConfirmationOpen(false);
 
   const handleRefundAccountSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -114,7 +122,10 @@ export const useMyReservationDetail = () => {
     isPending: reservationQuery.isPending,
     isError: reservationQuery.isError,
     isCancelling,
+    isCancelConfirmationOpen,
     handleCancel,
+    handleConfirmCancel,
+    handleDismissCancel,
     bank,
     setBank,
     accountNumber,

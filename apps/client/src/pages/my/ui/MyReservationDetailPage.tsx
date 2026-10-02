@@ -1,5 +1,6 @@
 import { formatDateTime } from "@shared/lib/date.utils";
 import { formatPrice } from "@shared/lib/number.utils";
+import ConfirmationDialog from "@shared/ui/ConfirmationDialog";
 import DetailMessage from "@shared/ui/DetailMessage";
 
 import { ReservationPoster } from "@entities/reservation";
@@ -15,7 +16,10 @@ const MyReservationDetailPage = () => {
     reservation,
     isPending,
     isCancelling,
+    isCancelConfirmationOpen,
     handleCancel,
+    handleConfirmCancel,
+    handleDismissCancel,
     bank,
     setBank,
     accountNumber,
@@ -60,8 +64,7 @@ const MyReservationDetailPage = () => {
           <div className="flex min-w-0 gap-4">
             <ReservationPoster concertTitle={reservation.concertTitle} posterUrl={reservation.posterUrl} />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-violet-700">예매 번호 {reservation.id}</p>
-              <h1 id="reservation-detail-title" className="mt-2 text-2xl font-bold text-gray-900">
+              <h1 id="reservation-detail-title" className="text-2xl font-bold text-gray-900">
                 {reservation.concertTitle}
               </h1>
             </div>
@@ -163,6 +166,16 @@ const MyReservationDetailPage = () => {
           </form>
         )}
       </div>
+      {isCancelConfirmationOpen && (
+        <ConfirmationDialog
+          title="예매를 취소할까요?"
+          message="예매 취소를 요청하면 처리 결과를 이 화면에서 확인할 수 있어요."
+          cancelLabel="취소하지 않기"
+          confirmLabel="예매 취소"
+          onCancel={handleDismissCancel}
+          onConfirm={handleConfirmCancel}
+        />
+      )}
     </section>
   );
 };
