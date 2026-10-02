@@ -41,19 +41,27 @@ class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: Str
       throw AccessDeniedException("유효하지 않은 인증 세션입니다.")
     }
 
-    validateGroupChatSubscription(accessTokenPayload, accessor)
+    validateTopicSubscription(accessTokenPayload, accessor)
 
     return message
   }
 
-  private fun validateGroupChatSubscription(accessTokenPayload: AccessTokenPayload, accessor: StompHeaderAccessor) {
+  private fun validateTopicSubscription(accessTokenPayload: AccessTokenPayload, accessor: StompHeaderAccessor) {
     if (accessor.command != StompCommand.SUBSCRIBE) return
 
-    val groupId = GROUP_CHAT_DESTINATION.matchEntire(accessor.destination.orEmpty())
-      ?.groupValues
-      ?.get(1)
-      ?: return
+    val destination = accessor.destination.orEmpty()
+    if (!destination.startsWith(TOPIC_DESTINATION_PREFIX)) return
+    if (TOPIC_PATTERN_CHARACTER.containsMatchIn(destination)) {
+      throw AccessDeniedException("topic 패턴 구독은 지원하지 않습니다.")
+    }
 
+    when (val groupChatDestination = GROUP_CHAT_DESTINATION.matchEntire(destination)) {
+      null -> return
+      else -> validateGroupChatSubscription(accessTokenPayload, accessor, groupChatDestination.groupValues[1])
+    }
+  }
+
+  private fun validateGroupChatSubscription(accessTokenPayload: AccessTokenPayload, accessor: StompHeaderAccessor, groupId: String) {
     val performanceId = accessor.getFirstNativeHeader(PERFORMANCE_ID_HEADER)
       ?.toLongOrNull()
       ?: throw AccessDeniedException("그룹 채팅 구독에 공연 ID가 필요합니다.")
@@ -66,6 +74,9 @@ class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: Str
 
   companion object {
     private const val PERFORMANCE_ID_HEADER = "performanceId"
+    private const val TOPIC_DESTINATION_PREFIX = "/topic/"
+
     private val GROUP_CHAT_DESTINATION = Regex("^/topic/groups/([^/]+)/chat$")
+    private val TOPIC_PATTERN_CHARACTER = Regex("[*?{}]")
   }
 }

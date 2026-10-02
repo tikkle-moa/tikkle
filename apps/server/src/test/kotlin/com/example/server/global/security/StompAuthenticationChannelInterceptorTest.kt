@@ -80,6 +80,22 @@ class StompAuthenticationChannelInterceptorTest {
     }
 
     @Test
+    fun `그룹 채팅이 아닌 topic 구독은 그룹 멤버십 검증 없이 통과한다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/performances/1/status",
+      )
+
+      val result = interceptor.preSend(message, channel)
+
+      assertSame(message, result)
+      then(redisGroupService).shouldHaveNoInteractions()
+    }
+
+    @Test
     fun `그룹 구성원은 그룹 채팅 topic을 구독할 수 있다`() {
       val payload = validPayload()
       mockStoredSession(payload)
@@ -94,6 +110,40 @@ class StompAuthenticationChannelInterceptorTest {
       val result = interceptor.preSend(message, channel)
 
       assertSame(message, result)
+    }
+
+    @Test
+    fun `와일드카드로 그룹 채팅 topic을 구독할 수 없다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/groups/**/chat",
+      )
+
+      assertThrows<AccessDeniedException> {
+        interceptor.preSend(message, channel)
+      }
+
+      then(redisGroupService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `와일드카드로 모든 topic을 구독할 수 없다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/**",
+      )
+
+      assertThrows<AccessDeniedException> {
+        interceptor.preSend(message, channel)
+      }
+
+      then(redisGroupService).shouldHaveNoInteractions()
     }
 
     @Test
