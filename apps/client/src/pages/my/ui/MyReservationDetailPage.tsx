@@ -3,12 +3,11 @@ import { formatPrice } from "@shared/lib/number.utils";
 import ConfirmationDialog from "@shared/ui/ConfirmationDialog";
 import DetailMessage from "@shared/ui/DetailMessage";
 
-import { ReservationPoster } from "@entities/reservation";
+import { MY_RESERVATION_STATUS_MAP, ReservationPoster } from "@entities/reservation";
 
 import MyReservationSeatMapDialog from "./MyReservationSeatMapDialog";
 import MyReservationSkeleton from "./MyReservationSkeleton";
 
-import { MY_RESERVATION_STATUS_LABELS } from "../model/my-reservation-detail.constants";
 import { useMyReservationDetail } from "../model/use-my-reservation-detail";
 
 const MyReservationDetailPage = () => {
@@ -53,6 +52,7 @@ const MyReservationDetailPage = () => {
     );
   }
 
+  const reservationStatus = MY_RESERVATION_STATUS_MAP[reservation.status];
   const isRefundAccountRequired = reservation.status === "REFUND_ACCOUNT_REQUIRED";
 
   return (
@@ -71,9 +71,7 @@ const MyReservationDetailPage = () => {
               </h1>
             </div>
           </div>
-          <span className="shrink-0 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
-            {MY_RESERVATION_STATUS_LABELS[reservation.status]}
-          </span>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${reservationStatus.className}`}>{reservationStatus.label}</span>
         </div>
 
         <p className="mt-2 text-sm text-gray-600">{reservation.performanceName}</p>

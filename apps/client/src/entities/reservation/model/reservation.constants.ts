@@ -3,6 +3,7 @@ import type { MyReservationStatus, MyReservationStatusItem } from "./reservation
 export const RESERVATION_QUERY_KEYS = {
   all: ["reservations"] as const,
   my: () => [...RESERVATION_QUERY_KEYS.all, "my"] as const,
+  detail: (reservationId: number) => [...RESERVATION_QUERY_KEYS.all, "detail", reservationId] as const,
 };
 
 export const MY_RESERVATION_STATUS_MAP: Record<MyReservationStatus, MyReservationStatusItem> = {

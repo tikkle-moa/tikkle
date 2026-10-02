@@ -68,6 +68,7 @@ describe("MyReservationDetailPage", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: reservation.concertTitle })).toBeInTheDocument();
+    expect(screen.getByText("예매 완료")).toHaveClass("bg-emerald-100", "text-emerald-800");
     expect(screen.getByRole("img", { name: "아이유 콘서트 포스터" })).toHaveAttribute("src", reservation.posterUrl);
     expect(screen.queryByText(/예매 번호/)).not.toBeInTheDocument();
     expect(screen.getByText("티클 아레나")).toBeInTheDocument();

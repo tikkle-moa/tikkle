@@ -2,15 +2,14 @@ import { type FormEvent, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import type { components } from "@tikkle/api-types";
 
 import { apiClient } from "@shared/api";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { type MyReservation, RESERVATION_QUERY_KEYS } from "@entities/reservation";
+import { type MyReservation, RESERVATION_QUERY_KEYS, useMyReservationDetail as useMyReservationDetailQuery } from "@entities/reservation";
 
-import { MY_RESERVATION_QUERY_KEYS } from "./my-reservation-detail.constants";
 import { useMyReservationSeatMap } from "./use-my-reservation-seat-map";
 
 export const useMyReservationDetail = () => {
@@ -37,23 +36,7 @@ export const useMyReservationDetail = () => {
     navigate(ROUTE_PATHS.MY_RESERVATIONS);
   };
 
-  const reservationQuery = useQuery({
-    queryKey: MY_RESERVATION_QUERY_KEYS.detail(id),
-    enabled: isParamValid,
-    initialData: () => queryClient.getQueryData<MyReservation[]>(RESERVATION_QUERY_KEYS.my())?.find(({ id: cachedId }) => cachedId === id),
-    initialDataUpdatedAt: () => queryClient.getQueryState(RESERVATION_QUERY_KEYS.my())?.dataUpdatedAt,
-    queryFn: async () => {
-      const { data, error, response } = await apiClient.GET("/api/reservations/{reservationId}", {
-        params: { path: { reservationId: id } },
-      });
-
-      if (!response.ok || error || !data) {
-        throw new Error("예매 상세 정보를 불러오지 못했습니다.");
-      }
-
-      return data.data;
-    },
-  });
+  const reservationQuery = useMyReservationDetailQuery({ reservationId: id });
   const reservation = reservationQuery.data;
   const seatMap = useMyReservationSeatMap({ reservation });
 
@@ -77,14 +60,14 @@ export const useMyReservationDetail = () => {
       }
 
       requestIdRef.current = null;
-      queryClient.setQueryData<components["schemas"]["MyReservationResponse"]>(MY_RESERVATION_QUERY_KEYS.detail(id), (reservation) =>
+      queryClient.setQueryData<components["schemas"]["MyReservationResponse"]>(RESERVATION_QUERY_KEYS.detail(id), (reservation) =>
         reservation ? { ...reservation, status: data.data.status } : reservation,
       );
       queryClient.setQueryData<MyReservation[]>(RESERVATION_QUERY_KEYS.my(), (reservations) =>
         reservations?.map((reservation) => (reservation.id === id ? { ...reservation, status: data.data.status } : reservation)),
       );
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: MY_RESERVATION_QUERY_KEYS.detail(id) }),
+        queryClient.invalidateQueries({ queryKey: RESERVATION_QUERY_KEYS.detail(id) }),
         queryClient.invalidateQueries({ queryKey: RESERVATION_QUERY_KEYS.my() }),
       ]);
 
