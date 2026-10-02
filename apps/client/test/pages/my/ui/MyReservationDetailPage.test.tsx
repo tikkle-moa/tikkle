@@ -9,10 +9,8 @@ import { formatPrice } from "@shared/lib/number.utils";
 import MyReservationDetailPage from "@pages/my/ui/MyReservationDetailPage";
 
 const mockUseMyReservationDetail = vi.hoisted(() => vi.fn());
-const mockUseMyReservationSeatMap = vi.hoisted(() => vi.fn());
 
 vi.mock("@pages/my/model/use-my-reservation-detail", () => ({ useMyReservationDetail: mockUseMyReservationDetail }));
-vi.mock("@pages/my/model/use-my-reservation-seat-map", () => ({ useMyReservationSeatMap: mockUseMyReservationSeatMap }));
 
 const reservation = {
   id: 501,
@@ -45,18 +43,17 @@ const detailState = {
   setHolderName: vi.fn(),
   handleRefundAccountSubmit: vi.fn(),
   handleBackToReservations: vi.fn(),
-};
-
-const seatMapState = {
-  isOpen: false,
-  open: vi.fn(),
-  close: vi.fn(),
-  isPending: false,
-  isError: false,
-  matchingConcertCount: 0,
-  venueDetail: undefined,
-  selectedSeatIds: new Set<number>(),
-  reservationSeatCount: 1,
+  seatMap: {
+    isOpen: false,
+    open: vi.fn(),
+    close: vi.fn(),
+    isPending: false,
+    isError: false,
+    matchingConcertCount: 0,
+    venueDetail: undefined,
+    selectedSeatIds: new Set<number>(),
+    reservationSeatCount: 1,
+  },
 };
 
 const renderPage = () => render(<MyReservationDetailPage />, { wrapper: MemoryRouter });
@@ -65,7 +62,6 @@ describe("MyReservationDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseMyReservationDetail.mockReturnValue(detailState);
-    mockUseMyReservationSeatMap.mockReturnValue(seatMapState);
   });
 
   it("예매 상세 정보와 취소 동작을 표시한다", () => {
@@ -98,8 +94,23 @@ describe("MyReservationDetailPage", () => {
 
     await user.click(screen.getByRole("button", { name: "좌석 보기" }));
 
-    expect(mockUseMyReservationSeatMap).toHaveBeenCalledWith(reservation);
-    expect(seatMapState.open).toHaveBeenCalledOnce();
+    expect(detailState.seatMap.open).toHaveBeenCalledOnce();
+  });
+
+  it("좌석 배치도 모달을 표시하고 닫기 동작을 훅에 전달한다", async () => {
+    const user = userEvent.setup();
+    mockUseMyReservationDetail.mockReturnValue({
+      ...detailState,
+      seatMap: { ...detailState.seatMap, isOpen: true },
+    });
+    renderPage();
+
+    const dialog = screen.getByRole("dialog", { name: "예매 좌석 보기" });
+    expect(dialog).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "닫기" }));
+
+    expect(detailState.seatMap.close).toHaveBeenCalledOnce();
   });
 
   it("통일된 예매 취소 확인창에서 각 동작을 훅에 전달한다", async () => {

@@ -102,6 +102,31 @@ describe("내 예매 조회", () => {
     });
   });
 
+  it("상세 훅에서 좌석 지도 훅을 조합하고 모달을 열 때 공연장 좌석을 조회한다", async () => {
+    const concerts = [{ id: 12, venueId: 7, title: reservation.concertTitle, venueName: reservation.venueName }];
+    const venueDetail = {
+      venueSeats: [{ id: 701, sectionName: "R석", seatLabel: "A-12" }],
+    };
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/api/reservations/{reservationId}") return Promise.resolve(success(reservation));
+      if (path === "/api/concerts") return Promise.resolve(success(concerts));
+      if (path === "/api/venues/{id}") return Promise.resolve(success(venueDetail));
+      throw new Error(`Unexpected GET ${path}`);
+    });
+    const { wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    await waitFor(() => expect(result.current.reservation).toEqual(reservation));
+    expect(result.current.seatMap.isOpen).toBe(false);
+    expect(mockGet).not.toHaveBeenCalledWith("/api/concerts");
+
+    act(() => result.current.seatMap.open());
+
+    await waitFor(() => expect(result.current.seatMap.selectedSeatIds).toEqual(new Set([701])));
+    expect(mockGet).toHaveBeenCalledWith("/api/concerts");
+    expect(mockGet).toHaveBeenCalledWith("/api/venues/{id}", { params: { path: { id: 7 } } });
+  });
+
   it("예매 취소 API를 호출하고 상세 데이터를 갱신한다", async () => {
     mockGet.mockResolvedValueOnce(success(reservation)).mockResolvedValueOnce(success({ ...reservation, status: "REFUNDED" }));
     mockPost.mockResolvedValue(success({ reservationId: reservation.id, status: "REFUNDED" }));

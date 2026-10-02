@@ -107,6 +107,14 @@ describe("useMyReservationSeatMap", () => {
     vi.clearAllMocks();
   });
 
+  it("예매 정보가 없으면 좌석을 조회하지 않고 빈 상태를 반환한다", () => {
+    const { result } = renderHook(() => useMyReservationSeatMap(undefined), { wrapper: createWrapper() });
+
+    expect(result.current.reservationSeatCount).toBe(0);
+    expect(result.current.selectedSeatIds).toEqual(new Set());
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
   it("모달을 열면 콘서트의 공연장 좌석을 조회해 예매 좌석 ID를 반환한다", async () => {
     mockGet.mockImplementation((path: string) => {
       if (path === "/api/concerts") return Promise.resolve(success(concerts));
@@ -124,6 +132,25 @@ describe("useMyReservationSeatMap", () => {
     expect(mockGet).toHaveBeenNthCalledWith(2, "/api/venues/{id}", { params: { path: { id: 7 } } });
     expect(result.current.matchingConcertCount).toBe(1);
     expect(result.current.isPending).toBe(false);
+
+    act(() => result.current.close());
+
+    expect(result.current.isOpen).toBe(false);
+  });
+
+  it("일치하는 콘서트가 없으면 공연장 상세를 조회하지 않는다", async () => {
+    mockGet.mockResolvedValue(success([{ ...concerts[0], title: "다른 콘서트" }]));
+
+    const { result } = renderHook(() => useMyReservationSeatMap(reservation), { wrapper: createWrapper() });
+
+    act(() => result.current.open());
+    await waitFor(() => {
+      expect(result.current.matchingConcertCount).toBe(0);
+      expect(result.current.isPending).toBe(false);
+    });
+
+    expect(mockGet).toHaveBeenCalledOnce();
+    expect(mockGet).toHaveBeenCalledWith("/api/concerts");
   });
 
   it("콘서트명과 공연장명이 모두 일치하는 콘서트가 여러 개면 공연장 상세를 임의로 조회하지 않는다", async () => {
@@ -136,5 +163,33 @@ describe("useMyReservationSeatMap", () => {
 
     expect(result.current.isPending).toBe(false);
     expect(mockGet).toHaveBeenCalledOnce();
+  });
+
+  it("콘서트 목록 조회 오류를 좌석 지도 오류로 반환한다", async () => {
+    mockGet.mockRejectedValue(new Error("concert query failed"));
+
+    const { result } = renderHook(() => useMyReservationSeatMap(reservation), { wrapper: createWrapper() });
+
+    act(() => result.current.open());
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.isPending).toBe(false);
+    expect(mockGet).toHaveBeenCalledWith("/api/concerts");
+  });
+
+  it("공연장 상세 조회 오류를 좌석 지도 오류로 반환한다", async () => {
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/api/concerts") return Promise.resolve(success(concerts));
+      if (path === "/api/venues/{id}") return Promise.reject(new Error("venue query failed"));
+      throw new Error(`Unexpected GET ${path}`);
+    });
+
+    const { result } = renderHook(() => useMyReservationSeatMap(reservation), { wrapper: createWrapper() });
+
+    act(() => result.current.open());
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.isPending).toBe(false);
+    expect(mockGet).toHaveBeenCalledWith("/api/venues/{id}", { params: { path: { id: 7 } } });
   });
 });

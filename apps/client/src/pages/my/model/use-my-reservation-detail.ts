@@ -11,6 +11,7 @@ import { ROUTE_PATHS } from "@shared/config/router.config";
 import { type MyReservation, RESERVATION_QUERY_KEYS } from "@entities/reservation";
 
 import { MY_RESERVATION_QUERY_KEYS } from "./my-reservation-detail.constants";
+import { useMyReservationSeatMap } from "./use-my-reservation-seat-map";
 
 export const useMyReservationDetail = () => {
   const { reservationId } = useParams();
@@ -53,6 +54,8 @@ export const useMyReservationDetail = () => {
       return data.data;
     },
   });
+  const reservation = reservationQuery.data;
+  const seatMap = useMyReservationSeatMap(reservation);
 
   const cancelReservation = async (refundReceiveAccount: components["schemas"]["RefundReceiveAccount"] | null = null) => {
     if (!isParamValid || isCancelling) return;
@@ -118,9 +121,10 @@ export const useMyReservationDetail = () => {
 
   return {
     isParamValid,
-    reservation: reservationQuery.data,
+    reservation,
     isPending: reservationQuery.isPending,
     isError: reservationQuery.isError,
+    seatMap,
     isCancelling,
     isCancelConfirmationOpen,
     handleCancel,

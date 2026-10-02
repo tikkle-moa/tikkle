@@ -10,7 +10,6 @@ import MyReservationSkeleton from "./MyReservationSkeleton";
 
 import { MY_RESERVATION_STATUS_LABELS } from "../model/my-reservation-detail.constants";
 import { useMyReservationDetail } from "../model/use-my-reservation-detail";
-import { useMyReservationSeatMap } from "../model/use-my-reservation-seat-map";
 
 const MyReservationDetailPage = () => {
   const {
@@ -30,8 +29,8 @@ const MyReservationDetailPage = () => {
     setHolderName,
     handleRefundAccountSubmit,
     handleBackToReservations,
+    seatMap,
   } = useMyReservationDetail();
-  const seatMap = useMyReservationSeatMap(reservation);
 
   if (!isParamValid) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="올바른 예매 번호인지 확인해 주세요." />;
