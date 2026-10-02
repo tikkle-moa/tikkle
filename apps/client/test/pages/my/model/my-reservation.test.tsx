@@ -55,7 +55,7 @@ const createDetailWrapper = (
   initialEntries: NonNullable<ComponentProps<typeof MemoryRouter>["initialEntries"]>,
   cachedReservations?: MyReservation[],
 ) => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 1000 * 60 * 5 } } });
   if (cachedReservations) queryClient.setQueryData(RESERVATION_QUERY_KEYS.my(), cachedReservations);
   const wrapper = ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={queryClient}>
@@ -104,16 +104,28 @@ describe("내 예매 조회", () => {
     expect(result.current.reservation).toBeUndefined();
   });
 
-  it("목록 쿼리 캐시를 상세 초기 데이터로 사용한다", () => {
-    mockGet.mockImplementation(() => new Promise(() => {}));
+  it("신선한 목록 캐시는 상세 API 재요청 없이 초기 데이터로 사용한다", () => {
     const { wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
     const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
 
     expect(result.current.reservation).toEqual(reservation);
     expect(result.current.isPending).toBe(false);
-    expect(mockGet).toHaveBeenCalledWith("/api/reservations/{reservationId}", {
-      params: { path: { reservationId: 501 } },
-    });
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it("오래된 목록 캐시는 먼저 표시하면서 상세 API를 다시 조회한다", async () => {
+    mockGet.mockImplementation(() => new Promise(() => {}));
+    const { queryClient, wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
+    queryClient.setQueryData(RESERVATION_QUERY_KEYS.my(), [reservation], { updatedAt: Date.now() - 1000 * 60 * 6 });
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    expect(result.current.reservation).toEqual(reservation);
+    expect(result.current.isPending).toBe(false);
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith("/api/reservations/{reservationId}", {
+        params: { path: { reservationId: 501 } },
+      }),
+    );
   });
 
   it("상세 훅에서 좌석 지도 훅을 조합하고 모달을 열 때 공연장 좌석을 조회한다", async () => {
@@ -142,7 +154,7 @@ describe("내 예매 조회", () => {
   });
 
   it("예매 취소 API를 호출하고 상세 데이터를 갱신한다", async () => {
-    mockGet.mockResolvedValueOnce(success(reservation)).mockResolvedValueOnce(success({ ...reservation, status: "REFUNDED" }));
+    mockGet.mockResolvedValueOnce(success({ ...reservation, status: "REFUNDED" }));
     mockPost.mockResolvedValue(success({ reservationId: reservation.id, status: "REFUNDED" }));
     const { queryClient, wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
     const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
