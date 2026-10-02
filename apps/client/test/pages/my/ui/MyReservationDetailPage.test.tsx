@@ -9,8 +9,10 @@ import { formatPrice } from "@shared/lib/number.utils";
 import MyReservationDetailPage from "@pages/my/ui/MyReservationDetailPage";
 
 const mockUseMyReservationDetail = vi.hoisted(() => vi.fn());
+const mockUseMyReservationSeatMap = vi.hoisted(() => vi.fn());
 
 vi.mock("@pages/my/model/use-my-reservation-detail", () => ({ useMyReservationDetail: mockUseMyReservationDetail }));
+vi.mock("@pages/my/model/use-my-reservation-seat-map", () => ({ useMyReservationSeatMap: mockUseMyReservationSeatMap }));
 
 const reservation = {
   id: 501,
@@ -45,12 +47,25 @@ const detailState = {
   handleBackToReservations: vi.fn(),
 };
 
+const seatMapState = {
+  isOpen: false,
+  open: vi.fn(),
+  close: vi.fn(),
+  isPending: false,
+  isError: false,
+  matchingConcertCount: 0,
+  venueDetail: undefined,
+  selectedSeatIds: new Set<number>(),
+  reservationSeatCount: 1,
+};
+
 const renderPage = () => render(<MyReservationDetailPage />, { wrapper: MemoryRouter });
 
 describe("MyReservationDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseMyReservationDetail.mockReturnValue(detailState);
+    mockUseMyReservationSeatMap.mockReturnValue(seatMapState);
   });
 
   it("예매 상세 정보와 취소 동작을 표시한다", () => {
@@ -75,6 +90,16 @@ describe("MyReservationDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "← 내 예약 목록" }));
 
     expect(detailState.handleBackToReservations).toHaveBeenCalledOnce();
+  });
+
+  it("좌석 보기 버튼을 눌렀을 때 좌석 배치도 모달을 연다", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "좌석 보기" }));
+
+    expect(mockUseMyReservationSeatMap).toHaveBeenCalledWith(reservation);
+    expect(seatMapState.open).toHaveBeenCalledOnce();
   });
 
   it("통일된 예매 취소 확인창에서 각 동작을 훅에 전달한다", async () => {

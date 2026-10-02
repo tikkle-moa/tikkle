@@ -26,6 +26,34 @@ describe("venue map parts", () => {
     expect(screen.getByText(/좌석을 탭하거나 클릭하여 선택하세요/)).toBeInTheDocument();
   });
 
+  it("예약 좌석 ID를 지정한 지도에서는 예매 좌석 안내를 표시한다", () => {
+    render(<VenueMapSelectionInfo selectedSeat={null} selectedSeatIds={new Set([seat.id])} selectedSeatStatus={null} serverTimeOffset={0} />);
+
+    expect(screen.getByText("강조된 좌석은 예매된 좌석입니다.")).toBeInTheDocument();
+    expect(screen.queryByText(/Alt\/Option \+ 드래그로 여러 좌석/)).not.toBeInTheDocument();
+  });
+
+  it("예매 좌석이 없는 읽기 전용 지도에서는 선택 안내를 표시하지 않는다", () => {
+    render(<VenueMapSelectionInfo selectedSeat={null} selectedSeatIds={new Set()} selectedSeatStatus={null} serverTimeOffset={0} />);
+
+    expect(screen.getByText("표시할 예매 좌석이 없습니다.")).toBeInTheDocument();
+    expect(screen.queryByText(/좌석을 탭하거나 클릭하여 선택하세요/)).not.toBeInTheDocument();
+  });
+
+  it("좌석 선택이 활성화된 지도에서는 다중 선택 안내를 표시한다", () => {
+    render(
+      <VenueMapSelectionInfo
+        selectedSeat={null}
+        selectedSeatIds={new Set([seat.id])}
+        selectedSeatStatus={null}
+        serverTimeOffset={0}
+        isSeatSelectionEnabled
+      />,
+    );
+
+    expect(screen.getByText(/Alt\/Option \+ 드래그로 여러 좌석/)).toBeInTheDocument();
+  });
+
   it("선택 좌석과 사용 가능 상태를 표시한다", () => {
     render(<VenueMapSelectionInfo selectedSeat={seat} selectedSeatStatus="available" serverTimeOffset={0} />);
 
