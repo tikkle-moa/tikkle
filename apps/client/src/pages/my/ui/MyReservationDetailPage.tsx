@@ -5,10 +5,12 @@ import DetailMessage from "@shared/ui/DetailMessage";
 
 import { ReservationPoster } from "@entities/reservation";
 
+import MyReservationSeatMapDialog from "./MyReservationSeatMapDialog";
 import MyReservationSkeleton from "./MyReservationSkeleton";
 
 import { MY_RESERVATION_STATUS_LABELS } from "../model/my-reservation-detail.constants";
 import { useMyReservationDetail } from "../model/use-my-reservation-detail";
+import { useMyReservationSeatMap } from "../model/use-my-reservation-seat-map";
 
 const MyReservationDetailPage = () => {
   const {
@@ -29,6 +31,7 @@ const MyReservationDetailPage = () => {
     handleRefundAccountSubmit,
     handleBackToReservations,
   } = useMyReservationDetail();
+  const seatMap = useMyReservationSeatMap(reservation);
 
   if (!isParamValid) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="올바른 예매 번호인지 확인해 주세요." />;
@@ -87,8 +90,11 @@ const MyReservationDetailPage = () => {
           </div>
           <div className="flex justify-between gap-4 py-3">
             <dt className="shrink-0 text-gray-500">좌석</dt>
-            <dd className="text-right font-medium text-gray-900">
-              {reservation.seats.map(({ sectionName, seatLabel }) => `${sectionName} ${seatLabel}`).join(", ") || "좌석 정보 없음"}
+            <dd className="flex flex-col items-end gap-2 text-right font-medium text-gray-900">
+              <span>{reservation.seats.map(({ sectionName, seatLabel }) => `${sectionName} ${seatLabel}`).join(", ") || "좌석 정보 없음"}</span>
+              <button type="button" onClick={seatMap.open} className="text-sm font-semibold text-violet-700 hover:underline">
+                좌석 보기
+              </button>
             </dd>
           </div>
           <div className="flex justify-between gap-4 py-3">
@@ -174,6 +180,17 @@ const MyReservationDetailPage = () => {
           confirmLabel="예매 취소"
           onCancel={handleDismissCancel}
           onConfirm={handleConfirmCancel}
+        />
+      )}
+      {seatMap.isOpen && (
+        <MyReservationSeatMapDialog
+          matchingConcertCount={seatMap.matchingConcertCount}
+          isPending={seatMap.isPending}
+          isError={seatMap.isError}
+          venueDetail={seatMap.venueDetail}
+          selectedSeatIds={seatMap.selectedSeatIds}
+          reservationSeatCount={seatMap.reservationSeatCount}
+          onClose={seatMap.close}
         />
       )}
     </section>

@@ -105,6 +105,7 @@ const VenueMapCanvas = ({
           selectedSeatStatus={selectedSeatStatus}
           expiresAt={selectedSeat ? venueSeatStates?.get(selectedSeat.id)?.expiresAt : undefined}
           serverTimeOffset={serverTimeOffset}
+          isSeatSelectionEnabled={Boolean(onSeatSelectionChange)}
         />
 
         <VenueMapZoomControls zoom={zoom} canZoomIn={canZoomIn} canZoomOut={canZoomOut} zoomIn={zoomIn} zoomOut={zoomOut} />
