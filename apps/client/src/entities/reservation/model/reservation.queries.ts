@@ -4,7 +4,7 @@ import { apiClient } from "@shared/api";
 
 import { RESERVATION_QUERY_KEYS } from "./reservation.constants";
 
-export const useMyReservations = () =>
+export const useMyReservation = () =>
   useQuery({
     queryKey: RESERVATION_QUERY_KEYS.my(),
     queryFn: async () => {

@@ -1,13 +1,10 @@
-import { useMyReservations } from "@entities/reservation";
-
 import ReservationCard from "./ReservationCard";
 
 import { MY_RESERVATION_FILTER_OPTIONS } from "../model/my-reservation-filter.constants";
-import { useMyReservationFilter } from "../model/use-my-reservation-filter";
+import { useMyReservation } from "../model/use-my-reservation";
 
 const MyReservationPage = () => {
-  const { data: myReservations, isError, isLoading, refetch } = useMyReservations();
-  const { filteredReservations, handleFilterChange, selectedFilter } = useMyReservationFilter({ reservations: myReservations ?? [] });
+  const { data: myReservations, filteredReservations, handleFilterChange, isError, isLoading, refetch, selectedFilter } = useMyReservation();
 
   return (
     <section aria-labelledby="my-reservation-page-title" className="mx-auto max-w-screen-sm">
