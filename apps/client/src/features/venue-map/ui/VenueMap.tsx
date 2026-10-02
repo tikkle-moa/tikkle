@@ -4,6 +4,7 @@ import { SEAT_STATUS_LEGEND, type VenueResponse, type VenueSeatResponse, type Ve
 
 import VenueMapCanvas from "./VenueMapCanvas";
 
+import { MUTED_SEAT_COLOR } from "../model/venue-map.constants";
 import { createSectionColorMap } from "../model/venue-map.utils";
 
 interface VenueMapProps {
@@ -13,6 +14,7 @@ interface VenueMapProps {
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset?: number;
   selectedSeatIds?: ReadonlySet<number>;
+  mutedSeatColors?: boolean;
   onSeatToggle?: (seat: number) => void;
   onSeatSelectionChange?: (seatIds: ReadonlySet<number>) => void;
 }
@@ -24,11 +26,15 @@ const VenueMap = ({
   venueSeatStates,
   serverTimeOffset = 0,
   selectedSeatIds,
+  mutedSeatColors = false,
   onSeatToggle,
   onSeatSelectionChange,
 }: VenueMapProps) => {
   const sections = useMemo(() => [...new Set(venueSeats.map((seat) => seat.sectionName))], [venueSeats]);
-  const sectionColors = useMemo(() => createSectionColorMap(venue.id, sections), [venue.id, sections]);
+  const sectionColors = useMemo(
+    () => (mutedSeatColors ? Object.fromEntries(sections.map((section) => [section, MUTED_SEAT_COLOR])) : createSectionColorMap(venue.id, sections)),
+    [mutedSeatColors, sections, venue.id],
+  );
 
   return (
     <section className={className}>
@@ -79,6 +85,7 @@ const VenueMap = ({
           venueSeats={venueSeats}
           sections={sections}
           sectionColors={sectionColors}
+          mutedSeatColors={mutedSeatColors}
           venueSeatStates={venueSeatStates}
           serverTimeOffset={serverTimeOffset}
           selectedSeatIds={selectedSeatIds}
