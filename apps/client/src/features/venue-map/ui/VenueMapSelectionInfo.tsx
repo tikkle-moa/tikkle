@@ -48,13 +48,9 @@ const VenueMapSelectionInfo = ({
         </div>
       ) : (
         <div>
-          <p>
-            {selectedSeatIds && !isSeatSelectionEnabled
-              ? selectedSeatIds.size > 0
-                ? "강조된 좌석은 예매된 좌석입니다."
-                : "표시할 예매 좌석이 없습니다."
-              : "좌석을 탭하거나 클릭하여 선택하세요."}
-          </p>
+          {(!selectedSeatIds || isSeatSelectionEnabled || selectedSeatIds.size === 0) && (
+            <p>{selectedSeatIds && !isSeatSelectionEnabled ? "표시할 예매 좌석이 없습니다." : "좌석을 탭하거나 클릭하여 선택하세요."}</p>
+          )}
           <p>Alt/Option + 스크롤 또는 두 손가락으로 확대하고, 확대된 상태에서 드래그하여 이동할 수 있어요.</p>
           {selectedSeatIds && isSeatSelectionEnabled && (
             <p className="hidden pointer-fine:block">

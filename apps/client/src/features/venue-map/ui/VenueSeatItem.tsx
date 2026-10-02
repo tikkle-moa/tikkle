@@ -50,13 +50,11 @@ const VenueSeatItem = ({
   onPointerMove,
   onPointerLeave,
 }: VenueSeatItemProps) => {
-  const isInteractive = !selectedSeatsOnly || isSelected;
+  const isInteractive = !selectedSeatsOnly;
   const selectedSeatHoverStyle = selectedSeatsOnly
-    ? isSelected
-      ? "group-hover:stroke-violet-700 group-hover:stroke-[1.1]"
-      : ""
+    ? ""
     : "group-hover:stroke-violet-700 group-hover:stroke-[1.1] group-data-[selected=true]:stroke-indigo-900 group-data-[selected=true]:stroke-[1.1]";
-  const hasHoverBrightness = selectedSeatsOnly ? isSelected : isSeatSelectable || isHeld;
+  const hasHoverBrightness = !selectedSeatsOnly && (isSeatSelectable || isHeld);
 
   return (
     <g

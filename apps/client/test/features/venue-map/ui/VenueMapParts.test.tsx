@@ -26,10 +26,11 @@ describe("venue map parts", () => {
     expect(screen.getByText(/좌석을 탭하거나 클릭하여 선택하세요/)).toBeInTheDocument();
   });
 
-  it("예약 좌석 ID를 지정한 지도에서는 예매 좌석 안내를 표시한다", () => {
+  it("읽기 전용 지도에서는 예매 좌석 안내 문구를 표시하지 않는다", () => {
     render(<VenueMapSelectionInfo selectedSeat={null} selectedSeatIds={new Set([seat.id])} selectedSeatStatus={null} serverTimeOffset={0} />);
 
-    expect(screen.getByText("강조된 좌석은 예매된 좌석입니다.")).toBeInTheDocument();
+    expect(screen.queryByText("강조된 좌석은 예매된 좌석입니다.")).not.toBeInTheDocument();
+    expect(screen.getByText(/Alt\/Option \+ 스크롤/)).toBeInTheDocument();
     expect(screen.queryByText(/Alt\/Option \+ 드래그로 여러 좌석/)).not.toBeInTheDocument();
   });
 

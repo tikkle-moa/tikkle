@@ -107,29 +107,32 @@ describe("VenueMap", () => {
     expect(screen.getByRole("button", { name: "A구역 1열 2번, 150,000원" })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("차분한 좌석 색상과 구분되는 예매 좌석 강조를 표시한다", () => {
+  it("일반 좌석은 저채도 황록색으로, 예매 좌석은 보라색으로 표시한다", () => {
     const { container } = render(<VenueMap venue={venue} venueSeats={seats} mutedSeatColors selectedSeatsOnly selectedSeatIds={new Set([1])} />);
 
-    const bookedSeat = screen.getByRole("button", { name: "A구역 1열 1번, 150,000원" });
+    const bookedSeat = container.querySelector('[data-seat-id="1"]');
     const regularSeat = container.querySelector('[data-seat-id="2"]');
+    expect(bookedSeat).toBeInTheDocument();
     expect(regularSeat).toBeInTheDocument();
 
-    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#c4b5fd");
-    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("stroke", "transparent");
-    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("stroke-width", "0");
-    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveClass("group-hover:stroke-violet-700");
-    expect(regularSeat?.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#cbd5e1");
+    expect(bookedSeat?.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#7c3aed");
+    expect(bookedSeat?.querySelector("[data-seat-visual]")).toHaveAttribute("stroke", "transparent");
+    expect(bookedSeat?.querySelector("[data-seat-visual]")).toHaveAttribute("stroke-width", "0");
+    expect(bookedSeat?.querySelector("[data-seat-visual]")).not.toHaveClass("group-hover:stroke-violet-700");
+    expect(bookedSeat?.querySelector("[data-seat-visual]")).not.toHaveClass("group-hover:brightness-95");
+    expect(regularSeat?.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#b2bba0");
     expect(regularSeat?.querySelector("[data-seat-visual]")).not.toHaveClass("group-hover:stroke-violet-700");
     expect(screen.getByLabelText("좌석 표시 안내")).toHaveTextContent("일반 좌석");
     expect(screen.getByLabelText("좌석 표시 안내")).toHaveTextContent("예매 좌석");
     expect(screen.queryByLabelText("구역 색상")).not.toBeInTheDocument();
   });
 
-  it("예매 좌석만 읽기 전용 지도에서 좌석 상호작용 대상으로 노출한다", () => {
-    render(<VenueMap venue={venue} venueSeats={seats} selectedSeatsOnly selectedSeatIds={new Set([1])} />);
+  it("읽기 전용 지도에서는 좌석 클릭을 비활성화한다", () => {
+    const { container } = render(<VenueMap venue={venue} venueSeats={seats} selectedSeatsOnly selectedSeatIds={new Set([1])} />);
 
-    expect(screen.getByRole("button", { name: "A구역 1열 1번, 150,000원" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "A구역 1열 2번, 150,000원" })).not.toBeInTheDocument();
+    expect(container.querySelector('[data-seat-id="1"]')).not.toHaveAttribute("role", "button");
+    expect(container.querySelector('[data-seat-id="1"]')).not.toHaveAttribute("tabindex");
+    expect(container.querySelector('[data-seat-id="2"]')).not.toHaveAttribute("role", "button");
   });
 
   it("전체 선택 취소를 누르면 빈 좌석 집합을 전달한다", () => {
