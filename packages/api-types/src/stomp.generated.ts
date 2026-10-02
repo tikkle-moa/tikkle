@@ -91,6 +91,16 @@ export interface ReleaseVenueSeatsCommand {
   sessionId: string | null;
 }
 
+export interface GroupChatCommand {
+  data: GroupChatData;
+  requestId: string;
+}
+
+export interface GroupChatData {
+  content: string;
+  performanceId: number;
+}
+
 export interface BeginCheckoutReviewMessage {
   data: BeginCheckoutReviewMessageData;
   requestId: string;
@@ -253,6 +263,24 @@ export interface StartCheckoutData {
   performanceId: number;
   reviewToken: string;
 }
+
+export interface GroupChatEvent {
+  data: GroupChatEventData;
+  eventId: string;
+  occurredAt: string;
+  type: GroupChatEventType;
+  version: number;
+}
+
+export interface GroupChatEventData {
+  content: string;
+  groupId: string;
+  senderNickname: string;
+  senderProfileImageUrl: string | null;
+  sentAt: string;
+}
+
+export type GroupChatEventType = "GROUP_CHAT";
 
 export interface PerformanceHeldSeatsEvent {
   data: HeldSeat[];
