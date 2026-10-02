@@ -55,7 +55,7 @@ export const useMyReservationDetail = () => {
     },
   });
   const reservation = reservationQuery.data;
-  const seatMap = useMyReservationSeatMap(reservation);
+  const seatMap = useMyReservationSeatMap({ reservation });
 
   const cancelReservation = async (refundReceiveAccount: components["schemas"]["RefundReceiveAccount"] | null = null) => {
     if (!isParamValid || isCancelling) return;

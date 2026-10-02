@@ -4,7 +4,11 @@ import { useConcerts } from "@entities/concert";
 import { type MyReservation } from "@entities/reservation";
 import { useVenueDetail } from "@entities/venue";
 
-export const useMyReservationSeatMap = (reservation: MyReservation | undefined) => {
+interface UseMyReservationSeatMapProps {
+  reservation: MyReservation | undefined;
+}
+
+export const useMyReservationSeatMap = ({ reservation }: UseMyReservationSeatMapProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const concertsQuery = useConcerts(isOpen && Boolean(reservation));
   const matchingConcerts = useMemo(

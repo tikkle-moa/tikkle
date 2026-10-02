@@ -108,7 +108,7 @@ describe("useMyReservationSeatMap", () => {
   });
 
   it("예매 정보가 없으면 좌석을 조회하지 않고 빈 상태를 반환한다", () => {
-    const { result } = renderHook(() => useMyReservationSeatMap(undefined), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservationSeatMap({ reservation: undefined }), { wrapper: createWrapper() });
 
     expect(result.current.reservationSeatCount).toBe(0);
     expect(result.current.selectedSeatIds).toEqual(new Set());
@@ -122,7 +122,7 @@ describe("useMyReservationSeatMap", () => {
       throw new Error(`Unexpected GET ${path}`);
     });
 
-    const { result } = renderHook(() => useMyReservationSeatMap(reservation), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservationSeatMap({ reservation }), { wrapper: createWrapper() });
 
     expect(mockGet).not.toHaveBeenCalled();
     act(() => result.current.open());
@@ -141,7 +141,7 @@ describe("useMyReservationSeatMap", () => {
   it("일치하는 콘서트가 없으면 공연장 상세를 조회하지 않는다", async () => {
     mockGet.mockResolvedValue(success([{ ...concerts[0], title: "다른 콘서트" }]));
 
-    const { result } = renderHook(() => useMyReservationSeatMap(reservation), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservationSeatMap({ reservation }), { wrapper: createWrapper() });
 
     act(() => result.current.open());
     await waitFor(() => {
@@ -156,7 +156,7 @@ describe("useMyReservationSeatMap", () => {
   it("콘서트명과 공연장명이 모두 일치하는 콘서트가 여러 개면 공연장 상세를 임의로 조회하지 않는다", async () => {
     mockGet.mockResolvedValue(success([...concerts, { ...concerts[0], id: 52, venueId: 8 }]));
 
-    const { result } = renderHook(() => useMyReservationSeatMap(reservation), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservationSeatMap({ reservation }), { wrapper: createWrapper() });
 
     act(() => result.current.open());
     await waitFor(() => expect(result.current.matchingConcertCount).toBe(2));
@@ -168,7 +168,7 @@ describe("useMyReservationSeatMap", () => {
   it("콘서트 목록 조회 오류를 좌석 지도 오류로 반환한다", async () => {
     mockGet.mockRejectedValue(new Error("concert query failed"));
 
-    const { result } = renderHook(() => useMyReservationSeatMap(reservation), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservationSeatMap({ reservation }), { wrapper: createWrapper() });
 
     act(() => result.current.open());
     await waitFor(() => expect(result.current.isError).toBe(true));
@@ -184,7 +184,7 @@ describe("useMyReservationSeatMap", () => {
       throw new Error(`Unexpected GET ${path}`);
     });
 
-    const { result } = renderHook(() => useMyReservationSeatMap(reservation), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservationSeatMap({ reservation }), { wrapper: createWrapper() });
 
     act(() => result.current.open());
     await waitFor(() => expect(result.current.isError).toBe(true));
