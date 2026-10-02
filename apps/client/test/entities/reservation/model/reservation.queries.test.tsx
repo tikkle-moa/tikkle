@@ -3,7 +3,7 @@ import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 
-import { type MyReservation, useMyReservations } from "@entities/reservation";
+import { type MyReservation, useMyReservation } from "@entities/reservation";
 
 const { mockGet } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -28,7 +28,7 @@ const createWrapper = () => {
   return ({ children }: PropsWithChildren) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 };
 
-describe("useMyReservations", () => {
+describe("useMyReservation", () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
@@ -57,7 +57,7 @@ describe("useMyReservations", () => {
       response: { ok: true, status: 200 },
     });
 
-    const { result } = renderHook(() => useMyReservations(), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservation(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.data).toEqual(myReservations));
     expect(mockGet).toHaveBeenCalledWith("/api/reservations");
@@ -70,7 +70,7 @@ describe("useMyReservations", () => {
   ])("%s를 조회 오류로 처리한다", async (_caseName, response) => {
     mockGet.mockResolvedValue(response);
 
-    const { result } = renderHook(() => useMyReservations(), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservation(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toMatchObject({ message: "내 예매 목록을 불러오지 못했습니다." });
@@ -79,7 +79,7 @@ describe("useMyReservations", () => {
   it("네트워크 오류를 쿼리 오류로 전달한다", async () => {
     mockGet.mockRejectedValue(new Error("네트워크 오류"));
 
-    const { result } = renderHook(() => useMyReservations(), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useMyReservation(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toMatchObject({ message: "네트워크 오류" });
