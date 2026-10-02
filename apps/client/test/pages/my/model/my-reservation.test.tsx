@@ -1,4 +1,5 @@
 import type { ComponentProps, FormEvent, PropsWithChildren } from "react";
+import toast from "react-hot-toast";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -18,6 +19,10 @@ vi.mock("@shared/api", () => ({
     GET: mockGet,
     POST: mockPost,
   },
+}));
+
+vi.mock("react-hot-toast", () => ({
+  default: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
 
 const reservation = {
@@ -90,6 +95,15 @@ describe("내 예매 조회", () => {
     });
   });
 
+  it("상세 API 응답이 실패하면 조회 오류 상태를 반환한다", async () => {
+    mockGet.mockResolvedValue({ data: undefined, error: { message: "request failed" }, response: { ok: false, status: 500 } });
+    const { wrapper } = createDetailWrapper(["/my/reservations/501"]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.reservation).toBeUndefined();
+  });
+
   it("목록 쿼리 캐시를 상세 초기 데이터로 사용한다", () => {
     mockGet.mockImplementation(() => new Promise(() => {}));
     const { wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
@@ -147,13 +161,156 @@ describe("내 예매 조회", () => {
     });
     await waitFor(() => expect(result.current.reservation?.status).toBe("REFUNDED"));
     expect(queryClient.getQueryData<MyReservation[]>(RESERVATION_QUERY_KEYS.my())?.[0].status).toBe("REFUNDED");
+    expect(toast.success).toHaveBeenCalledWith("예매가 취소되었습니다.");
+  });
+
+  it("취소 확인을 닫으면 확인 상태를 초기화한다", () => {
+    mockGet.mockImplementation(() => new Promise(() => {}));
+    const { wrapper } = createDetailWrapper(["/my/reservations/501"]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    act(() => result.current.handleCancel());
+    expect(result.current.isCancelConfirmationOpen).toBe(true);
+
+    act(() => result.current.handleDismissCancel());
+    expect(result.current.isCancelConfirmationOpen).toBe(false);
+  });
+
+  it("상세 조회 전 취소가 완료되어도 캐시 없이 처리한다", async () => {
+    let resolveReservationQuery: (() => void) | undefined;
+    let resolveCancellation: (() => void) | undefined;
+    mockGet
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveReservationQuery = () => resolve(success(reservation));
+          }),
+      )
+      .mockResolvedValue(success(reservation));
+    mockPost.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCancellation = () => resolve(success({ reservationId: reservation.id, status: "REFUNDED" }));
+        }),
+    );
+    const { queryClient, wrapper } = createDetailWrapper(["/my/reservations/501"]);
+    const setQueryData = vi.spyOn(queryClient, "setQueryData");
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    act(() => result.current.handleCancel());
+    act(() => result.current.handleConfirmCancel());
+    await waitFor(() => expect(mockPost).toHaveBeenCalledOnce());
+    await act(async () => resolveCancellation?.());
+    await waitFor(() => expect(setQueryData).toHaveBeenCalledTimes(2));
+    expect(result.current.isCancelling).toBe(true);
+
+    await act(async () => resolveReservationQuery?.());
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("예매가 취소되었습니다."));
+  });
+
+  it("취소 API 응답이 실패하면 오류 알림을 표시한다", async () => {
+    mockGet.mockResolvedValue(success(reservation));
+    mockPost.mockResolvedValue({ data: undefined, error: { message: "request failed" }, response: { ok: false, status: 500 } });
+    const { wrapper } = createDetailWrapper(["/my/reservations/501"]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    await waitFor(() => expect(result.current.reservation).toEqual(reservation));
+    act(() => result.current.handleCancel());
+    await act(async () => result.current.handleConfirmCancel());
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("예매 취소에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+    expect(result.current.isCancelling).toBe(false);
+  });
+
+  it("환불 계좌가 필요하면 입력 안내를 표시한다", async () => {
+    mockGet.mockResolvedValue(success(reservation));
+    mockPost.mockResolvedValue(success({ reservationId: reservation.id, status: "REFUND_ACCOUNT_REQUIRED" }));
+    const { wrapper } = createDetailWrapper(["/my/reservations/501"]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    await waitFor(() => expect(result.current.reservation).toEqual(reservation));
+    act(() => result.current.handleCancel());
+    await act(async () => result.current.handleConfirmCancel());
+
+    await waitFor(() => expect(toast).toHaveBeenCalledWith("환불 계좌 정보를 입력해 주세요."));
+  });
+
+  it("취소 결과 확인 중이면 진행 안내를 표시한다", async () => {
+    mockGet.mockResolvedValue(success(reservation));
+    mockPost.mockResolvedValue(success({ reservationId: reservation.id, status: "CANCELLATION_PENDING" }));
+    const { wrapper } = createDetailWrapper(["/my/reservations/501"]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    await waitFor(() => expect(result.current.reservation).toEqual(reservation));
+    act(() => result.current.handleCancel());
+    await act(async () => result.current.handleConfirmCancel());
+
+    await waitFor(() => expect(toast).toHaveBeenCalledWith("예매 취소를 확인하고 있어요."));
+  });
+
+  it("실패 후 같은 취소 요청을 재시도하면 요청 ID를 재사용하고 다른 예매 캐시는 유지한다", async () => {
+    const otherReservation = { ...reservation, id: 502 };
+    mockGet.mockResolvedValue(success(reservation));
+    mockPost.mockRejectedValueOnce(new Error("request failed")).mockResolvedValueOnce(success({ reservationId: reservation.id, status: "REFUNDED" }));
+    const { queryClient, wrapper } = createDetailWrapper(["/my/reservations/501"], [otherReservation]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    await waitFor(() => expect(result.current.reservation).toEqual(reservation));
+    act(() => result.current.handleCancel());
+    await act(async () => result.current.handleConfirmCancel());
+    await waitFor(() => expect(toast.error).toHaveBeenCalledOnce());
+    await waitFor(() => expect(result.current.isCancelling).toBe(false));
+
+    const firstRequestId = mockPost.mock.calls[0][1].body.requestId;
+    act(() => result.current.handleCancel());
+    await act(async () => result.current.handleConfirmCancel());
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledOnce());
+    expect(mockPost.mock.calls[1][1].body.requestId).toBe(firstRequestId);
+    expect(queryClient.getQueryData<MyReservation[]>(RESERVATION_QUERY_KEYS.my())).toEqual([otherReservation]);
   });
 
   it("잘못된 예매 ID로 상세 API를 호출하지 않는다", () => {
     const { wrapper } = createDetailWrapper(["/my/reservations/not-an-id"]);
-    renderHook(() => useMyReservationDetail(), { wrapper });
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    act(() => result.current.handleCancel());
+    act(() => result.current.handleConfirmCancel());
 
     expect(mockGet).not.toHaveBeenCalled();
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("취소 처리 중에는 중복 취소와 환불 계좌 요청을 무시한다", async () => {
+    let resolveCancellation: (() => void) | undefined;
+    mockGet.mockResolvedValue(success(reservation));
+    mockPost.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCancellation = () => resolve(success({ reservationId: reservation.id, status: "CANCELLATION_PENDING" }));
+        }),
+    );
+    const { wrapper } = createDetailWrapper(["/my/reservations/501"]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    await waitFor(() => expect(result.current.reservation).toEqual(reservation));
+    act(() => result.current.handleCancel());
+    act(() => result.current.handleConfirmCancel());
+    await waitFor(() => expect(result.current.isCancelling).toBe(true));
+
+    const preventDefault = vi.fn();
+    act(() => {
+      result.current.handleCancel();
+      result.current.handleRefundAccountSubmit({ preventDefault } as unknown as FormEvent<HTMLFormElement>);
+    });
+
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(result.current.isCancelConfirmationOpen).toBe(false);
+    expect(mockPost).toHaveBeenCalledOnce();
+
+    await act(async () => resolveCancellation?.());
+    await waitFor(() => expect(result.current.isCancelling).toBe(false));
   });
 
   it("목록에서 진입하면 이전 필터 URL로 돌아간다", () => {
