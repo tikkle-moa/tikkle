@@ -4,5 +4,5 @@ export const toRound = (value: number, decimalPlaces: number = 0): number => {
 };
 
 export const formatPrice = (price: number) => {
-  return `${new Intl.NumberFormat("ko-KR").format(price)}원`;
+  return `${price.toLocaleString()}원`;
 };

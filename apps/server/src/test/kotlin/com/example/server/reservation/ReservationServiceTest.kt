@@ -55,6 +55,7 @@ class ReservationServiceTest {
     val response = result.single()
     assertThat(response.id).isEqualTo(RESERVATION_ID)
     assertThat(response.concertTitle).isEqualTo("공연")
+    assertThat(response.posterUrl).isEqualTo("https://example.com/poster.jpg")
     assertThat(response.performanceName).isEqualTo("1회차")
     assertThat(response.venueName).isEqualTo("공연장")
     assertThat(response.seats).containsExactly(com.example.server.reservation.dto.ReservationSeatResponse("A", "A-12"))
@@ -126,7 +127,7 @@ class ReservationServiceTest {
     id = RESERVATION_ID,
     performance = Performance(
       PERFORMANCE_ID,
-      Concert(1L, venue(), "공연", ConcertGenre.BALLAD),
+      Concert(1L, venue(), "공연", ConcertGenre.BALLAD, posterUrl = "https://example.com/poster.jpg"),
       "1회차",
       LocalDateTime.of(2026, 12, 18, 19, 0),
     ),

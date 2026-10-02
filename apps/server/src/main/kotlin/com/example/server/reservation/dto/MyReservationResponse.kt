@@ -8,6 +8,7 @@ import java.time.LocalDateTime
 data class MyReservationResponse(
   val id: Long,
   val concertTitle: String,
+  val posterUrl: String?,
   val performanceName: String,
   val performanceStartsAt: LocalDateTime,
   val venueName: String,
@@ -20,6 +21,7 @@ data class MyReservationResponse(
     fun from(reservation: Reservation, reservationSeats: List<ReservationSeat>) = MyReservationResponse(
       id = reservation.id,
       concertTitle = reservation.performance.concert.title,
+      posterUrl = reservation.performance.concert.posterUrl,
       performanceName = reservation.performance.name,
       performanceStartsAt = reservation.performance.startsAt,
       venueName = reservation.performance.concert.venue.name,

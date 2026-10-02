@@ -75,6 +75,7 @@ class ReservationControllerTest {
       status { isOk() }
       jsonPath("$.success") { value(true) }
       jsonPath("$.data[0].id") { value(RESERVATION_ID) }
+      jsonPath("$.data[0].posterUrl") { value("https://example.com/poster.jpg") }
       jsonPath("$.data[0].seats[0].seatLabel") { value("A-12") }
       jsonPath("$.data[0].status") { value("SUCCEEDED") }
     }
@@ -140,6 +141,7 @@ class ReservationControllerTest {
   private fun response() = MyReservationResponse(
     id = RESERVATION_ID,
     concertTitle = "공연",
+    posterUrl = "https://example.com/poster.jpg",
     performanceName = "1회차",
     performanceStartsAt = LocalDateTime.of(2026, 12, 18, 19, 0),
     venueName = "공연장",
