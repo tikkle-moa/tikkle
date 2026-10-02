@@ -74,7 +74,7 @@ class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: Str
 
   companion object {
     private const val PERFORMANCE_ID_HEADER = "performanceId"
-    private const val TOPIC_DESTINATION_PREFIX = "/topic/"
+    private const val TOPIC_DESTINATION_PREFIX = "/topic"
 
     private val GROUP_CHAT_DESTINATION = Regex("^/topic/groups/([^/]+)/chat$")
     private val TOPIC_PATTERN_CHARACTER = Regex("[*?{}]")

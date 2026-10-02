@@ -130,6 +130,23 @@ class StompAuthenticationChannelInterceptorTest {
     }
 
     @Test
+    fun `topic prefix 뒤 와일드카드로 그룹 채팅을 구독할 수 없다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic*/groups/**/chat",
+      )
+
+      assertThrows<AccessDeniedException> {
+        interceptor.preSend(message, channel)
+      }
+
+      then(redisGroupService).shouldHaveNoInteractions()
+    }
+
+    @Test
     fun `와일드카드로 모든 topic을 구독할 수 없다`() {
       val payload = validPayload()
       mockStoredSession(payload)
