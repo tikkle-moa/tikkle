@@ -4,12 +4,13 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { formatDateTime } from "@shared/lib/date.utils";
+import { formatPrice } from "@shared/lib/number.utils";
 
 import MyReservationDetailPage from "@pages/my/ui/MyReservationDetailPage";
 
-const mockUseMyReservation = vi.hoisted(() => vi.fn());
+const mockUseMyReservationDetail = vi.hoisted(() => vi.fn());
 
-vi.mock("@pages/my/model/use-my-reservation", () => ({ useMyReservation: mockUseMyReservation }));
+vi.mock("@pages/my/model/use-my-reservation-detail", () => ({ useMyReservationDetail: mockUseMyReservationDetail }));
 
 const reservation = {
   id: 501,
@@ -39,7 +40,7 @@ const renderPage = () => render(<MyReservationDetailPage />, { wrapper: MemoryRo
 describe("MyReservationDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseMyReservation.mockReturnValue(detailState);
+    mockUseMyReservationDetail.mockReturnValue(detailState);
   });
 
   it("예매 상세 정보와 취소 동작을 표시한다", () => {
@@ -52,20 +53,20 @@ describe("MyReservationDetailPage", () => {
     expect(screen.getByText("R석 A-12")).toBeInTheDocument();
     expect(screen.getByText(formatDateTime(reservation.performanceStartsAt))).toBeInTheDocument();
     expect(screen.getByText(formatDateTime(reservation.createdAt))).toBeInTheDocument();
-    expect(screen.getByText("66,000원")).toBeInTheDocument();
+    expect(screen.getByText(formatPrice(reservation.amount))).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "예매 취소" }));
     expect(detailState.handleCancel).toHaveBeenCalledOnce();
   });
 
   it("좌석 정보가 없으면 대체 문구를 표시한다", () => {
-    mockUseMyReservation.mockReturnValue({ ...detailState, reservation: { ...reservation, seats: [] } });
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: { ...reservation, seats: [] } });
     renderPage();
 
     expect(screen.getByText("좌석 정보 없음")).toBeInTheDocument();
   });
 
   it("포스터가 없으면 이미지 요소를 표시하지 않는다", () => {
-    mockUseMyReservation.mockReturnValue({ ...detailState, reservation: { ...reservation, posterUrl: null } });
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: { ...reservation, posterUrl: null } });
     renderPage();
 
     expect(screen.queryByRole("img", { name: "아이유 콘서트 포스터" })).not.toBeInTheDocument();
@@ -81,40 +82,47 @@ describe("MyReservationDetailPage", () => {
   });
 
   it("상세 정보를 불러오는 동안 로딩 상태를 표시한다", () => {
-    mockUseMyReservation.mockReturnValue({ ...detailState, reservation: undefined, isPending: true });
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: undefined, isPending: true });
     renderPage();
 
     expect(screen.getByLabelText("예매 상세 정보를 불러오는 중")).toHaveAttribute("aria-busy", "true");
   });
 
   it("조회 오류와 잘못된 예매 ID를 안내한다", () => {
-    mockUseMyReservation.mockReturnValue({ ...detailState, reservation: undefined, isError: true });
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: undefined, isError: true });
     const errorView = renderPage();
     expect(screen.getByRole("heading", { name: "예매 정보를 불러오지 못했습니다." })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "내 예약 목록으로" })).toHaveAttribute("href", "/my/reservations");
     errorView.unmount();
 
-    mockUseMyReservation.mockReturnValue({ ...detailState, reservation: undefined, isParamValid: false });
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: undefined, isParamValid: false });
     renderPage();
     expect(screen.getByRole("heading", { name: "예매 정보를 찾을 수 없습니다." })).toBeInTheDocument();
   });
 
+  it("상세 재조회에 실패해도 목록 캐시가 있으면 예매 정보를 보여준다", () => {
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, isError: true });
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: reservation.concertTitle })).toBeInTheDocument();
+  });
+
   it("취소할 수 없는 상태에서는 취소 버튼을 표시하지 않는다", () => {
-    mockUseMyReservation.mockReturnValue({ ...detailState, reservation: { ...reservation, status: "PAYMENT_PENDING" } });
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: { ...reservation, status: "PAYMENT_PENDING" } });
     renderPage();
 
     expect(screen.queryByRole("button", { name: "예매 취소" })).not.toBeInTheDocument();
   });
 
   it("취소 요청 중에는 취소 버튼을 비활성화한다", () => {
-    mockUseMyReservation.mockReturnValue({ ...detailState, isCancelling: true });
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, isCancelling: true });
     renderPage();
 
     expect(screen.getByRole("button", { name: "취소 처리 중..." })).toBeDisabled();
   });
 
   it("취소 대기 상태를 표시한다", () => {
-    mockUseMyReservation.mockReturnValue({ ...detailState, reservation: { ...reservation, status: "CANCELLATION_PENDING" } });
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: { ...reservation, status: "CANCELLATION_PENDING" } });
     renderPage();
 
     expect(screen.getByRole("status")).toHaveTextContent("예매 취소 결과를 확인하고 있어요.");
@@ -122,7 +130,7 @@ describe("MyReservationDetailPage", () => {
 
   it("환불 계좌가 필요하면 입력값과 함께 취소 요청을 제출한다", async () => {
     const user = userEvent.setup();
-    mockUseMyReservation.mockReturnValue({
+    mockUseMyReservationDetail.mockReturnValue({
       ...detailState,
       reservation: { ...reservation, status: "REFUND_ACCOUNT_REQUIRED" },
     });
@@ -141,7 +149,7 @@ describe("MyReservationDetailPage", () => {
   });
 
   it("환불 요청 중에는 계좌 제출 버튼을 비활성화한다", () => {
-    mockUseMyReservation.mockReturnValue({
+    mockUseMyReservationDetail.mockReturnValue({
       ...detailState,
       reservation: { ...reservation, status: "REFUND_ACCOUNT_REQUIRED" },
       isCancelling: true,

@@ -1,4 +1,4 @@
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -36,6 +36,12 @@ const statusCases: Array<readonly [MyReservation["status"], string]> = [
   ["REFUNDED", "환불 완료"],
 ];
 
+const CurrentPath = () => {
+  const { pathname } = useLocation();
+
+  return <div data-testid="current-path">{pathname}</div>;
+};
+
 const renderPage = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -50,6 +56,7 @@ const renderPage = () => {
     <MemoryRouter initialEntries={["/my/reservations"]}>
       <QueryClientProvider client={queryClient}>
         <MyReservationPage />
+        <CurrentPath />
       </QueryClientProvider>
     </MemoryRouter>,
   );
@@ -138,6 +145,9 @@ describe("MyReservationPage", () => {
     const reservationList = screen.getByRole("list", { name: "예매 목록" });
     statusCases.forEach(([, label]) => expect(within(reservationList).getByText(label)).toBeInTheDocument());
 
+    const firstReservationLink = within(reservationList).getByRole("link", { name: /콘서트 1 포스터/ });
+    expect(firstReservationLink).toHaveAttribute("href", "/my/reservations/501");
+
     const poster = screen.getByRole("img", { name: "콘서트 1 포스터" });
     expect(poster).toHaveAttribute("src", "https://example.com/poster.jpg");
     expect(screen.queryByRole("img", { name: "콘서트 2 포스터" })).not.toBeInTheDocument();
@@ -149,6 +159,9 @@ describe("MyReservationPage", () => {
     expect(screen.queryByText("R석 A-12")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "취소 신청" })).not.toBeInTheDocument();
     expect(mockGet).toHaveBeenCalledTimes(1);
+
+    await user.click(firstReservationLink);
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/my/reservations/501");
   });
 
   it("선택한 필터에 해당하는 예매가 없으면 빈 상태를 보여준다", async () => {
