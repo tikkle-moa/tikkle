@@ -1,20 +1,20 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 
-import { Music2 } from "lucide-react";
-
 import { ROUTE_PATHS } from "@shared/config/router.config";
 import { formatDateTime } from "@shared/lib/date.utils";
+import { formatPrice } from "@shared/lib/number.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
+
+import { ReservationPoster } from "@entities/reservation";
 
 import MyReservationSkeleton from "./MyReservationSkeleton";
 
 import { MY_RESERVATION_STATUS_LABELS } from "../model/my-reservation-detail.constants";
-import { formatReservationAmount } from "../model/my-reservation.utils";
 import { useMyReservationDetail } from "../model/use-my-reservation-detail";
 
 const MyReservationDetailPage = () => {
-  const { isParamValid, reservation, isPending, isError, isCancelling, handleCancel, cancelReservation } = useMyReservationDetail();
+  const { isParamValid, reservation, isPending, isCancelling, handleCancel, cancelReservation } = useMyReservationDetail();
   const [bank, setBank] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [holderName, setHolderName] = useState("");
@@ -27,7 +27,7 @@ const MyReservationDetailPage = () => {
     return <MyReservationSkeleton />;
   }
 
-  if (isError || !reservation) {
+  if (!reservation) {
     return (
       <div className="mx-auto w-full max-w-screen-sm">
         <DetailMessage title="예매 정보를 불러오지 못했습니다." description="예매 내역이 없거나 잠시 후 다시 시도해 주세요." />
@@ -56,19 +56,7 @@ const MyReservationDetailPage = () => {
       <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5 sm:p-7">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 gap-4">
-            <div className="relative flex h-32 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-violet-50 text-violet-300">
-              <Music2 aria-hidden="true" size={28} />
-              {reservation.posterUrl && (
-                <img
-                  alt={`${reservation.concertTitle} 포스터`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  src={reservation.posterUrl}
-                  onError={(event) => {
-                    event.currentTarget.style.display = "none";
-                  }}
-                />
-              )}
-            </div>
+            <ReservationPoster concertTitle={reservation.concertTitle} posterUrl={reservation.posterUrl} />
             <div className="min-w-0">
               <p className="text-sm font-medium text-violet-700">예매 번호 {reservation.id}</p>
               <h1 id="reservation-detail-title" className="mt-2 text-2xl font-bold text-gray-900">
@@ -104,7 +92,7 @@ const MyReservationDetailPage = () => {
           </div>
           <div className="flex justify-between gap-4 py-3">
             <dt className="shrink-0 text-gray-500">결제 금액</dt>
-            <dd className="text-right font-bold text-gray-900">{formatReservationAmount(reservation.amount)}</dd>
+            <dd className="text-right font-bold text-gray-900">{formatPrice(reservation.amount)}</dd>
           </div>
         </dl>
 

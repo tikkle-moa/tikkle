@@ -7,6 +7,8 @@ import type { components } from "@tikkle/api-types";
 
 import { apiClient } from "@shared/api";
 
+import { type MyReservation, RESERVATION_QUERY_KEYS } from "@entities/reservation";
+
 import { MY_RESERVATION_QUERY_KEYS } from "./my-reservation-detail.constants";
 
 export const useMyReservationDetail = () => {
@@ -20,6 +22,8 @@ export const useMyReservationDetail = () => {
   const reservationQuery = useQuery({
     queryKey: MY_RESERVATION_QUERY_KEYS.detail(id),
     enabled: isParamValid,
+    initialData: () => queryClient.getQueryData<MyReservation[]>(RESERVATION_QUERY_KEYS.my())?.find(({ id: cachedId }) => cachedId === id),
+    initialDataUpdatedAt: () => queryClient.getQueryState(RESERVATION_QUERY_KEYS.my())?.dataUpdatedAt,
     queryFn: async () => {
       const { data, error, response } = await apiClient.GET("/api/reservations/{reservationId}", {
         params: { path: { reservationId: id } },
@@ -56,7 +60,13 @@ export const useMyReservationDetail = () => {
       queryClient.setQueryData<components["schemas"]["MyReservationResponse"]>(MY_RESERVATION_QUERY_KEYS.detail(id), (reservation) =>
         reservation ? { ...reservation, status: data.data.status } : reservation,
       );
-      await queryClient.invalidateQueries({ queryKey: MY_RESERVATION_QUERY_KEYS.detail(id) });
+      queryClient.setQueryData<MyReservation[]>(RESERVATION_QUERY_KEYS.my(), (reservations) =>
+        reservations?.map((reservation) => (reservation.id === id ? { ...reservation, status: data.data.status } : reservation)),
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: MY_RESERVATION_QUERY_KEYS.detail(id) }),
+        queryClient.invalidateQueries({ queryKey: RESERVATION_QUERY_KEYS.my() }),
+      ]);
 
       if (data.data.status === "REFUNDED") {
         toast.success("예매가 취소되었습니다.");
