@@ -7,8 +7,8 @@ import type { VenueDetailResponse } from "@entities/venue";
 import MyReservationSeatMapDialog from "@pages/my/ui/MyReservationSeatMapDialog";
 
 vi.mock("@features/venue-map", () => ({
-  VenueMap: ({ selectedSeatIds }: { selectedSeatIds: ReadonlySet<number> }) => (
-    <div data-testid="venue-map" data-selected-seat-ids={[...selectedSeatIds].join(",")} />
+  VenueMap: ({ selectedSeatIds, mutedSeatColors }: { selectedSeatIds: ReadonlySet<number>; mutedSeatColors?: boolean }) => (
+    <div data-testid="venue-map" data-selected-seat-ids={[...selectedSeatIds].join(",")} data-muted-seat-colors={mutedSeatColors} />
   ),
 }));
 
@@ -74,8 +74,10 @@ describe("MyReservationSeatMapDialog", () => {
   it("예매 좌석 ID를 VenueMap에 넘겨 위치를 강조한다", () => {
     renderDialog();
 
-    expect(screen.getByRole("status")).toHaveTextContent("강조된 좌석 1석이 예매된 좌석입니다.");
-    expect(screen.getByTestId("venue-map")).toHaveAttribute("data-selected-seat-ids", "701");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    const map = screen.getByTestId("venue-map");
+    expect(map).toHaveAttribute("data-selected-seat-ids", "701");
+    expect(map).toHaveAttribute("data-muted-seat-colors", "true");
   });
 
   it("배치도에서 찾지 못한 좌석과 빈 좌석 목록을 안내한다", () => {
@@ -93,14 +95,20 @@ describe("MyReservationSeatMapDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("일부 예매 좌석만 배치도에 표시할 수 있습니다.");
   });
 
-  it("닫기 버튼과 Escape 취소를 처리한다", () => {
+  it("내용 클릭은 유지하고 닫기 버튼, 딤, Escape는 닫기 동작을 전달한다", () => {
     const { onClose } = renderDialog();
     const dialog = screen.getByRole("dialog", { name: "예매 좌석 보기" });
+
+    fireEvent.click(screen.getByRole("heading", { name: "예매 좌석 보기" }));
+    expect(onClose).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "닫기" }));
     expect(onClose).toHaveBeenCalledOnce();
 
-    fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    fireEvent.click(dialog);
     expect(onClose).toHaveBeenCalledTimes(2);
+
+    fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    expect(onClose).toHaveBeenCalledTimes(3);
   });
 });

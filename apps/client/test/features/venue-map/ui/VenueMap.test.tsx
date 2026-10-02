@@ -107,6 +107,20 @@ describe("VenueMap", () => {
     expect(screen.getByRole("button", { name: "A구역 1열 2번, 150,000원" })).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("차분한 좌석 색상과 구분되는 예매 좌석 강조를 표시한다", () => {
+    render(<VenueMap venue={venue} venueSeats={seats} mutedSeatColors selectedSeatIds={new Set([1])} />);
+
+    const bookedSeat = screen.getByRole("button", { name: "A구역 1열 1번, 150,000원" });
+    const regularSeat = screen.getByRole("button", { name: "A구역 1열 2번, 150,000원" });
+
+    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#c4b5fd");
+    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("stroke", "#6d28d9");
+    expect(regularSeat.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#cbd5e1");
+    expect(screen.getByLabelText("좌석 표시 안내")).toHaveTextContent("일반 좌석");
+    expect(screen.getByLabelText("좌석 표시 안내")).toHaveTextContent("예매 좌석");
+    expect(screen.queryByLabelText("구역 색상")).not.toBeInTheDocument();
+  });
+
   it("좌석을 클릭하면 해당 좌석 정보를 표시한다", async () => {
     const user = userEvent.setup();
 
