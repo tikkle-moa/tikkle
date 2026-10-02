@@ -7,8 +7,21 @@ import type { VenueDetailResponse } from "@entities/venue";
 import MyReservationSeatMapDialog from "@pages/my/ui/MyReservationSeatMapDialog";
 
 vi.mock("@features/venue-map", () => ({
-  VenueMap: ({ selectedSeatIds, mutedSeatColors }: { selectedSeatIds: ReadonlySet<number>; mutedSeatColors?: boolean }) => (
-    <div data-testid="venue-map" data-selected-seat-ids={[...selectedSeatIds].join(",")} data-muted-seat-colors={mutedSeatColors} />
+  VenueMap: ({
+    selectedSeatIds,
+    mutedSeatColors,
+    selectedSeatsOnly,
+  }: {
+    selectedSeatIds: ReadonlySet<number>;
+    mutedSeatColors?: boolean;
+    selectedSeatsOnly?: boolean;
+  }) => (
+    <div
+      data-testid="venue-map"
+      data-selected-seat-ids={[...selectedSeatIds].join(",")}
+      data-muted-seat-colors={mutedSeatColors}
+      data-selected-seats-only={selectedSeatsOnly}
+    />
   ),
 }));
 
@@ -78,6 +91,7 @@ describe("MyReservationSeatMapDialog", () => {
     const map = screen.getByTestId("venue-map");
     expect(map).toHaveAttribute("data-selected-seat-ids", "701");
     expect(map).toHaveAttribute("data-muted-seat-colors", "true");
+    expect(map).toHaveAttribute("data-selected-seats-only", "true");
   });
 
   it("배치도에서 찾지 못한 좌석과 빈 좌석 목록을 안내한다", () => {

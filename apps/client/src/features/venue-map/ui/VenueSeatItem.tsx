@@ -10,7 +10,7 @@ import {
   isHeldSeatStatus,
 } from "@entities/venue";
 
-import { HIGHLIGHTED_SEAT_COLOR, HIGHLIGHTED_SEAT_STROKE } from "../model/venue-map.constants";
+import { HIGHLIGHTED_SEAT_COLOR } from "../model/venue-map.constants";
 import { isCurrentSeatSelectable } from "../model/venue-map.utils";
 
 interface VenueSeatItemProps {
@@ -18,6 +18,7 @@ interface VenueSeatItemProps {
   status: VenueSeatStatus;
   isSelected: boolean;
   isSeatSelectable: boolean;
+  selectedSeatsOnly: boolean;
   hasSeatStatuses: boolean;
   isHoldMode: boolean;
   isHeld: boolean;
@@ -36,6 +37,7 @@ const VenueSeatItem = ({
   status,
   isSelected,
   isSeatSelectable,
+  selectedSeatsOnly,
   hasSeatStatuses,
   isHoldMode,
   isHeld,
@@ -48,24 +50,36 @@ const VenueSeatItem = ({
   onPointerMove,
   onPointerLeave,
 }: VenueSeatItemProps) => {
+  const isInteractive = !selectedSeatsOnly || isSelected;
+  const selectedSeatHoverStyle = selectedSeatsOnly
+    ? isSelected
+      ? "group-hover:stroke-violet-700 group-hover:stroke-[1.1]"
+      : ""
+    : "group-hover:stroke-violet-700 group-hover:stroke-[1.1] group-data-[selected=true]:stroke-indigo-900 group-data-[selected=true]:stroke-[1.1]";
+  const hasHoverBrightness = selectedSeatsOnly ? isSelected : isSeatSelectable || isHeld;
+
   return (
     <g
-      className={`group ${isSeatSelectable ? "cursor-pointer" : "cursor-not-allowed"} outline-none`}
-      role="button"
-      tabIndex={tabIndex}
+      className={`group ${isInteractive && isSeatSelectable ? "cursor-pointer" : isInteractive ? "cursor-not-allowed" : "cursor-default"} outline-none`}
+      role={isInteractive ? "button" : undefined}
+      tabIndex={isInteractive ? tabIndex : undefined}
       data-seat-id={seat.id}
       data-seat-status={hasSeatStatuses ? status : undefined}
       data-selected={isSelected}
-      aria-label={ariaLabel}
-      aria-pressed={isSelected}
-      aria-disabled={isHoldMode ? !isSeatSelectable : undefined}
-      onPointerEnter={(event) => onPointerEnter?.(event, seat)}
-      onPointerMove={(event) => {
-        if (isHeldSeatStatus(event.currentTarget.dataset.seatStatus as VenueSeatStatus)) onPointerMove?.(event);
-      }}
-      onPointerLeave={() => onPointerLeave?.()}
-      onClick={(event) => onSeatClick(seat, !isHoldMode || isCurrentSeatSelectable(event.currentTarget))}
-      onKeyDown={(event) => onSeatKeyDown(event, seat, !isHoldMode || isCurrentSeatSelectable(event.currentTarget))}
+      aria-label={isInteractive ? ariaLabel : undefined}
+      aria-pressed={isInteractive ? isSelected : undefined}
+      aria-disabled={isInteractive && isHoldMode ? !isSeatSelectable : undefined}
+      onPointerEnter={isInteractive ? (event) => onPointerEnter?.(event, seat) : undefined}
+      onPointerMove={
+        isInteractive
+          ? (event) => {
+              if (isHeldSeatStatus(event.currentTarget.dataset.seatStatus as VenueSeatStatus)) onPointerMove?.(event);
+            }
+          : undefined
+      }
+      onPointerLeave={isInteractive ? () => onPointerLeave?.() : undefined}
+      onClick={isInteractive ? (event) => onSeatClick(seat, !isHoldMode || isCurrentSeatSelectable(event.currentTarget)) : undefined}
+      onKeyDown={isInteractive ? (event) => onSeatKeyDown(event, seat, !isHoldMode || isCurrentSeatSelectable(event.currentTarget)) : undefined}
     >
       <rect
         data-seat-visual
@@ -74,13 +88,11 @@ const VenueSeatItem = ({
         width={VENUE_SEAT_WIDTH}
         height={VENUE_SEAT_HEIGHT}
         rx={VENUE_SEAT_RADIUS}
-        fill={isSelected ? HIGHLIGHTED_SEAT_COLOR : hasSeatStatuses ? VENUE_SEAT_STYLE_MAP[status].fill : sectionColor}
+        fill={selectedSeatsOnly && isSelected ? HIGHLIGHTED_SEAT_COLOR : hasSeatStatuses ? VENUE_SEAT_STYLE_MAP[status].fill : sectionColor}
         fillOpacity={status === "booked" ? 0.72 : 1}
-        stroke={isSelected ? HIGHLIGHTED_SEAT_STROKE : hasSeatStatuses ? VENUE_SEAT_STYLE_MAP[status].stroke : "transparent"}
-        strokeWidth={isSelected ? 1.4 : hasSeatStatuses ? 0.3 : 0}
-        className={`transition-[filter] duration-200 group-hover:stroke-violet-700 group-hover:stroke-[1.1] group-data-[selected=true]:stroke-violet-700 group-data-[selected=true]:stroke-[1.4] ${
-          isSeatSelectable || isHeld ? "group-hover:brightness-95" : ""
-        }`}
+        stroke={isSelected && !selectedSeatsOnly ? "#312e81" : hasSeatStatuses ? VENUE_SEAT_STYLE_MAP[status].stroke : "transparent"}
+        strokeWidth={isSelected && !selectedSeatsOnly ? 1.1 : hasSeatStatuses ? 0.3 : 0}
+        className={`transition-[filter] duration-200 ${selectedSeatHoverStyle} ${hasHoverBrightness ? "group-hover:brightness-95" : ""}`}
       />
     </g>
   );

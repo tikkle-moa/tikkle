@@ -108,17 +108,28 @@ describe("VenueMap", () => {
   });
 
   it("차분한 좌석 색상과 구분되는 예매 좌석 강조를 표시한다", () => {
-    render(<VenueMap venue={venue} venueSeats={seats} mutedSeatColors selectedSeatIds={new Set([1])} />);
+    const { container } = render(<VenueMap venue={venue} venueSeats={seats} mutedSeatColors selectedSeatsOnly selectedSeatIds={new Set([1])} />);
 
     const bookedSeat = screen.getByRole("button", { name: "A구역 1열 1번, 150,000원" });
-    const regularSeat = screen.getByRole("button", { name: "A구역 1열 2번, 150,000원" });
+    const regularSeat = container.querySelector('[data-seat-id="2"]');
+    expect(regularSeat).toBeInTheDocument();
 
     expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#c4b5fd");
-    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("stroke", "#6d28d9");
-    expect(regularSeat.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#cbd5e1");
+    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("stroke", "transparent");
+    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveAttribute("stroke-width", "0");
+    expect(bookedSeat.querySelector("[data-seat-visual]")).toHaveClass("group-hover:stroke-violet-700");
+    expect(regularSeat?.querySelector("[data-seat-visual]")).toHaveAttribute("fill", "#cbd5e1");
+    expect(regularSeat?.querySelector("[data-seat-visual]")).not.toHaveClass("group-hover:stroke-violet-700");
     expect(screen.getByLabelText("좌석 표시 안내")).toHaveTextContent("일반 좌석");
     expect(screen.getByLabelText("좌석 표시 안내")).toHaveTextContent("예매 좌석");
     expect(screen.queryByLabelText("구역 색상")).not.toBeInTheDocument();
+  });
+
+  it("예매 좌석만 읽기 전용 지도에서 좌석 상호작용 대상으로 노출한다", () => {
+    render(<VenueMap venue={venue} venueSeats={seats} selectedSeatsOnly selectedSeatIds={new Set([1])} />);
+
+    expect(screen.getByRole("button", { name: "A구역 1열 1번, 150,000원" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "A구역 1열 2번, 150,000원" })).not.toBeInTheDocument();
   });
 
   it("전체 선택 취소를 누르면 빈 좌석 집합을 전달한다", () => {

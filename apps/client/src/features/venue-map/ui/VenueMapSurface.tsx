@@ -22,6 +22,7 @@ interface VenueMapSurfaceProps {
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset: number;
   visibleSelectedSeatIds?: ReadonlySet<number>;
+  selectedSeatsOnly: boolean;
   selectedSeat: VenueSeatResponse | null;
   onSeatToggle?: (seat: number) => void;
   svgRef: RefObject<SVGSVGElement | null>;
@@ -46,6 +47,7 @@ const VenueMapSurface = ({
   venueSeatStates,
   serverTimeOffset,
   visibleSelectedSeatIds,
+  selectedSeatsOnly,
   selectedSeat,
   onSeatToggle,
   svgRef,
@@ -122,6 +124,7 @@ const VenueMapSurface = ({
           venueSeatStates={venueSeatStates}
           serverTimeOffset={serverTimeOffset}
           visibleSelectedSeatIds={visibleSelectedSeatIds}
+          selectedSeatsOnly={selectedSeatsOnly}
           selectedSeat={selectedSeat}
           onSeatToggle={onSeatToggle}
           getSeatTabIndex={getSeatTabIndex}

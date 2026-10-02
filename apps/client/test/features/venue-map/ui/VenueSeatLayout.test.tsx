@@ -23,6 +23,7 @@ const baseProps: React.ComponentProps<typeof VenueSeatLayout> = {
   sectionColors: { A: "#fff" },
   venueSeatStates: new Map(),
   serverTimeOffset: 0,
+  selectedSeatsOnly: false,
   selectedSeat: null,
   onSeatToggle: vi.fn(),
   getSeatTabIndex: vi.fn(() => 0),

@@ -87,6 +87,7 @@ describe("venue map parts", () => {
           status="available"
           isSelected
           isSeatSelectable
+          selectedSeatsOnly={false}
           hasSeatStatuses
           isHoldMode
           isHeld

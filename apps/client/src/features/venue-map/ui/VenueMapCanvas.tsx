@@ -18,6 +18,7 @@ interface VenueMapCanvasProps {
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset: number;
   selectedSeatIds?: ReadonlySet<number>;
+  selectedSeatsOnly: boolean;
   onSeatToggle?: (seat: number) => void;
   onSeatSelectionChange?: (seatIds: ReadonlySet<number>) => void;
 }
@@ -31,6 +32,7 @@ const VenueMapCanvas = ({
   venueSeatStates,
   serverTimeOffset,
   selectedSeatIds,
+  selectedSeatsOnly,
   onSeatToggle,
   onSeatSelectionChange,
 }: VenueMapCanvasProps) => {
@@ -74,6 +76,7 @@ const VenueMapCanvas = ({
           venueSeatStates={venueSeatStates}
           serverTimeOffset={serverTimeOffset}
           visibleSelectedSeatIds={selectedSeatIds}
+          selectedSeatsOnly={selectedSeatsOnly}
           selectedSeat={selectedSeat}
           onSeatToggle={onSeatToggle}
           svgRef={svgRef}

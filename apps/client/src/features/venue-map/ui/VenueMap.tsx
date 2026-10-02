@@ -14,6 +14,7 @@ interface VenueMapProps {
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset?: number;
   selectedSeatIds?: ReadonlySet<number>;
+  selectedSeatsOnly?: boolean;
   mutedSeatColors?: boolean;
   onSeatToggle?: (seat: number) => void;
   onSeatSelectionChange?: (seatIds: ReadonlySet<number>) => void;
@@ -26,6 +27,7 @@ const VenueMap = ({
   venueSeatStates,
   serverTimeOffset = 0,
   selectedSeatIds,
+  selectedSeatsOnly = false,
   mutedSeatColors = false,
   onSeatToggle,
   onSeatSelectionChange,
@@ -89,6 +91,7 @@ const VenueMap = ({
           venueSeatStates={venueSeatStates}
           serverTimeOffset={serverTimeOffset}
           selectedSeatIds={selectedSeatIds}
+          selectedSeatsOnly={selectedSeatsOnly}
           onSeatToggle={onSeatToggle}
           onSeatSelectionChange={onSeatSelectionChange}
         />

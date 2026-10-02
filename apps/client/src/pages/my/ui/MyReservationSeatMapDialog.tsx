@@ -93,6 +93,7 @@ const MyReservationSeatMapDialog = ({
               venueSeats={venueDetail.venueSeats}
               className="mt-0 w-full"
               mutedSeatColors
+              selectedSeatsOnly
               selectedSeatIds={selectedSeatIds}
             />
           </>
