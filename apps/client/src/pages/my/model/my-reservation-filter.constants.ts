@@ -1,5 +1,7 @@
 import type { MyReservationFilterId, MyReservationFilterOption } from "./my-reservation-filter.types";
 
+export const MY_RESERVATION_FILTER_QUERY_KEY = "filter";
+
 export const DEFAULT_MY_RESERVATION_FILTER: MyReservationFilterId = "SUCCEEDED";
 
 export const MY_RESERVATION_FILTER_OPTIONS: MyReservationFilterOption[] = [
