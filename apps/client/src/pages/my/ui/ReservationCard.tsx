@@ -1,6 +1,7 @@
 import { Music2 } from "lucide-react";
 
 import { formatDateTime } from "@shared/lib/date.utils";
+import { formatPrice } from "@shared/lib/number.utils";
 
 import { MY_RESERVATION_STATUS_MAP, type MyReservation } from "@entities/reservation";
 
@@ -37,7 +38,7 @@ const ReservationCard = ({ reservation }: Props) => {
           <time dateTime={reservation.performanceStartsAt}>{formatDateTime(reservation.performanceStartsAt)}</time>
         </p>
         <p className="mt-1 text-sm text-gray-600">
-          {reservation.venueName} · {reservation.seats.length}석 · {reservation.amount.toLocaleString("ko-KR")}원
+          {reservation.venueName} · {reservation.seats.length}석 · {formatPrice(reservation.amount)}
         </p>
       </div>
     </li>
