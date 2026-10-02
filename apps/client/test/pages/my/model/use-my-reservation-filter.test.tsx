@@ -1,3 +1,6 @@
+import type { PropsWithChildren } from "react";
+import { MemoryRouter, useLocation } from "react-router";
+
 import { act, renderHook } from "@testing-library/react";
 
 import { DEFAULT_MY_RESERVATION_FILTER } from "@pages/my/model/my-reservation-filter.constants";
@@ -18,9 +21,14 @@ const reservations = [
   makeMyReservation({ id: 10, status: "FAILED" }),
 ];
 
+const makeWrapper = (initialEntry = "/my/reservations") =>
+  function Wrapper({ children }: PropsWithChildren) {
+    return <MemoryRouter initialEntries={[initialEntry]}>{children}</MemoryRouter>;
+  };
+
 describe("useMyReservationFilter", () => {
   it("완료 예매를 기본으로 선택하고 상태별 목록을 반환한다", () => {
-    const { result } = renderHook(() => useMyReservationFilter({ reservations }));
+    const { result } = renderHook(() => useMyReservationFilter({ reservations }), { wrapper: makeWrapper() });
 
     expect(result.current.selectedFilter).toBe(DEFAULT_MY_RESERVATION_FILTER);
     expect(result.current.filteredReservations.map(({ status }) => status)).toEqual(["SUCCEEDED"]);
@@ -38,5 +46,35 @@ describe("useMyReservationFilter", () => {
 
       expect(result.current.filteredReservations.map(({ status }) => status)).toEqual(expectedStatuses);
     });
+  });
+
+  it("URL에서 선택 필터를 복원하고 변경 사항을 URL에 반영한다", () => {
+    const { result } = renderHook(() => ({ filter: useMyReservationFilter({ reservations }), search: useLocation().search }), {
+      wrapper: makeWrapper("/my/reservations?keep=1&filter=PENDING"),
+    });
+
+    expect(result.current.filter.selectedFilter).toBe("PENDING");
+    expect(result.current.filter.filteredReservations.map(({ status }) => status)).toEqual(["PAYMENT_PENDING", "PAYMENT_CONFIRMING"]);
+
+    act(() => result.current.filter.handleFilterChange("ALL"));
+
+    expect(result.current.filter.selectedFilter).toBe("ALL");
+    expect(new URLSearchParams(result.current.search).get("keep")).toBe("1");
+    expect(new URLSearchParams(result.current.search).get("filter")).toBe("ALL");
+
+    act(() => result.current.filter.handleFilterChange("SUCCEEDED"));
+
+    expect(result.current.filter.selectedFilter).toBe("SUCCEEDED");
+    expect(new URLSearchParams(result.current.search).get("keep")).toBe("1");
+    expect(new URLSearchParams(result.current.search).get("filter")).toBeNull();
+  });
+
+  it("유효하지 않은 URL 필터에는 기본 필터를 적용한다", () => {
+    const { result } = renderHook(() => useMyReservationFilter({ reservations }), {
+      wrapper: makeWrapper("/my/reservations?filter=UNKNOWN"),
+    });
+
+    expect(result.current.selectedFilter).toBe(DEFAULT_MY_RESERVATION_FILTER);
+    expect(result.current.filteredReservations.map(({ status }) => status)).toEqual(["SUCCEEDED"]);
   });
 });
