@@ -37,9 +37,14 @@ const statusCases: Array<readonly [MyReservation["status"], string]> = [
 ];
 
 const CurrentPath = () => {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
 
-  return <div data-testid="current-path">{pathname}</div>;
+  return (
+    <>
+      <div data-testid="current-path">{pathname}</div>
+      <div data-testid="location-state">{JSON.stringify(state)}</div>
+    </>
+  );
 };
 
 const renderPage = () => {
@@ -162,6 +167,7 @@ describe("MyReservationPage", () => {
 
     await user.click(firstReservationLink);
     expect(screen.getByTestId("current-path")).toHaveTextContent("/my/reservations/501");
+    expect(screen.getByTestId("location-state")).toHaveTextContent('{"fromMyReservations":true}');
   });
 
   it("선택한 필터에 해당하는 예매가 없으면 빈 상태를 보여준다", async () => {
