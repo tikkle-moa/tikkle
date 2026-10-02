@@ -121,6 +121,16 @@ describe("VenueMap", () => {
     expect(screen.queryByLabelText("구역 색상")).not.toBeInTheDocument();
   });
 
+  it("전체 선택 취소를 누르면 빈 좌석 집합을 전달한다", () => {
+    const onSeatSelectionChange = vi.fn();
+    render(<VenueMap venue={venue} venueSeats={seats} selectedSeatIds={new Set([1])} onSeatSelectionChange={onSeatSelectionChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "전체 선택 취소" }));
+
+    expect(onSeatSelectionChange).toHaveBeenCalledOnce();
+    expect(onSeatSelectionChange).toHaveBeenCalledWith(new Set());
+  });
+
   it("좌석을 클릭하면 해당 좌석 정보를 표시한다", async () => {
     const user = userEvent.setup();
 
