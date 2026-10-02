@@ -3,6 +3,7 @@ package com.example.server.global.security
 import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.refreshTokenKey
 import com.example.server.auth.types.UserRole
+import com.example.server.group.RedisGroupService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -34,13 +35,16 @@ class StompAuthenticationChannelInterceptorTest {
   lateinit var stringValueOperations: ValueOperations<String, String>
 
   @Mock
+  lateinit var redisGroupService: RedisGroupService
+
+  @Mock
   lateinit var channel: MessageChannel
 
   private lateinit var interceptor: StompAuthenticationChannelInterceptor
 
   @BeforeEach
   fun setUp() {
-    interceptor = StompAuthenticationChannelInterceptor(stringRedisTemplate)
+    interceptor = StompAuthenticationChannelInterceptor(stringRedisTemplate, redisGroupService)
   }
 
   @Nested
@@ -73,6 +77,75 @@ class StompAuthenticationChannelInterceptorTest {
       val result = interceptor.preSend(message, channel)
 
       assertSame(message, result)
+    }
+
+    @Test
+    fun `그룹 구성원은 그룹 채팅 topic을 구독할 수 있다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      given(redisGroupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(GROUP_ID)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/groups/$GROUP_ID/chat",
+        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
+      )
+
+      val result = interceptor.preSend(message, channel)
+
+      assertSame(message, result)
+    }
+
+    @Test
+    fun `공연 ID 헤더 없이 그룹 채팅 topic을 구독할 수 없다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/groups/$GROUP_ID/chat",
+      )
+
+      assertThrows<AccessDeniedException> {
+        interceptor.preSend(message, channel)
+      }
+
+      then(redisGroupService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `숫자가 아닌 공연 ID 헤더로 그룹 채팅 topic을 구독할 수 없다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/groups/$GROUP_ID/chat",
+        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to "invalid-performance-id"),
+      )
+
+      assertThrows<AccessDeniedException> {
+        interceptor.preSend(message, channel)
+      }
+
+      then(redisGroupService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `다른 그룹의 채팅 topic을 구독할 수 없다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      given(redisGroupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(GROUP_ID)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/groups/other-group/chat",
+        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
+      )
+
+      assertThrows<AccessDeniedException> {
+        interceptor.preSend(message, channel)
+      }
     }
 
     @Test
@@ -195,16 +268,33 @@ class StompAuthenticationChannelInterceptorTest {
     details = payload
   }
 
-  private fun stompMessage(command: StompCommand, authentication: Authentication? = null): Message<String> {
+  private fun stompMessage(
+    command: StompCommand,
+    authentication: Authentication? = null,
+    destination: String? = null,
+    nativeHeaders: Map<String, String> = emptyMap(),
+  ): Message<String> {
     val accessor = StompHeaderAccessor.create(command)
 
     if (authentication != null) {
       accessor.user = authentication
+    }
+    if (destination != null) {
+      accessor.destination = destination
+    }
+    nativeHeaders.forEach { (name, value) ->
+      accessor.addNativeHeader(name, value)
     }
 
     return MessageBuilder.createMessage(
       "",
       accessor.messageHeaders,
     )
+  }
+
+  companion object {
+    private const val PERFORMANCE_ID_HEADER = "performanceId"
+    private const val PERFORMANCE_ID = 10L
+    private const val GROUP_ID = "group-1"
   }
 }
