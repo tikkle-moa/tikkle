@@ -161,12 +161,20 @@ describe("MyReservationDetailPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("예매 취소 결과를 확인하고 있어요.");
   });
 
-  it("환불 계좌 양식 제출을 훅에 전달한다", () => {
+  it("환불 계좌 입력 변경과 양식 제출을 훅에 전달한다", () => {
     mockUseMyReservationDetail.mockReturnValue({
       ...detailState,
       reservation: { ...reservation, status: "REFUND_ACCOUNT_REQUIRED" },
     });
     renderPage();
+
+    fireEvent.change(screen.getByLabelText("은행 코드"), { target: { value: "004" } });
+    fireEvent.change(screen.getByLabelText("계좌번호"), { target: { value: "0123456789" } });
+    fireEvent.change(screen.getByLabelText("예금주"), { target: { value: "홍길동" } });
+
+    expect(detailState.setBank).toHaveBeenCalledWith("004");
+    expect(detailState.setAccountNumber).toHaveBeenCalledWith("0123456789");
+    expect(detailState.setHolderName).toHaveBeenCalledWith("홍길동");
 
     fireEvent.submit(screen.getByRole("button", { name: "환불 계좌 제출" }).closest("form")!);
 

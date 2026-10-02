@@ -54,6 +54,22 @@ describe("ConfirmationDialog", () => {
     expect(screen.getByRole("button", { name: "상태 확인 중..." })).toBeDisabled();
   });
 
+  it("처리 중 문구가 없으면 기본 확인 문구를 유지한다", () => {
+    render(
+      <ConfirmationDialog
+        title="예매 취소"
+        message="취소 요청을 진행할까요?"
+        cancelLabel="돌아가기"
+        confirmLabel="취소 요청"
+        isProcessing
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "취소 요청" })).toBeDisabled();
+  });
+
   it("dialog 취소 이벤트는 기본 닫힘을 막고 취소 핸들러를 호출한다", () => {
     const onCancel = vi.fn();
     const { unmount } = render(
