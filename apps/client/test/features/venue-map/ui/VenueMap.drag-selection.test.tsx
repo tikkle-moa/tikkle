@@ -56,8 +56,8 @@ describe("VenueMap drag selection", () => {
 
     const selectedSeat = screen.getByRole("button", { name: /A-1/ });
     const visual = selectedSeat.querySelector("[data-seat-visual]");
-    expect(visual).toHaveAttribute("stroke", "#312e81");
-    expect(visual).toHaveAttribute("stroke-width", "1.1");
+    expect(visual).toHaveAttribute("stroke", "#6d28d9");
+    expect(visual).toHaveAttribute("stroke-width", "1.4");
 
     rerender(
       <VenueMap
