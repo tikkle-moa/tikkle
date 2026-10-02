@@ -1,6 +1,6 @@
 import { MemoryRouter } from "react-router";
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { formatDateTime } from "@shared/lib/date.utils";
@@ -31,7 +31,10 @@ const detailState = {
   isPending: false,
   isError: false,
   isCancelling: false,
+  isCancelConfirmationOpen: false,
   handleCancel: vi.fn(),
+  handleConfirmCancel: vi.fn(),
+  handleDismissCancel: vi.fn(),
   bank: "",
   setBank: vi.fn(),
   accountNumber: "",
@@ -55,7 +58,7 @@ describe("MyReservationDetailPage", () => {
 
     expect(screen.getByRole("heading", { name: reservation.concertTitle })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "아이유 콘서트 포스터" })).toHaveAttribute("src", reservation.posterUrl);
-    expect(screen.getByText("예매 번호 501")).toBeInTheDocument();
+    expect(screen.queryByText(/예매 번호/)).not.toBeInTheDocument();
     expect(screen.getByText("티클 아레나")).toBeInTheDocument();
     expect(screen.getByText("R석 A-12")).toBeInTheDocument();
     expect(screen.getByText(formatDateTime(reservation.performanceStartsAt))).toBeInTheDocument();
@@ -72,6 +75,20 @@ describe("MyReservationDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "← 내 예약 목록" }));
 
     expect(detailState.handleBackToReservations).toHaveBeenCalledOnce();
+  });
+
+  it("통일된 예매 취소 확인창에서 각 동작을 훅에 전달한다", async () => {
+    const user = userEvent.setup();
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, isCancelConfirmationOpen: true });
+    renderPage();
+
+    const dialog = screen.getByRole("dialog", { name: "예매를 취소할까요?" });
+    expect(dialog).toHaveTextContent("처리 결과를 이 화면에서 확인할 수 있어요.");
+    await user.click(within(dialog).getByRole("button", { name: "취소하지 않기" }));
+    expect(detailState.handleDismissCancel).toHaveBeenCalledOnce();
+
+    await user.click(within(dialog).getByRole("button", { name: "예매 취소" }));
+    expect(detailState.handleConfirmCancel).toHaveBeenCalledOnce();
   });
 
   it("좌석 정보가 없으면 대체 문구를 표시한다", () => {

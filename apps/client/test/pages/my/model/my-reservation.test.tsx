@@ -107,13 +107,15 @@ describe("내 예매 조회", () => {
     mockPost.mockResolvedValue(success({ reservationId: reservation.id, status: "REFUNDED" }));
     const { queryClient, wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
     const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
 
     await waitFor(() => expect(result.current.reservation).toEqual(reservation));
-    await act(async () => result.current.handleCancel());
+    act(() => result.current.handleCancel());
 
-    expect(confirm).toHaveBeenCalledWith("이 예매를 취소할까요?");
-    confirm.mockRestore();
+    expect(result.current.isCancelConfirmationOpen).toBe(true);
+    expect(mockPost).not.toHaveBeenCalled();
+    await act(async () => result.current.handleConfirmCancel());
+
+    expect(result.current.isCancelConfirmationOpen).toBe(false);
     expect(mockPost).toHaveBeenCalledWith("/api/reservations/{reservationId}/cancel", {
       params: { path: { reservationId: 501 } },
       body: { requestId: expect.any(String), refundReceiveAccount: null },
