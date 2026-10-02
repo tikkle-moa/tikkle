@@ -1,7 +1,3 @@
-import { type FormEvent, useState } from "react";
-import { Link } from "react-router";
-
-import { ROUTE_PATHS } from "@shared/config/router.config";
 import { formatDateTime } from "@shared/lib/date.utils";
 import { formatPrice } from "@shared/lib/number.utils";
 import DetailMessage from "@shared/ui/DetailMessage";
@@ -14,10 +10,21 @@ import { MY_RESERVATION_STATUS_LABELS } from "../model/my-reservation-detail.con
 import { useMyReservationDetail } from "../model/use-my-reservation-detail";
 
 const MyReservationDetailPage = () => {
-  const { isParamValid, reservation, isPending, isCancelling, handleCancel, cancelReservation } = useMyReservationDetail();
-  const [bank, setBank] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [holderName, setHolderName] = useState("");
+  const {
+    isParamValid,
+    reservation,
+    isPending,
+    isCancelling,
+    handleCancel,
+    bank,
+    setBank,
+    accountNumber,
+    setAccountNumber,
+    holderName,
+    setHolderName,
+    handleRefundAccountSubmit,
+    handleBackToReservations,
+  } = useMyReservationDetail();
 
   if (!isParamValid) {
     return <DetailMessage title="예매 정보를 찾을 수 없습니다." description="올바른 예매 번호인지 확인해 주세요." />;
@@ -32,9 +39,9 @@ const MyReservationDetailPage = () => {
       <div className="mx-auto w-full max-w-screen-sm">
         <DetailMessage title="예매 정보를 불러오지 못했습니다." description="예매 내역이 없거나 잠시 후 다시 시도해 주세요." />
         <div className="mt-4 text-center">
-          <Link to={ROUTE_PATHS.MY_RESERVATIONS} className="text-sm font-semibold text-violet-700 hover:underline">
+          <button type="button" onClick={handleBackToReservations} className="text-sm font-semibold text-violet-700 hover:underline">
             내 예약 목록으로
-          </Link>
+          </button>
         </div>
       </div>
     );
@@ -42,16 +49,11 @@ const MyReservationDetailPage = () => {
 
   const isRefundAccountRequired = reservation.status === "REFUND_ACCOUNT_REQUIRED";
 
-  const handleRefundAccountSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    void cancelReservation({ bank: bank.trim(), accountNumber: accountNumber.trim(), holderName: holderName.trim() });
-  };
-
   return (
     <section aria-labelledby="reservation-detail-title" className="mx-auto w-full max-w-screen-sm">
-      <Link to={ROUTE_PATHS.MY_RESERVATIONS} className="text-sm font-semibold text-violet-700 hover:underline">
+      <button type="button" onClick={handleBackToReservations} className="text-sm font-semibold text-violet-700 hover:underline">
         ← 내 예약 목록
-      </Link>
+      </button>
 
       <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5 sm:p-7">
         <div className="flex items-start justify-between gap-3">

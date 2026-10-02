@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@tikkle/api-types";
 
 import { apiClient } from "@shared/api";
+import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { type MyReservation, RESERVATION_QUERY_KEYS } from "@entities/reservation";
 
@@ -13,11 +14,26 @@ import { MY_RESERVATION_QUERY_KEYS } from "./my-reservation-detail.constants";
 
 export const useMyReservationDetail = () => {
   const { reservationId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const id = Number(reservationId);
   const isParamValid = Number.isInteger(id) && id > 0;
   const queryClient = useQueryClient();
   const [isCancelling, setIsCancelling] = useState(false);
+  const [bank, setBank] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [holderName, setHolderName] = useState("");
   const requestIdRef = useRef<{ id: string; refundReceiveAccount: string | null } | null>(null);
+  const fromMyReservations = (location.state as { fromMyReservations?: boolean } | null)?.fromMyReservations === true;
+
+  const handleBackToReservations = () => {
+    if (fromMyReservations) {
+      navigate(-1);
+      return;
+    }
+
+    navigate(ROUTE_PATHS.MY_RESERVATIONS);
+  };
 
   const reservationQuery = useQuery({
     queryKey: MY_RESERVATION_QUERY_KEYS.detail(id),
@@ -87,6 +103,11 @@ export const useMyReservationDetail = () => {
     void cancelReservation();
   };
 
+  const handleRefundAccountSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void cancelReservation({ bank: bank.trim(), accountNumber: accountNumber.trim(), holderName: holderName.trim() });
+  };
+
   return {
     isParamValid,
     reservation: reservationQuery.data,
@@ -94,6 +115,13 @@ export const useMyReservationDetail = () => {
     isError: reservationQuery.isError,
     isCancelling,
     handleCancel,
-    cancelReservation,
+    bank,
+    setBank,
+    accountNumber,
+    setAccountNumber,
+    holderName,
+    setHolderName,
+    handleRefundAccountSubmit,
+    handleBackToReservations,
   };
 };

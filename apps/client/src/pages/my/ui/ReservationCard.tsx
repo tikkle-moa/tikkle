@@ -19,6 +19,7 @@ const ReservationCard = ({ reservation }: Props) => {
       <Link
         className="flex gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none sm:p-5"
         to={generatePath(ROUTE_PATHS.MY_RESERVATION_DETAIL, { reservationId: String(reservation.id) })}
+        state={{ fromMyReservations: true }}
       >
         <ReservationPoster concertTitle={reservation.concertTitle} posterUrl={reservation.posterUrl} />
 
