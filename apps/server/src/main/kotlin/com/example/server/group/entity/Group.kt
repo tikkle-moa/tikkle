@@ -14,7 +14,7 @@ import org.hibernate.annotations.CreationTimestamp
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "ticket_groups")
+@Table(name = "`groups`")
 class Group(
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
