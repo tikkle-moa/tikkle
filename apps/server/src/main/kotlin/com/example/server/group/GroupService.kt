@@ -25,6 +25,11 @@ class GroupService(private val userRepository: UserRepository, private val group
     )
   }
 
+  /**
+   * TODO: 그룹 생성·가입 흐름 구현 시 사용자는 공연별 활성 그룹 하나에만 속하도록 제한해야 합니다.
+   * 현재 `GroupMember`의 유니크 제약은 동일 그룹 내 중복 가입만 막으므로,
+   * 이 전제가 지켜지지 않으면 단건 조회에서 예외가 발생할 수 있습니다.
+   */
   fun getGroupId(userId: Long, performanceId: Long): Long? {
     val groupId = groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(userId, performanceId)
     return groupId
