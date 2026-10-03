@@ -4,7 +4,16 @@ import { MY_RESERVATION_FILTER_OPTIONS } from "../model/my-reservation-filter.co
 import { useMyReservation } from "../model/use-my-reservation";
 
 const MyReservationPage = () => {
-  const { data: myReservations, filteredReservations, handleFilterChange, isError, isLoading, refetch, selectedFilter } = useMyReservation();
+  const {
+    data: myReservations,
+    filteredReservations,
+    handleFilterChange,
+    isError,
+    isLoading,
+    refetch,
+    selectedFilter,
+    venueAddressById,
+  } = useMyReservation();
 
   return (
     <section aria-labelledby="my-reservation-page-title" className="mx-auto max-w-screen-sm">
@@ -58,7 +67,7 @@ const MyReservationPage = () => {
           ) : (
             <ul aria-label="예매 목록" className="mt-4 space-y-3">
               {filteredReservations.map((reservation) => (
-                <ReservationCard key={reservation.id} reservation={reservation} />
+                <ReservationCard key={reservation.id} reservation={reservation} venueAddress={venueAddressById.get(reservation.venueId)} />
               ))}
             </ul>
           )}

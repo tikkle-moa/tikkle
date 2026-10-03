@@ -7,15 +7,18 @@ import VenueMapSurface from "./VenueMapSurface";
 import VenueMapZoomControls from "./VenueMapZoomControls";
 
 import { useVenueMapCanvas } from "../model/use-venue-map-canvas";
+import { HIGHLIGHTED_SEAT_COLOR, HIGHLIGHTED_SEAT_STROKE, MUTED_SEAT_COLOR } from "../model/venue-map.constants";
 
 interface VenueMapCanvasProps {
   venue: VenueResponse;
   venueSeats: VenueSeatResponse[];
   sections: string[];
   sectionColors: Record<string, string>;
+  mutedSeatColors: boolean;
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset: number;
   selectedSeatIds?: ReadonlySet<number>;
+  selectedSeatsOnly: boolean;
   onSeatToggle?: (seat: number) => void;
   onSeatSelectionChange?: (seatIds: ReadonlySet<number>) => void;
 }
@@ -25,9 +28,11 @@ const VenueMapCanvas = ({
   venueSeats,
   sections,
   sectionColors,
+  mutedSeatColors,
   venueSeatStates,
   serverTimeOffset,
   selectedSeatIds,
+  selectedSeatsOnly,
   onSeatToggle,
   onSeatSelectionChange,
 }: VenueMapCanvasProps) => {
@@ -71,6 +76,7 @@ const VenueMapCanvas = ({
           venueSeatStates={venueSeatStates}
           serverTimeOffset={serverTimeOffset}
           visibleSelectedSeatIds={selectedSeatIds}
+          selectedSeatsOnly={selectedSeatsOnly}
           selectedSeat={selectedSeat}
           onSeatToggle={onSeatToggle}
           svgRef={svgRef}
@@ -88,7 +94,24 @@ const VenueMapCanvas = ({
           handlePointerCancel={handlePointerCancel}
         />
 
-        {!venueSeatStates && (
+        {!venueSeatStates && mutedSeatColors && (
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600" aria-label="좌석 표시 안내">
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden className="size-2.5 rounded-sm" style={{ backgroundColor: MUTED_SEAT_COLOR }} />
+              일반 좌석
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className="size-2.5 rounded-sm border"
+                style={{ backgroundColor: HIGHLIGHTED_SEAT_COLOR, borderColor: HIGHLIGHTED_SEAT_STROKE }}
+              />
+              예매 좌석
+            </span>
+          </div>
+        )}
+
+        {!venueSeatStates && !mutedSeatColors && (
           <div className="mt-4 flex flex-wrap gap-x-3 gap-y-2 text-xs text-gray-600" aria-label="구역 색상">
             {sections.map((sectionName) => (
               <span key={sectionName} className="flex items-center gap-1.5">
@@ -105,6 +128,7 @@ const VenueMapCanvas = ({
           selectedSeatStatus={selectedSeatStatus}
           expiresAt={selectedSeat ? venueSeatStates?.get(selectedSeat.id)?.expiresAt : undefined}
           serverTimeOffset={serverTimeOffset}
+          isSeatSelectionEnabled={Boolean(onSeatSelectionChange)}
         />
 
         <VenueMapZoomControls zoom={zoom} canZoomIn={canZoomIn} canZoomOut={canZoomOut} zoomIn={zoomIn} zoomOut={zoomOut} />

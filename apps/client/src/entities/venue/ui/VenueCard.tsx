@@ -1,8 +1,10 @@
 import { Link, generatePath } from "react-router";
 
-import { Armchair, Building2, CalendarDays, MapPinned, Ruler } from "lucide-react";
+import { Armchair, Building2, CalendarDays, Ruler } from "lucide-react";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
+
+import VenueLocationLink from "./VenueLocationLink";
 
 import type { VenueListResponse } from "../model/venue.types";
 
@@ -62,23 +64,9 @@ const VenueCard = ({ venue }: VenueCardProps) => {
 
       <div className="pointer-events-none border-t border-violet-100" />
 
-      <a
-        href={`https://map.naver.com/p/search/${encodeURIComponent(venue.address)}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`${venue.address} 네이버 지도로 보기, 새 탭`}
-        className="group/address relative z-10 inline-flex max-w-full items-center gap-1.5 self-start text-sm text-slate-600 transition-colors hover:text-violet-600 hover:underline focus-visible:text-violet-600 focus-visible:underline"
-      >
-        <MapPinned className="size-4 shrink-0 text-violet-500" aria-hidden />
+      <VenueLocationLink searchText={venue.address} className="self-start">
         <span className="truncate whitespace-nowrap">{venue.address}</span>
-
-        <span
-          role="tooltip"
-          className="pointer-events-none absolute -top-9 left-0 hidden -translate-y-1 rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg transition-all group-hover/address:block group-hover/address:translate-y-0 group-hover/address:opacity-100 group-focus-visible/address:block group-focus-visible/address:translate-y-0 group-focus-visible/address:opacity-100 sm:block"
-        >
-          네이버 지도로 보기
-        </span>
-      </a>
+      </VenueLocationLink>
     </div>
   );
 };

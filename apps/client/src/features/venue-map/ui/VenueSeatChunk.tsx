@@ -13,6 +13,7 @@ interface VenueSeatChunkProps {
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset: number;
   visibleSelectedSeatIds?: ReadonlySet<number>;
+  selectedSeatsOnly: boolean;
   selectedSeat: VenueSeatResponse | null;
   isHoldMode: boolean;
   getSeatTabIndex: (seat: VenueSeatResponse) => number;
@@ -30,6 +31,7 @@ const VenueSeatChunk = ({
   venueSeatStates,
   serverTimeOffset,
   visibleSelectedSeatIds,
+  selectedSeatsOnly,
   selectedSeat,
   isHoldMode,
   getSeatTabIndex,
@@ -61,6 +63,7 @@ const VenueSeatChunk = ({
         status={status}
         isSelected={isSelected}
         isSeatSelectable={isSeatSelectable}
+        selectedSeatsOnly={selectedSeatsOnly}
         hasSeatStatuses={Boolean(venueSeatStates)}
         isHoldMode={isHoldMode}
         isHeld={isHeld}
@@ -82,6 +85,7 @@ export default memo(VenueSeatChunk, (previous, next) => {
     previous.venueSeats !== next.venueSeats ||
     previous.seatLabelById !== next.seatLabelById ||
     previous.serverTimeOffset !== next.serverTimeOffset ||
+    previous.selectedSeatsOnly !== next.selectedSeatsOnly ||
     previous.isHoldMode !== next.isHoldMode ||
     previous.handleSeatClick !== next.handleSeatClick ||
     previous.handleSeatKeyDown !== next.handleSeatKeyDown ||

@@ -4,9 +4,10 @@ import { apiClient } from "@shared/api";
 
 import { CONCERT_QUERY_KEYS } from "./concert.constants";
 
-export const useConcerts = () =>
+export const useConcerts = (enabled = true) =>
   useQuery({
     queryKey: CONCERT_QUERY_KEYS.all,
+    enabled,
     queryFn: async () => {
       const { data, error, response } = await apiClient.GET("/api/concerts");
 

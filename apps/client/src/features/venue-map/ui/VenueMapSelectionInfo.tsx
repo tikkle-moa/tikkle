@@ -14,9 +14,17 @@ interface VenueMapSelectionInfoProps {
   selectedSeatStatus: VenueSeatStatus | null;
   expiresAt?: Date;
   serverTimeOffset: number;
+  isSeatSelectionEnabled?: boolean;
 }
 
-const VenueMapSelectionInfo = ({ selectedSeat, selectedSeatIds, selectedSeatStatus, expiresAt, serverTimeOffset }: VenueMapSelectionInfoProps) => {
+const VenueMapSelectionInfo = ({
+  selectedSeat,
+  selectedSeatIds,
+  selectedSeatStatus,
+  expiresAt,
+  serverTimeOffset,
+  isSeatSelectionEnabled = false,
+}: VenueMapSelectionInfoProps) => {
   const staticStatusMessage = selectedSeatStatus && !isHeldSeatStatus(selectedSeatStatus) ? getSeatStatusMessage(selectedSeatStatus) : null;
 
   return (
@@ -40,9 +48,11 @@ const VenueMapSelectionInfo = ({ selectedSeat, selectedSeatIds, selectedSeatStat
         </div>
       ) : (
         <div>
-          <p>좌석을 탭하거나 클릭하여 선택하세요.</p>
+          {(!selectedSeatIds || isSeatSelectionEnabled || selectedSeatIds.size === 0) && (
+            <p>{selectedSeatIds && !isSeatSelectionEnabled ? "표시할 예매 좌석이 없습니다." : "좌석을 탭하거나 클릭하여 선택하세요."}</p>
+          )}
           <p>Alt/Option + 스크롤 또는 두 손가락으로 확대하고, 확대된 상태에서 드래그하여 이동할 수 있어요.</p>
-          {selectedSeatIds && (
+          {selectedSeatIds && isSeatSelectionEnabled && (
             <p className="hidden pointer-fine:block">
               Alt/Option + 드래그로 여러 좌석을 한 번에 선택할 수 있어요. Shift 키를 함께 누르면 기존 선택을 유지하면서 선택할 수 있어요.
             </p>

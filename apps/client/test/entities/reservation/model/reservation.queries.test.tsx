@@ -42,6 +42,7 @@ describe("useMyReservation", () => {
         performanceName: "금요일 공연",
         performanceStartsAt: "2026-12-18T19:00:00",
         venueName: "공연장 A",
+        venueId: 7,
         seats: [
           { sectionName: "R석", seatLabel: "A-12" },
           { sectionName: "R석", seatLabel: "A-13" },

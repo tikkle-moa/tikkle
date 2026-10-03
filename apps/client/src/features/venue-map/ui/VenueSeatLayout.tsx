@@ -13,6 +13,7 @@ interface VenueSeatLayoutProps {
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset: number;
   visibleSelectedSeatIds?: ReadonlySet<number>;
+  selectedSeatsOnly: boolean;
   selectedSeat: VenueSeatResponse | null;
   onSeatToggle?: (seat: number) => void;
   getSeatTabIndex: (seat: VenueSeatResponse) => number;
@@ -30,6 +31,7 @@ const VenueSeatLayout = ({
   venueSeatStates,
   serverTimeOffset,
   visibleSelectedSeatIds,
+  selectedSeatsOnly,
   selectedSeat,
   onSeatToggle,
   getSeatTabIndex,
@@ -56,6 +58,7 @@ const VenueSeatLayout = ({
       venueSeatStates={venueSeatStates}
       serverTimeOffset={serverTimeOffset}
       visibleSelectedSeatIds={visibleSelectedSeatIds}
+      selectedSeatsOnly={selectedSeatsOnly}
       selectedSeat={selectedSeat}
       isHoldMode={Boolean(onSeatToggle)}
       getSeatTabIndex={getSeatTabIndex}
@@ -75,6 +78,7 @@ export default memo(VenueSeatLayout, (previous, next) => {
     previous.venueSeats === next.venueSeats &&
     previous.seatLabelById === next.seatLabelById &&
     previous.sectionColors === next.sectionColors &&
+    previous.selectedSeatsOnly === next.selectedSeatsOnly &&
     (hasSeatStatuses || previous.venueSeatStates === next.venueSeatStates) &&
     (hasSeatStatuses || previous.serverTimeOffset === next.serverTimeOffset) &&
     ((previous.visibleSelectedSeatIds !== undefined && next.visibleSelectedSeatIds !== undefined) ||

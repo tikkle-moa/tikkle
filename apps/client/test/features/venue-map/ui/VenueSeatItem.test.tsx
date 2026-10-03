@@ -18,6 +18,7 @@ const renderItem = (overrides: Partial<React.ComponentProps<typeof VenueSeatItem
     status: "available",
     isSelected: false,
     isSeatSelectable: true,
+    selectedSeatsOnly: false,
     hasSeatStatuses: true,
     isHoldMode: true,
     isHeld: false,

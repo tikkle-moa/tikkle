@@ -4,6 +4,7 @@ import { SEAT_STATUS_LEGEND, type VenueResponse, type VenueSeatResponse, type Ve
 
 import VenueMapCanvas from "./VenueMapCanvas";
 
+import { MUTED_SEAT_COLOR } from "../model/venue-map.constants";
 import { createSectionColorMap } from "../model/venue-map.utils";
 
 interface VenueMapProps {
@@ -13,6 +14,8 @@ interface VenueMapProps {
   venueSeatStates?: ReadonlyMap<number, VenueSeatState>;
   serverTimeOffset?: number;
   selectedSeatIds?: ReadonlySet<number>;
+  selectedSeatsOnly?: boolean;
+  mutedSeatColors?: boolean;
   onSeatToggle?: (seat: number) => void;
   onSeatSelectionChange?: (seatIds: ReadonlySet<number>) => void;
 }
@@ -24,11 +27,16 @@ const VenueMap = ({
   venueSeatStates,
   serverTimeOffset = 0,
   selectedSeatIds,
+  selectedSeatsOnly = false,
+  mutedSeatColors = false,
   onSeatToggle,
   onSeatSelectionChange,
 }: VenueMapProps) => {
   const sections = useMemo(() => [...new Set(venueSeats.map((seat) => seat.sectionName))], [venueSeats]);
-  const sectionColors = useMemo(() => createSectionColorMap(venue.id, sections), [venue.id, sections]);
+  const sectionColors = useMemo(
+    () => (mutedSeatColors ? Object.fromEntries(sections.map((section) => [section, MUTED_SEAT_COLOR])) : createSectionColorMap(venue.id, sections)),
+    [mutedSeatColors, sections, venue.id],
+  );
 
   return (
     <section className={className}>
@@ -64,7 +72,7 @@ const VenueMap = ({
               <button
                 type="button"
                 className="rounded-full border border-violet-200 bg-white px-2.5 py-1 text-[11px] font-bold text-violet-700 transition hover:bg-violet-50 focus-visible:ring-2 focus-visible:ring-violet-200 focus-visible:outline-none"
-                onClick={() => onSeatSelectionChange?.(new Set())}
+                onClick={() => onSeatSelectionChange(new Set())}
               >
                 전체 선택 취소
               </button>
@@ -79,9 +87,11 @@ const VenueMap = ({
           venueSeats={venueSeats}
           sections={sections}
           sectionColors={sectionColors}
+          mutedSeatColors={mutedSeatColors}
           venueSeatStates={venueSeatStates}
           serverTimeOffset={serverTimeOffset}
           selectedSeatIds={selectedSeatIds}
+          selectedSeatsOnly={selectedSeatsOnly}
           onSeatToggle={onSeatToggle}
           onSeatSelectionChange={onSeatSelectionChange}
         />

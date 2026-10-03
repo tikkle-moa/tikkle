@@ -16,6 +16,7 @@ export const ROUTE_PATHS = {
   MY: "/my",
   MY_FAVORITES: "/my/favorites",
   MY_RESERVATIONS: "/my/reservations",
+  MY_RESERVATION_DETAIL: "/my/reservations/:reservationId",
   PAYMENT: "/payments/:reservationId",
   PAYMENT_CHECKOUT: "/payments/:reservationId/checkout",
   PAYMENT_SUCCESS: "/payments/success",
@@ -27,6 +28,7 @@ export type RoutePaths = (typeof ROUTE_PATHS)[keyof typeof ROUTE_PATHS];
 export const AUTH_GUARD_PATHS: RoutePaths[] = [
   ROUTE_PATHS.MY_FAVORITES,
   ROUTE_PATHS.MY_RESERVATIONS,
+  ROUTE_PATHS.MY_RESERVATION_DETAIL,
   ROUTE_PATHS.VENUE_LIST,
   ROUTE_PATHS.PERFORMANCE_CHECKOUT,
   ROUTE_PATHS.PAYMENT,

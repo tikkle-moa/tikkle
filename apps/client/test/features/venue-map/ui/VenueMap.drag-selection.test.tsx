@@ -41,27 +41,6 @@ const prepareMap = () => {
 };
 
 describe("VenueMap drag selection", () => {
-  it("전체 선택 취소는 빈 좌석 ID 집합만 전달한다", () => {
-    const onSeatSelectionChange = vi.fn();
-    const onSeatToggle = vi.fn();
-    render(
-      <VenueMap
-        venue={venue}
-        venueSeats={seats}
-        venueSeatStates={venueSeatStates}
-        selectedSeatIds={new Set([1, 2])}
-        onSeatToggle={onSeatToggle}
-        onSeatSelectionChange={onSeatSelectionChange}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "전체 선택 취소" }));
-
-    expect(onSeatSelectionChange).toHaveBeenCalledTimes(1);
-    expect(onSeatSelectionChange).toHaveBeenCalledWith(new Set());
-    expect(onSeatToggle).not.toHaveBeenCalled();
-  });
-
   it("제어된 선택 상태가 비워지면 좌석 테두리 스타일을 원복한다", () => {
     const onSeatToggle = vi.fn();
     const { rerender } = render(
