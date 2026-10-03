@@ -19,4 +19,5 @@ export type {
 } from "./model/venue.types";
 export { default as VenueCard } from "./ui/VenueCard";
 export { default as VenueCardSkeleton } from "./ui/VenueCardSkeleton";
+export { default as VenueLocationLink } from "./ui/VenueLocationLink";
 export { default as VenueSelectionMockup } from "./ui/VenueSelectionMockup";

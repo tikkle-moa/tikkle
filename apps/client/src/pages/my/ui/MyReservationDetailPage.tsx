@@ -4,6 +4,7 @@ import ConfirmationDialog from "@shared/ui/ConfirmationDialog";
 import DetailMessage from "@shared/ui/DetailMessage";
 
 import { MY_RESERVATION_STATUS_MAP, ReservationPoster } from "@entities/reservation";
+import { VenueLocationLink } from "@entities/venue";
 
 import MyReservationSeatMapDialog from "./MyReservationSeatMapDialog";
 import MyReservationSkeleton from "./MyReservationSkeleton";
@@ -14,6 +15,7 @@ const MyReservationDetailPage = () => {
   const {
     isParamValid,
     reservation,
+    venueAddress,
     isPending,
     isCancelling,
     isCancelConfirmationOpen,
@@ -83,7 +85,15 @@ const MyReservationDetailPage = () => {
           </div>
           <div className="flex justify-between gap-4 py-3">
             <dt className="shrink-0 text-gray-500">공연장</dt>
-            <dd className="text-right font-medium text-gray-900">{reservation.venueName}</dd>
+            <dd className="text-right font-medium text-gray-900">
+              {venueAddress ? (
+                <VenueLocationLink searchText={venueAddress} label={reservation.venueName}>
+                  {reservation.venueName}
+                </VenueLocationLink>
+              ) : (
+                reservation.venueName
+              )}
+            </dd>
           </div>
           <div className="flex justify-between gap-4 py-3">
             <dt className="shrink-0 text-gray-500">좌석</dt>

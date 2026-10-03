@@ -591,6 +591,8 @@ export interface components {
       /** Format: date-time */
       performanceStartsAt: string;
       venueName: string;
+      /** Format: int64 */
+      venueId: number;
       seats: components["schemas"]["ReservationSeatResponse"][];
       /** Format: int32 */
       amount: number;

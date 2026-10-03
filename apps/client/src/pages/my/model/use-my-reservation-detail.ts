@@ -9,6 +9,7 @@ import { apiClient } from "@shared/api";
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
 import { type MyReservation, RESERVATION_QUERY_KEYS, useMyReservationDetail as useMyReservationDetailQuery } from "@entities/reservation";
+import { useVenues } from "@entities/venue";
 
 import { useMyReservationSeatMap } from "./use-my-reservation-seat-map";
 
@@ -38,6 +39,8 @@ export const useMyReservationDetail = () => {
 
   const reservationQuery = useMyReservationDetailQuery({ reservationId: id });
   const reservation = reservationQuery.data;
+  const venuesQuery = useVenues(Boolean(reservation));
+  const venueAddress = venuesQuery.data?.find(({ id: venueId }) => venueId === reservation?.venueId)?.address;
   const seatMap = useMyReservationSeatMap({ reservation });
 
   const cancelReservation = async (refundReceiveAccount: components["schemas"]["RefundReceiveAccount"] | null = null) => {
@@ -107,6 +110,7 @@ export const useMyReservationDetail = () => {
     reservation,
     isPending: reservationQuery.isPending,
     isError: reservationQuery.isError,
+    venueAddress,
     seatMap,
     isCancelling,
     isCancelConfirmationOpen,

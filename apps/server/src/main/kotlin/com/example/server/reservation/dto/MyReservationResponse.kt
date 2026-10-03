@@ -12,6 +12,7 @@ data class MyReservationResponse(
   val performanceName: String,
   val performanceStartsAt: LocalDateTime,
   val venueName: String,
+  val venueId: Long,
   val seats: List<ReservationSeatResponse>,
   val amount: Int,
   val status: ReservationStatus,
@@ -25,6 +26,7 @@ data class MyReservationResponse(
       performanceName = reservation.performance.name,
       performanceStartsAt = reservation.performance.startsAt,
       venueName = reservation.performance.concert.venue.name,
+      venueId = reservation.performance.concert.venue.id,
       seats = reservationSeats.map {
         ReservationSeatResponse(
           sectionName = it.venueSeat.sectionName,

@@ -6,21 +6,25 @@ import { formatPrice } from "@shared/lib/number.utils";
 
 import { ReservationPoster } from "@entities/reservation";
 import { MY_RESERVATION_STATUS_MAP, type MyReservation } from "@entities/reservation";
+import { VenueLocationLink } from "@entities/venue";
 
 interface Props {
   reservation: MyReservation;
+  venueAddress?: string;
 }
 
-const ReservationCard = ({ reservation }: Props) => {
+const ReservationCard = ({ reservation, venueAddress }: Props) => {
   const status = MY_RESERVATION_STATUS_MAP[reservation.status];
 
   return (
-    <li>
+    <li className="group relative flex gap-4 rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:border-violet-300">
       <Link
-        className="flex gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-violet-300 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none sm:p-5"
+        aria-label={`${reservation.concertTitle} ${reservation.performanceName} 예매 상세 보기`}
+        className="absolute inset-0 rounded-2xl focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none"
         to={generatePath(ROUTE_PATHS.MY_RESERVATION_DETAIL, { reservationId: String(reservation.id) })}
         state={{ fromMyReservations: true }}
-      >
+      />
+      <div className="pointer-events-none relative flex w-full gap-4 p-4 sm:p-5">
         <ReservationPoster concertTitle={reservation.concertTitle} posterUrl={reservation.posterUrl} />
 
         <div className="min-w-0 grow">
@@ -32,11 +36,20 @@ const ReservationCard = ({ reservation }: Props) => {
           <p className="mt-3 text-sm font-semibold text-gray-900">
             <time dateTime={reservation.performanceStartsAt}>{formatDateTime(reservation.performanceStartsAt)}</time>
           </p>
-          <p className="mt-1 text-sm text-gray-600">
-            {reservation.venueName} · {reservation.seats.length}석 · {formatPrice(reservation.amount)}
+          <p className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-gray-600">
+            {venueAddress ? (
+              <VenueLocationLink searchText={venueAddress} label={reservation.venueName}>
+                {reservation.venueName}
+              </VenueLocationLink>
+            ) : (
+              reservation.venueName
+            )}
+            <span>
+              · {reservation.seats.length}석 · {formatPrice(reservation.amount)}
+            </span>
           </p>
         </div>
-      </Link>
+      </div>
     </li>
   );
 };
