@@ -22,6 +22,7 @@ const reservation: MyReservation = {
   performanceName: "금요일 공연",
   performanceStartsAt: "2026-12-18T19:00:00",
   venueName: "티클 아레나",
+  venueId: 7,
   seats: [
     { sectionName: "R석", seatLabel: "A-12" },
     { sectionName: "R석", seatLabel: "A-13" },

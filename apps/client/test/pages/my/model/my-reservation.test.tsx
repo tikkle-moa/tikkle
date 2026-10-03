@@ -9,14 +9,15 @@ import { type MyReservation, RESERVATION_QUERY_KEYS } from "@entities/reservatio
 
 import { useMyReservationDetail } from "@pages/my/model/use-my-reservation-detail";
 
-const { mockGet, mockPost } = vi.hoisted(() => ({
+const { mockGet, mockGetVenues, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
+  mockGetVenues: vi.fn(),
   mockPost: vi.fn(),
 }));
 
 vi.mock("@shared/api", () => ({
   apiClient: {
-    GET: mockGet,
+    GET: (path: string, ...args: unknown[]) => (path === "/api/venues" ? mockGetVenues(path, ...args) : mockGet(path, ...args)),
     POST: mockPost,
   },
 }));
@@ -32,6 +33,7 @@ const reservation = {
   performanceName: "금요일 공연",
   performanceStartsAt: "2026-12-18T19:00:00",
   venueName: "티클 아레나",
+  venueId: 7,
   seats: [{ sectionName: "R석", seatLabel: "A-12" }],
   amount: 66000,
   status: "SUCCEEDED" as const,
@@ -82,6 +84,7 @@ const createDetailWrapper = (
 describe("내 예매 조회", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetVenues.mockResolvedValue(success([]));
   });
 
   it("URL 예매 ID로 상세 API를 조회한다", async () => {
@@ -95,6 +98,22 @@ describe("내 예매 조회", () => {
     });
   });
 
+  it("공연장 ID로 지도 검색용 주소를 조회한다", async () => {
+    const venueAddress = "서울특별시 송파구 올림픽로 424";
+    mockGet.mockResolvedValue(success(reservation));
+    mockGetVenues.mockResolvedValue(
+      success([
+        { id: 8, name: reservation.venueName, address: "다른 공연장의 주소" },
+        { id: reservation.venueId, name: reservation.venueName, address: venueAddress },
+      ]),
+    );
+    const { wrapper } = createDetailWrapper(["/my/reservations/501"]);
+    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
+
+    await waitFor(() => expect(result.current.venueAddress).toBe(venueAddress));
+    expect(mockGetVenues).toHaveBeenCalledWith("/api/venues");
+  });
+
   it("상세 API 응답이 실패하면 조회 오류 상태를 반환한다", async () => {
     mockGet.mockResolvedValue({ data: undefined, error: { message: "request failed" }, response: { ok: false, status: 500 } });
     const { wrapper } = createDetailWrapper(["/my/reservations/501"]);
@@ -104,23 +123,13 @@ describe("내 예매 조회", () => {
     expect(result.current.reservation).toBeUndefined();
   });
 
-  it("신선한 목록 캐시는 상세 API 재요청 없이 초기 데이터로 사용한다", () => {
+  it("목록 캐시가 있어도 상세 API를 조회하고 응답 전에는 예매 데이터를 표시하지 않는다", async () => {
+    mockGet.mockImplementation(() => new Promise(() => {}));
     const { wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
     const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
 
-    expect(result.current.reservation).toEqual(reservation);
-    expect(result.current.isPending).toBe(false);
-    expect(mockGet).not.toHaveBeenCalled();
-  });
-
-  it("오래된 목록 캐시는 먼저 표시하면서 상세 API를 다시 조회한다", async () => {
-    mockGet.mockImplementation(() => new Promise(() => {}));
-    const { queryClient, wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
-    queryClient.setQueryData(RESERVATION_QUERY_KEYS.my(), [reservation], { updatedAt: Date.now() - 1000 * 60 * 6 });
-    const { result } = renderHook(() => useMyReservationDetail(), { wrapper });
-
-    expect(result.current.reservation).toEqual(reservation);
-    expect(result.current.isPending).toBe(false);
+    expect(result.current.reservation).toBeUndefined();
+    expect(result.current.isPending).toBe(true);
     await waitFor(() =>
       expect(mockGet).toHaveBeenCalledWith("/api/reservations/{reservationId}", {
         params: { path: { reservationId: 501 } },
@@ -154,7 +163,7 @@ describe("내 예매 조회", () => {
   });
 
   it("예매 취소 API를 호출하고 상세 데이터를 갱신한다", async () => {
-    mockGet.mockResolvedValueOnce(success({ ...reservation, status: "REFUNDED" }));
+    mockGet.mockResolvedValueOnce(success(reservation)).mockResolvedValue(success({ ...reservation, status: "REFUNDED" }));
     mockPost.mockResolvedValue(success({ reservationId: reservation.id, status: "REFUNDED" }));
     const { queryClient, wrapper } = createDetailWrapper(["/my/reservations/501"], [reservation]);
     const { result } = renderHook(() => useMyReservationDetail(), { wrapper });

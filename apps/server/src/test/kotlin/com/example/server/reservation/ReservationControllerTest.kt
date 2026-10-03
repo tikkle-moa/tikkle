@@ -76,6 +76,7 @@ class ReservationControllerTest {
       jsonPath("$.success") { value(true) }
       jsonPath("$.data[0].id") { value(RESERVATION_ID) }
       jsonPath("$.data[0].posterUrl") { value("https://example.com/poster.jpg") }
+      jsonPath("$.data[0].venueId") { value(VENUE_ID) }
       jsonPath("$.data[0].seats[0].seatLabel") { value("A-12") }
       jsonPath("$.data[0].status") { value("SUCCEEDED") }
     }
@@ -91,6 +92,7 @@ class ReservationControllerTest {
       status { isOk() }
       jsonPath("$.data.id") { value(RESERVATION_ID) }
       jsonPath("$.data.posterUrl") { value("https://example.com/poster.jpg") }
+      jsonPath("$.data.venueId") { value(VENUE_ID) }
     }
   }
 
@@ -146,6 +148,7 @@ class ReservationControllerTest {
     performanceName = "1회차",
     performanceStartsAt = LocalDateTime.of(2026, 12, 18, 19, 0),
     venueName = "공연장",
+    venueId = VENUE_ID,
     seats = listOf(ReservationSeatResponse("A", "A-12")),
     amount = 66_000,
     status = ReservationStatus.SUCCEEDED,
@@ -155,5 +158,6 @@ class ReservationControllerTest {
   private companion object {
     const val USER_ID = 2L
     const val RESERVATION_ID = 501L
+    const val VENUE_ID = 7L
   }
 }

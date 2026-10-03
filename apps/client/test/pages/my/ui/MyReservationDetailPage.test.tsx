@@ -19,6 +19,7 @@ const reservation = {
   performanceName: "금요일 공연",
   performanceStartsAt: "2026-12-18T19:00:00",
   venueName: "티클 아레나",
+  venueId: 7,
   seats: [{ sectionName: "R석", seatLabel: "A-12" }],
   amount: 66000,
   status: "SUCCEEDED" as const,
@@ -28,6 +29,7 @@ const reservation = {
 const detailState = {
   isParamValid: true,
   reservation,
+  venueAddress: "서울특별시 송파구 올림픽로 424",
   isPending: false,
   isError: false,
   isCancelling: false,
@@ -72,12 +74,24 @@ describe("MyReservationDetailPage", () => {
     expect(screen.getByRole("img", { name: "아이유 콘서트 포스터" })).toHaveAttribute("src", reservation.posterUrl);
     expect(screen.queryByText(/예매 번호/)).not.toBeInTheDocument();
     expect(screen.getByText("티클 아레나")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "티클 아레나 네이버 지도로 보기, 새 탭" })).toHaveAttribute(
+      "href",
+      `https://map.naver.com/p/search/${encodeURIComponent(detailState.venueAddress)}`,
+    );
     expect(screen.getByText("R석 A-12")).toBeInTheDocument();
     expect(screen.getByText(formatDateTime(reservation.performanceStartsAt))).toBeInTheDocument();
     expect(screen.getByText(formatDateTime(reservation.createdAt))).toBeInTheDocument();
     expect(screen.getByText(formatPrice(reservation.amount))).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "예매 취소" }));
     expect(detailState.handleCancel).toHaveBeenCalledOnce();
+  });
+
+  it("공연장 주소를 찾지 못하면 이름을 일반 텍스트로 표시한다", () => {
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, venueAddress: undefined });
+    renderPage();
+
+    expect(screen.getByText(reservation.venueName)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /네이버 지도로 보기/ })).not.toBeInTheDocument();
   });
 
   it("예매 목록으로 돌아가기 동작을 훅에 전달한다", async () => {
@@ -170,11 +184,11 @@ describe("MyReservationDetailPage", () => {
     expect(screen.getByRole("heading", { name: "예매 정보를 찾을 수 없습니다." })).toBeInTheDocument();
   });
 
-  it("상세 재조회에 실패해도 목록 캐시가 있으면 예매 정보를 보여준다", () => {
-    mockUseMyReservationDetail.mockReturnValue({ ...detailState, isError: true });
+  it("상세 조회에 실패하면 목록 캐시와 무관하게 오류를 표시한다", () => {
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: undefined, isError: true });
     renderPage();
 
-    expect(screen.getByRole("heading", { name: reservation.concertTitle })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "예매 정보를 불러오지 못했습니다." })).toBeInTheDocument();
   });
 
   it("취소할 수 없는 상태에서는 취소 버튼을 표시하지 않는다", () => {

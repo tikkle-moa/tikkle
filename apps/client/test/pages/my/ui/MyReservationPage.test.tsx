@@ -13,13 +13,14 @@ import MyReservationPage from "@pages/my/ui/MyReservationPage";
 
 import { makeMyReservation } from "../fixtures/my-reservation.fixture";
 
-const { mockGet } = vi.hoisted(() => ({
+const { mockGet, mockGetVenues } = vi.hoisted(() => ({
   mockGet: vi.fn(),
+  mockGetVenues: vi.fn(),
 }));
 
 vi.mock("@shared/api", () => ({
   apiClient: {
-    GET: mockGet,
+    GET: (path: string, ...args: unknown[]) => (path === "/api/venues" ? mockGetVenues(path, ...args) : mockGet(path, ...args)),
   },
 }));
 
@@ -70,6 +71,11 @@ const renderPage = () => {
 describe("MyReservationPage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockGetVenues.mockResolvedValue({
+      data: { data: [] },
+      error: undefined,
+      response: { ok: true, status: 200 },
+    });
   });
 
   it("목록을 불러오는 중임을 표시한다", () => {
@@ -133,6 +139,17 @@ describe("MyReservationPage", () => {
       error: undefined,
       response: { ok: true, status: 200 },
     });
+    const venueAddress = "서울특별시 송파구 올림픽로 424";
+    mockGetVenues.mockResolvedValue({
+      data: {
+        data: [
+          { id: 8, name: "공연장 A", address: "다른 공연장의 주소" },
+          { id: 7, name: "공연장 A", address: venueAddress },
+        ],
+      },
+      error: undefined,
+      response: { ok: true, status: 200 },
+    });
 
     const { container } = renderPage();
 
@@ -145,12 +162,16 @@ describe("MyReservationPage", () => {
     const concertHeadings = await screen.findAllByRole("heading", { level: 2 });
     expect(concertHeadings.map((heading) => heading.textContent)).toEqual(myReservations.map(({ concertTitle }) => concertTitle));
     expect(screen.getAllByText("금요일 공연")).toHaveLength(statusCases.length);
-    expect(screen.getAllByText(`공연장 A · 2석 · ${formatPrice(132000)}`)).toHaveLength(statusCases.length);
+    expect(screen.getAllByText(`· 2석 · ${formatPrice(132000)}`)).toHaveLength(statusCases.length);
 
     const reservationList = screen.getByRole("list", { name: "예매 목록" });
     statusCases.forEach(([, label]) => expect(within(reservationList).getByText(label)).toBeInTheDocument());
 
-    const firstReservationLink = within(reservationList).getByRole("link", { name: /콘서트 1 포스터/ });
+    const venueLinks = await within(reservationList).findAllByRole("link", { name: "공연장 A 네이버 지도로 보기, 새 탭" });
+    expect(venueLinks).toHaveLength(statusCases.length);
+    expect(venueLinks[0]).toHaveAttribute("href", `https://map.naver.com/p/search/${encodeURIComponent(venueAddress)}`);
+
+    const firstReservationLink = within(reservationList).getByRole("link", { name: "콘서트 1 금요일 공연 예매 상세 보기" });
     expect(firstReservationLink).toHaveAttribute("href", "/my/reservations/501");
 
     const poster = screen.getByRole("img", { name: "콘서트 1 포스터" });
