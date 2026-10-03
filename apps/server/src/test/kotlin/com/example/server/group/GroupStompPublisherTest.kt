@@ -45,6 +45,6 @@ class GroupStompPublisherTest {
   }
 
   companion object {
-    private const val GROUP_ID = "group-1"
+    private const val GROUP_ID = 1L
   }
 }

@@ -3,7 +3,7 @@ package com.example.server.global.security
 import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.refreshTokenKey
 import com.example.server.auth.types.UserRole
-import com.example.server.group.RedisGroupService
+import com.example.server.group.GroupService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -35,7 +35,7 @@ class StompAuthenticationChannelInterceptorTest {
   lateinit var stringValueOperations: ValueOperations<String, String>
 
   @Mock
-  lateinit var redisGroupService: RedisGroupService
+  lateinit var groupService: GroupService
 
   @Mock
   lateinit var channel: MessageChannel
@@ -44,7 +44,7 @@ class StompAuthenticationChannelInterceptorTest {
 
   @BeforeEach
   fun setUp() {
-    interceptor = StompAuthenticationChannelInterceptor(stringRedisTemplate, redisGroupService)
+    interceptor = StompAuthenticationChannelInterceptor(stringRedisTemplate, groupService)
   }
 
   @Nested
@@ -92,14 +92,14 @@ class StompAuthenticationChannelInterceptorTest {
       val result = interceptor.preSend(message, channel)
 
       assertSame(message, result)
-      then(redisGroupService).shouldHaveNoInteractions()
+      then(groupService).shouldHaveNoInteractions()
     }
 
     @Test
     fun `그룹 구성원은 그룹 채팅 topic을 구독할 수 있다`() {
       val payload = validPayload()
       mockStoredSession(payload)
-      given(redisGroupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(GROUP_ID)
+      given(groupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(GROUP_ID)
       val message = stompMessage(
         command = StompCommand.SUBSCRIBE,
         authentication = authentication(payload),
@@ -110,6 +110,25 @@ class StompAuthenticationChannelInterceptorTest {
       val result = interceptor.preSend(message, channel)
 
       assertSame(message, result)
+    }
+
+    @Test
+    fun `그룹에 속하지 않은 사용자는 그룹 채팅 topic을 구독할 수 없다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      given(groupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(null)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/groups/$GROUP_ID/chat",
+        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
+      )
+
+      assertThrows<AccessDeniedException> {
+        interceptor.preSend(message, channel)
+      }
+
+      then(groupService).should().getGroupId(payload.userId, PERFORMANCE_ID)
     }
 
     @Test
@@ -126,7 +145,7 @@ class StompAuthenticationChannelInterceptorTest {
         interceptor.preSend(message, channel)
       }
 
-      then(redisGroupService).shouldHaveNoInteractions()
+      then(groupService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -143,7 +162,7 @@ class StompAuthenticationChannelInterceptorTest {
         interceptor.preSend(message, channel)
       }
 
-      then(redisGroupService).shouldHaveNoInteractions()
+      then(groupService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -160,7 +179,7 @@ class StompAuthenticationChannelInterceptorTest {
         interceptor.preSend(message, channel)
       }
 
-      then(redisGroupService).shouldHaveNoInteractions()
+      then(groupService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -177,7 +196,7 @@ class StompAuthenticationChannelInterceptorTest {
         interceptor.preSend(message, channel)
       }
 
-      then(redisGroupService).shouldHaveNoInteractions()
+      then(groupService).shouldHaveNoInteractions()
     }
 
     @Test
@@ -195,18 +214,36 @@ class StompAuthenticationChannelInterceptorTest {
         interceptor.preSend(message, channel)
       }
 
-      then(redisGroupService).shouldHaveNoInteractions()
+      then(groupService).shouldHaveNoInteractions()
+    }
+
+    @Test
+    fun `숫자가 아닌 그룹 ID의 그룹 채팅 topic을 구독할 수 없다`() {
+      val payload = validPayload()
+      mockStoredSession(payload)
+      val message = stompMessage(
+        command = StompCommand.SUBSCRIBE,
+        authentication = authentication(payload),
+        destination = "/topic/groups/not-a-number/chat",
+        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
+      )
+
+      assertThrows<AccessDeniedException> {
+        interceptor.preSend(message, channel)
+      }
+
+      then(groupService).shouldHaveNoInteractions()
     }
 
     @Test
     fun `다른 그룹의 채팅 topic을 구독할 수 없다`() {
       val payload = validPayload()
       mockStoredSession(payload)
-      given(redisGroupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(GROUP_ID)
+      given(groupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(GROUP_ID)
       val message = stompMessage(
         command = StompCommand.SUBSCRIBE,
         authentication = authentication(payload),
-        destination = "/topic/groups/other-group/chat",
+        destination = "/topic/groups/${GROUP_ID + 1}/chat",
         nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
       )
 
@@ -362,6 +399,6 @@ class StompAuthenticationChannelInterceptorTest {
   companion object {
     private const val PERFORMANCE_ID_HEADER = "performanceId"
     private const val PERFORMANCE_ID = 10L
-    private const val GROUP_ID = "group-1"
+    private const val GROUP_ID = 100L
   }
 }
