@@ -18,7 +18,7 @@ enum class GroupChatEventType {
 }
 
 data class GroupChatEventData(
-  val groupId: String,
+  val groupId: Long,
   val senderNickname: String,
   val senderProfileImageUrl: String?,
   val content: String,

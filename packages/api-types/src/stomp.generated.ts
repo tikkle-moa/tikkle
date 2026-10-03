@@ -274,7 +274,7 @@ export interface GroupChatEvent {
 
 export interface GroupChatEventData {
   content: string;
-  groupId: string;
+  groupId: number;
   senderNickname: string;
   senderProfileImageUrl: string | null;
   sentAt: string;

@@ -82,7 +82,7 @@ class GroupStompControllerTest {
   companion object {
     private const val USER_ID = 1L
     private const val PERFORMANCE_ID = 10L
-    private const val GROUP_ID = "group-1"
+    private const val GROUP_ID = 1L
     private val REQUEST_ID = UUID.fromString("f8ef0eb0-6a2a-4b34-bca8-5ce51c930aa3")
   }
 }

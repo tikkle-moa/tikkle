@@ -5,6 +5,7 @@ import com.example.server.auth.repository.UserRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.group.dto.GroupChatData
+import com.example.server.group.repository.GroupMemberRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -22,7 +23,7 @@ import java.util.Optional
 class GroupServiceTest {
   @Mock lateinit var userRepository: UserRepository
 
-  @Mock lateinit var redisGroupService: RedisGroupService
+  @Mock lateinit var groupMemberRepository: GroupMemberRepository
 
   @InjectMocks lateinit var service: GroupService
 
@@ -36,7 +37,7 @@ class GroupServiceTest {
     )
     val commandData = GroupChatData(performanceId = PERFORMANCE_ID, content = "같이 예매해요")
     given(userRepository.findById(USER_ID)).willReturn(Optional.of(user))
-    given(redisGroupService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
     val before = OffsetDateTime.now(ZoneOffset.UTC)
 
     val result = service.createGroupChatMessage(USER_ID, commandData)
@@ -52,7 +53,7 @@ class GroupServiceTest {
   @Test
   fun `그룹에 속하지 않은 사용자의 채팅을 거부한다`() {
     given(userRepository.findById(USER_ID)).willReturn(Optional.of(user()))
-    given(redisGroupService.getGroupId(USER_ID, PERFORMANCE_ID)).willReturn(null)
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(null)
 
     val exception = assertThrows<CustomException> {
       service.createGroupChatMessage(USER_ID, GroupChatData(PERFORMANCE_ID, "메시지"))
@@ -70,7 +71,7 @@ class GroupServiceTest {
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
-    then(redisGroupService).shouldHaveNoInteractions()
+    then(groupMemberRepository).shouldHaveNoInteractions()
   }
 
   private fun user() = User(
@@ -82,6 +83,6 @@ class GroupServiceTest {
   companion object {
     private const val USER_ID = 1L
     private const val PERFORMANCE_ID = 10L
-    private const val GROUP_ID = "group-1"
+    private const val GROUP_ID = 100L
   }
 }
