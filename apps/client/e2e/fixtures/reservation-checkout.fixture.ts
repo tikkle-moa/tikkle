@@ -8,6 +8,7 @@ import { deleteConcert } from "../api/concert.api";
 import { createVenue, deleteVenue } from "../api/venue.api";
 
 export const RESERVATION_CHECKOUT_SEAT_LABEL = "A구역 1열 1번";
+const RESERVATION_CHECKOUT_OTHER_SEAT_LABEL = "A구역 1열 2번";
 
 const deletePerformance = async (page: Page, performanceId: number) => {
   const response = await page.request.delete(`/api/performances/${performanceId}`, {
@@ -34,8 +35,19 @@ const createCheckoutScenario = async (page: Page) => {
         positionX: 20,
         positionY: 30,
       },
+      {
+        sectionName: "A구역",
+        seatNumber: 2,
+        seatLabel: RESERVATION_CHECKOUT_OTHER_SEAT_LABEL,
+        price: 150_000,
+        positionX: 28,
+        positionY: 30,
+      },
     ]);
     venueId = venue.venue.id;
+    const reservationSeat = venue.venueSeats.find(({ seatLabel }) => seatLabel === RESERVATION_CHECKOUT_SEAT_LABEL);
+    const otherSeat = venue.venueSeats.find(({ seatLabel }) => seatLabel === RESERVATION_CHECKOUT_OTHER_SEAT_LABEL);
+    if (!reservationSeat || !otherSeat) throw new Error("E2E 예매 좌석 정보를 찾지 못했습니다.");
 
     const concertRequest = {
       title: `E2E 예매 테스트 공연 ${randomUUID()}`,
@@ -72,7 +84,17 @@ const createCheckoutScenario = async (page: Page) => {
     expect(performanceBody).toMatchObject({ success: true, data: performanceRequest });
     if (!performanceId) throw new Error("회차 생성 응답에서 ID를 찾지 못했습니다.");
 
-    return { concertId, performanceId, performanceName: performanceRequest.name, venueId };
+    return {
+      concertId,
+      concertTitle: concertRequest.title,
+      performanceId,
+      performanceName: performanceRequest.name,
+      reservationSeatId: reservationSeat.id,
+      reservationSeatPositionX: reservationSeat.positionX,
+      reservationSeatPositionY: reservationSeat.positionY,
+      otherSeatId: otherSeat.id,
+      venueId,
+    };
   } catch (error) {
     if (performanceId) await deletePerformance(page, performanceId);
     if (concertId) await deleteConcert(page, concertId);

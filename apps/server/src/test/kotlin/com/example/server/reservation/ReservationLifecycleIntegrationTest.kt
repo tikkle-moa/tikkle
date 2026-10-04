@@ -20,6 +20,7 @@ import com.example.server.venue.entity.Venue
 import com.example.server.venue.entity.VenueSeat
 import com.example.server.venue.repository.VenueRepository
 import com.example.server.venue.repository.VenueSeatRepository
+import jakarta.servlet.http.Cookie
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -35,6 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.HttpHeaders
@@ -46,8 +48,12 @@ import org.springframework.messaging.simp.stomp.StompHeaders
 import org.springframework.messaging.simp.stomp.StompSession
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter
 import org.springframework.scheduling.TaskScheduler
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import org.springframework.web.socket.WebSocketHttpHeaders
 import org.springframework.web.socket.client.standard.StandardWebSocketClient
 import org.springframework.web.socket.messaging.WebSocketStompClient
@@ -77,10 +83,11 @@ private const val HOLD_PERFORMANCE_KEY_PREFIX = "hold:performance:"
 private const val PERFORMANCE_SEAT_EVENT_VERSION_KEY_PREFIX = "performance:venue-seat-event-version:"
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestcontainersConfig::class)
-@DisplayName("실제 STOMP 예매 및 결제 통합 테스트")
-class ReservationStompCheckoutIntegrationTest {
+@DisplayName("실제 예매 및 결제 전체 여정 통합 테스트")
+class ReservationLifecycleIntegrationTest {
   @LocalServerPort
   private var port: Int = 0
 
@@ -107,6 +114,9 @@ class ReservationStompCheckoutIntegrationTest {
 
   @Autowired
   private lateinit var jwtTokenProvider: JwtTokenProvider
+
+  @Autowired
+  private lateinit var mockMvc: MockMvc
 
   @Autowired
   private lateinit var stringRedisTemplate: StringRedisTemplate
@@ -310,6 +320,107 @@ class ReservationStompCheckoutIntegrationTest {
     verify(paymentGateway, never()).confirm(anyString(), anyString(), anyInt())
   }
 
+  @Test
+  fun `점유부터 결제 취소까지 예매 API 목록 상세 권한을 통합 검증한다`() {
+    val client = connect(fixture.userA, fixture.sessionIdA)
+    val holdQueue = "/user/queue/performances/${fixture.performance.id}/hold-seats"
+    client.subscribe(holdQueue)
+    client.awaitSubscriptions()
+    assertThat(holdSeat(client, fixture.sessionIdA, fixture.seats.first().id).path("success").asBoolean()).isTrue()
+
+    given(paymentGateway.confirm(anyString(), anyString(), anyInt())).willAnswer { invocation ->
+      ExternalPayment(
+        paymentKey = invocation.arguments[0] as String,
+        orderId = invocation.arguments[1] as String,
+        amount = invocation.arguments[2] as Int,
+        status = ExternalPaymentStatus.DONE,
+      )
+    }
+
+    val checkoutResponse = completeCheckout(client, fixture.sessionIdA, fixture.seats.first().id)
+    val reservationId = checkoutResponse.path("data").path("reservationId").asLong()
+    val accessTokenA = accessToken(fixture.userA)
+    val accessTokenB = accessToken(fixture.userB)
+
+    mockMvc.get("/api/reservations").andExpect {
+      status { isUnauthorized() }
+    }
+    mockMvc.get("/api/reservations/$reservationId").andExpect {
+      status { isUnauthorized() }
+    }
+
+    mockMvc.get("/api/reservations") {
+      cookie(Cookie("access_token", accessTokenA))
+    }.andExpect {
+      status { isOk() }
+      jsonPath("$.data.length()") { value(1) }
+      jsonPath("$.data[0].id") { value(reservationId) }
+      jsonPath("$.data[0].status") { value(ReservationStatus.SUCCEEDED.name) }
+      jsonPath("$.data[0].seats[0].seatLabel") { value(fixture.seats.first().seatLabel) }
+    }
+    mockMvc.get("/api/reservations/$reservationId") {
+      cookie(Cookie("access_token", accessTokenA))
+    }.andExpect {
+      status { isOk() }
+      jsonPath("$.data.id") { value(reservationId) }
+      jsonPath("$.data.amount") { value(100_000) }
+      jsonPath("$.data.status") { value(ReservationStatus.SUCCEEDED.name) }
+      jsonPath("$.data.seats[0].seatLabel") { value(fixture.seats.first().seatLabel) }
+    }
+
+    mockMvc.get("/api/reservations") {
+      cookie(Cookie("access_token", accessTokenB))
+    }.andExpect {
+      status { isOk() }
+      jsonPath("$.data.length()") { value(0) }
+    }
+    mockMvc.get("/api/reservations/$reservationId") {
+      cookie(Cookie("access_token", accessTokenB))
+    }.andExpect {
+      status { isForbidden() }
+    }
+    mockMvc.post("/api/reservations/$reservationId/cancel") {
+      cookie(Cookie("access_token", accessTokenB))
+      with(csrf())
+      contentType = MediaType.APPLICATION_JSON
+      content = """{"requestId":"${UUID.randomUUID()}"}"""
+    }.andExpect {
+      status { isForbidden() }
+    }
+    assertThat(reservationRepository.findById(reservationId).orElseThrow().status)
+      .isEqualTo(ReservationStatus.SUCCEEDED)
+
+    mockMvc.post("/api/reservations/$reservationId/cancel") {
+      cookie(Cookie("access_token", accessTokenA))
+      with(csrf())
+      contentType = MediaType.APPLICATION_JSON
+      content = """{"requestId":"${UUID.randomUUID()}"}"""
+    }.andExpect {
+      status { isOk() }
+      jsonPath("$.data.reservationId") { value(reservationId) }
+      jsonPath("$.data.status") { value(ReservationStatus.REFUNDED.name) }
+    }
+
+    assertThat(reservationRepository.findById(reservationId).orElseThrow().status)
+      .isEqualTo(ReservationStatus.REFUNDED)
+    assertThat(reservationSeatRepository.findVenueSeatIdsByReservationId(reservationId))
+      .containsExactly(fixture.seats.first().id)
+    assertThat(
+      jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id = ? AND event_type = 'PAYMENT_CANCELLED'",
+        Long::class.java,
+        reservationId,
+      ),
+    ).isEqualTo(1L)
+    mockMvc.get("/api/reservations/$reservationId") {
+      cookie(Cookie("access_token", accessTokenA))
+    }.andExpect {
+      status { isOk() }
+      jsonPath("$.data.status") { value(ReservationStatus.REFUNDED.name) }
+      jsonPath("$.data.seats[0].seatLabel") { value(fixture.seats.first().seatLabel) }
+    }
+  }
+
   private fun holdSeat(client: StompTestClient, sessionId: UUID, seatId: Long): JsonNode {
     val performanceId = fixture.performance.id
     val destination = "/user/queue/performances/$performanceId/hold-seats"
@@ -399,12 +510,7 @@ class ReservationStompCheckoutIntegrationTest {
   }
 
   private fun connect(user: User, sessionId: UUID): StompTestClient {
-    val token = jwtTokenProvider.generateAccessToken(user.id, UserRole.USER)
-    val tokenPayload = jwtTokenProvider.parseAccessTokenPayload(token)!!
-    val redisKey = "$ACCESS_SESSION_KEY_PREFIX${tokenPayload.tokenId}"
-    stringRedisTemplate.opsForValue().set(redisKey, user.id.toString(), Duration.ofMinutes(10))
-    accessSessionKeys += redisKey
-
+    val token = accessToken(user)
     val handshakeHeaders = WebSocketHttpHeaders().apply {
       add(HttpHeaders.COOKIE, "access_token=$token")
       add(HttpHeaders.ORIGIN, "http://localhost:5173")
@@ -416,6 +522,15 @@ class ReservationStompCheckoutIntegrationTest {
       object : StompSessionHandlerAdapter() {},
     ).get(10, TimeUnit.SECONDS)
     return StompTestClient(session, fixture.performance.id, sessionId).also(clients::add)
+  }
+
+  private fun accessToken(user: User): String {
+    val token = jwtTokenProvider.generateAccessToken(user.id, UserRole.USER)
+    val tokenPayload = jwtTokenProvider.parseAccessTokenPayload(token)!!
+    val redisKey = "$ACCESS_SESSION_KEY_PREFIX${tokenPayload.tokenId}"
+    stringRedisTemplate.opsForValue().set(redisKey, user.id.toString(), Duration.ofMinutes(10))
+    accessSessionKeys += redisKey
+    return token
   }
 
   private fun createFixture(): Fixture {

@@ -15,20 +15,20 @@ export const createTestUser = (role: UserRole) => ({
 
 const encode = (value: object | string) => Buffer.from(typeof value === "string" ? value : JSON.stringify(value)).toString("base64url");
 
-const createAccessToken = (role: UserRole, tokenId: string = randomUUID()) => {
+const createAccessToken = (role: UserRole, tokenId: string = randomUUID(), userId: number = role === "ADMIN" ? 1 : 2) => {
   const secret = process.env.E2E_JWT_SECRET ?? "e2e-jwt-secret-key-must-be-at-least-32-bytes";
 
   const now = Math.floor(Date.now() / 1000);
   const header = encode({ alg: "HS256", typ: "JWT" });
-  const payload = encode({ jti: tokenId, sub: role === "ADMIN" ? "1" : "2", type: "ACCESS", role, iat: now, exp: now + 3600 });
+  const payload = encode({ jti: tokenId, sub: String(userId), type: "ACCESS", role, iat: now, exp: now + 3600 });
   const unsignedToken = `${header}.${payload}`;
   const signature = createHmac("sha256", secret).update(unsignedToken).digest("base64url");
 
   return `${unsignedToken}.${signature}`;
 };
 
-export const createApiAuthHeaders = (role: UserRole) => ({
-  Cookie: `access_token=${createAccessToken(role)}; XSRF-TOKEN=${TEST_CSRF_TOKEN}`,
+export const createApiAuthHeaders = (role: UserRole, userId: number = role === "ADMIN" ? 1 : 2) => ({
+  Cookie: `access_token=${createAccessToken(role, randomUUID(), userId)}; XSRF-TOKEN=${TEST_CSRF_TOKEN}`,
   "X-XSRF-TOKEN": TEST_CSRF_TOKEN,
 });
 

@@ -1,4 +1,5 @@
 import { type Browser, type Page, expect } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 import { authenticatePage } from "../api/auth.api";
 import { E2E_AUTH_SESSIONS } from "../config/e2e-auth-sessions.config";
@@ -117,6 +118,16 @@ const cancelPayment = async (page: Page, stompMessages: CapturedStompMessage[], 
   await expect(findSeat(page)).toHaveAttribute("data-seat-status", "available");
 };
 
+const confirmPayment = async (page: Page, checkout: CheckoutResult, paymentKey: string) => {
+  const successUrl = new URL("/payments/success", page.url());
+  successUrl.searchParams.set("paymentKey", paymentKey);
+  successUrl.searchParams.set("orderId", checkout.orderId);
+  successUrl.searchParams.set("amount", String(checkout.amount));
+
+  await page.goto(successUrl.toString());
+  await expect(page.getByRole("heading", { name: "예매가 완료되었습니다" })).toBeVisible();
+};
+
 test.describe("실제 브라우저 예매 및 결제 흐름", () => {
   test("좌석을 선택해 결제 주문을 확인하고 결제 취소 후 예매와 좌석 상태를 되돌린다", async ({ browser, checkoutScenario }) => {
     let context: Awaited<ReturnType<typeof createBookingPage>>["context"] | undefined;
@@ -131,6 +142,78 @@ test.describe("실제 브라우저 예매 및 결제 흐름", () => {
         checkoutScenario.performanceName,
       );
       await cancelPayment(booking.page, booking.stompMessages, checkout.reservationId, checkoutScenario.performanceId);
+    } finally {
+      await context?.close();
+    }
+  });
+
+  test("좌석 점유·예매·결제 완료 후 내 예매에서 취소한다", async ({ browser, checkoutScenario }) => {
+    let context: Awaited<ReturnType<typeof createBookingPage>>["context"] | undefined;
+
+    try {
+      const booking = await createBookingPage(browser);
+      context = booking.context;
+      const checkout = await bookSeatToPaymentOrder(
+        booking.page,
+        booking.stompMessages,
+        checkoutScenario.performanceId,
+        checkoutScenario.performanceName,
+      );
+      await confirmPayment(booking.page, checkout, `e2e-payment-${randomUUID()}`);
+
+      const paidReservationResponse = await booking.page.request.get(`/api/reservations/${checkout.reservationId}`);
+      const paidReservationBody = await paidReservationResponse.json();
+      expect(paidReservationResponse.status(), JSON.stringify(paidReservationBody)).toBe(200);
+      expect(paidReservationBody.data).toMatchObject({
+        concertTitle: checkoutScenario.concertTitle,
+        id: checkout.reservationId,
+        status: "SUCCEEDED",
+        seats: [{ sectionName: "A구역", seatLabel: RESERVATION_CHECKOUT_SEAT_LABEL }],
+      });
+
+      await booking.page.goto(`/my/reservations/${checkout.reservationId}`);
+      await expect(booking.page.getByRole("heading", { name: checkoutScenario.concertTitle })).toBeVisible();
+      await expect(booking.page.getByText("예매 완료", { exact: true })).toBeVisible();
+      await booking.page.getByRole("button", { name: "좌석 보기" }).click();
+      const seatMapDialog = booking.page.getByRole("dialog", { name: "예매 좌석 보기" });
+      await expect(seatMapDialog).toBeVisible();
+
+      const highlightedSeats = seatMapDialog.locator('[data-seat-id][data-selected="true"]');
+      await expect(highlightedSeats).toHaveCount(1);
+      const reservationSeat = highlightedSeats.first();
+      await expect(reservationSeat).toHaveAttribute("data-seat-id", String(checkoutScenario.reservationSeatId));
+      const seatVisual = reservationSeat.locator("[data-seat-visual]");
+      const seatPosition = await seatVisual.evaluate((element) => {
+        const rect = element as SVGRectElement;
+        return {
+          x: Number(rect.getAttribute("x")) + Number(rect.getAttribute("width")) / 2,
+          y: Number(rect.getAttribute("y")) + Number(rect.getAttribute("height")) / 2,
+        };
+      });
+      expect(seatPosition).toEqual({
+        x: checkoutScenario.reservationSeatPositionX,
+        y: checkoutScenario.reservationSeatPositionY,
+      });
+      await expect(seatMapDialog.locator(`[data-seat-id="${checkoutScenario.otherSeatId}"]`)).toHaveAttribute("data-selected", "false");
+      await seatMapDialog.getByRole("button", { name: "닫기" }).click();
+
+      await booking.page.getByRole("button", { name: "예매 취소" }).click();
+      const cancelDialog = booking.page.getByRole("dialog", { name: "예매를 취소할까요?" });
+      await cancelDialog.getByRole("button", { name: "예매 취소" }).click();
+      await expect(booking.page.getByText("예매가 취소되었습니다.")).toBeVisible();
+      await expect(booking.page.getByText("환불 완료", { exact: true })).toBeVisible();
+
+      const cancelledReservationResponse = await booking.page.request.get(`/api/reservations/${checkout.reservationId}`);
+      const cancelledReservationBody = await cancelledReservationResponse.json();
+      expect(cancelledReservationResponse.status(), JSON.stringify(cancelledReservationBody)).toBe(200);
+      expect(cancelledReservationBody.data).toMatchObject({
+        id: checkout.reservationId,
+        status: "REFUNDED",
+        seats: [{ sectionName: "A구역", seatLabel: RESERVATION_CHECKOUT_SEAT_LABEL }],
+      });
+
+      await booking.page.goto(`/performances/${checkoutScenario.performanceId}`);
+      await expect(findSeat(booking.page)).toHaveAttribute("data-seat-status", "available", { timeout: 15_000 });
     } finally {
       await context?.close();
     }
