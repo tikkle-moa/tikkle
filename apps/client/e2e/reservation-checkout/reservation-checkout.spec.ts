@@ -174,6 +174,29 @@ test.describe("실제 브라우저 예매 및 결제 흐름", () => {
       await booking.page.goto(`/my/reservations/${checkout.reservationId}`);
       await expect(booking.page.getByRole("heading", { name: checkoutScenario.concertTitle })).toBeVisible();
       await expect(booking.page.getByText("예매 완료", { exact: true })).toBeVisible();
+      await booking.page.getByRole("button", { name: "좌석 보기" }).click();
+      const seatMapDialog = booking.page.getByRole("dialog", { name: "예매 좌석 보기" });
+      await expect(seatMapDialog).toBeVisible();
+
+      const highlightedSeats = seatMapDialog.locator('[data-seat-id][data-selected="true"]');
+      await expect(highlightedSeats).toHaveCount(1);
+      const reservationSeat = highlightedSeats.first();
+      await expect(reservationSeat).toHaveAttribute("data-seat-id", String(checkoutScenario.reservationSeatId));
+      const seatVisual = reservationSeat.locator("[data-seat-visual]");
+      const seatPosition = await seatVisual.evaluate((element) => {
+        const rect = element as SVGRectElement;
+        return {
+          x: Number(rect.getAttribute("x")) + Number(rect.getAttribute("width")) / 2,
+          y: Number(rect.getAttribute("y")) + Number(rect.getAttribute("height")) / 2,
+        };
+      });
+      expect(seatPosition).toEqual({
+        x: checkoutScenario.reservationSeatPositionX,
+        y: checkoutScenario.reservationSeatPositionY,
+      });
+      await expect(seatMapDialog.locator(`[data-seat-id="${checkoutScenario.otherSeatId}"]`)).toHaveAttribute("data-selected", "false");
+      await seatMapDialog.getByRole("button", { name: "닫기" }).click();
+
       await booking.page.getByRole("button", { name: "예매 취소" }).click();
       const cancelDialog = booking.page.getByRole("dialog", { name: "예매를 취소할까요?" });
       await cancelDialog.getByRole("button", { name: "예매 취소" }).click();
