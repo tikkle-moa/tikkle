@@ -1,0 +1,24 @@
+services:
+  payment-mock:
+    image: node:22-alpine
+    command: ["node", "/app/payment-mock.mjs"]
+    volumes:
+      - ./payment-mock.mjs:/app/payment-mock.mjs:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8081/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  server:
+    environment:
+      TOSS_PAYMENTS_BASE_URL: http://payment-mock:8081
+    depends_on:
+      payment-mock:
+        condition: service_healthy

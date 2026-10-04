@@ -1,7 +1,23 @@
 import { spawn } from "node:child_process";
 
-const composeArgs = ["compose", "-f", "infra/docker/e2e/docker-compose.yaml"];
 const playwrightArgs = process.argv.slice(2);
+const isSpecificSpecPath = (argument) =>
+  /^e2e\/.+\.(?:spec|test)\.[cm]?[jt]sx?$/.test(argument) &&
+  !/[*?]/.test(argument);
+const specPaths = playwrightArgs.filter(isSpecificSpecPath);
+const hasBroadTestSelector = playwrightArgs.some(
+  (argument) => !argument.startsWith("-") && !isSpecificSpecPath(argument),
+);
+const needsPaymentMock =
+  specPaths.length === 0 ||
+  hasBroadTestSelector ||
+  specPaths.some((path) => path.includes("/reservation-checkout/"));
+const composeArgs = ["compose", "-f", "infra/docker/e2e/docker-compose.yaml"];
+
+if (needsPaymentMock) {
+  composeArgs.push("-f", "infra/docker/e2e/docker-compose.payment.yaml");
+}
+
 let receivedSignal;
 let activeProcess;
 
