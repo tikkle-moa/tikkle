@@ -17,7 +17,7 @@ class GroupStompPublisher(private val messagingTemplate: SimpMessagingTemplate) 
     ),
   )
   @StompAsyncOperationBinding
-  fun publishGroupChatMessage(groupId: String, event: GroupChatEventData) {
+  fun publishGroupChatMessage(groupId: Long, event: GroupChatEventData) {
     messagingTemplate.convertAndSend(
       "/topic/groups/$groupId/chat",
       GroupChatEvent(data = event),

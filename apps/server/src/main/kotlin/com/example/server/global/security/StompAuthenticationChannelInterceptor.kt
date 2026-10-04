@@ -2,7 +2,7 @@ package com.example.server.global.security
 
 import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.refreshTokenKey
-import com.example.server.group.RedisGroupService
+import com.example.server.group.GroupService
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 
 @Component
-class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: StringRedisTemplate, private val redisGroupService: RedisGroupService) :
+class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: StringRedisTemplate, private val groupService: GroupService) :
   ChannelInterceptor {
   override fun preSend(message: Message<*>, channel: MessageChannel): Message<*>? {
     val accessor = StompHeaderAccessor.wrap(message)
@@ -57,16 +57,20 @@ class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: Str
 
     when (val groupChatDestination = GROUP_CHAT_DESTINATION.matchEntire(destination)) {
       null -> return
-      else -> validateGroupChatSubscription(accessTokenPayload, accessor, groupChatDestination.groupValues[1])
+      else -> {
+        val groupId = groupChatDestination.groupValues[1].toLongOrNull() ?: throw AccessDeniedException("그룹 채팅 구독에 올바른 그룹 ID가 필요합니다.")
+        validateGroupChatSubscription(accessTokenPayload, accessor, groupId)
+      }
     }
   }
 
-  private fun validateGroupChatSubscription(accessTokenPayload: AccessTokenPayload, accessor: StompHeaderAccessor, groupId: String) {
+  private fun validateGroupChatSubscription(accessTokenPayload: AccessTokenPayload, accessor: StompHeaderAccessor, groupId: Long) {
     val performanceId = accessor.getFirstNativeHeader(PERFORMANCE_ID_HEADER)
       ?.toLongOrNull()
       ?: throw AccessDeniedException("그룹 채팅 구독에 공연 ID가 필요합니다.")
 
-    val memberGroupId = redisGroupService.getGroupId(accessTokenPayload.userId, performanceId)
+    val memberGroupId = groupService.getGroupId(accessTokenPayload.userId, performanceId)
+      ?: throw AccessDeniedException("그룹 채팅 구독 권한이 없습니다.")
     if (memberGroupId != groupId) {
       throw AccessDeniedException("그룹 채팅 구독 권한이 없습니다.")
     }
