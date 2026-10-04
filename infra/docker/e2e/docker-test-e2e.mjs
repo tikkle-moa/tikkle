@@ -1,17 +1,83 @@
 import { spawn } from "node:child_process";
 
 const playwrightArgs = process.argv.slice(2);
-const isSpecificSpecPath = (argument) =>
-  /^e2e\/.+\.(?:spec|test)\.[cm]?[jt]sx?$/.test(argument) &&
-  !/[*?]/.test(argument);
-const specPaths = playwrightArgs.filter(isSpecificSpecPath);
-const hasBroadTestSelector = playwrightArgs.some(
-  (argument) => !argument.startsWith("-") && !isSpecificSpecPath(argument),
+// Playwright CLI options whose next token is an option value, not a test filter.
+const valueOptions = new Set([
+  "--browser",
+  "-c",
+  "--config",
+  "-g",
+  "--grep",
+  "-G",
+  "--grep-invert",
+  "--global-timeout",
+  "-j",
+  "--workers",
+  "--last-failed-file",
+  "--max-failures",
+  "--output",
+  "--project",
+  "--repeat-each",
+  "--reporter",
+  "--retries",
+  "--shard",
+  "--test-list",
+  "--test-list-invert",
+  "--timeout",
+  "--trace",
+  "--tsconfig",
+  "--ui-host",
+  "--ui-port",
+  "--update-source-method",
+]);
+const snapshotModes = new Set(["all", "changed", "missing", "none"]);
+const optionalValueOptions = new Map([
+  ["--debug", new Set(["inspector", "cli"])],
+  ["--only-changed", undefined],
+  ["-u", snapshotModes],
+  ["--update-snapshots", snapshotModes],
+]);
+const testSelectors = [];
+
+for (let index = 0; index < playwrightArgs.length; index += 1) {
+  const argument = playwrightArgs[index];
+  if (valueOptions.has(argument)) {
+    if (
+      playwrightArgs[index + 1] &&
+      !playwrightArgs[index + 1].startsWith("-")
+    ) {
+      index += 1;
+    }
+  } else if (optionalValueOptions.has(argument)) {
+    const value = playwrightArgs[index + 1];
+    const acceptedValues = optionalValueOptions.get(argument);
+    if (
+      value &&
+      !value.startsWith("-") &&
+      (!acceptedValues || acceptedValues.has(value))
+    ) {
+      index += 1;
+    }
+  } else if (!argument.startsWith("-")) {
+    testSelectors.push(argument);
+  }
+}
+
+const hasSpecificE2eScope = (selector) => {
+  const scope = selector.match(/^e2e\/([^/]+)/)?.[1];
+  return Boolean(
+    scope && /^[\w-]+(?:\.(?:spec|test)\.[cm]?[jt]sx?)?$/.test(scope),
+  );
+};
+const hasBroadTestSelector = testSelectors.some(
+  (selector) => !hasSpecificE2eScope(selector),
 );
 const needsPaymentMock =
-  specPaths.length === 0 ||
+  testSelectors.length === 0 ||
   hasBroadTestSelector ||
-  specPaths.some((path) => path.includes("/reservation-checkout/"));
+  testSelectors.some((selector) =>
+    /(?:^|\/)reservation-checkout(?:\/|\.|$)/.test(selector),
+  );
 const composeArgs = ["compose", "-f", "infra/docker/e2e/docker-compose.yaml"];
 
 if (needsPaymentMock) {
