@@ -26,6 +26,14 @@ VALUES (
         NULL,
         'USER',
         NOW()
+    ),
+    (
+        3,
+        'other-user@example.com',
+        'E2E 다른 사용자',
+        NULL,
+        'USER',
+        NOW()
     )
 ON DUPLICATE KEY UPDATE
     email = VALUES(email),
