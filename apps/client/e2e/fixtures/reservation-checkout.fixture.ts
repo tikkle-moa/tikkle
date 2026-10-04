@@ -72,7 +72,7 @@ const createCheckoutScenario = async (page: Page) => {
     expect(performanceBody).toMatchObject({ success: true, data: performanceRequest });
     if (!performanceId) throw new Error("회차 생성 응답에서 ID를 찾지 못했습니다.");
 
-    return { concertId, performanceId, performanceName: performanceRequest.name, venueId };
+    return { concertId, concertTitle: concertRequest.title, performanceId, performanceName: performanceRequest.name, venueId };
   } catch (error) {
     if (performanceId) await deletePerformance(page, performanceId);
     if (concertId) await deleteConcert(page, concertId);
