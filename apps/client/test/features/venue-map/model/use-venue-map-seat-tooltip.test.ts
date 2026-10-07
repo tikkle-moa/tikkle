@@ -12,14 +12,12 @@ const eventTarget = {
   },
 } as unknown as SVGGElement;
 const createStates = (status: VenueSeatStatus): Map<number, VenueSeatState> =>
-  new Map([
-    [1, status === "held_by_my_group" || status === "held_by_other_group" ? { status, expiresAt: new Date("2026-09-16T20:00:00") } : { status }],
-  ]);
+  new Map([[1, status === "held_by_me" || status === "held_by_other" ? { status, expiresAt: new Date("2026-09-16T20:00:00") } : { status }]]);
 const createPointerEvent = (pointerType: "mouse" | "touch" = "mouse") => ({ currentTarget: eventTarget, pointerType }) as never;
 
 describe("useVenueMapSeatTooltip", () => {
   it("held 좌석의 마우스 pointer에서 tooltip을 열고 leave에서 닫는다", () => {
-    const { result } = renderHook(() => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates: createStates("held_by_my_group") }));
+    const { result } = renderHook(() => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates: createStates("held_by_me") }));
 
     act(() => result.current.handlePointerEnter(createPointerEvent(), seat));
     expect(result.current.isTooltipVisible).toBe(true);
@@ -34,7 +32,7 @@ describe("useVenueMapSeatTooltip", () => {
   });
 
   it("터치 pointer에서는 held 좌석 tooltip을 열지 않는다", () => {
-    const { result } = renderHook(() => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates: createStates("held_by_my_group") }));
+    const { result } = renderHook(() => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates: createStates("held_by_me") }));
 
     act(() => result.current.handlePointerEnter(createPointerEvent("touch"), seat));
     act(() => result.current.handlePointerMove(createPointerEvent("touch")));
@@ -52,7 +50,7 @@ describe("useVenueMapSeatTooltip", () => {
   });
 
   it("pointer 이동 시 좌석의 viewport 위치로 tooltip 좌표를 갱신한다", () => {
-    const { result } = renderHook(() => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates: createStates("held_by_my_group") }));
+    const { result } = renderHook(() => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates: createStates("held_by_me") }));
     const movedTarget = {
       getBoundingClientRect: () => ({ left: 45, top: 30, width: 10, height: 8 }),
     };
@@ -62,7 +60,7 @@ describe("useVenueMapSeatTooltip", () => {
   });
 
   it("svg bounds 없이도 held 좌석의 viewport 위치에 tooltip을 연다", () => {
-    const { result } = renderHook(() => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates: createStates("held_by_my_group") }));
+    const { result } = renderHook(() => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates: createStates("held_by_me") }));
     const target = {
       getBoundingClientRect: () => ({ left: 35, top: 40, width: 10, height: 8 }),
     };
@@ -76,7 +74,7 @@ describe("useVenueMapSeatTooltip", () => {
 
   it("상태가 없는 held 좌석도 기본 available 상태로 계산한다", () => {
     const { result, rerender } = renderHook(({ venueSeatStates }) => useVenueMapSeatTooltip({ venueSeats: [seat], venueSeatStates }), {
-      initialProps: { venueSeatStates: createStates("held_by_my_group") },
+      initialProps: { venueSeatStates: createStates("held_by_me") },
     });
 
     act(() => result.current.handlePointerEnter(createPointerEvent(), seat));
@@ -91,7 +89,7 @@ describe("useVenueMapSeatTooltip", () => {
     const { result } = renderHook(() =>
       useVenueMapSeatTooltip({
         venueSeats: [seat],
-        venueSeatStates: new Map([[2, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }]]),
+        venueSeatStates: new Map([[2, { status: "held_by_me", expiresAt: new Date("2026-09-16T20:00:00") }]]),
       }),
     );
 

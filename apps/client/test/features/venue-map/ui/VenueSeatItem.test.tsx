@@ -55,7 +55,7 @@ describe("VenueSeatItem", () => {
     const onPointerMove = vi.fn();
     const onPointerLeave = vi.fn();
     const { container } = renderItem({
-      status: "held_by_my_group",
+      status: "held_by_me",
       isHeld: true,
       onPointerEnter,
       onPointerMove,

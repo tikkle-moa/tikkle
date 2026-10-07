@@ -4,7 +4,6 @@ import type { BeginCheckoutReviewMessage, EndCheckoutReviewMessage, StompFailure
 import type StompClient from "@shared/realtime/stomp-client";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
-import { getOrCreatePerformanceCheckoutReviewToken } from "@features/performance-booking/model/performance-booking.utils";
 import { useCheckoutReview } from "@features/performance-booking/model/use-checkout-review";
 
 describe("useCheckoutReview", () => {
@@ -13,8 +12,7 @@ describe("useCheckoutReview", () => {
   const unsubscribe = vi.fn();
   const stompClient = { publish, subscribe } as unknown as StompClient;
   const review = {
-    groupId: "1:10:session-1",
-    sessionId: "session-1",
+    scopeId: "1:10",
     performanceId: 10,
     venueSeatIds: [101, 102],
     expiresAt: "2026-09-22T13:00:00",
@@ -54,17 +52,17 @@ describe("useCheckoutReview", () => {
 
   it("BEGIN 응답의 서버 좌석 스냅샷을 전달하고 중복 응답은 무시한다", () => {
     const onBeginSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: "session-1", onBeginSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onBeginSuccess }));
 
     act(() => result.current.beginReview());
     const command = publish.mock.calls[0][0];
     expect(command).toMatchObject({
       path: "/reservation/begin-checkout-review",
-      command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken: expect.any(String), sessionId: "session-1" } },
+      command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken: expect.any(String) } },
     });
     expect(result.current.isBeginning).toBe(true);
     act(() => result.current.beginReview());
-    act(() => result.current.endReview(command.command.data.reviewToken, review.groupId));
+    act(() => result.current.endReview(command.command.data.reviewToken));
     expect(publish).toHaveBeenCalledTimes(1);
 
     act(() => {
@@ -89,7 +87,7 @@ describe("useCheckoutReview", () => {
 
   it("BEGIN 응답 유실 시 같은 토큰으로 자동 재전송하고 타임아웃 뒤 수동 재시도에도 토큰을 유지한다", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: "session-1" }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
     act(() => result.current.beginReview());
     const firstCommand = publish.mock.calls[0][0].command;
@@ -97,7 +95,7 @@ describe("useCheckoutReview", () => {
 
     expect(publish).toHaveBeenCalledTimes(2);
     expect(publish.mock.calls[1][0].command).toEqual(firstCommand);
-    expect(firstCommand.data.sessionId).toBe("session-1");
+    expect(firstCommand.data).not.toHaveProperty("sessionId");
     expect(result.current.isBeginning).toBe(true);
 
     act(() => vi.advanceTimersByTime(8_000));
@@ -110,9 +108,9 @@ describe("useCheckoutReview", () => {
     expect(retriedCommand.data.reviewToken).toBe(firstCommand.data.reviewToken);
   });
 
-  it("페이지가 다시 마운트돼도 응답 유실된 BEGIN 토큰을 복구한다", () => {
+  it("페이지를 다시 마운트하면 새 BEGIN 토큰을 만든다", () => {
     vi.useFakeTimers();
-    const props = { performanceId: 10, sessionId: "session-1" };
+    const props = { performanceId: 10 };
     const firstMount = renderHook(() => useCheckoutReview(props));
 
     act(() => firstMount.result.current.beginReview());
@@ -125,24 +123,12 @@ describe("useCheckoutReview", () => {
     const recoveredCommand = publish.mock.calls[2][0].command;
 
     expect(recoveredCommand.requestId).not.toBe(firstCommand.requestId);
-    expect(recoveredCommand.data.reviewToken).toBe(firstCommand.data.reviewToken);
-  });
-
-  it("END 성공 시 현재 세션에 저장한 예매 확인 토큰을 정리한다", () => {
-    const sessionId = "session-1";
-    const reviewToken = getOrCreatePerformanceCheckoutReviewToken(10, sessionId);
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId }));
-
-    act(() => result.current.endReview(reviewToken, review.groupId));
-    const command = publish.mock.calls[0][0].command;
-    act(() => handleEndMessage?.({ requestId: command.requestId, success: true, data: { performanceId: 10, canResumeHold: true } }));
-
-    expect(getOrCreatePerformanceCheckoutReviewToken(10, sessionId)).not.toBe(reviewToken);
+    expect(recoveredCommand.data.reviewToken).not.toBe(firstCommand.data.reviewToken);
   });
 
   it("BEGIN 오류와 서버 스냅샷 불일치를 표시한다", () => {
     const onBeginSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onBeginSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onBeginSuccess }));
 
     act(() => result.current.beginReview());
     const command = publish.mock.calls[0][0].command;
@@ -168,7 +154,7 @@ describe("useCheckoutReview", () => {
     vi.useFakeTimers();
     vi.spyOn(window, "clearTimeout").mockImplementation(() => undefined);
 
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
     act(() => result.current.beginReview());
 
@@ -180,8 +166,7 @@ describe("useCheckoutReview", () => {
         requestId,
         success: true,
         data: {
-          groupId: "1:10",
-          sessionId: null,
+          scopeId: "1:10",
           performanceId: 10,
           venueSeatIds: [101],
           expiresAt: "2026-09-22T13:00:00",
@@ -200,7 +185,7 @@ describe("useCheckoutReview", () => {
 
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
     const onBeginSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onBeginSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onBeginSuccess }));
 
     act(() => result.current.beginReview());
 
@@ -211,8 +196,7 @@ describe("useCheckoutReview", () => {
         requestId,
         success: true,
         data: {
-          groupId: "1:10",
-          sessionId: null,
+          scopeId: "1:10",
           performanceId: 10,
           venueSeatIds: [101],
           expiresAt: "2026-09-22T13:00:00",
@@ -227,39 +211,38 @@ describe("useCheckoutReview", () => {
 
   it("END에 토큰과 그룹 ID를 전달하고 성공 시 완료 콜백을 호출한다", () => {
     const onEndSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onEndSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     const command = publish.mock.calls[0][0];
     expect(command).toMatchObject({
       path: "/reservation/end-checkout-review",
-      command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken: "review-token", groupId: "1:10:session-1" } },
+      command: { requestId: expect.any(String), data: { performanceId: 10, reviewToken: "review-token" } },
     });
     expect(result.current.isEnding).toBe(true);
 
-    act(() => handleEndMessage?.({ requestId: command.command.requestId, success: true, data: { performanceId: 10, canResumeHold: true } }));
+    act(() => handleEndMessage?.({ requestId: command.command.requestId, success: true, data: { performanceId: 10 } }));
 
     expect(result.current.isEnding).toBe(false);
     expect(onEndSuccess).toHaveBeenCalledTimes(1);
-    expect(onEndSuccess).toHaveBeenCalledWith(true);
   });
 
-  it("END가 기존 점유를 복원할 수 없다고 응답하면 그 상태를 전달한다", () => {
+  it("END가 기존 점유를 복원할 수 없어도 완료 콜백을 호출한다", () => {
     const onEndSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onEndSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     const requestId = publish.mock.calls[0][0].command.requestId as string;
-    act(() => handleEndMessage?.({ requestId, success: true, data: { performanceId: 10, canResumeHold: false } }));
+    act(() => handleEndMessage?.({ requestId, success: true, data: { performanceId: 10 } }));
 
-    expect(onEndSuccess).toHaveBeenCalledWith(false);
+    expect(onEndSuccess).toHaveBeenCalledOnce();
   });
 
   it("END 성공 응답의 공연 ID가 다르면 복귀 오류를 표시한다", () => {
     const onEndSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onEndSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
 
     const requestId = publish.mock.calls[0][0].command.requestId as string;
 
@@ -267,7 +250,7 @@ describe("useCheckoutReview", () => {
       handleEndMessage?.({
         requestId,
         success: true,
-        data: { performanceId: 11, canResumeHold: false },
+        data: { performanceId: 11 },
       });
     });
 
@@ -278,23 +261,22 @@ describe("useCheckoutReview", () => {
 
   it("END 응답 유실도 같은 토큰으로 재전송하고 최종 타임아웃을 표시한다", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     const command = publish.mock.calls[0][0].command;
     act(() => vi.advanceTimersByTime(16_000));
 
     expect(publish).toHaveBeenCalledTimes(2);
     expect(publish.mock.calls[1][0].command).toEqual(command);
-    expect(command.data.groupId).toBe("1:10:session-1");
     expect(result.current.isEnding).toBe(false);
     expect(result.current.errorMessage).toBe("좌석 선택 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
   });
 
   it("END 오류를 표시하고 연결되지 않으면 BEGIN과 END를 전송하지 않는다", () => {
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     const requestId = publish.mock.calls[0][0].command.requestId as string;
     act(() => {
       handleEndError?.({ requestId, success: false, error: { code: "CONFLICT", message: "결제 대기 중입니다." } });
@@ -303,7 +285,7 @@ describe("useCheckoutReview", () => {
 
     act(() => useStompStore.setState({ stompClient: null, connectionStatus: "disconnected" }));
     act(() => result.current.beginReview());
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     expect(publish).toHaveBeenCalledTimes(1);
     expect(result.current.errorMessage).toBe("서버 연결 후 다시 시도해 주세요.");
   });
@@ -312,9 +294,9 @@ describe("useCheckoutReview", () => {
     vi.useFakeTimers();
 
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
 
     const requestId = publish.mock.calls[0][0].command.requestId;
 
@@ -334,9 +316,9 @@ describe("useCheckoutReview", () => {
     vi.useFakeTimers();
     vi.spyOn(window, "clearTimeout").mockImplementation(() => undefined);
 
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
 
     const requestId = publish.mock.calls[0][0].command.requestId;
 
@@ -344,7 +326,7 @@ describe("useCheckoutReview", () => {
       handleEndMessage?.({
         requestId,
         success: true,
-        data: { performanceId: 10, canResumeHold: false },
+        data: { performanceId: 10 },
       });
     });
 
@@ -357,7 +339,7 @@ describe("useCheckoutReview", () => {
     vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
     const onBeginSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onBeginSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onBeginSuccess }));
 
     act(() => result.current.beginReview());
     const command = publish.mock.calls[0][0].command;
@@ -378,7 +360,7 @@ describe("useCheckoutReview", () => {
   it("BEGIN 오류 응답에 타이머 ID가 없으면 clearTimeout 없이 실패 처리한다", () => {
     vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
     act(() => result.current.beginReview());
     const requestId = publish.mock.calls[0][0].command.requestId;
@@ -400,13 +382,13 @@ describe("useCheckoutReview", () => {
     vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
     const onEndSuccess = vi.fn();
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null, onEndSuccess }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, onEndSuccess }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     const requestId = publish.mock.calls[0][0].command.requestId;
 
     expect(handleEndMessage).toBeDefined();
-    act(() => handleEndMessage!({ requestId, success: true, data: { performanceId: 10, canResumeHold: true } }));
+    act(() => handleEndMessage!({ requestId, success: true, data: { performanceId: 10 } }));
 
     expect(clearTimeoutSpy).not.toHaveBeenCalled();
     expect(onEndSuccess).toHaveBeenCalledOnce();
@@ -415,9 +397,9 @@ describe("useCheckoutReview", () => {
   it("END 오류 응답에 타이머 ID가 없으면 clearTimeout 없이 실패 처리한다", () => {
     vi.spyOn(window, "setTimeout").mockReturnValue(null as unknown as number);
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     const requestId = publish.mock.calls[0][0].command.requestId;
 
     expect(handleEndError).toBeDefined();
@@ -436,16 +418,16 @@ describe("useCheckoutReview", () => {
   it("END 응답 중 언마운트하면 END 타이머를 정리한다", () => {
     vi.useFakeTimers();
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
-    const { result, unmount } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result, unmount } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     unmount();
 
     expect(clearTimeoutSpy).toHaveBeenCalled();
   });
 
   it("BEGIN과 END의 오래된 오류 응답은 현재 요청을 변경하지 않는다", () => {
-    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
     act(() => result.current.beginReview());
     const beginRequestId = publish.mock.calls[0][0].command.requestId;
@@ -467,12 +449,12 @@ describe("useCheckoutReview", () => {
       });
     });
 
-    act(() => result.current.endReview("review-token", "1:10:session-1"));
+    act(() => result.current.endReview("review-token"));
     const endRequestId = publish.mock.calls[1][0].command.requestId;
     expect(handleEndMessage).toBeDefined();
     expect(handleEndError).toBeDefined();
     act(() => {
-      handleEndMessage!({ requestId: "stale-request", success: true, data: { performanceId: 10, canResumeHold: true } });
+      handleEndMessage!({ requestId: "stale-request", success: true, data: { performanceId: 10 } });
       handleEndError!({
         requestId: "stale-request",
         success: false,
@@ -493,7 +475,7 @@ describe("useCheckoutReview", () => {
 
   it("언마운트 시 구독과 응답 대기 타이머를 정리한다", () => {
     vi.useFakeTimers();
-    const { result, unmount } = renderHook(() => useCheckoutReview({ performanceId: 10, sessionId: null }));
+    const { result, unmount } = renderHook(() => useCheckoutReview({ performanceId: 10 }));
 
     act(() => result.current.beginReview());
     unmount();
