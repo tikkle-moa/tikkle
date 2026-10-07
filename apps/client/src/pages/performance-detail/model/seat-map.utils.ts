@@ -1,11 +1,11 @@
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
-import type { ConnectionStyle, MyGroupHeldSeatInfo, MyGroupHoldInfo } from "./seat-map.types";
+import type { ConnectionStyle, MyHeldSeatInfo, MyHoldInfo } from "./seat-map.types";
 
 export const filterSelectableSeatIds = (seatIds: ReadonlySet<number>, venueSeatStates: Map<number, VenueSeatState>) => {
   return [...seatIds].filter((seatId) => {
     const status = venueSeatStates.get(seatId)?.status;
-    return status === "available" || status === "held_by_my_group";
+    return status === "available" || status === "held_by_me";
   });
 };
 
@@ -13,12 +13,12 @@ export const createVenueSeatStates = (
   venueSeats: VenueSeatResponse[],
   bookedSeatIds: Set<number>,
   heldSeatExpiresAtBySeatId: Map<number, Date>,
-  myGroupHeldSeatInfoBySeatId: Map<number, MyGroupHeldSeatInfo>,
+  myHeldSeatInfoBySeatId: Map<number, MyHeldSeatInfo>,
 ): Map<number, VenueSeatState> => {
   const states = new Map(venueSeats.map((venueSeat) => [venueSeat.id, { status: "available" } as VenueSeatState]));
 
-  heldSeatExpiresAtBySeatId.forEach((expiresAt, seatId) => states.set(seatId, { status: "held_by_other_group", expiresAt }));
-  myGroupHeldSeatInfoBySeatId.forEach(({ expiresAt }, seatId) => states.set(seatId, { status: "held_by_my_group", expiresAt }));
+  heldSeatExpiresAtBySeatId.forEach((expiresAt, seatId) => states.set(seatId, { status: "held_by_other", expiresAt }));
+  myHeldSeatInfoBySeatId.forEach(({ expiresAt }, seatId) => states.set(seatId, { status: "held_by_me", expiresAt }));
   bookedSeatIds.forEach((seatId) => states.set(seatId, { status: "booked" }));
 
   return states;
@@ -40,28 +40,25 @@ export const areVenueSeatStatesEqual = (first: ReadonlyMap<number, VenueSeatStat
   return true;
 };
 
-export const getMyGroupHoldSummary = (
-  myGroupHeldSeatInfoBySeatId: Map<number, MyGroupHeldSeatInfo>,
-  venueSeatById: Map<number, VenueSeatResponse>,
-) => {
-  const myGroupHoldInfoByHoldId = new Map<string, MyGroupHoldInfo>();
-  let myGroupHeldSeatTotalPrice = 0;
+export const getMyHoldSummary = (myHeldSeatInfoBySeatId: Map<number, MyHeldSeatInfo>, venueSeatById: Map<number, VenueSeatResponse>) => {
+  const myHoldInfoByHoldId = new Map<string, MyHoldInfo>();
+  let myHeldSeatTotalPrice = 0;
 
-  myGroupHeldSeatInfoBySeatId.forEach(({ groupId, holdId, performanceId, expiresAt }, seatId) => {
-    myGroupHeldSeatTotalPrice += venueSeatById.get(seatId)?.price ?? 0;
+  myHeldSeatInfoBySeatId.forEach(({ holdId, expiresAt }, seatId) => {
+    myHeldSeatTotalPrice += venueSeatById.get(seatId)?.price ?? 0;
 
-    const holdInfo = myGroupHoldInfoByHoldId.get(holdId);
+    const holdInfo = myHoldInfoByHoldId.get(holdId);
 
     if (holdInfo) {
       holdInfo.venueSeatIds.push(seatId);
     } else {
-      myGroupHoldInfoByHoldId.set(holdId, { groupId, holdId, performanceId, expiresAt, venueSeatIds: [seatId] });
+      myHoldInfoByHoldId.set(holdId, { holdId, venueSeatIds: [seatId], expiresAt });
     }
   });
 
-  const myGroupHolds = Array.from(myGroupHoldInfoByHoldId.values());
+  const myHolds = Array.from(myHoldInfoByHoldId.values());
 
-  return { myGroupHolds, myGroupHeldSeatTotalPrice };
+  return { myHolds, myHeldSeatTotalPrice };
 };
 
 export const getConnectionStyle = (isConnected: boolean): ConnectionStyle => {
