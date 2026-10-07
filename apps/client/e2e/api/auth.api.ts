@@ -4,8 +4,8 @@ import { createHmac, randomUUID } from "node:crypto";
 import type { UserRole } from "../../src/entities/session/model/session.types";
 import { TEST_CSRF_TOKEN } from "../config/api.config";
 
-export const createTestUser = (role: UserRole) => ({
-  id: role === "ADMIN" ? 1 : 2,
+export const createTestUser = (role: UserRole, userId: number = role === "ADMIN" ? 1 : 2) => ({
+  id: userId,
   email: `${role.toLowerCase()}@example.com`,
   nickname: role === "ADMIN" ? "E2E 관리자" : "E2E 사용자",
   profileImageUrl: null,
@@ -32,20 +32,22 @@ export const createApiAuthHeaders = (role: UserRole, userId: number = role === "
   "X-XSRF-TOKEN": TEST_CSRF_TOKEN,
 });
 
-export const mockOAuthSession = async (page: Page, role: UserRole) => {
+export const mockOAuthSession = async (page: Page, role: UserRole, userId?: number) => {
   await page.route("**/api/auth/me", (route) =>
     route.fulfill({
-      json: { success: true, data: createTestUser(role) },
+      json: { success: true, data: createTestUser(role, userId) },
     }),
   );
 };
 
-export const setApiRole = async (page: Page, role: UserRole, tokenId?: string) => {
+export const setApiRole = async (page: Page, role: UserRole, tokenId?: string, userId: number = role === "ADMIN" ? 1 : 2) => {
   const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
-  await page.context().addCookies([{ name: "access_token", value: createAccessToken(role, tokenId), url: baseURL, httpOnly: true, sameSite: "Lax" }]);
+  await page
+    .context()
+    .addCookies([{ name: "access_token", value: createAccessToken(role, tokenId, userId), url: baseURL, httpOnly: true, sameSite: "Lax" }]);
 };
 
-export const authenticatePage = async (page: Page, role: UserRole, tokenId?: string) => {
-  await setApiRole(page, role, tokenId);
-  await mockOAuthSession(page, role);
+export const authenticatePage = async (page: Page, role: UserRole, tokenId?: string, userId?: number) => {
+  await setApiRole(page, role, tokenId, userId);
+  await mockOAuthSession(page, role, userId);
 };

@@ -151,8 +151,8 @@ const expirePerformanceHolds = async (performanceId: number) => {
   );
 };
 
-const openOccupancyPage = async (page: Page, performanceId: number, tokenId: string) => {
-  await authenticatePage(page, "USER", tokenId);
+const openOccupancyPage = async (page: Page, performanceId: number, tokenId: string, userId: number) => {
+  await authenticatePage(page, "USER", tokenId, userId);
   await page.addInitScript(() => {
     if (typeof crypto.randomUUID === "function") return;
 
@@ -174,8 +174,8 @@ const openOccupancyPage = async (page: Page, performanceId: number, tokenId: str
 const openOccupancyPages = async (firstPage: Page, secondPage: Page, performanceId: number) => {
   const [firstSession, secondSession] = E2E_AUTH_SESSIONS.occupancy;
   await Promise.all([
-    openOccupancyPage(firstPage, performanceId, firstSession.tokenId),
-    openOccupancyPage(secondPage, performanceId, secondSession.tokenId),
+    openOccupancyPage(firstPage, performanceId, firstSession.tokenId, firstSession.userId),
+    openOccupancyPage(secondPage, performanceId, secondSession.tokenId, secondSession.userId),
   ]);
 };
 
@@ -228,7 +228,8 @@ test.describe("공연 좌석 점유", () => {
 
     try {
       const seats = scenario.venueSeats.slice(0, 2);
-      await openOccupancyPage(firstPage, scenario.performanceId, E2E_AUTH_SESSIONS.occupancy[0].tokenId);
+      const [firstSession] = E2E_AUTH_SESSIONS.occupancy;
+      await openOccupancyPage(firstPage, scenario.performanceId, firstSession.tokenId, firstSession.userId);
       await waitForAvailableSeats(
         firstPage,
         seats.map((seat) => seat.id),
