@@ -3,6 +3,7 @@ package com.example.server.reservation
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.outbox.OutboxEventService
+import com.example.server.performance.types.VenueSeatHoldScope
 import com.example.server.reservation.dto.ReservationCancellationResult
 import com.example.server.reservation.payment.dto.ReservationCancellationAttempt
 import com.example.server.reservation.repository.ReservationRepository
@@ -73,9 +74,14 @@ class ReservationCancellationTransactionService(
     reservation.status = ReservationStatus.REFUNDED
 
     if (venueSeatIds.isNotEmpty()) {
+      val scopeId = VenueSeatHoldScope.id(
+        reservation.groupId,
+        reservation.booker.id,
+        reservation.performance.id,
+      )
       outboxEventService.recordPaymentCancelled(
         reservationId = reservation.id,
-        groupId = reservation.groupId,
+        scopeId = scopeId,
         performanceId = reservation.performance.id,
         venueSeatIds = venueSeatIds,
       )

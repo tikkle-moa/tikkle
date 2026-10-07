@@ -38,12 +38,12 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
   }
 
   @Transactional(propagation = Propagation.MANDATORY)
-  fun recordPaymentCancelled(reservationId: Long, groupId: String, performanceId: Long, venueSeatIds: List<Long>) {
+  fun recordPaymentCancelled(reservationId: Long, scopeId: String, performanceId: Long, venueSeatIds: List<Long>) {
     val occurredAt = LocalDateTime.now()
     val cancelledAtEpochMillis = System.currentTimeMillis()
     val payload = PaymentCancelledSeatEventPayload(
       reservationId = reservationId,
-      groupId = groupId,
+      scopeId = scopeId,
       performanceId = performanceId,
       seatIds = venueSeatIds,
       cancelledAtEpochMillis = cancelledAtEpochMillis,
@@ -120,7 +120,7 @@ class OutboxEventService(private val outboxEventRepository: OutboxEventRepositor
     val payload = ReservationSeatEventPayload(
       reservationId = reservationId,
       holdId = hold.holdId,
-      groupId = hold.groupId,
+      scopeId = hold.scopeId,
       performanceId = hold.performanceId,
       seatIds = hold.venueSeatIds,
     )

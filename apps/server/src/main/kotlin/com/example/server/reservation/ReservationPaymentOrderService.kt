@@ -3,6 +3,8 @@ package com.example.server.reservation
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.RedisVenueSeatHoldService
+import com.example.server.performance.dto.paymentFor
+import com.example.server.performance.types.VenueSeatHoldScope
 import com.example.server.reservation.dto.PaymentOrderMessageData
 import com.example.server.reservation.dto.PaymentOrderSeatData
 import com.example.server.reservation.repository.ReservationRepository
@@ -34,8 +36,11 @@ class ReservationPaymentOrderService(
       throw CustomException(ErrorCode.CONFLICT, "결제 가능 시간이 만료되었습니다.")
     }
 
+    val scopeId = VenueSeatHoldScope.id(reservation.groupId, reservation.booker.id, reservation.performance.id)
     val activeHoldData = try {
-      redisVenueSeatHoldService.findActiveHoldDataByGroupId(reservation.groupId)
+      redisVenueSeatHoldService.findActiveHoldDataByScopeId(scopeId)
+        .paymentFor(reservation.id)
+        ?: throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었거나 변경되었습니다.")
     } catch (exception: CustomException) {
       if (exception.errorCode == ErrorCode.NOT_FOUND) {
         throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
@@ -47,7 +52,7 @@ class ReservationPaymentOrderService(
     if (
       activeHoldData.performanceId != reservation.performance.id ||
       activeHoldData.holdDetails.any {
-        it.groupId != reservation.groupId || it.performanceId != reservation.performance.id
+        it.scopeId != scopeId || it.performanceId != reservation.performance.id
       }
     ) {
       throw CustomException(ErrorCode.CONFLICT, "결제 정보를 확인할 수 없습니다.")

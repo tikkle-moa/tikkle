@@ -43,7 +43,6 @@ class ReservationStompController(
         user.userId,
         request.data.performanceId,
         request.data.reviewToken,
-        request.data.sessionId,
       ),
     )
   }
@@ -55,16 +54,15 @@ class ReservationStompController(
   )
   fun endCheckoutReview(@Payload @Valid request: EndCheckoutReviewCommand, authentication: Authentication): EndCheckoutReviewMessage {
     val user = loginUser(authentication)
-    val canResumeHold = reservationCheckoutService.endCheckoutReview(
+    reservationCheckoutService.endCheckoutReview(
       user.userId,
       request.data.performanceId,
       request.data.reviewToken,
-      request.data.groupId,
     )
 
     return EndCheckoutReviewMessage(
       requestId = request.requestId,
-      data = EndCheckoutReviewMessageData(performanceId = request.data.performanceId, canResumeHold = canResumeHold),
+      data = EndCheckoutReviewMessageData(performanceId = request.data.performanceId),
     )
   }
 
@@ -82,7 +80,6 @@ class ReservationStompController(
         userId = user.userId,
         performanceId = request.data.performanceId,
         reviewToken = request.data.reviewToken,
-        requestedGroupId = request.data.groupId,
       ),
     )
   }

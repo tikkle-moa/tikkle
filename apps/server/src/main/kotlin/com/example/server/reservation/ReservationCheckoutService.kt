@@ -5,7 +5,10 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
+import com.example.server.performance.dto.paymentFor
+import com.example.server.performance.dto.reviewedBy
 import com.example.server.performance.repository.PerformanceRepository
+import com.example.server.performance.types.VenueSeatHoldScope
 import com.example.server.reservation.dto.BeginCheckoutReviewMessageData
 import com.example.server.reservation.dto.CancelCheckoutMessageData
 import com.example.server.reservation.dto.StartCheckoutMessageData
@@ -28,42 +31,57 @@ class ReservationCheckoutService(
   private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
   private val outboxEventService: OutboxEventService,
 ) {
-  fun beginCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID, sessionId: UUID? = null): BeginCheckoutReviewMessageData {
-    val groupId = redisVenueSeatHoldService.getGroupId(userId, performanceId, sessionId)
-    if (reservationRepository.existsByGroupId(groupId)) {
+  fun beginCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID): BeginCheckoutReviewMessageData {
+    val scopeId = redisVenueSeatHoldService.getScopeId(userId, performanceId)
+    val groupId = VenueSeatHoldScope.getGroupId(scopeId)
+    redisVenueSeatHoldService.cancelPersonalPaymentPending(groupId, userId, performanceId)
+
+    if (
+      reservationRepository.existsPaymentInProgressByScope(
+        groupId,
+        userId,
+        performanceId,
+        ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES,
+      )
+    ) {
       throw CustomException(ErrorCode.CONFLICT, "이미 결제 대기 이후의 예매가 존재합니다.")
     }
 
-    return redisVenueSeatHoldService.beginCheckoutReview(groupId, performanceId, reviewToken).copy(sessionId = sessionId)
+    return redisVenueSeatHoldService.beginCheckoutReview(scopeId, performanceId, reviewToken)
   }
 
-  fun endCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID, requestedGroupId: String? = null): Boolean {
-    val groupId = requestedGroupId?.let { redisVenueSeatHoldService.resolveGroupId(userId, performanceId, it) }
-      ?: redisVenueSeatHoldService.getGroupId(userId, performanceId)
-    return redisVenueSeatHoldService.endCheckoutReview(groupId, reviewToken)
+  fun endCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID): Boolean {
+    val scopeId = redisVenueSeatHoldService.getScopeId(userId, performanceId)
+    return redisVenueSeatHoldService.endCheckoutReview(scopeId, reviewToken)
   }
 
   @Transactional
-  fun startCheckout(userId: Long, performanceId: Long, reviewToken: UUID, requestedGroupId: String? = null): StartCheckoutMessageData {
-    val groupId = requestedGroupId?.let { redisVenueSeatHoldService.resolveGroupId(userId, performanceId, it) }
-      ?: redisVenueSeatHoldService.getGroupId(userId, performanceId)
-    reservationRepository.findByGroupIdForUpdate(groupId)?.let { reservation ->
+  fun startCheckout(userId: Long, performanceId: Long, reviewToken: UUID): StartCheckoutMessageData {
+    val scopeId = redisVenueSeatHoldService.getScopeId(userId, performanceId)
+    val groupId = VenueSeatHoldScope.getGroupId(scopeId)
+    reservationRepository.findPaymentInProgressByScopeForUpdate(
+      groupId,
+      userId,
+      performanceId,
+      ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES,
+    )?.let { reservation ->
       return existingCheckout(reservation, groupId, userId, performanceId)
     }
 
     val activeHoldData = try {
-      redisVenueSeatHoldService.findActiveHoldDataByGroupId(groupId)
+      redisVenueSeatHoldService.findActiveHoldDataByScopeId(scopeId)
     } catch (exception: CustomException) {
       if (exception.errorCode == ErrorCode.NOT_FOUND) {
         throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
       }
 
       throw exception
-    }
+    }.reviewedBy(reviewToken)
+      ?: throw CustomException(ErrorCode.CONFLICT, "예매 정보 확인이 만료되었거나 변경되었습니다.")
 
     if (
       activeHoldData.performanceId != performanceId ||
-      activeHoldData.holdDetails.any { it.groupId != groupId || it.performanceId != performanceId }
+      activeHoldData.holdDetails.any { it.scopeId != scopeId || it.performanceId != performanceId }
     ) {
       throw CustomException(ErrorCode.CONFLICT, "좌석 점유 정보가 공연 회차와 일치하지 않습니다.")
     }
@@ -73,7 +91,12 @@ class ReservationCheckoutService(
       throw CustomException(ErrorCode.CONFLICT, "좌석 점유 정보가 올바르지 않습니다.")
     }
 
-    val existingReservation = reservationRepository.findByGroupIdForUpdate(groupId)
+    val existingReservation = reservationRepository.findPaymentInProgressByScopeForUpdate(
+      groupId,
+      userId,
+      performanceId,
+      ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES,
+    )
     if (existingReservation != null) {
       return existingCheckout(
         reservation = existingReservation,
@@ -113,7 +136,12 @@ class ReservationCheckoutService(
       paymentExpiresAt = paymentExpiresAt,
     )
 
-    val reservation = reservationRepository.findByGroupIdForUpdate(groupId)
+    val reservation = reservationRepository.findPaymentInProgressByScopeForUpdate(
+      groupId,
+      userId,
+      performanceId,
+      ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES,
+    )
       ?: throw IllegalStateException("생성한 결제 대기 예매를 찾을 수 없습니다.")
 
     if (reservation.orderId != candidateOrderId) {
@@ -126,7 +154,7 @@ class ReservationCheckoutService(
     }
 
     try {
-      redisVenueSeatHoldService.transitionForPayment(groupId, paymentExpiresAt, reviewToken, reservation.id)
+      redisVenueSeatHoldService.transitionForPayment(scopeId, paymentExpiresAt, reviewToken, reservation.id)
     } catch (exception: CustomException) {
       reservation.status = ReservationStatus.EXPIRED
       if (exception.errorCode == ErrorCode.NOT_FOUND) {
@@ -201,7 +229,7 @@ class ReservationCheckoutService(
     recordReleasedSeatsEvents(reservation)
   }
 
-  private fun existingCheckout(reservation: Reservation, groupId: String, userId: Long, performanceId: Long): StartCheckoutMessageData {
+  private fun existingCheckout(reservation: Reservation, groupId: Long?, userId: Long, performanceId: Long): StartCheckoutMessageData {
     if (reservation.groupId != groupId || reservation.booker.id != userId || reservation.performance.id != performanceId) {
       throw CustomException(ErrorCode.FORBIDDEN, "다른 사용자의 결제 대기 예매입니다.")
     }
@@ -214,8 +242,11 @@ class ReservationCheckoutService(
   }
 
   private fun recordReleasedSeatsEvents(reservation: Reservation) {
+    val scopeId = VenueSeatHoldScope.id(reservation.groupId, reservation.booker.id, reservation.performance.id)
     val activeHoldData = try {
-      redisVenueSeatHoldService.findActiveHoldDataByGroupId(reservation.groupId)
+      redisVenueSeatHoldService.findActiveHoldDataByScopeId(scopeId)
+        .paymentFor(reservation.id)
+        ?: return
     } catch (exception: CustomException) {
       if (exception.errorCode == ErrorCode.NOT_FOUND) return
       throw exception
