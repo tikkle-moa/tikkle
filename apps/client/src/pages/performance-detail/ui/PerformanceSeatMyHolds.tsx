@@ -8,25 +8,19 @@ import { useExpandableList } from "@shared/model/use-expandable-list";
 import type { VenueSeatResponse } from "@entities/venue";
 
 import { VISIBLE_HOLD_COUNT } from "../model/seat-map.constants";
-import type { MyGroupHoldInfo } from "../model/seat-map.types";
+import type { MyHoldInfo } from "../model/seat-map.types";
 
-interface PerformanceSeatMyGroupHoldsProps {
+interface PerformanceSeatMyHoldsProps {
   venueSeatById: Map<number, VenueSeatResponse>;
-  myGroupHolds: MyGroupHoldInfo[];
-  myGroupHeldSeatSize: number;
+  myHolds: MyHoldInfo[];
+  myHeldSeatSize: number;
   selectedSeatIds: ReadonlySet<number>;
   onSelect: (seatIds: readonly number[]) => void;
 }
 
-const PerformanceSeatMyGroupHolds = ({
-  venueSeatById,
-  myGroupHolds,
-  myGroupHeldSeatSize,
-  selectedSeatIds,
-  onSelect,
-}: PerformanceSeatMyGroupHoldsProps) => {
+const PerformanceSeatMyHolds = ({ venueSeatById, myHolds, myHeldSeatSize, selectedSeatIds, onSelect }: PerformanceSeatMyHoldsProps) => {
   const { visibleItems, isExpanded, canExpand, handleToggleExpanded } = useExpandableList({
-    items: myGroupHolds,
+    items: myHolds,
     visibleCount: VISIBLE_HOLD_COUNT,
   });
 
@@ -41,7 +35,7 @@ const PerformanceSeatMyGroupHolds = ({
           <p className="text-sm font-extrabold text-emerald-950">내 점유 좌석</p>
         </div>
 
-        <span className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-bold text-emerald-700">{myGroupHeldSeatSize}석</span>
+        <span className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-bold text-emerald-700">{myHeldSeatSize}석</span>
       </div>
 
       <div className="mt-3 divide-y divide-emerald-100 overflow-hidden rounded-xl border border-emerald-100 bg-white/70">
@@ -108,4 +102,4 @@ const PerformanceSeatMyGroupHolds = ({
   );
 };
 
-export default memo(PerformanceSeatMyGroupHolds);
+export default memo(PerformanceSeatMyHolds);
