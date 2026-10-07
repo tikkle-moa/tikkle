@@ -66,7 +66,6 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
 import java.util.concurrent.BlockingQueue
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
@@ -76,9 +75,7 @@ private const val ACCESS_SESSION_KEY_PREFIX = "auth:refresh:"
 private const val SEAT_HOLD_KEY_PREFIX = "hold:venue-seat:"
 private const val HOLD_DETAIL_KEY_PREFIX = "hold:detail:"
 private const val HOLD_EXPIRY_KEY_PREFIX = "hold:expiry:"
-private const val HOLD_GROUP_KEY_PREFIX = "hold:group:"
-private const val HOLD_GROUP_CONTROL_KEY_PREFIX = "hold:group-control:"
-private const val HOLD_GROUP_REVIEW_RESULT_KEY_PREFIX = "hold:group-review-result:"
+private const val HOLD_SCOPE_KEY_PREFIX = "hold:scope:"
 private const val HOLD_PERFORMANCE_KEY_PREFIX = "hold:performance:"
 private const val PERFORMANCE_SEAT_EVENT_VERSION_KEY_PREFIX = "performance:venue-seat-event-version:"
 
@@ -138,7 +135,6 @@ class ReservationLifecycleIntegrationTest {
   private lateinit var stompClient: WebSocketStompClient
   private val clients = mutableListOf<StompTestClient>()
   private val accessSessionKeys = mutableSetOf<String>()
-  private val reviewTokens = ConcurrentHashMap<String, UUID>()
 
   @BeforeEach
   fun setUp() {
@@ -159,7 +155,6 @@ class ReservationLifecycleIntegrationTest {
     accessSessionKeys.forEach(stringRedisTemplate::delete)
     accessSessionKeys.clear()
     clearSeatHolds()
-    reviewTokens.clear()
 
     jdbcTemplate.update("DELETE FROM outbox_events WHERE performance_id = ?", fixture.performance.id)
     jdbcTemplate.update("DELETE FROM reservation_seats WHERE performance_id = ?", fixture.performance.id)
@@ -173,8 +168,8 @@ class ReservationLifecycleIntegrationTest {
 
   @Test
   fun `두 사용자의 예매 및 결제 승인이 성공하면 각각 SUCCEEDED로 완료된다`() {
-    val clientA = connect(fixture.userA, fixture.sessionIdA)
-    val clientB = connect(fixture.userB, fixture.sessionIdB)
+    val clientA = connect(fixture.userA)
+    val clientB = connect(fixture.userB)
     val performanceId = fixture.performance.id
     val holdQueue = "/user/queue/performances/$performanceId/hold-seats"
 
@@ -185,8 +180,8 @@ class ReservationLifecycleIntegrationTest {
 
     val seatA = fixture.seats[0]
     val seatB = fixture.seats[1]
-    val holdResponseA = holdSeat(clientA, fixture.sessionIdA, seatA.id)
-    val holdResponseB = holdSeat(clientB, fixture.sessionIdB, seatB.id)
+    val holdResponseA = holdSeat(clientA, seatA.id)
+    val holdResponseB = holdSeat(clientB, seatB.id)
     assertThat(holdResponseA.path("success").asBoolean()).isTrue()
     assertThat(holdResponseB.path("success").asBoolean()).isTrue()
     assertThat(holdResponseA.path("data").path("venueSeatIds").arrayLongs()).containsExactly(seatA.id)
@@ -202,8 +197,8 @@ class ReservationLifecycleIntegrationTest {
     }
 
     val checkoutResults = runTogetherWithResults(
-      first = { completeCheckout(clientA, fixture.sessionIdA, seatA.id) },
-      second = { completeCheckout(clientB, fixture.sessionIdB, seatB.id) },
+      first = { completeCheckout(clientA, seatA.id) },
+      second = { completeCheckout(clientB, seatB.id) },
     )
 
     assertThat(checkoutResults.map { it.path("data").path("status").asString() })
@@ -234,13 +229,13 @@ class ReservationLifecycleIntegrationTest {
 
   @Test
   fun `같은 결제 승인 요청을 재전송해도 예매와 결제 처리는 중복되지 않는다`() {
-    val client = connect(fixture.userA, fixture.sessionIdA)
+    val client = connect(fixture.userA)
     val holdQueue = "/user/queue/performances/${fixture.performance.id}/hold-seats"
     client.subscribe(holdQueue)
     client.awaitSubscriptions()
-    assertThat(holdSeat(client, fixture.sessionIdA, fixture.seats.first().id).path("success").asBoolean()).isTrue()
+    assertThat(holdSeat(client, fixture.seats.first().id).path("success").asBoolean()).isTrue()
 
-    val checkout = prepareCheckout(client, fixture.sessionIdA, fixture.seats.first().id)
+    val checkout = prepareCheckout(client, fixture.seats.first().id)
     val paymentKey = "test-idempotent-payment-${UUID.randomUUID()}"
     given(paymentGateway.confirm(anyString(), anyString(), anyInt())).willAnswer { invocation ->
       ExternalPayment(
@@ -288,13 +283,13 @@ class ReservationLifecycleIntegrationTest {
 
   @Test
   fun `결제 금액이 예매 금액과 다르면 승인을 거부하고 결제 대기를 유지한다`() {
-    val client = connect(fixture.userA, fixture.sessionIdA)
+    val client = connect(fixture.userA)
     val holdQueue = "/user/queue/performances/${fixture.performance.id}/hold-seats"
     client.subscribe(holdQueue)
     client.awaitSubscriptions()
-    assertThat(holdSeat(client, fixture.sessionIdA, fixture.seats.first().id).path("success").asBoolean()).isTrue()
+    assertThat(holdSeat(client, fixture.seats.first().id).path("success").asBoolean()).isTrue()
 
-    val checkout = prepareCheckout(client, fixture.sessionIdA, fixture.seats.first().id)
+    val checkout = prepareCheckout(client, fixture.seats.first().id)
     val response = client.sendAndAwait(
       destination = "/api/reservation/confirm-payment",
       responseDestination = "/user/queue/reservation/confirm-payment",
@@ -322,11 +317,11 @@ class ReservationLifecycleIntegrationTest {
 
   @Test
   fun `점유부터 결제 취소까지 예매 API 목록 상세 권한을 통합 검증한다`() {
-    val client = connect(fixture.userA, fixture.sessionIdA)
+    val client = connect(fixture.userA)
     val holdQueue = "/user/queue/performances/${fixture.performance.id}/hold-seats"
     client.subscribe(holdQueue)
     client.awaitSubscriptions()
-    assertThat(holdSeat(client, fixture.sessionIdA, fixture.seats.first().id).path("success").asBoolean()).isTrue()
+    assertThat(holdSeat(client, fixture.seats.first().id).path("success").asBoolean()).isTrue()
 
     given(paymentGateway.confirm(anyString(), anyString(), anyInt())).willAnswer { invocation ->
       ExternalPayment(
@@ -337,7 +332,7 @@ class ReservationLifecycleIntegrationTest {
       )
     }
 
-    val checkoutResponse = completeCheckout(client, fixture.sessionIdA, fixture.seats.first().id)
+    val checkoutResponse = completeCheckout(client, fixture.seats.first().id)
     val reservationId = checkoutResponse.path("data").path("reservationId").asLong()
     val accessTokenA = accessToken(fixture.userA)
     val accessTokenB = accessToken(fixture.userB)
@@ -421,7 +416,7 @@ class ReservationLifecycleIntegrationTest {
     }
   }
 
-  private fun holdSeat(client: StompTestClient, sessionId: UUID, seatId: Long): JsonNode {
+  private fun holdSeat(client: StompTestClient, seatId: Long): JsonNode {
     val performanceId = fixture.performance.id
     val destination = "/user/queue/performances/$performanceId/hold-seats"
     val requestId = UUID.randomUUID()
@@ -429,13 +424,12 @@ class ReservationLifecycleIntegrationTest {
       destination = "/api/performances/$performanceId/hold-seats",
       requestId = requestId,
       data = listOf(seatId),
-      fields = mapOf("sessionId" to sessionId.toString()),
     )
     return client.awaitResponse(destination, requestId)
   }
 
-  private fun completeCheckout(client: StompTestClient, sessionId: UUID, expectedSeatId: Long): JsonNode {
-    val checkout = prepareCheckout(client, sessionId, expectedSeatId)
+  private fun completeCheckout(client: StompTestClient, expectedSeatId: Long): JsonNode {
+    val checkout = prepareCheckout(client, expectedSeatId)
     val paymentKey = "test-payment-${UUID.randomUUID()}"
     return confirmPayment(client, checkout, paymentKey)
       .also { assertThat(it.path("success").asBoolean()).isTrue() }
@@ -452,7 +446,7 @@ class ReservationLifecycleIntegrationTest {
     ),
   )
 
-  private fun prepareCheckout(client: StompTestClient, sessionId: UUID, expectedSeatId: Long): PreparedCheckout {
+  private fun prepareCheckout(client: StompTestClient, expectedSeatId: Long): PreparedCheckout {
     val performanceId = fixture.performance.id
     val reviewToken = UUID.randomUUID()
     val beginQueue = "/user/queue/reservation/begin-checkout-review"
@@ -466,15 +460,12 @@ class ReservationLifecycleIntegrationTest {
       data = mapOf(
         "performanceId" to performanceId,
         "reviewToken" to reviewToken.toString(),
-        "sessionId" to sessionId.toString(),
       ),
     )
     assertThat(beginResponse.path("success").asBoolean()).isTrue()
     assertThat(beginResponse.path("data").path("venueSeatIds").arrayLongs())
       .containsExactly(expectedSeatId)
 
-    val groupId = beginResponse.path("data").path("groupId").asString()
-    reviewTokens[groupId] = reviewToken
     val startQueue = "/user/queue/reservation/start-checkout"
     val startResponse = client.sendAndAwait(
       destination = "/api/reservation/start-checkout",
@@ -483,7 +474,6 @@ class ReservationLifecycleIntegrationTest {
       data = mapOf(
         "performanceId" to performanceId,
         "reviewToken" to reviewToken.toString(),
-        "groupId" to groupId,
       ),
     )
     assertThat(startResponse.path("success").asBoolean()).isTrue()
@@ -509,7 +499,7 @@ class ReservationLifecycleIntegrationTest {
     )
   }
 
-  private fun connect(user: User, sessionId: UUID): StompTestClient {
+  private fun connect(user: User): StompTestClient {
     val token = accessToken(user)
     val handshakeHeaders = WebSocketHttpHeaders().apply {
       add(HttpHeaders.COOKIE, "access_token=$token")
@@ -521,7 +511,7 @@ class ReservationLifecycleIntegrationTest {
       StompHeaders(),
       object : StompSessionHandlerAdapter() {},
     ).get(10, TimeUnit.SECONDS)
-    return StompTestClient(session, fixture.performance.id, sessionId).also(clients::add)
+    return StompTestClient(session, fixture.performance.id).also(clients::add)
   }
 
   private fun accessToken(user: User): String {
@@ -585,16 +575,14 @@ class ReservationLifecycleIntegrationTest {
       seats = seats,
       concert = concert,
       performance = performance,
-      sessionIdA = UUID.randomUUID(),
-      sessionIdB = UUID.randomUUID(),
     )
   }
 
   private fun clearSeatHolds() {
     val performanceId = fixture.performance.id
-    val groupIds = listOf(
-      "${fixture.userA.id}:$performanceId:${fixture.sessionIdA}",
-      "${fixture.userB.id}:$performanceId:${fixture.sessionIdB}",
+    val scopeIds = listOf(
+      "personal:${fixture.userA.id}:$performanceId",
+      "personal:${fixture.userB.id}:$performanceId",
     )
     val keys = mutableSetOf(
       "$HOLD_PERFORMANCE_KEY_PREFIX$performanceId",
@@ -610,12 +598,8 @@ class ReservationLifecycleIntegrationTest {
       keys += seatKey
       keys += "hold:venue-seat-finalizing:$performanceId:${seat.id}"
     }
-    groupIds.forEach { groupId ->
-      keys += "$HOLD_GROUP_KEY_PREFIX$groupId"
-      keys += "$HOLD_GROUP_CONTROL_KEY_PREFIX$groupId"
-      reviewTokens[groupId]?.let { token ->
-        keys += "$HOLD_GROUP_REVIEW_RESULT_KEY_PREFIX$groupId:$token"
-      }
+    scopeIds.forEach { scopeId ->
+      keys += "$HOLD_SCOPE_KEY_PREFIX$scopeId"
     }
     stringRedisTemplate.delete(keys)
   }
@@ -636,7 +620,7 @@ class ReservationLifecycleIntegrationTest {
     }
   }
 
-  private inner class StompTestClient(val session: StompSession, private val performanceId: Long, private val sessionId: UUID) {
+  private inner class StompTestClient(val session: StompSession, private val performanceId: Long) {
     private val responseQueues = mutableMapOf<String, BlockingQueue<JsonNode>>()
 
     fun subscribe(destination: String) {
@@ -657,7 +641,6 @@ class ReservationLifecycleIntegrationTest {
         destination = "/api/performances/$performanceId/get-seat-status",
         requestId = requestId,
         data = null,
-        fields = mapOf("sessionId" to sessionId.toString()),
       )
       val response = awaitResponse(statusQueue, requestId)
       assertThat(response.path("success").asBoolean()).isTrue()
@@ -709,8 +692,6 @@ class ReservationLifecycleIntegrationTest {
     val seats: List<VenueSeat>,
     val concert: Concert,
     val performance: Performance,
-    val sessionIdA: UUID,
-    val sessionIdB: UUID,
   )
 
   private data class PreparedCheckout(val reservationId: Long, val orderId: String, val amount: Int)

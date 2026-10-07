@@ -132,7 +132,7 @@ class ReservationServiceTest {
       LocalDateTime.of(2026, 12, 18, 19, 0),
     ),
     booker = booker,
-    groupId = "1:10",
+    groupId = null,
     orderId = "order-501",
     orderName = "공연 1회차 1석",
     amount = 66_000,

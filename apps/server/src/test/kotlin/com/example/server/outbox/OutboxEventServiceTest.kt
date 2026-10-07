@@ -72,7 +72,7 @@ class OutboxEventServiceTest {
 
     service.recordPaymentCancelled(
       reservationId = RESERVATION_ID,
-      groupId = GROUP_ID,
+      scopeId = GROUP_ID,
       performanceId = PERFORMANCE_ID,
       venueSeatIds = listOf(101L, 102L),
     )
@@ -86,7 +86,7 @@ class OutboxEventServiceTest {
     val payloadCaptor = ArgumentCaptor.forClass(PaymentCancelledSeatEventPayload::class.java)
     then(objectMapper).should().writeValueAsString(payloadCaptor.capture())
     assertThat(payloadCaptor.value.reservationId).isEqualTo(RESERVATION_ID)
-    assertThat(payloadCaptor.value.groupId).isEqualTo(GROUP_ID)
+    assertThat(payloadCaptor.value.scopeId).isEqualTo(GROUP_ID)
     assertThat(payloadCaptor.value.performanceId).isEqualTo(PERFORMANCE_ID)
     assertThat(payloadCaptor.value.seatIds).containsExactly(101L, 102L)
     assertThat(payloadCaptor.value.cancelledAtEpochMillis).isPositive()
@@ -338,7 +338,7 @@ class OutboxEventServiceTest {
 
   private fun hold() = VenueSeatHoldDetail(
     holdId = "hold-1",
-    groupId = GROUP_ID,
+    scopeId = GROUP_ID,
     performanceId = PERFORMANCE_ID,
     venueSeatIds = listOf(101L, 102L),
     expiresAt = LocalDateTime.now().plusMinutes(5),

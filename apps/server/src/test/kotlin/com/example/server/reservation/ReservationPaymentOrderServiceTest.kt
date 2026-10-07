@@ -9,6 +9,7 @@ import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.dto.ActiveHoldData
 import com.example.server.performance.dto.HoldVenueSeatEntry
 import com.example.server.performance.dto.VenueSeatHoldDetail
+import com.example.server.performance.dto.VenueSeatHoldDetail.VenueSeatHoldPhase
 import com.example.server.performance.entity.Performance
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
@@ -58,7 +59,7 @@ class ReservationPaymentOrderServiceTest {
 
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
         .willReturn(reservation)
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData(hold))
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData(hold))
       given(
         venueSeatRepository.findAllByVenueIdAndIdIn(
           VENUE_ID,
@@ -81,6 +82,36 @@ class ReservationPaymentOrderServiceTest {
       assertThat(result.venueName).isEqualTo("티클홀")
       assertThat(result.seats).extracting("venueSeatId").containsExactly(102L, 101L)
       assertThat(result.seats).extracting("seatLabel").containsExactly("A-2", "A-1")
+    }
+
+    @Test
+    fun `이전 예약의 SUPERSEDED Hold는 새 결제 주문서에서 제외한다`() {
+      val currentHold = holdDetail(
+        venueSeatIds = listOf(101L),
+        phase = VenueSeatHoldPhase.PAYMENT,
+        reservationId = RESERVATION_ID,
+      )
+      val supersededHold = holdDetail(
+        holdId = "old-hold",
+        venueSeatIds = listOf(102L),
+        phase = VenueSeatHoldPhase.SUPERSEDED,
+        reservationId = RESERVATION_ID - 1,
+      )
+
+      given(reservationRepository.findPaymentOrderById(RESERVATION_ID)).willReturn(
+        reservation(amount = 66_000),
+      )
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(
+        activeHoldData(currentHold, supersededHold),
+      )
+      given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(
+        listOf(venueSeat(id = 101L, sectionName = "R석", seatLabel = "A-1", price = 66_000)),
+      )
+
+      val result = reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID)
+
+      assertThat(result.seats).extracting("venueSeatId").containsExactly(101L)
+      assertThat(result.amount).isEqualTo(66_000)
     }
 
     @Test
@@ -143,7 +174,7 @@ class ReservationPaymentOrderServiceTest {
     fun `활성 Hold가 없으면 CONFLICT를 던진다`() {
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
         .willReturn(reservation())
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID))
         .willThrow(CustomException(ErrorCode.NOT_FOUND, "좌석 점유가 존재하지 않습니다."))
 
       val exception = assertThrows<CustomException> {
@@ -155,10 +186,30 @@ class ReservationPaymentOrderServiceTest {
     }
 
     @Test
+    fun `현재 예매의 결제 Hold가 없으면 CONFLICT를 던진다`() {
+      val active = activeHoldData(
+        holdDetail(
+          phase = VenueSeatHoldPhase.SUPERSEDED,
+          reservationId = RESERVATION_ID - 1,
+        ),
+      )
+      given(reservationRepository.findPaymentOrderById(RESERVATION_ID)).willReturn(reservation())
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(active)
+
+      val exception = assertThrows<CustomException> {
+        reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID)
+      }
+
+      assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+      assertThat(exception).hasMessage("좌석 점유가 만료되었거나 변경되었습니다.")
+      then(venueSeatRepository).shouldHaveNoInteractions()
+    }
+
+    @Test
     fun `활성 Hold 조회 중 NOT_FOUND 외 예외는 그대로 전파한다`() {
       val exception = CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "redis failed")
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID)).willReturn(reservation())
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willThrow(exception)
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willThrow(exception)
 
       assertThat(
         assertThrows<CustomException> {
@@ -172,8 +223,8 @@ class ReservationPaymentOrderServiceTest {
     fun `예매와 다른 소유자 또는 공연 Hold면 CONFLICT를 던진다`() {
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
         .willReturn(reservation())
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
-        .willReturn(activeHoldData(holdDetail(groupId = "other", performanceId = PERFORMANCE_ID)))
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID))
+        .willReturn(activeHoldData(holdDetail(scopeId = "other", performanceId = PERFORMANCE_ID)))
 
       val exception = assertThrows<CustomException> {
         reservationPaymentOrderService.getPaymentOrder(USER_ID, RESERVATION_ID)
@@ -186,7 +237,7 @@ class ReservationPaymentOrderServiceTest {
     @Test
     fun `Hold 상세 중 하나라도 다른 공연이면 CONFLICT를 던진다`() {
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID)).willReturn(reservation())
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(
         activeHoldData(
           holdDetail(venueSeatIds = listOf(101L)),
           holdDetail(performanceId = OTHER_PERFORMANCE_ID, venueSeatIds = listOf(102L)),
@@ -205,7 +256,7 @@ class ReservationPaymentOrderServiceTest {
     fun `예매 소유자는 같지만 다른 공연의 Hold면 CONFLICT를 던진다`() {
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
         .willReturn(reservation())
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID))
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID))
         .willReturn(activeHoldData(holdDetail(performanceId = OTHER_PERFORMANCE_ID)))
 
       val exception = assertThrows<CustomException> {
@@ -221,7 +272,7 @@ class ReservationPaymentOrderServiceTest {
       val hold = holdDetail(venueSeatIds = listOf(101L))
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
         .willReturn(reservation())
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData(hold))
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData(hold))
       given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, hold.venueSeatIds))
         .willReturn(listOf(venueSeat(id = 101L, sectionName = "R석", seatLabel = "A-1", price = 66_000)))
 
@@ -236,7 +287,7 @@ class ReservationPaymentOrderServiceTest {
       val hold = holdDetail()
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
         .willReturn(reservation())
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData(hold))
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData(hold))
       given(
         venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, hold.venueSeatIds),
       ).willReturn(listOf(venueSeat(id = 101L, sectionName = "R석", seatLabel = "A-1", price = 66_000)))
@@ -253,7 +304,7 @@ class ReservationPaymentOrderServiceTest {
       val hold = holdDetail()
       given(reservationRepository.findPaymentOrderById(RESERVATION_ID))
         .willReturn(reservation())
-      given(redisVenueSeatHoldService.findActiveHoldDataByGroupId(GROUP_ID)).willReturn(activeHoldData(hold))
+      given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData(hold))
       given(
         venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, hold.venueSeatIds),
       ).willReturn(
@@ -275,6 +326,7 @@ class ReservationPaymentOrderServiceTest {
     bookerUserId: Long = USER_ID,
     status: ReservationStatus = ReservationStatus.PAYMENT_PENDING,
     paymentExpiresAt: LocalDateTime = LocalDateTime.now().plusMinutes(5),
+    amount: Int = 132_000,
   ): Reservation {
     val venue = Venue(
       id = VENUE_ID,
@@ -309,10 +361,10 @@ class ReservationPaymentOrderServiceTest {
         email = "user-$bookerUserId@example.com",
         nickname = "사용자$bookerUserId",
       ),
-      groupId = GROUP_ID,
+      groupId = null,
       orderId = ORDER_ID,
       orderName = "아이유 콘서트 1회차 2석",
-      amount = 132_000,
+      amount = amount,
       status = status,
       paymentExpiresAt = paymentExpiresAt,
     )
@@ -321,9 +373,9 @@ class ReservationPaymentOrderServiceTest {
   private fun activeHoldData(vararg holdDetails: VenueSeatHoldDetail): ActiveHoldData {
     val details = holdDetails.toList()
     return ActiveHoldData(
-      groupId = GROUP_ID,
+      scopeId = GROUP_ID,
       performanceId = details.first().performanceId,
-      holdGroupKey = "hold:group:$GROUP_ID",
+      holdScopeKey = "hold:scope:$GROUP_ID",
       storedHoldDetailJsons = details.map { "{}" },
       holdDetailKeys = details.map { "hold:detail:${it.holdId}" },
       holdDetails = details,
@@ -339,14 +391,22 @@ class ReservationPaymentOrderServiceTest {
     )
   }
 
-  private fun holdDetail(groupId: String = GROUP_ID, performanceId: Long = PERFORMANCE_ID, venueSeatIds: List<Long> = listOf(101L, 102L)) =
-    VenueSeatHoldDetail(
-      holdId = "hold-123",
-      groupId = groupId,
-      performanceId = performanceId,
-      venueSeatIds = venueSeatIds,
-      expiresAt = LocalDateTime.now().plusMinutes(5),
-    )
+  private fun holdDetail(
+    holdId: String = "hold-123",
+    scopeId: String = GROUP_ID,
+    performanceId: Long = PERFORMANCE_ID,
+    venueSeatIds: List<Long> = listOf(101L, 102L),
+    phase: VenueSeatHoldPhase = VenueSeatHoldPhase.PAYMENT,
+    reservationId: Long? = RESERVATION_ID,
+  ) = VenueSeatHoldDetail(
+    holdId = holdId,
+    scopeId = scopeId,
+    performanceId = performanceId,
+    venueSeatIds = venueSeatIds,
+    expiresAt = LocalDateTime.now().plusMinutes(5),
+    phase = phase,
+    reservationId = reservationId,
+  )
 
   private fun venueSeat(id: Long, sectionName: String, seatLabel: String, price: Int) = VenueSeat(
     id = id,
@@ -373,7 +433,7 @@ class ReservationPaymentOrderServiceTest {
     private const val USER_ID = 1L
     private const val OTHER_USER_ID = 2L
     private const val RESERVATION_ID = 501L
-    private const val GROUP_ID = "1:10"
+    private const val GROUP_ID = "personal:1:10"
     private const val ORDER_ID = "tikkle-order-123"
     private const val PERFORMANCE_ID = 10L
     private const val OTHER_PERFORMANCE_ID = 20L

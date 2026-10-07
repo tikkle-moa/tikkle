@@ -70,10 +70,10 @@ class ReservationStompControllerTest {
 
   @Test
   fun `예매 정보 확인 시작은 서버 snapshot을 개인 queue로 반환한다`() {
-    val request = BeginCheckoutReviewCommand(REQUEST_ID, BeginCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN, SESSION_ID))
+    val request = BeginCheckoutReviewCommand(REQUEST_ID, BeginCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN))
     val snapshot =
-      BeginCheckoutReviewMessageData(GROUP_ID, PERFORMANCE_ID, listOf(101L), LocalDateTime.of(2027, 1, 20, 19, 5), REVIEW_TOKEN, SESSION_ID)
-    given(reservationCheckoutService.beginCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN, SESSION_ID)).willReturn(snapshot)
+      BeginCheckoutReviewMessageData(GROUP_ID, PERFORMANCE_ID, listOf(101L), LocalDateTime.of(2027, 1, 20, 19, 5), REVIEW_TOKEN)
+    given(reservationCheckoutService.beginCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(snapshot)
 
     assertThat(controller.beginCheckoutReview(request, authentication)).isEqualTo(BeginCheckoutReviewMessage(REQUEST_ID, snapshot))
     assertEndpoint(
@@ -86,12 +86,12 @@ class ReservationStompControllerTest {
 
   @Test
   fun `예매 정보 확인 종료는 token을 전달하고 개인 queue로 응답한다`() {
-    val request = EndCheckoutReviewCommand(REQUEST_ID, EndCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN, GROUP_ID))
-    given(reservationCheckoutService.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN, GROUP_ID)).willReturn(true)
+    val request = EndCheckoutReviewCommand(REQUEST_ID, EndCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN))
+    given(reservationCheckoutService.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(true)
 
     assertThat(controller.endCheckoutReview(request, authentication))
-      .isEqualTo(EndCheckoutReviewMessage(REQUEST_ID, EndCheckoutReviewMessageData(PERFORMANCE_ID, canResumeHold = true)))
-    then(reservationCheckoutService).should().endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN, GROUP_ID)
+      .isEqualTo(EndCheckoutReviewMessage(REQUEST_ID, EndCheckoutReviewMessageData(PERFORMANCE_ID)))
+    then(reservationCheckoutService).should().endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
     assertEndpoint(
       methodName = "endCheckoutReview",
       requestType = EndCheckoutReviewCommand::class.java,
@@ -102,11 +102,11 @@ class ReservationStompControllerTest {
 
   @Test
   fun `결제 대기 이후 복귀에서는 이전 점유를 다시 조작하지 않는다`() {
-    val request = EndCheckoutReviewCommand(REQUEST_ID, EndCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN, GROUP_ID))
-    given(reservationCheckoutService.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN, GROUP_ID)).willReturn(false)
+    val request = EndCheckoutReviewCommand(REQUEST_ID, EndCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN))
+    given(reservationCheckoutService.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(false)
 
     assertThat(controller.endCheckoutReview(request, authentication))
-      .isEqualTo(EndCheckoutReviewMessage(REQUEST_ID, EndCheckoutReviewMessageData(PERFORMANCE_ID, canResumeHold = false)))
+      .isEqualTo(EndCheckoutReviewMessage(REQUEST_ID, EndCheckoutReviewMessageData(PERFORMANCE_ID)))
   }
 
   @Nested
@@ -116,7 +116,7 @@ class ReservationStompControllerTest {
     fun `checkout 서비스에 위임하고 성공 메시지를 반환한다`() {
       val request = StartCheckoutCommand(
         requestId = REQUEST_ID,
-        data = StartCheckoutData(PERFORMANCE_ID, REVIEW_TOKEN, GROUP_ID),
+        data = StartCheckoutData(PERFORMANCE_ID, REVIEW_TOKEN),
       )
       val result = startCheckoutMessageData()
 
@@ -125,7 +125,6 @@ class ReservationStompControllerTest {
           USER_ID,
           PERFORMANCE_ID,
           REVIEW_TOKEN,
-          GROUP_ID,
         ),
       ).willReturn(result)
 
@@ -139,7 +138,7 @@ class ReservationStompControllerTest {
 
       then(reservationCheckoutService)
         .should()
-        .startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN, GROUP_ID)
+        .startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
     }
 
     @Test
@@ -375,6 +374,5 @@ class ReservationStompControllerTest {
       "2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a",
     )
     private val REVIEW_TOKEN = UUID.fromString("25b619c1-f87a-4fbe-a2d7-2f16dc0cd1b3")
-    private val SESSION_ID = UUID.fromString("88974819-50e7-4127-ae98-b178e3ec2346")
   }
 }

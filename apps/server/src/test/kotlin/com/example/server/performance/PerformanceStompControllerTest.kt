@@ -12,7 +12,7 @@ import com.example.server.performance.dto.PerformanceSeatStatusMessageData
 import com.example.server.performance.dto.PerformanceSeatStatusMessageData.HeldSeat
 import com.example.server.performance.dto.ReleaseVenueSeatsCommand
 import com.example.server.performance.dto.ReleaseVenueSeatsMessage
-import com.example.server.performance.dto.VenueSeatHoldDetail
+import com.example.server.performance.dto.VenueSeatHoldSummary
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -51,18 +51,18 @@ class PerformanceStompControllerTest {
         version = 7L,
         serverTime = LocalDateTime.of(2026, 9, 10, 12, 0),
         bookedSeatIds = listOf(1L),
-        otherGroupHoldSeats = listOf(
+        otherHoldSeats = listOf(
           HeldSeat(
             id = 2L,
             expiresAt = LocalDateTime.of(2026, 9, 10, 12, 5),
           ),
         ),
-        myGroupHolds = emptyList(),
+        myHolds = emptyList(),
       )
 
       given(authentication.principal).willReturn(LoginUserResult(USER_ID, UserRole.USER))
       given(
-        redisVenueSeatHoldService.getSeatStatus(USER_ID, PERFORMANCE_ID, null),
+        redisVenueSeatHoldService.getSeatStatus(USER_ID, PERFORMANCE_ID),
       ).willReturn(result)
 
       val response = controller.getSeatStatus(
@@ -76,7 +76,7 @@ class PerformanceStompControllerTest {
 
       then(redisVenueSeatHoldService)
         .should()
-        .getSeatStatus(USER_ID, PERFORMANCE_ID, null)
+        .getSeatStatus(USER_ID, PERFORMANCE_ID)
     }
 
     @Test
@@ -136,12 +136,9 @@ class PerformanceStompControllerTest {
       val command = HoldVenueSeatsCommand(
         requestId = REQUEST_ID,
         data = SEAT_IDS,
-        sessionId = SESSION_ID,
       )
-      val result = VenueSeatHoldDetail(
+      val result = VenueSeatHoldSummary(
         holdId = "hold-1",
-        groupId = "1:$PERFORMANCE_ID:$SESSION_ID",
-        performanceId = PERFORMANCE_ID,
         venueSeatIds = SEAT_IDS,
         expiresAt = LocalDateTime.of(2026, 9, 10, 12, 5),
       )
@@ -154,7 +151,6 @@ class PerformanceStompControllerTest {
           USER_ID,
           PERFORMANCE_ID,
           SEAT_IDS,
-          SESSION_ID,
         ),
       ).willReturn(result)
 
@@ -169,7 +165,7 @@ class PerformanceStompControllerTest {
 
       then(redisVenueSeatHoldService)
         .should()
-        .holdSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS, SESSION_ID)
+        .holdSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS)
     }
 
     @Test
@@ -206,7 +202,6 @@ class PerformanceStompControllerTest {
       val command = ReleaseVenueSeatsCommand(
         requestId = REQUEST_ID,
         data = SEAT_IDS,
-        sessionId = SESSION_ID,
       )
 
       given(authentication.principal)
@@ -217,7 +212,6 @@ class PerformanceStompControllerTest {
           USER_ID,
           PERFORMANCE_ID,
           SEAT_IDS,
-          SESSION_ID,
         ),
       ).willReturn(SEAT_IDS)
 
@@ -232,7 +226,7 @@ class PerformanceStompControllerTest {
 
       then(redisVenueSeatHoldService)
         .should()
-        .releaseSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS, SESSION_ID)
+        .releaseSeats(USER_ID, PERFORMANCE_ID, SEAT_IDS)
     }
 
     @Test
@@ -270,6 +264,5 @@ class PerformanceStompControllerTest {
     private val REQUEST_ID = UUID.fromString(
       "2f14f6c5-5c2b-4d3e-a34c-a859d5d87c2a",
     )
-    private val SESSION_ID = UUID.fromString("88974819-50e7-4127-ae98-b178e3ec2346")
   }
 }
