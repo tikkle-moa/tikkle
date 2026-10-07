@@ -22,6 +22,7 @@ test.describe("공연장 등록 페이지 정상 처리", () => {
 
     try {
       await page.goto("/venues/new");
+      await page.request.get("/api/venues");
       await fillValidForm(page, name);
 
       const responsePromise = page.waitForResponse((response) => response.url().endsWith("/api/venues") && response.request().method() === "POST");

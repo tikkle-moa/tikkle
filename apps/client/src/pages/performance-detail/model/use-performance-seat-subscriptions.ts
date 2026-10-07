@@ -213,6 +213,11 @@ export const usePerformanceSeatSubscriptions = ({
           venueSeatIds.forEach((seatId) => updated.set(seatId, { holdId, expiresAt }));
           return updated;
         });
+        setHeldSeatExpiresAtBySeatId((current) => {
+          const updated = new Map(current);
+          message.data.venueSeatIds.forEach((seatId) => updated.delete(seatId));
+          return current.size === updated.size ? current : updated;
+        });
         setSeatOperationState({ status: "success" });
       },
       errorCallback: (errorMessage) => {
@@ -228,6 +233,11 @@ export const usePerformanceSeatSubscriptions = ({
         if (message.requestId !== performanceSeatRequestIdsRef.current.release) return;
 
         setMyHeldSeatInfoBySeatId((current) => {
+          const updated = new Map(current);
+          message.data.forEach((seatId) => updated.delete(seatId));
+          return current.size === updated.size ? current : updated;
+        });
+        setHeldSeatExpiresAtBySeatId((current) => {
           const updated = new Map(current);
           message.data.forEach((seatId) => updated.delete(seatId));
           return current.size === updated.size ? current : updated;
@@ -249,7 +259,16 @@ export const usePerformanceSeatSubscriptions = ({
       holdSeatsSubscription.unsubscribe();
       releaseSeatsSubscription.unsubscribe();
     };
-  }, [isConnected, performanceId, performanceSeatRequestIdsRef, setMyHeldSeatInfoBySeatId, setSeatOperationState, setSelectedSeatIds, stompClient]);
+  }, [
+    isConnected,
+    performanceId,
+    performanceSeatRequestIdsRef,
+    setHeldSeatExpiresAtBySeatId,
+    setMyHeldSeatInfoBySeatId,
+    setSeatOperationState,
+    setSelectedSeatIds,
+    stompClient,
+  ]);
 
   return {
     isConnected,

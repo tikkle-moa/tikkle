@@ -17,8 +17,6 @@ const runMysql = async (query: string) => {
 
 const createReservationAccessScenario = async () => {
   const suffix = randomUUID();
-  const ownerGroupId = `e2e-access-owner-${suffix}`;
-  const otherGroupId = `e2e-access-other-${suffix}`;
   const ownerOrderId = `e2e-access-owner-order-${suffix}`;
   const otherOrderId = `e2e-access-other-order-${suffix}`;
 
@@ -27,21 +25,21 @@ const createReservationAccessScenario = async () => {
       performance_id, booker_user_id, group_id, order_id, order_name,
       amount, status, payment_expires_at, created_at
     ) VALUES
-      (900000, 2, '${ownerGroupId}', '${ownerOrderId}', 'E2E 본인 예매', 150000, 'SUCCEEDED', DATE_ADD(NOW(), INTERVAL 1 DAY), NOW()),
-      (900000, 3, '${otherGroupId}', '${otherOrderId}', 'E2E 타인 예매', 150000, 'SUCCEEDED', DATE_ADD(NOW(), INTERVAL 1 DAY), NOW());
-    SELECT group_id, id FROM reservations
-    WHERE group_id IN ('${ownerGroupId}', '${otherGroupId}')
-    ORDER BY group_id;
+      (900000, 2, NULL, '${ownerOrderId}', 'E2E 본인 예매', 150000, 'SUCCEEDED', DATE_ADD(NOW(), INTERVAL 1 DAY), NOW()),
+      (900000, 3, NULL, '${otherOrderId}', 'E2E 타인 예매', 150000, 'SUCCEEDED', DATE_ADD(NOW(), INTERVAL 1 DAY), NOW());
+    SELECT order_id, id FROM reservations
+    WHERE order_id IN ('${ownerOrderId}', '${otherOrderId}')
+    ORDER BY order_id;
   `);
 
   const reservationIds = new Map(
     rows.split("\n").map((row) => {
-      const [groupId, id] = row.split("\t");
-      return [groupId, Number(id)];
+      const [orderId, id] = row.split("\t");
+      return [orderId, Number(id)];
     }),
   );
-  const ownerReservationId = reservationIds.get(ownerGroupId);
-  const otherReservationId = reservationIds.get(otherGroupId);
+  const ownerReservationId = reservationIds.get(ownerOrderId);
+  const otherReservationId = reservationIds.get(otherOrderId);
 
   if (!ownerReservationId || !otherReservationId) {
     throw new Error("예매 접근 권한 E2E 데이터를 생성하지 못했습니다.");

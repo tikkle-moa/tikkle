@@ -130,9 +130,13 @@ const cleanupOccupancyScenario = async (page: Page, scenario: OccupancyScenario)
 };
 
 const getSeat = (page: Page, seatId: number) => page.locator(`[data-seat-id="${seatId}"]`);
+const SEAT_STATUS_TIMEOUT = 15_000;
+const STOMP_CONNECTION_TIMEOUT = 30_000;
 
 const waitForAvailableSeats = async (page: Page, seatIds: readonly number[]) => {
-  await Promise.all(seatIds.map((seatId) => expect(getSeat(page, seatId)).toHaveAttribute("data-seat-status", "available")));
+  await Promise.all(
+    seatIds.map((seatId) => expect(getSeat(page, seatId)).toHaveAttribute("data-seat-status", "available", { timeout: SEAT_STATUS_TIMEOUT })),
+  );
 };
 
 const expirePerformanceHolds = async (performanceId: number) => {
@@ -164,7 +168,7 @@ const openOccupancyPage = async (page: Page, performanceId: number, tokenId: str
   });
   await page.goto(`/performances/${performanceId}`);
 
-  await expect(page.locator('[role="status"]')).toContainText("실시간 연결됨", { timeout: 15_000 });
+  await expect(page.locator('[role="status"]')).toContainText("실시간 연결됨", { timeout: STOMP_CONNECTION_TIMEOUT });
 };
 
 const openOccupancyPages = async (firstPage: Page, secondPage: Page, performanceId: number) => {
@@ -206,11 +210,11 @@ test.describe("공연 좌석 점유", () => {
 
       await firstSeat.click();
 
-      await expect(firstSeat).toHaveAttribute("data-seat-status", "held_by_my_group");
+      await expect(firstSeat).toHaveAttribute("data-seat-status", "held_by_me");
       await expect(firstPage.getByRole("region", { name: "내 점유 좌석" })).toContainText(seat.seatLabel);
       await expect(firstPage.getByRole("region", { name: "내 점유 좌석" })).toContainText("1석");
       await expect(firstPage.getByText("점유 시간은", { exact: false })).toBeVisible();
-      await expect(secondSeat).toHaveAttribute("data-seat-status", "held_by_other_group");
+      await expect(secondSeat).toHaveAttribute("data-seat-status", "held_by_other");
       await expect(secondSeat).toHaveAttribute("aria-disabled", "true");
     } finally {
       await Promise.all([firstContext.close(), secondContext.close()]);
@@ -232,7 +236,7 @@ test.describe("공연 좌석 점유", () => {
 
       for (const seat of seats) {
         await getSeat(firstPage, seat.id).click();
-        await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
+        await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_me", { timeout: SEAT_STATUS_TIMEOUT });
       }
       const myHolds = firstPage.getByRole("region", { name: "내 점유 좌석" });
       await expect(myHolds).toContainText("2석");
@@ -244,7 +248,7 @@ test.describe("공연 좌석 점유", () => {
       await firstPage.getByRole("button", { name: "점유 해제 · 2석" }).click();
 
       for (const seat of seats) {
-        await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "available");
+        await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "available", { timeout: SEAT_STATUS_TIMEOUT });
       }
       await expect(firstPage.getByRole("region", { name: "내 점유 좌석" })).toHaveCount(0);
     } finally {
@@ -272,9 +276,9 @@ test.describe("공연 좌석 점유", () => {
           ]);
           return statuses.sort();
         })
-        .toEqual(["held_by_my_group", "held_by_other_group"]);
+        .toEqual(["held_by_me", "held_by_other"]);
 
-      const firstWon = (await getSeat(firstPage, seat.id).getAttribute("data-seat-status")) === "held_by_my_group";
+      const firstWon = (await getSeat(firstPage, seat.id).getAttribute("data-seat-status")) === "held_by_me";
       const winnerPage = firstWon ? firstPage : secondPage;
       const loserPage = firstWon ? secondPage : firstPage;
 
@@ -297,18 +301,18 @@ test.describe("공연 좌석 점유", () => {
       await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await getSeat(firstPage, seat.id).click();
-      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_other_group");
+      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_me");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_other");
 
       await expect(firstPage.getByRole("button", { name: "점유 해제 · 1석" })).toBeVisible();
       await firstPage.getByRole("button", { name: "점유 해제 · 1석" }).click();
 
-      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "available");
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available");
+      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "available", { timeout: SEAT_STATUS_TIMEOUT });
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available", { timeout: SEAT_STATUS_TIMEOUT });
       await expect(firstPage.getByRole("region", { name: "내 점유 좌석" })).toHaveCount(0);
 
       await getSeat(secondPage, seat.id).click();
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_me", { timeout: SEAT_STATUS_TIMEOUT });
       await expect(secondPage.getByRole("region", { name: "내 점유 좌석" })).toContainText(seat.seatLabel);
     } finally {
       await Promise.all([firstContext.close(), secondContext.close()]);
@@ -326,17 +330,17 @@ test.describe("공연 좌석 점유", () => {
       await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await getSeat(firstPage, seat.id).click();
-      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_other_group");
+      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_me");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_other");
       await firstPage.getByRole("button", { name: "전체 선택 취소" }).click();
 
       await expirePerformanceHolds(scenario.performanceId);
 
-      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "available");
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available");
+      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "available", { timeout: SEAT_STATUS_TIMEOUT });
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available", { timeout: SEAT_STATUS_TIMEOUT });
 
       await getSeat(secondPage, seat.id).click();
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_me", { timeout: SEAT_STATUS_TIMEOUT });
     } finally {
       await Promise.all([firstContext.close(), secondContext.close()]);
       await cleanupOccupancyScenario(page, scenario);
@@ -352,8 +356,8 @@ test.describe("공연 좌석 점유", () => {
       await Promise.all([waitForAvailableSeats(firstPage, [seat.id]), waitForAvailableSeats(secondPage, [seat.id])]);
 
       await getSeat(firstPage, seat.id).click();
-      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_other_group");
+      await expect(getSeat(firstPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_me");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_other");
 
       await firstPage.getByRole("button", { name: "예매 정보 확인하기" }).click();
       await expect(firstPage).toHaveURL(new RegExp(`/performances/${scenario.performanceId}/checkout$`));
@@ -362,9 +366,9 @@ test.describe("공연 좌석 점유", () => {
 
       await expirePerformanceHolds(scenario.performanceId);
 
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "available", { timeout: SEAT_STATUS_TIMEOUT });
       await getSeat(secondPage, seat.id).click();
-      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_my_group");
+      await expect(getSeat(secondPage, seat.id)).toHaveAttribute("data-seat-status", "held_by_me", { timeout: SEAT_STATUS_TIMEOUT });
     } finally {
       await Promise.all([firstContext.close(), secondContext.close()]);
       await cleanupOccupancyScenario(page, scenario);

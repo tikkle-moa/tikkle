@@ -42,10 +42,7 @@ export const mockOAuthSession = async (page: Page, role: UserRole) => {
 
 export const setApiRole = async (page: Page, role: UserRole, tokenId?: string) => {
   const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
-  await page.context().addCookies([
-    { name: "access_token", value: createAccessToken(role, tokenId), url: baseURL, httpOnly: true, sameSite: "Lax" },
-    { name: "XSRF-TOKEN", value: TEST_CSRF_TOKEN, url: baseURL, sameSite: "Lax" },
-  ]);
+  await page.context().addCookies([{ name: "access_token", value: createAccessToken(role, tokenId), url: baseURL, httpOnly: true, sameSite: "Lax" }]);
 };
 
 export const authenticatePage = async (page: Page, role: UserRole, tokenId?: string) => {
