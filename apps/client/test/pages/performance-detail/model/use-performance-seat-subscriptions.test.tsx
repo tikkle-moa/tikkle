@@ -183,6 +183,8 @@ describe("usePerformanceSeatSubscriptions", () => {
     expect(result.current.myHeldSeatInfoBySeatId.get(2)?.holdId).toBe("hold-1");
 
     const event = getEventCallback();
+    act(() => event({ version: 1, type: "HELD_SEATS", data: [] as never }));
+    expect(client.publish).toHaveBeenCalledTimes(2);
     act(() => event({ version: 2, type: "HELD_SEATS", data: [] as never }));
     expect(client.publish).toHaveBeenCalledTimes(3);
     const heldStatusRequestId = client.publish.mock.calls[2][0].command.requestId;
@@ -206,7 +208,16 @@ describe("usePerformanceSeatSubscriptions", () => {
     act(() =>
       seatStatus.callback({
         requestId: secondHeldStatusRequestId,
-        data: { serverTime: "invalid", bookedSeatIds: [2], version: 3, otherHoldSeats: [], myHolds: [] } as never,
+        data: {
+          serverTime: "invalid",
+          bookedSeatIds: [2],
+          version: 3,
+          otherHoldSeats: [
+            { id: 3, expiresAt: "2026-09-16T21:00:00" },
+            { id: 4, expiresAt: "2026-09-16T21:00:00" },
+          ],
+          myHolds: [{ scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] }],
+        } as never,
       }),
     );
 
@@ -214,10 +225,11 @@ describe("usePerformanceSeatSubscriptions", () => {
     act(() => event({ version: 5, type: "RELEASED_SEATS", data: [1, 3] as never }));
     expect(result.current.heldSeatExpiresAtBySeatId.has(1)).toBe(false);
     expect(result.current.myHeldSeatInfoBySeatId.has(1)).toBe(false);
+    expect(result.current.heldSeatExpiresAtBySeatId.has(4)).toBe(true);
     expect(result.current.selectedSeatIds).toEqual(new Set([2]));
 
-    act(() => event({ version: 6, type: "RESERVATION_CONFIRMED", data: [2, 3] as never }));
-    expect(result.current.bookedSeatIds).toEqual(new Set([2, 3]));
+    act(() => event({ version: 6, type: "RESERVATION_CONFIRMED", data: [2, 4] as never }));
+    expect(result.current.bookedSeatIds).toEqual(new Set([2, 4]));
     expect(result.current.selectedSeatIds).toEqual(new Set());
     act(() => event({ version: 7, type: "RESERVATION_CONFIRMED", data: [2] as never }));
     act(() => event({ version: 9, type: "RESERVATION_CONFIRMED", data: [1] as never }));
@@ -231,7 +243,7 @@ describe("usePerformanceSeatSubscriptions", () => {
       }),
     );
     expect(client.publish).toHaveBeenCalledTimes(6);
-    expect(result.current.bookedSeatIds).toEqual(new Set([2, 3]));
+    expect(result.current.bookedSeatIds).toEqual(new Set([2, 4]));
 
     unmount();
     expect(unsubscribe).toHaveBeenCalledTimes(4);
@@ -268,6 +280,13 @@ describe("usePerformanceSeatSubscriptions", () => {
     const { result } = renderHook(() => {
       const [selectedSeatIds, setSelectedSeatIds] = useState(new Set([1, 2]));
       const [seatOperationState, setSeatOperationState] = useState<SeatOperationState>({ status: "idle" });
+      const [heldSeatExpiresAtBySeatId, setHeldSeatExpiresAtBySeatId] = useState(
+        new Map([
+          [1, new Date("2026-09-16T20:00:00")],
+          [2, new Date("2026-09-16T20:00:00")],
+          [3, new Date("2026-09-16T20:00:00")],
+        ]),
+      );
       const [myHeldSeatInfoBySeatId, setMyHeldSeatInfoBySeatId] = useState(new Map<number, MyHeldSeatInfo>());
       usePerformanceSeatSubscriptions({
         performanceId: 10,
@@ -277,10 +296,10 @@ describe("usePerformanceSeatSubscriptions", () => {
         setServerTimeOffset: vi.fn(),
         setSeatOperationState,
         setBookedSeatIds: vi.fn(),
-        setHeldSeatExpiresAtBySeatId: vi.fn(),
+        setHeldSeatExpiresAtBySeatId,
         setMyHeldSeatInfoBySeatId,
       });
-      return { selectedSeatIds, seatOperationState, myHeldSeatInfoBySeatId };
+      return { selectedSeatIds, seatOperationState, heldSeatExpiresAtBySeatId, myHeldSeatInfoBySeatId };
     });
 
     const hold = findSubscription(subscriptions, "hold-seats");
@@ -306,6 +325,7 @@ describe("usePerformanceSeatSubscriptions", () => {
       }),
     );
     expect(result.current.myHeldSeatInfoBySeatId.size).toBe(2);
+    expect(result.current.heldSeatExpiresAtBySeatId).toEqual(new Map([[3, new Date("2026-09-16T20:00:00")]]));
     act(() => hold.errorCallback?.({ requestId: "stale-hold-request", error: { message: "오래된 Hold 오류" } }));
     act(() => hold.errorCallback?.({ requestId: "hold-request", error: { message: "Hold 실패" } }));
     expect(result.current.seatOperationState).toEqual({ status: "error", message: "Hold 실패" });
@@ -317,9 +337,12 @@ describe("usePerformanceSeatSubscriptions", () => {
     expect(result.current.myHeldSeatInfoBySeatId).toBe(beforeRelease);
     act(() => release.callback({ requestId: "release-request", data: [99] as never }));
     expect(result.current.myHeldSeatInfoBySeatId).toBe(beforeRelease);
+    expect(result.current.heldSeatExpiresAtBySeatId).toEqual(new Map([[3, new Date("2026-09-16T20:00:00")]]));
     act(() => release.callback({ requestId: "release-request", data: [1] as never }));
     expect(result.current.myHeldSeatInfoBySeatId.has(1)).toBe(false);
     expect(result.current.selectedSeatIds).toEqual(new Set([2]));
+    act(() => release.callback({ requestId: "release-request", data: [3] as never }));
+    expect(result.current.heldSeatExpiresAtBySeatId).toEqual(new Map());
     act(() => release.errorCallback?.({ requestId: "stale-release-request", error: { message: "오래된 Release 오류" } }));
     act(() => release.errorCallback?.({ requestId: "release-request", error: { message: "Release 실패" } }));
     expect(result.current.seatOperationState).toEqual({ status: "error", message: "Release 실패" });
