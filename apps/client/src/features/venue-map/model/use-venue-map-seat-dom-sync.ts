@@ -62,7 +62,7 @@ export const useVenueMapSeatDomSync = ({ svgRef, venueSeats, venueSeatStates, se
       if (!seatElements) return;
       const { container, visual } = seatElements;
 
-      const isSeatSelectable = !isHoldMode || nextState.status === "available" || nextState.status === "held_by_my_group";
+      const isSeatSelectable = !isHoldMode || nextState.status === "available" || nextState.status === "held_by_me";
       const statusKey = `${nextState.status}:${nextExpiresAt ?? ""}:${isHeld ? serverTimeOffset : 0}`;
       let statusDescription = statusDescriptionByKey.get(statusKey);
       if (statusDescription === undefined) {
