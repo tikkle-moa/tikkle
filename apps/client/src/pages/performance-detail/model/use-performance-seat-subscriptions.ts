@@ -124,12 +124,8 @@ export const usePerformanceSeatSubscriptions = ({
 
         switch (event.type) {
           case "HELD_SEATS": {
-            setHeldSeatExpiresAtBySeatId((current) => {
-              if (event.data.length === 0) return current;
-              const updated = new Map(current);
-              event.data.forEach(({ id, expiresAt }) => updated.set(id, new Date(expiresAt)));
-              return updated;
-            });
+            requiredSeatVersionRef.current = Math.max(requiredSeatVersionRef.current ?? -1, event.version);
+            requestSeatStatus();
             break;
           }
           case "RELEASED_SEATS": {

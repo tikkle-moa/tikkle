@@ -183,28 +183,32 @@ describe("usePerformanceSeatSubscriptions", () => {
     expect(result.current.myHeldSeatInfoBySeatId.get(2)?.holdId).toBe("hold-1");
 
     const event = getEventCallback();
-    act(() => event({ version: 1, type: "HELD_SEATS", data: [] as never }));
-    const emptyHeldResult = result.current.heldSeatExpiresAtBySeatId;
+    act(() => event({ version: 2, type: "HELD_SEATS", data: [] as never }));
+    expect(client.publish).toHaveBeenCalledTimes(3);
+    const heldStatusRequestId = client.publish.mock.calls[2][0].command.requestId;
     act(() =>
-      event({
-        version: 2,
-        type: "HELD_SEATS",
-        data: [] as never,
+      seatStatus.callback({
+        requestId: heldStatusRequestId,
+        data: {
+          serverTime: "invalid",
+          bookedSeatIds: [2],
+          version: 2,
+          otherHoldSeats: [{ id: 3, expiresAt: "2026-09-16T21:00:00" }],
+          myHolds: [{ scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: "2026-09-16T20:00:00", venueSeatIds: [1, 2] }],
+        } as never,
       }),
     );
-    expect(result.current.heldSeatExpiresAtBySeatId).toBe(emptyHeldResult);
-    act(() =>
-      event({
-        version: 3,
-        type: "HELD_SEATS",
-        data: [
-          { id: 2, expiresAt: "2026-09-16T21:00:00" },
-          { id: 3, expiresAt: "2026-09-16T21:00:00" },
-        ] as never,
-      }),
-    );
-    expect(result.current.heldSeatExpiresAtBySeatId).not.toBe(emptyHeldResult);
     expect(result.current.heldSeatExpiresAtBySeatId.has(3)).toBe(true);
+
+    act(() => event({ version: 3, type: "HELD_SEATS", data: [] as never }));
+    expect(client.publish).toHaveBeenCalledTimes(4);
+    const secondHeldStatusRequestId = client.publish.mock.calls[3][0].command.requestId;
+    act(() =>
+      seatStatus.callback({
+        requestId: secondHeldStatusRequestId,
+        data: { serverTime: "invalid", bookedSeatIds: [2], version: 3, otherHoldSeats: [], myHolds: [] } as never,
+      }),
+    );
 
     act(() => event({ version: 4, type: "RELEASED_SEATS", data: [99] as never }));
     act(() => event({ version: 5, type: "RELEASED_SEATS", data: [1, 3] as never }));
@@ -217,16 +221,16 @@ describe("usePerformanceSeatSubscriptions", () => {
     expect(result.current.selectedSeatIds).toEqual(new Set());
     act(() => event({ version: 7, type: "RESERVATION_CONFIRMED", data: [2] as never }));
     act(() => event({ version: 9, type: "RESERVATION_CONFIRMED", data: [1] as never }));
-    expect(client.publish).toHaveBeenCalledTimes(3);
+    expect(client.publish).toHaveBeenCalledTimes(5);
 
-    const requiredVersionRequestId = client.publish.mock.calls[2][0].command.requestId;
+    const requiredVersionRequestId = client.publish.mock.calls[4][0].command.requestId;
     act(() =>
       seatStatus.callback({
         requestId: requiredVersionRequestId,
         data: { serverTime: "invalid", bookedSeatIds: [], version: 5, otherHoldSeats: [], myHolds: [] } as never,
       }),
     );
-    expect(client.publish).toHaveBeenCalledTimes(4);
+    expect(client.publish).toHaveBeenCalledTimes(6);
     expect(result.current.bookedSeatIds).toEqual(new Set([2, 3]));
 
     unmount();
