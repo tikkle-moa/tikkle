@@ -1,60 +1,99 @@
--- 그룹 Hold 전체를 한 시점의 예매 정보로 고정합니다.
--- KEYS: holdGroupKey, holdGroupControlKey
--- ARGV: holdDetailKeyPrefix, holdVenueSeatKeyPrefix, groupId, performanceId, reviewToken
+-- scope의 HOLDING Hold 전체를 REVIEW로 전환하고 예매 정보를 고정합니다.
+-- 같은 reviewToken의 재시도는 그 token의 REVIEW Hold만 반환합니다.
+-- KEYS[1]: holdScopeKey
+-- ARGV: holdDetailKeyPrefix, holdVenueSeatKeyPrefix, scopeId, performanceId, reviewToken
 -- 반환값: snapshot JSON, NOT_FOUND, CONFLICT
 
 local now = redis.call('TIME')
 local nowMillis = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
-local existing = redis.call('GET', KEYS[2])
-
-if existing then
-  local control = cjson.decode(existing)
-  if control.phase == 'REVIEW' and control.reviewToken == ARGV[5] then
-    return existing
-  end
-  return 'CONFLICT'
-end
-
 local holdIds = redis.call('ZRANGEBYSCORE', KEYS[1], nowMillis + 1, '+inf')
+
 if #holdIds == 0 then
   return 'NOT_FOUND'
 end
 
-local venueSeatIds = {}
-local seenSeatIds = {}
-local earliestExpiry = nil
+local candidates = {}
+local hasSameReview = false
+local isPersonalScope = string.sub(ARGV[3], 1, 9) == 'personal:'
 
 for _, holdId in ipairs(holdIds) do
-  local detailJson = redis.call('GET', ARGV[1] .. holdId)
+  local detailKey = ARGV[1] .. holdId
+  local detailJson = redis.call('GET', detailKey)
   local expiry = tonumber(redis.call('ZSCORE', KEYS[1], holdId))
   if not detailJson or not expiry or expiry <= nowMillis then
     return 'CONFLICT'
   end
 
   local detail = cjson.decode(detailJson)
-  if detail.groupId ~= ARGV[3] or tonumber(detail.performanceId) ~= tonumber(ARGV[4]) or #detail.venueSeatIds == 0 then
+  local phase = detail.phase or 'HOLDING'
+  if detail.scopeId ~= ARGV[3] or
+    tonumber(detail.performanceId) ~= tonumber(ARGV[4]) or
+    #detail.venueSeatIds == 0 then
+    return 'CONFLICT'
+  end
+  if phase == 'REVIEW' then
+    if detail.reviewToken ~= ARGV[5] then
+      return 'CONFLICT'
+    end
+    hasSameReview = true
+  elseif phase == 'SUPERSEDED' then
+    if not isPersonalScope then
+      return 'CONFLICT'
+    end
+  elseif phase ~= 'HOLDING' then
     return 'CONFLICT'
   end
 
-  earliestExpiry = math.min(earliestExpiry or expiry, expiry)
-  for _, seatId in ipairs(detail.venueSeatIds) do
-    if seenSeatIds[seatId] or redis.call('GET', ARGV[2] .. seatId) ~= holdId then
-      return 'CONFLICT'
+  if phase ~= 'SUPERSEDED' then
+    table.insert(candidates, {
+      holdId = holdId,
+      detailKey = detailKey,
+      detail = detail,
+      phase = phase,
+      expiry = expiry,
+    })
+  end
+end
+
+if #candidates == 0 then
+  return 'NOT_FOUND'
+end
+
+local snapshotHoldIds = {}
+local venueSeatIds = {}
+local seenSeatIds = {}
+local earliestExpiry = nil
+
+for _, candidate in ipairs(candidates) do
+  -- 재시도라면 이후에 추가된 HOLDING Hold는 이번 예매 범위에 포함하지 않습니다.
+  if not hasSameReview or candidate.phase == 'REVIEW' then
+    local detail = candidate.detail
+    for _, seatId in ipairs(detail.venueSeatIds) do
+      if seenSeatIds[seatId] or redis.call('GET', ARGV[2] .. seatId) ~= candidate.holdId then
+        return 'CONFLICT'
+      end
+      seenSeatIds[seatId] = true
+      table.insert(venueSeatIds, seatId)
     end
-    seenSeatIds[seatId] = true
-    table.insert(venueSeatIds, seatId)
+
+    earliestExpiry = math.min(earliestExpiry or candidate.expiry, candidate.expiry)
+    table.insert(snapshotHoldIds, candidate.holdId)
+
+    if candidate.phase == 'HOLDING' then
+      detail.phase = 'REVIEW'
+      detail.reviewToken = ARGV[5]
+      redis.call('SET', candidate.detailKey, cjson.encode(detail), 'KEEPTTL')
+    end
   end
 end
 
 table.sort(venueSeatIds)
-local snapshot = cjson.encode({
+return cjson.encode({
   phase = 'REVIEW',
-  groupId = ARGV[3],
+  scopeId = ARGV[3],
   performanceId = tonumber(ARGV[4]),
-  holdIds = holdIds,
+  holdIds = snapshotHoldIds,
   venueSeatIds = venueSeatIds,
   expiresAtEpochMillis = earliestExpiry,
   reviewToken = ARGV[5],
 })
-redis.call('SET', KEYS[2], snapshot, 'PXAT', earliestExpiry)
-return snapshot
