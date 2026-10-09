@@ -32,8 +32,8 @@ class Reservation(
   @JoinColumn(name = "booker_user_id", nullable = false)
   var booker: User,
 
-  @Column(name = "group_id", nullable = false, unique = true, length = 100)
-  var groupId: String,
+  @Column(name = "group_id")
+  var groupId: Long?,
 
   @Column(name = "order_id", nullable = false, unique = true, length = 100)
   var orderId: String,

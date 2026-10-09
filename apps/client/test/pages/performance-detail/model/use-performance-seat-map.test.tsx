@@ -10,50 +10,13 @@ const seats = [
 ] as VenueSeatResponse[];
 
 describe("usePerformanceSeatMap", () => {
-  it("탭 저장소의 세션을 재사용하고 없으면 공연별 세션을 생성한다", () => {
-    const { result, rerender } = renderHook(() => usePerformanceSeatMap({ performanceId: 1 }));
-    const sessionId = result.current.sessionId;
-    expect(sessionId).toEqual(expect.any(String));
-    expect(sessionStorage.getItem("tikkle.performance-seat-session:1")).toBe(sessionId);
-
-    rerender();
-    expect(result.current.sessionId).toBe(sessionId);
-
-    const freshMap = renderHook(() => usePerformanceSeatMap({ performanceId: 2 }));
-    expect(freshMap.result.current.sessionId).toEqual(expect.any(String));
-    expect(freshMap.result.current.sessionId).not.toBe(sessionId);
-    expect(sessionStorage.getItem("tikkle.performance-seat-session:2")).toBe(freshMap.result.current.sessionId);
-  });
-
-  it("저장된 공연별 세션을 재사용한다", () => {
-    sessionStorage.setItem("tikkle.performance-seat-session:3", "stored-session");
-
-    const { result } = renderHook(() => usePerformanceSeatMap({ performanceId: 3 }));
-
-    expect(result.current.sessionId).toBe("stored-session");
-  });
-
-  it("같은 페이지에서 공연 회차가 바뀌면 해당 회차의 저장 세션을 다시 읽는다", () => {
-    sessionStorage.setItem("tikkle.performance-seat-session:4", "session-4");
-    sessionStorage.setItem("tikkle.performance-seat-session:5", "session-5");
-
-    const { result, rerender } = renderHook(({ performanceId }) => usePerformanceSeatMap({ performanceId }), {
-      initialProps: { performanceId: 4 },
-    });
-    expect(result.current.sessionId).toBe("session-4");
-
-    rerender({ performanceId: 5 });
-
-    expect(result.current.sessionId).toBe("session-5");
-  });
-
   it("선택 가능한 좌석을 토글한다", () => {
     const { result } = renderHook(() => usePerformanceSeatMap());
     act(() => {
       result.current.setVenueSeatStates(
         new Map<number, VenueSeatState>([
           [1, { status: "available" }],
-          [2, { status: "held_by_other_group", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [2, { status: "held_by_other", expiresAt: new Date("2026-09-16T20:00:00") }],
         ]),
       );
     });
@@ -72,7 +35,7 @@ describe("usePerformanceSeatMap", () => {
       result.current.setVenueSeatStates(
         new Map<number, VenueSeatState>([
           [1, { status: "available" }],
-          [2, { status: "held_by_other_group", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [2, { status: "held_by_other", expiresAt: new Date("2026-09-16T20:00:00") }],
         ]),
       );
     });
@@ -89,8 +52,8 @@ describe("usePerformanceSeatMap", () => {
     act(() => {
       result.current.setVenueSeatStates(
         new Map<number, VenueSeatState>([
-          [1, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }],
-          [2, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [1, { status: "held_by_me", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [2, { status: "held_by_me", expiresAt: new Date("2026-09-16T20:00:00") }],
         ]),
       );
     });
@@ -110,8 +73,8 @@ describe("usePerformanceSeatMap", () => {
     act(() => {
       result.current.setVenueSeatStates(
         new Map<number, VenueSeatState>([
-          [1, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }],
-          [2, { status: "held_by_other_group", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [1, { status: "held_by_me", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [2, { status: "held_by_other", expiresAt: new Date("2026-09-16T20:00:00") }],
         ]),
       );
       result.current.setSeatOperationState({ status: "loading" });
@@ -128,7 +91,7 @@ describe("usePerformanceSeatMap", () => {
   it("Hold 일괄 선택 후 작업 상태를 idle로 되돌린다", () => {
     const { result } = renderHook(() => usePerformanceSeatMap());
     act(() => {
-      result.current.setVenueSeatStates(new Map([[1, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }]]));
+      result.current.setVenueSeatStates(new Map([[1, { status: "held_by_me", expiresAt: new Date("2026-09-16T20:00:00") }]]));
       result.current.setSeatOperationState({ status: "success" });
     });
 
@@ -141,7 +104,7 @@ describe("usePerformanceSeatMap", () => {
   it("처리 중에는 토글과 일괄 선택을 무시하고 선택 시 상태를 idle로 되돌린다", () => {
     const { result } = renderHook(() => usePerformanceSeatMap());
     act(() => {
-      result.current.setVenueSeatStates(new Map([[1, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }]]));
+      result.current.setVenueSeatStates(new Map([[1, { status: "held_by_me", expiresAt: new Date("2026-09-16T20:00:00") }]]));
       result.current.setSeatOperationState({ status: "loading" });
     });
     act(() => {

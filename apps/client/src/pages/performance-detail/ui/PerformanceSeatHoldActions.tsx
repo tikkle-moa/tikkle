@@ -5,8 +5,8 @@ import { ChevronRight, CircleAlert, LoaderCircle, RotateCcw, TicketCheck } from 
 import type { SeatOperationState } from "../model/seat-map.types";
 
 interface PerformanceSeatHoldActionsProps {
-  myGroupHeldSeatSize: number;
-  myGroupHeldSeatTotalPrice: number;
+  myHeldSeatSize: number;
+  myHeldSeatTotalPrice: number;
   selectedSeatIdsToReleaseSize: number;
   isConnected: boolean;
   isCheckoutReviewBeginning: boolean;
@@ -16,8 +16,8 @@ interface PerformanceSeatHoldActionsProps {
 }
 
 const PerformanceSeatHoldActions = ({
-  myGroupHeldSeatSize,
-  myGroupHeldSeatTotalPrice,
+  myHeldSeatSize,
+  myHeldSeatTotalPrice,
   selectedSeatIdsToReleaseSize,
   isConnected,
   isCheckoutReviewBeginning,
@@ -27,7 +27,7 @@ const PerformanceSeatHoldActions = ({
 }: PerformanceSeatHoldActionsProps) => {
   return (
     <>
-      {myGroupHeldSeatSize > 0 && (
+      {myHeldSeatSize > 0 && (
         <button
           type="button"
           onClick={handleCheckout}
@@ -43,7 +43,7 @@ const PerformanceSeatHoldActions = ({
               {isCheckoutReviewBeginning ? "예매 정보 불러오는 중..." : "예매 정보 확인하기"}
             </span>
             <span className="mt-0.5 block text-[11px] text-slate-500">
-              선택 좌석 {myGroupHeldSeatSize}석 · {myGroupHeldSeatTotalPrice.toLocaleString()}원
+              선택 좌석 {myHeldSeatSize}석 · {myHeldSeatTotalPrice.toLocaleString()}원
             </span>
           </span>
 

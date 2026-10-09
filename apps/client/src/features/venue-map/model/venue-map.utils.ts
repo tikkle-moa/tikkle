@@ -46,10 +46,10 @@ export const getSeatStatusMessage = (status: VenueSeatStatus, expiresAt?: Date, 
   const holdTimeText = [remainingText, expiresAtText ? `${expiresAtText}까지` : null].filter(Boolean).join(" · ");
 
   switch (status) {
-    case "held_by_my_group":
+    case "held_by_me":
       return holdTimeText ? `${holdTimeText} 점유 중입니다.` : "점유 중인 좌석입니다.";
-    case "held_by_other_group":
-      return holdTimeText ? `${holdTimeText} 다른 그룹이 점유 중입니다.` : "다른 그룹이 점유 중인 좌석입니다.";
+    case "held_by_other":
+      return holdTimeText ? `${holdTimeText} 다른 사용자가 점유 중입니다.` : "다른 사용자가 점유 중인 좌석입니다.";
     case "booked":
       return "예약이 완료된 좌석입니다.";
     case "available":
@@ -85,5 +85,5 @@ export const getViewportAdjustedTooltipPosition = (
 
 export const isCurrentSeatSelectable = (element: SVGGElement) => {
   const currentStatus = element.dataset.seatStatus;
-  return currentStatus === "available" || currentStatus === "held_by_my_group";
+  return currentStatus === "available" || currentStatus === "held_by_me";
 };

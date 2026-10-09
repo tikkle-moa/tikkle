@@ -32,17 +32,15 @@ export interface PerformanceSeatStatusMessage {
 
 export interface PerformanceSeatStatusMessageData {
   bookedSeatIds: number[];
-  myGroupHolds: VenueSeatHoldDetail[];
-  otherGroupHoldSeats: HeldSeat[];
+  myHolds: VenueSeatHoldSummary[];
+  otherHoldSeats: HeldSeat[];
   serverTime: string;
   version: number;
 }
 
-export interface VenueSeatHoldDetail {
+export interface VenueSeatHoldSummary {
   expiresAt: string;
-  groupId: string;
   holdId: string;
-  performanceId: number;
   venueSeatIds: number[];
 }
 
@@ -64,11 +62,10 @@ export interface StompError {
 
 export interface PerformanceSeatStatusCommand {
   requestId: string;
-  sessionId: string | null;
 }
 
 export interface HoldVenueSeatsMessage {
-  data: VenueSeatHoldDetail;
+  data: VenueSeatHoldSummary;
   requestId: string;
   success: boolean;
 }
@@ -76,7 +73,6 @@ export interface HoldVenueSeatsMessage {
 export interface HoldVenueSeatsCommand {
   data: number[];
   requestId: string;
-  sessionId: string | null;
 }
 
 export interface ReleaseVenueSeatsMessage {
@@ -88,7 +84,6 @@ export interface ReleaseVenueSeatsMessage {
 export interface ReleaseVenueSeatsCommand {
   data: number[];
   requestId: string;
-  sessionId: string | null;
 }
 
 export interface GroupChatCommand {
@@ -109,10 +104,9 @@ export interface BeginCheckoutReviewMessage {
 
 export interface BeginCheckoutReviewMessageData {
   expiresAt: string;
-  groupId: string;
   performanceId: number;
   reviewToken: string;
-  sessionId: string | null;
+  scopeId: string;
   venueSeatIds: number[];
 }
 
@@ -124,7 +118,6 @@ export interface BeginCheckoutReviewCommand {
 export interface BeginCheckoutReviewData {
   performanceId: number;
   reviewToken: string;
-  sessionId: string | null;
 }
 
 export interface CancelCheckoutMessage {
@@ -188,7 +181,6 @@ export interface EndCheckoutReviewMessage {
 }
 
 export interface EndCheckoutReviewMessageData {
-  canResumeHold: boolean;
   performanceId: number;
 }
 
@@ -198,7 +190,6 @@ export interface EndCheckoutReviewCommand {
 }
 
 export interface EndCheckoutReviewData {
-  groupId: string | null;
   performanceId: number;
   reviewToken: string;
 }
@@ -259,7 +250,6 @@ export interface StartCheckoutCommand {
 }
 
 export interface StartCheckoutData {
-  groupId: string | null;
   performanceId: number;
   reviewToken: string;
 }

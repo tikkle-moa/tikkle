@@ -68,7 +68,7 @@ export const useVenueMapDragSelection = ({
 
       return venueSeats.flatMap((seat) => {
         const status = venueSeatStates?.get(seat.id)?.status ?? "available";
-        const isSelectable = status === "available" || status === "held_by_my_group";
+        const isSelectable = status === "available" || status === "held_by_me";
         const isEnclosed = seat.positionX >= left && seat.positionX <= right && seat.positionY >= top && seat.positionY <= bottom;
 
         return isSelectable && isEnclosed ? [seat.id] : [];

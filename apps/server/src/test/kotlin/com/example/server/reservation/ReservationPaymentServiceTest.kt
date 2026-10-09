@@ -466,7 +466,7 @@ class ReservationPaymentServiceTest {
     private const val USER_ID = 1L
     private const val RESERVATION_ID = 501L
     private const val PERFORMANCE_ID = 10L
-    private const val GROUP_ID = "1:10"
+    private const val GROUP_ID = "personal:1:10"
     private const val PAYMENT_KEY = "payment-key"
     private const val ORDER_ID = "order-id"
     private const val AMOUNT = 132_000

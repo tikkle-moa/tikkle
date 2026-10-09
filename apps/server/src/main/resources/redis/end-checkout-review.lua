@@ -1,26 +1,40 @@
--- REVIEW 잠금은 해제하고, 이미 PAYMENT로 전환된 경우에는 좌석 점유를 유지한 채 이탈할 수 있도록 처리합니다.
--- KEYS[1]: holdGroupControlKey, KEYS[2]: review 결과 키, ARGV[1]: reviewToken
--- 반환값: REVIEW 해제 0, 다른 REVIEW 상태 1, 잠금 없음 또는 PAYMENT 2, 같은 토큰으로 이미 해제 3
+-- 같은 reviewToken으로 REVIEW인 Hold를 HOLDING으로 복원합니다.
+-- KEYS[1]: holdScopeKey, KEYS[2]: versionKey
+-- ARGV[1]: reviewToken, ARGV[2]: holdDetailKeyPrefix
+-- 반환값: 현재 version, 다른 REVIEW가 진행 중 -1
 
-local existing = redis.call('GET', KEYS[1])
-if existing then
-  local control = cjson.decode(existing)
-  if control.phase == 'PAYMENT' then
-    return 2
+local now = redis.call('TIME')
+local nowMillis = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+local holdIds = redis.call('ZRANGEBYSCORE', KEYS[1], nowMillis + 1, '+inf')
+local changed = false
+
+for _, holdId in ipairs(holdIds) do
+  local detailJson = redis.call('GET', ARGV[2] .. holdId)
+  if detailJson then
+    local detail = cjson.decode(detailJson)
+    if detail.phase == 'REVIEW' and detail.reviewToken ~= ARGV[1] then
+      return -1
+    end
   end
-
-  if control.phase ~= 'REVIEW' or control.reviewToken ~= ARGV[1] then
-    return 1
-  end
-
-  -- 응답 유실 후 같은 요청이 재전송되면 성공을 복구할 수 있도록 Hold 만료까지 결과를 보관합니다.
-  redis.call('SET', KEYS[2], ARGV[1], 'PXAT', control.expiresAtEpochMillis)
-  redis.call('DEL', KEYS[1])
-  return 0
 end
 
-if redis.call('GET', KEYS[2]) == ARGV[1] then
-  return 3
+for _, holdId in ipairs(holdIds) do
+  local detailKey = ARGV[2] .. holdId
+  local detailJson = redis.call('GET', detailKey)
+  if detailJson then
+    local detail = cjson.decode(detailJson)
+    if detail.phase == 'REVIEW' and detail.reviewToken == ARGV[1] then
+      detail.phase = 'HOLDING'
+      detail.reviewToken = nil
+      redis.call('SET', detailKey, cjson.encode(detail), 'KEEPTTL')
+      changed = true
+    end
+  end
 end
 
-return 2
+local version = tonumber(redis.call('GET', KEYS[2])) or 0
+if changed then
+  version = redis.call('INCR', KEYS[2])
+end
+
+return version

@@ -8,7 +8,6 @@ const navigate = vi.hoisted(() => vi.fn());
 const useBlocker = vi.hoisted(() => vi.fn());
 const mockUseCheckoutReview = vi.hoisted(() => vi.fn());
 const mockUseStartCheckout = vi.hoisted(() => vi.fn());
-const clearPerformanceSeatSelectionSession = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
@@ -16,15 +15,13 @@ vi.mock("react-router", async () => {
 });
 
 vi.mock("@features/performance-booking", () => ({
-  clearPerformanceSeatSelectionSession,
   useCheckoutReview: mockUseCheckoutReview,
   useStartCheckout: mockUseStartCheckout,
 }));
 
 const review: PerformanceCheckoutLocationState["review"] = {
   reviewToken: "review-token",
-  groupId: "7:10:session-1",
-  sessionId: "session-1",
+  scopeId: "7:10",
   performanceId: 10,
   venueSeatIds: [101],
   expiresAt: "2026-09-28T12:00:00",
@@ -34,7 +31,7 @@ describe("usePerformanceCheckoutNavigation", () => {
   const proceed = vi.fn();
   const reset = vi.fn();
   const endReview = vi.fn();
-  let onEndSuccess: ((canResumeHold: boolean) => void) | undefined;
+  let onEndSuccess: (() => void) | undefined;
   let onCheckoutSuccess: ((reservationId: number) => void) | undefined;
   let blockerState: "blocked" | "unblocked";
   let checkoutReviewErrorMessage: string | null;
@@ -51,7 +48,7 @@ describe("usePerformanceCheckoutNavigation", () => {
       blockerState = "unblocked";
     });
     useBlocker.mockImplementation(() => ({ state: blockerState, proceed, reset }));
-    mockUseCheckoutReview.mockImplementation(({ onEndSuccess: callback }: { onEndSuccess: (canResumeHold: boolean) => void }) => {
+    mockUseCheckoutReview.mockImplementation(({ onEndSuccess: callback }: { onEndSuccess: () => void }) => {
       onEndSuccess = callback;
       return { errorMessage: checkoutReviewErrorMessage, isEnding, endReview };
     });
@@ -86,14 +83,13 @@ describe("usePerformanceCheckoutNavigation", () => {
 
     blockNavigation("POP", rerender);
 
-    expect(endReview).toHaveBeenCalledWith(review.reviewToken, review.groupId);
+    expect(endReview).toHaveBeenCalledWith(review.reviewToken);
     expect(proceed).not.toHaveBeenCalled();
     expect(result.current.isNavigationBlocked).toBe(false);
 
-    act(() => onEndSuccess?.(true));
+    act(() => onEndSuccess?.());
 
     expect(proceed).toHaveBeenCalledOnce();
-    expect(clearPerformanceSeatSelectionSession).not.toHaveBeenCalled();
   });
 
   it("브라우저 뒤로가기 중 END_CHECKOUT_REVIEW가 실패하면 머물러 재시도할 수 있다", () => {
@@ -122,15 +118,14 @@ describe("usePerformanceCheckoutNavigation", () => {
     expect(endReview).not.toHaveBeenCalled();
   });
 
-  it("브라우저 뒤로가기에서 복귀할 Hold가 없으면 응답 뒤 세션을 비우고 이동한다", () => {
+  it("브라우저 뒤로가기에서 복귀할 Hold가 없으면 응답 뒤 이동한다", () => {
     const { rerender } = renderHook(() => usePerformanceCheckoutNavigation({ performanceId: 10, review }));
 
     blockNavigation("POP", rerender);
     expect(proceed).not.toHaveBeenCalled();
 
-    act(() => onEndSuccess?.(false));
+    act(() => onEndSuccess?.());
 
-    expect(clearPerformanceSeatSelectionSession).toHaveBeenCalledWith(10);
     expect(proceed).toHaveBeenCalledOnce();
   });
 
@@ -140,19 +135,18 @@ describe("usePerformanceCheckoutNavigation", () => {
     act(() => result.current.handleReturnToSeats());
 
     expect(navigate).not.toHaveBeenCalled();
-    expect(endReview).toHaveBeenCalledWith(review.reviewToken, review.groupId);
+    expect(endReview).toHaveBeenCalledWith(review.reviewToken);
 
-    act(() => onEndSuccess?.(true));
+    act(() => onEndSuccess?.());
 
     expect(navigate).toHaveBeenCalledWith("/performances/10", { replace: true });
   });
 
-  it("결제 준비 성공 시 선택 세션을 비우고 결제 준비 화면으로 이동한다", () => {
+  it("결제 준비 성공 시 결제 준비 화면으로 이동한다", () => {
     renderHook(() => usePerformanceCheckoutNavigation({ performanceId: 10, review }));
 
     act(() => onCheckoutSuccess?.(501));
 
-    expect(clearPerformanceSeatSelectionSession).toHaveBeenCalledWith(10);
     expect(navigate).toHaveBeenCalledWith("/payments/501/checkout");
   });
 
@@ -197,7 +191,7 @@ describe("usePerformanceCheckoutNavigation", () => {
     blockNavigation("PUSH", rerender);
     act(() => result.current.handleLeaveReview());
 
-    expect(endReview).toHaveBeenCalledWith(review.reviewToken, review.groupId);
+    expect(endReview).toHaveBeenCalledWith(review.reviewToken);
   });
 
   it("예매 정보가 없으면 좌석 다시 선택 종료 요청을 하지 않는다", () => {
@@ -224,10 +218,10 @@ describe("usePerformanceCheckoutNavigation", () => {
 
     blockNavigation("PUSH", rerender);
     act(() => result.current.handleLeaveReview());
-    expect(endReview).toHaveBeenCalledWith(review.reviewToken, review.groupId);
+    expect(endReview).toHaveBeenCalledWith(review.reviewToken);
 
     act(() => result.current.handleStayOnReview());
-    act(() => onEndSuccess?.(true));
+    act(() => onEndSuccess?.());
 
     expect(proceed).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();

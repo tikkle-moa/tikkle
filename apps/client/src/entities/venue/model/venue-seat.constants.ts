@@ -7,14 +7,14 @@ export const VENUE_SEAT_STYLE_MAP: Record<VenueSeatStatus, VenueSeatStyle> = {
     fill: "#dcfce7",
     stroke: "#86efac",
   },
-  held_by_my_group: {
-    label: "우리 그룹",
+  held_by_me: {
+    label: "내 점유",
     style: "bg-brand-accent border-brand-accent shadow-brand-accent/30 shadow-sm",
     fill: "#ec4899",
     stroke: "#db2777",
   },
-  held_by_other_group: {
-    label: "다른 그룹",
+  held_by_other: {
+    label: "다른 점유",
     style: "bg-brand-primary border-brand-primary shadow-brand-primary/30 shadow-sm",
     fill: "#7c3aed",
     stroke: "#6d28d9",

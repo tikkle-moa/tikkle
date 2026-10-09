@@ -13,7 +13,6 @@ import { usePerformanceSeatSubscriptions } from "./use-performance-seat-subscrip
 
 interface UsePerformanceSeatHoldPanelProps {
   performanceId: number;
-  sessionId: string;
   venueSeats: VenueSeatResponse[];
   venueSeatStates: Map<number, VenueSeatState>;
   selectedSeatIds: Set<number>;
@@ -27,7 +26,6 @@ interface UsePerformanceSeatHoldPanelProps {
 
 export const usePerformanceSeatHoldPanel = ({
   performanceId,
-  sessionId,
   venueSeats,
   venueSeatStates,
   selectedSeatIds,
@@ -45,15 +43,15 @@ export const usePerformanceSeatHoldPanel = ({
   });
 
   const {
-    myGroupHolds,
-    myGroupHeldSeatInfoBySeatId,
+    myHolds,
+    myHeldSeatInfoBySeatId,
     selectedSeatIdsToHold,
     selectedSeatIdsToRelease,
-    myGroupHeldSeatTotalPrice,
+    myHeldSeatTotalPrice,
     venueSeatById,
     setBookedSeatIds,
     setHeldSeatExpiresAtBySeatId,
-    setMyGroupHeldSeatInfoBySeatId,
+    setMyHeldSeatInfoBySeatId,
   } = usePerformanceSeatAvailability({
     venueSeats,
     selectedSeatIds,
@@ -67,7 +65,6 @@ export const usePerformanceSeatHoldPanel = ({
     usePerformanceSeatActions({
       performanceId,
       performanceSeatRequestIdsRef,
-      sessionId,
       selectedSeatIdsToHold,
       selectedSeatIdsToRelease,
       seatOperationState,
@@ -77,14 +74,13 @@ export const usePerformanceSeatHoldPanel = ({
   const { isConnected, connectionStyle } = usePerformanceSeatSubscriptions({
     performanceId,
     performanceSeatRequestIdsRef,
-    sessionId,
     handleRefreshFinish,
     setSelectedSeatIds,
     setServerTimeOffset,
     setSeatOperationState,
     setBookedSeatIds,
     setHeldSeatExpiresAtBySeatId,
-    setMyGroupHeldSeatInfoBySeatId,
+    setMyHeldSeatInfoBySeatId,
   });
 
   const {
@@ -93,7 +89,6 @@ export const usePerformanceSeatHoldPanel = ({
     beginReview,
   } = useCheckoutReview({
     performanceId,
-    sessionId,
     onBeginSuccess: onCheckout,
   });
 
@@ -117,10 +112,10 @@ export const usePerformanceSeatHoldPanel = ({
   return {
     isRefreshing,
     refreshError,
-    myGroupHolds,
-    myGroupHeldSeatInfoBySeatId,
+    myHolds,
+    myHeldSeatInfoBySeatId,
     selectedSeatIdsToRelease,
-    myGroupHeldSeatTotalPrice,
+    myHeldSeatTotalPrice,
     venueSeatById,
     handleRefresh,
     handleReleaseSeats,

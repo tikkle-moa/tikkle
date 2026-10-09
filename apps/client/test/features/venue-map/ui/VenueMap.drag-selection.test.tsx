@@ -23,7 +23,7 @@ const seats = [
 
 const venueSeatStates = new Map<number, VenueSeatState>([
   [1, { status: "available" }],
-  [2, { status: "held_by_my_group", expiresAt: new Date() }],
+  [2, { status: "held_by_me", expiresAt: new Date() }],
   [3, { status: "booked" }],
 ]);
 

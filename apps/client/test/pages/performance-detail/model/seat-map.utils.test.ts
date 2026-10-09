@@ -10,14 +10,12 @@ describe("seat-hold.utils", () => {
 
   it("좌석 상태 Map의 상태와 만료 시각을 비교한다", () => {
     const expiresAt = new Date("2026-09-18T08:00:00");
-    const states = new Map([[1, { status: "held_by_my_group" as const, expiresAt }]]);
+    const states = new Map([[1, { status: "held_by_me" as const, expiresAt }]]);
     expect(areVenueSeatStatesEqual(states, states)).toBe(true);
     expect(areVenueSeatStatesEqual(states, new Map())).toBe(false);
-    expect(areVenueSeatStatesEqual(states, new Map([[2, { status: "held_by_my_group", expiresAt }]]))).toBe(false);
+    expect(areVenueSeatStatesEqual(states, new Map([[2, { status: "held_by_me", expiresAt }]]))).toBe(false);
     expect(areVenueSeatStatesEqual(states, new Map([[1, { status: "booked" }]]))).toBe(false);
-    expect(areVenueSeatStatesEqual(states, new Map([[1, { status: "held_by_my_group", expiresAt: new Date(expiresAt.getTime() + 1000) }]]))).toBe(
-      false,
-    );
-    expect(areVenueSeatStatesEqual(states, new Map([[1, { status: "held_by_my_group", expiresAt: new Date(expiresAt) }]]))).toBe(true);
+    expect(areVenueSeatStatesEqual(states, new Map([[1, { status: "held_by_me", expiresAt: new Date(expiresAt.getTime() + 1000) }]]))).toBe(false);
+    expect(areVenueSeatStatesEqual(states, new Map([[1, { status: "held_by_me", expiresAt: new Date(expiresAt) }]]))).toBe(true);
   });
 });

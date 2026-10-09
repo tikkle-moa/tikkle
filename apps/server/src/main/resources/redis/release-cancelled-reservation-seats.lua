@@ -1,19 +1,19 @@
 -- PAYMENT_CANCELLED 이벤트에서 예매된 좌석과 이전 Hold만 해제합니다.
 -- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> outbox marker key -> versionKey
--- ARGV: 좌석 수, groupId, 취소 시각(epoch millis), hold detail/created-at/expiry/performance/group/seat/finalizing key prefix, seat ID 목록
+-- ARGV: 좌석 수, scopeId, 취소 시각(epoch millis), hold detail/created-at/expiry/performance/scope/seat/finalizing key prefix, seat ID 목록
 -- 반환값: "결과 코드:version|해제 좌석 ID 목록" (0=해제, 3=이미 처리됨)
 
 local seatCount = tonumber(ARGV[1])
 local finalizingStartIndex = seatCount + 1
 local markerKey = KEYS[seatCount * 2 + 1]
 local versionKey = KEYS[seatCount * 2 + 2]
-local groupId = ARGV[2]
+local scopeId = ARGV[2]
 local cancelledAtEpochMillis = tonumber(ARGV[3])
 local holdDetailPrefix = ARGV[4]
 local holdCreatedAtPrefix = ARGV[5]
 local holdExpiryPrefix = ARGV[6]
 local holdPerformanceKey = ARGV[7]
-local holdGroupKey = ARGV[8]
+local holdScopeKey = ARGV[8]
 local holdVenueSeatPrefix = ARGV[9]
 local finalizingVenueSeatPrefix = ARGV[10]
 local seatIdStartIndex = 11
@@ -50,7 +50,7 @@ for i = 1, seatCount do
       local ok, holdDetail = pcall(cjson.decode, holdDetailJson)
       local createdAtEpochMillis = tonumber(redis.call('GET', holdCreatedAtPrefix .. currentHoldId)) or 0
       if ok and
-        tostring(holdDetail.groupId) == groupId and
+        tostring(holdDetail.scopeId) == scopeId and
         tonumber(holdDetail.performanceId) and
         tonumber(holdDetail.performanceId) == tonumber(string.match(holdVenueSeatKey, '(%d+):%d+$')) and
         createdAtEpochMillis < cancelledAtEpochMillis then
@@ -72,7 +72,7 @@ for _, holdId in ipairs(releasedHoldIds) do
   redis.call('DEL', holdDetailPrefix .. holdId)
   redis.call('DEL', holdExpiryPrefix .. holdId)
   redis.call('ZREM', holdPerformanceKey, holdId)
-  redis.call('ZREM', holdGroupKey, holdId)
+  redis.call('ZREM', holdScopeKey, holdId)
 end
 
 table.sort(releasedSeatIds, function(left, right)

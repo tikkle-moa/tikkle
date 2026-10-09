@@ -11,8 +11,8 @@ data class PerformanceSeatStatusMessageData(
   val version: Long,
   val serverTime: LocalDateTime,
   val bookedSeatIds: List<Long>,
-  val otherGroupHoldSeats: List<HeldSeat>,
-  val myGroupHolds: List<VenueSeatHoldDetail>,
+  val otherHoldSeats: List<HeldSeat>,
+  val myHolds: List<VenueSeatHoldSummary>,
 ) {
   data class HeldSeat(val id: Long, val expiresAt: LocalDateTime)
 }

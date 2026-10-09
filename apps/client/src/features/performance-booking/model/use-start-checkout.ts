@@ -7,12 +7,11 @@ import { START_CHECKOUT_MAX_REQUEST_ATTEMPTS, START_CHECKOUT_RESPONSE_TIMEOUT_MS
 interface UseStartCheckoutProps {
   performanceId: number;
   reviewToken: string;
-  groupId: string | null;
   onSuccess: (reservationId: number) => void;
   enabled?: boolean;
 }
 
-export const useStartCheckout = ({ performanceId, reviewToken, groupId, onSuccess, enabled = true }: UseStartCheckoutProps) => {
+export const useStartCheckout = ({ performanceId, reviewToken, onSuccess, enabled = true }: UseStartCheckoutProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getStompClient = useStompStore((state) => state.getStompClient);
@@ -91,7 +90,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, groupId, onSucces
           waitForResponse();
           activeClient.publish({
             path: "/reservation/start-checkout",
-            command: { requestId, data: { performanceId, reviewToken, groupId } },
+            command: { requestId, data: { performanceId, reviewToken } },
           });
           return;
         }
@@ -106,7 +105,7 @@ export const useStartCheckout = ({ performanceId, reviewToken, groupId, onSucces
     waitForResponse();
     stompClient.publish({
       path: "/reservation/start-checkout",
-      command: { requestId, data: { performanceId, reviewToken, groupId } },
+      command: { requestId, data: { performanceId, reviewToken } },
     });
   };
 

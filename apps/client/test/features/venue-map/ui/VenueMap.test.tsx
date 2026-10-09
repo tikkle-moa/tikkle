@@ -346,7 +346,7 @@ describe("VenueMap", () => {
         venueSeats={seats}
         venueSeatStates={
           new Map([
-            [1, { status: "held_by_my_group", expiresAt: new Date(Date.now() + 60000) }],
+            [1, { status: "held_by_me", expiresAt: new Date(Date.now() + 60000) }],
             [2, { status: "booked" }],
           ])
         }

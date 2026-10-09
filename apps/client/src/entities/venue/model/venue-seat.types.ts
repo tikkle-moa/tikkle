@@ -1,6 +1,6 @@
 export type VenueSeatState =
   | {
-      status: "held_by_my_group" | "held_by_other_group";
+      status: "held_by_me" | "held_by_other";
       expiresAt: Date;
     }
   | {

@@ -82,8 +82,7 @@ const validState = {
   venueSeats,
   review: {
     reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8",
-    groupId: "7:10:session-1",
-    sessionId: "session-1",
+    scopeId: "7:10",
     performanceId: 10,
     venueSeatIds: [101, 102],
     expiresAt: new Date(Date.now() + 300_000).toISOString(),

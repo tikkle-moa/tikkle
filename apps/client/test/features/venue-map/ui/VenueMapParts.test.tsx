@@ -65,8 +65,8 @@ describe("venue map parts", () => {
   it("보류 좌석 툴팁과 상태를 표시한다", () => {
     render(
       <>
-        <VenueMapSelectedSeatStatus status="held_by_my_group" expiresAt={new Date(Date.now() + 60000)} serverTimeOffset={0} />
-        <VenueMapSeatTooltip seat={seat} status="held_by_my_group" position={{ left: 20, top: 28, bottom: 31.5 }} serverTimeOffset={0} />
+        <VenueMapSelectedSeatStatus status="held_by_me" expiresAt={new Date(Date.now() + 60000)} serverTimeOffset={0} />
+        <VenueMapSeatTooltip seat={seat} status="held_by_me" position={{ left: 20, top: 28, bottom: 31.5 }} serverTimeOffset={0} />
       </>,
     );
 

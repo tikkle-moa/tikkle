@@ -304,7 +304,7 @@ class ReservationCancellationTransactionServiceTest {
       performanceStartsAt,
     ),
     booker = booker,
-    groupId = GROUP_ID,
+    groupId = null,
     orderId = ORDER_ID,
     orderName = "공연 1회차 2석",
     amount = AMOUNT,
@@ -333,7 +333,7 @@ class ReservationCancellationTransactionServiceTest {
     const val RESERVATION_ID = 501L
     const val PAYMENT_KEY = "payment-key"
     const val ORDER_ID = "order-id"
-    const val GROUP_ID = "1:10"
+    const val GROUP_ID = "personal:1:10"
     const val AMOUNT = 66_000
   }
 }
