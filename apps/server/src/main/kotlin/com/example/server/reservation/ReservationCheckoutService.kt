@@ -30,11 +30,12 @@ class ReservationCheckoutService(
   private val reservationRepository: ReservationRepository,
   private val redisVenueSeatHoldService: RedisVenueSeatHoldService,
   private val outboxEventService: OutboxEventService,
+  private val personalPaymentCancellationService: PersonalPaymentCancellationService,
 ) {
   fun beginCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID): BeginCheckoutReviewMessageData {
     val scopeId = redisVenueSeatHoldService.getScopeId(userId, performanceId)
     val groupId = VenueSeatHoldScope.getGroupId(scopeId)
-    redisVenueSeatHoldService.cancelPersonalPaymentPending(groupId, userId, performanceId)
+    personalPaymentCancellationService.cancelPersonalPaymentPending(scopeId, userId, performanceId)
 
     if (
       reservationRepository.existsPaymentInProgressByScope(

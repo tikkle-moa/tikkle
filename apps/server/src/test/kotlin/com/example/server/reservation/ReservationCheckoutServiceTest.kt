@@ -50,6 +50,8 @@ class ReservationCheckoutServiceTest {
 
   @Mock lateinit var redisVenueSeatHoldService: RedisVenueSeatHoldService
 
+  @Mock lateinit var personalPaymentCancellationService: PersonalPaymentCancellationService
+
   @Mock lateinit var outboxEventService: OutboxEventService
 
   @InjectMocks lateinit var service: ReservationCheckoutService
@@ -66,8 +68,8 @@ class ReservationCheckoutServiceTest {
         hold("hold-2", listOf(103L)),
       ),
     )
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(active)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(active)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null, null, created)
@@ -126,8 +128,8 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `활성 Hold가 없으면 만료 충돌로 변환한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID))
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID))
       .willThrow(CustomException(ErrorCode.NOT_FOUND, "점유된 좌석이 존재하지 않습니다."))
 
     val exception = assertThrows<CustomException> { service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN) }
@@ -141,7 +143,7 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `review token과 일치하는 Hold가 없으면 만료 충돌로 반환한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(
         null,
@@ -150,7 +152,7 @@ class ReservationCheckoutServiceTest {
         ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES,
       ),
     ).willReturn(null)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
 
     val exception = assertThrows<CustomException> {
       service.startCheckout(
@@ -168,7 +170,7 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `같은 Hold 그룹의 결제 대기 예매가 있으면 기존 예매를 반환한다`() {
     val existing = reservation()
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(existing)
@@ -183,8 +185,8 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `공연장 좌석 수가 Hold와 다르면 NOT_FOUND를 반환한다`() {
     val performance = performance()
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null)
@@ -203,8 +205,8 @@ class ReservationCheckoutServiceTest {
     val performance = performance()
     val created = reservation(performance = performance, booker = user)
     val active = activeHoldData()
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(active)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(active)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null, null, created)
@@ -257,13 +259,13 @@ class ReservationCheckoutServiceTest {
       ),
     )
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(active)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(active)
 
     val result = service.cancelCheckout(USER_ID, RESERVATION_ID)
 
     assertThat(result.status).isEqualTo(ReservationStatus.CANCELLED)
     then(outboxEventService).should().recordReleasedSeats(RESERVATION_ID, active.holdDetails.single())
-    then(redisVenueSeatHoldService).should().findActiveHoldDataByScopeId(GROUP_ID)
+    then(redisVenueSeatHoldService).should().findActiveHoldDataByScopeId(SCOPE_ID)
     then(redisVenueSeatHoldService).shouldHaveNoMoreInteractions()
   }
 
@@ -290,7 +292,7 @@ class ReservationCheckoutServiceTest {
       ),
     )
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(active)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(active)
 
     service.expireCheckout(RESERVATION_ID)
 
@@ -300,9 +302,9 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `Hold 조회에서 NOT_FOUND가 아닌 예외는 그대로 전파한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     val exception = CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "redis failed")
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willThrow(exception)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willThrow(exception)
 
     assertThat(
       assertThrows<CustomException> {
@@ -313,8 +315,8 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `Hold 공연 회차가 다르면 결제 대기를 생성하지 않는다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID))
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID))
       .willReturn(activeHoldData(performanceId = OTHER_PERFORMANCE_ID))
 
     val exception = assertThrows<CustomException> {
@@ -327,9 +329,9 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `Hold detail의 그룹이나 공연 회차가 다르면 결제 대기를 생성하지 않는다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     val invalidScope = activeHoldData(holds = listOf(hold("hold-1", listOf(101L, 102L)).copy(scopeId = "other")))
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(invalidScope)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(invalidScope)
     assertThat(
       assertThrows<CustomException> {
         service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
@@ -337,7 +339,7 @@ class ReservationCheckoutServiceTest {
     ).isEqualTo(ErrorCode.CONFLICT)
 
     val invalidPerformance = activeHoldData(holds = listOf(hold("hold-1", listOf(101L, 102L)).copy(performanceId = OTHER_PERFORMANCE_ID)))
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(invalidPerformance)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(invalidPerformance)
     assertThat(
       assertThrows<CustomException> {
         service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
@@ -347,9 +349,9 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `중복된 Hold 좌석이면 결제 대기를 생성하지 않는다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     val active = activeHoldData(entries = listOf(101L, 101L))
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(active)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(active)
 
     assertThat(
       assertThrows<CustomException> {
@@ -360,8 +362,8 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `공연 회차를 찾지 못하면 결제 대기를 생성하지 않는다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null)
@@ -377,8 +379,8 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `사용자를 찾지 못하면 결제 대기를 생성하지 않는다`() {
     val performance = performance()
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null)
@@ -399,8 +401,8 @@ class ReservationCheckoutServiceTest {
     val performance = performance()
     val user = user()
     val existing = reservation(orderId = "another-order", performance = performance, booker = user)
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null, null, existing)
@@ -419,8 +421,8 @@ class ReservationCheckoutServiceTest {
   fun `생성한 결제 대기 예매를 재조회하지 못하면 예외를 던진다`() {
     val performance = performance()
     val user = user()
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null, null)
@@ -452,8 +454,8 @@ class ReservationCheckoutServiceTest {
     val performance = performance()
     val user = user()
     val created = reservation(performance = performance, booker = user)
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null, null, created)
@@ -498,8 +500,8 @@ class ReservationCheckoutServiceTest {
     val performance = performance()
     val user = user()
     val created = reservation(performance = performance, booker = user)
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(null, null, created)
@@ -616,7 +618,7 @@ class ReservationCheckoutServiceTest {
     val reservation = reservation(paymentExpiresAt = LocalDateTime.now().minusSeconds(1))
     val active = activeHoldData()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(active)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(active)
 
     val result = service.cancelCheckout(USER_ID, RESERVATION_ID)
 
@@ -628,7 +630,7 @@ class ReservationCheckoutServiceTest {
   fun `Hold 해제 중 NOT_FOUND는 조용히 무시한다`() {
     val reservation = reservation()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID))
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID))
       .willThrow(CustomException(ErrorCode.NOT_FOUND, "already released"))
 
     service.cancelCheckout(USER_ID, RESERVATION_ID)
@@ -638,7 +640,7 @@ class ReservationCheckoutServiceTest {
   fun `Hold 조회 중 일반 예외는 취소와 함께 실패한다`() {
     val reservation = reservation()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID))
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID))
       .willThrow(IllegalStateException("redis failed"))
 
     assertThrows<IllegalStateException> { service.cancelCheckout(USER_ID, RESERVATION_ID) }
@@ -648,8 +650,8 @@ class ReservationCheckoutServiceTest {
   fun `Hold 조회 후 기존 예매가 발견되면 기존 결제 대기를 반환한다`() {
     val existing = reservation()
 
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID)).willReturn(activeHoldData())
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID)).willReturn(activeHoldData())
     given(reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES))
       .willReturn(null, existing)
 
@@ -661,7 +663,7 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `기존 결제 대기 예매가 만료되었으면 CONFLICT를 반환한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(
@@ -681,7 +683,7 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `기존 예매가 다른 그룹이면 FORBIDDEN을 반환한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(reservation(groupId = 999L))
@@ -695,7 +697,7 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `기존 예매의 예매자가 다르면 FORBIDDEN을 반환한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(
@@ -718,7 +720,7 @@ class ReservationCheckoutServiceTest {
       startsAt = LocalDateTime.of(2027, 1, 21, 19, 0),
     )
 
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES),
     ).willReturn(
@@ -734,7 +736,7 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `기존 예매가 결제 대기 상태가 아니면 CONFLICT를 반환한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES))
       .willReturn(reservation(status = ReservationStatus.SUCCEEDED))
 
@@ -749,7 +751,7 @@ class ReservationCheckoutServiceTest {
   fun `결제 대기 취소에서 다른 CustomException은 전파한다`() {
     val reservation = reservation()
     given(reservationRepository.findByIdForUpdate(RESERVATION_ID)).willReturn(reservation)
-    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(GROUP_ID))
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId(SCOPE_ID))
       .willThrow(CustomException(ErrorCode.CONFLICT, "changed"))
 
     assertThrows<CustomException> { service.cancelCheckout(USER_ID, RESERVATION_ID) }
@@ -758,14 +760,14 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `예매 정보 확인 시작은 그룹 ID와 review token을 Redis에 전달한다`() {
     val snapshot = BeginCheckoutReviewMessageData(
-      scopeId = GROUP_ID,
+      scopeId = SCOPE_ID,
       performanceId = PERFORMANCE_ID,
       venueSeatIds = listOf(101L, 102L),
       expiresAt = LocalDateTime.now().plusMinutes(4),
       reviewToken = REVIEW_TOKEN,
     )
 
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.existsPaymentInProgressByScope(
         null,
@@ -774,17 +776,17 @@ class ReservationCheckoutServiceTest {
         ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES,
       ),
     ).willReturn(false)
-    given(redisVenueSeatHoldService.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(snapshot)
+    given(redisVenueSeatHoldService.beginCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(snapshot)
 
     val result = service.beginCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
 
     assertThat(result).isEqualTo(snapshot)
-    then(redisVenueSeatHoldService).should().beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    then(redisVenueSeatHoldService).should().beginCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)
   }
 
   @Test
   fun `예매 정보 확인은 사용자별 공연 그룹의 점유를 잠근다`() {
-    val scopeId = GROUP_ID
+    val scopeId = SCOPE_ID
     val snapshot = BeginCheckoutReviewMessageData(
       scopeId = scopeId,
       performanceId = PERFORMANCE_ID,
@@ -810,7 +812,7 @@ class ReservationCheckoutServiceTest {
 
   @Test
   fun `이미 예매가 존재하면 예매 정보 확인 시작을 거부한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.existsPaymentInProgressByScope(
         null,
@@ -826,34 +828,34 @@ class ReservationCheckoutServiceTest {
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
     then(redisVenueSeatHoldService).should().getScopeId(USER_ID, PERFORMANCE_ID)
-    then(redisVenueSeatHoldService).should().cancelPersonalPaymentPending(null, USER_ID, PERFORMANCE_ID)
+    then(personalPaymentCancellationService).should().cancelPersonalPaymentPending(SCOPE_ID, USER_ID, PERFORMANCE_ID)
     then(redisVenueSeatHoldService).shouldHaveNoMoreInteractions()
   }
 
   @Test
   fun `예매 정보 확인 종료는 그룹 ID와 review token을 Redis에 전달한다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).willReturn(true)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).willReturn(true)
 
     assertThat(service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isTrue()
 
-    then(redisVenueSeatHoldService).should().endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+    then(redisVenueSeatHoldService).should().endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)
   }
 
   @Test
   fun `결제 대기 그룹에서 예매 정보 확인 종료 시 이전 점유를 복원하지 않는다`() {
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
-    given(redisVenueSeatHoldService.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).willReturn(false)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
+    given(redisVenueSeatHoldService.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).willReturn(false)
 
     assertThat(service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isFalse()
 
-    then(redisVenueSeatHoldService).should().endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+    then(redisVenueSeatHoldService).should().endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)
   }
 
   @Test
   fun `결제 대기 재요청은 scope의 기존 주문을 반환한다`() {
     val existing = reservation()
-    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(
         null,
@@ -873,7 +875,7 @@ class ReservationCheckoutServiceTest {
 
   private fun activeHoldData(
     holds: List<VenueSeatHoldDetail> = listOf(hold("hold-1", listOf(101L, 102L))),
-    scopeId: String = GROUP_ID,
+    scopeId: String = SCOPE_ID,
     performanceId: Long = PERFORMANCE_ID,
     entries: List<Long>? = null,
   ): ActiveHoldData {
@@ -890,7 +892,7 @@ class ReservationCheckoutServiceTest {
     )
   }
 
-  private fun hold(id: String, seats: List<Long>, scopeId: String = GROUP_ID, performanceId: Long = PERFORMANCE_ID) = VenueSeatHoldDetail(
+  private fun hold(id: String, seats: List<Long>, scopeId: String = SCOPE_ID, performanceId: Long = PERFORMANCE_ID) = VenueSeatHoldDetail(
     id,
     scopeId,
     performanceId,
@@ -937,8 +939,8 @@ class ReservationCheckoutServiceTest {
   private fun user(id: Long = USER_ID) = User(id, "user-$id@example.com", "사용자$id")
 
   private fun eqGroupId(): String {
-    org.mockito.ArgumentMatchers.eq(GROUP_ID)
-    return GROUP_ID
+    org.mockito.ArgumentMatchers.eq(SCOPE_ID)
+    return SCOPE_ID
   }
 
   companion object {
@@ -947,7 +949,7 @@ class ReservationCheckoutServiceTest {
     private const val PERFORMANCE_ID = 10L
     private const val OTHER_PERFORMANCE_ID = 11L
     private const val VENUE_ID = 20L
-    private const val GROUP_ID = "personal:1:10"
+    private const val SCOPE_ID = "personal:1:10"
     private const val RESERVATION_ID = 501L
     private val REVIEW_TOKEN = UUID.fromString("25b619c1-f87a-4fbe-a2d7-2f16dc0cd1b3")
   }

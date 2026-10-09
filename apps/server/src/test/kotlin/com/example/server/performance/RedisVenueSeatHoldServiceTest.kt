@@ -13,7 +13,7 @@ import com.example.server.performance.dto.toSummary
 import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.performance.types.VenueSeatHoldScope
-import com.example.server.reservation.entity.Reservation
+import com.example.server.reservation.PersonalPaymentCancellationService
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus
@@ -61,6 +61,8 @@ class RedisVenueSeatHoldServiceTest {
 
   @Mock lateinit var reservationRepository: ReservationRepository
 
+  @Mock lateinit var personalPaymentCancellationService: PersonalPaymentCancellationService
+
   lateinit var stringRedisTemplate: StringRedisTemplate
 
   @Mock lateinit var valueOperations: ValueOperations<String, String>
@@ -106,6 +108,7 @@ class RedisVenueSeatHoldServiceTest {
       reservationRepository,
       stringRedisTemplate,
       objectMapper,
+      personalPaymentCancellationService,
     ).also { service = it }
   }
 
@@ -119,14 +122,14 @@ class RedisVenueSeatHoldServiceTest {
       ),
     ).willReturn(listOf(1L, 3L))
     val expiresAt = LocalDateTime.now().plusMinutes(4)
-    val otherGroupHold = VenueSeatHoldDetail("other-hold", "2:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(102L, 101L), expiresAt)
-    val myGroupHold = VenueSeatHoldDetail("my-hold", GROUP_ID, PERFORMANCE_ID, listOf(103L), expiresAt)
+    val otherScopeHold = VenueSeatHoldDetail("other-hold", "2:$PERFORMANCE_ID", PERFORMANCE_ID, listOf(102L, 101L), expiresAt)
+    val myScopeHold = VenueSeatHoldDetail("my-hold", SCOPE_ID, PERFORMANCE_ID, listOf(103L), expiresAt)
     given(stringRedisTemplate.opsForZSet()).willReturn(zSetOperations)
     given(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble())).willReturn(setOf("other-hold"))
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
     given(valueOperations.get(VERSION_KEY)).willReturn(7L.toString())
-    given(valueOperations.get("hold:detail:other-hold")).willReturn(objectMapper.writeValueAsString(otherGroupHold))
-    executeResult = objectMapper.writeValueAsString(listOf(myGroupHold))
+    given(valueOperations.get("hold:detail:other-hold")).willReturn(objectMapper.writeValueAsString(otherScopeHold))
+    executeResult = objectMapper.writeValueAsString(listOf(myScopeHold))
 
     val before = LocalDateTime.now()
     val result = service.getSeatStatus(USER_ID, PERFORMANCE_ID)
@@ -136,7 +139,7 @@ class RedisVenueSeatHoldServiceTest {
     assertThat(result.serverTime).isBetween(before, after)
     assertThat(result.bookedSeatIds).containsExactly(1L, 3L)
     assertThat(result.otherHoldSeats).containsExactlyInAnyOrder(HeldSeat(101L, expiresAt), HeldSeat(102L, expiresAt))
-    assertThat(result.myHolds).containsExactly(myGroupHold.toSummary())
+    assertThat(result.myHolds).containsExactly(myScopeHold.toSummary())
   }
 
   @Test
@@ -151,7 +154,7 @@ class RedisVenueSeatHoldServiceTest {
     val expiresAt = LocalDateTime.now().plusMinutes(4)
     val paymentHold = VenueSeatHoldDetail(
       holdId = "payment-hold",
-      scopeId = GROUP_ID,
+      scopeId = SCOPE_ID,
       performanceId = PERFORMANCE_ID,
       venueSeatIds = listOf(101L),
       expiresAt = expiresAt,
@@ -182,7 +185,7 @@ class RedisVenueSeatHoldServiceTest {
     val expiresAt = LocalDateTime.now().plusMinutes(4)
     val supersededHold = VenueSeatHoldDetail(
       holdId = "superseded-hold",
-      scopeId = GROUP_ID,
+      scopeId = SCOPE_ID,
       performanceId = PERFORMANCE_ID,
       venueSeatIds = listOf(101L),
       expiresAt = expiresAt,
@@ -207,7 +210,7 @@ class RedisVenueSeatHoldServiceTest {
     executeResult = "0:8|101,102"
 
     val result = service.releaseCancelledReservationSeats(
-      scopeId = GROUP_ID,
+      scopeId = SCOPE_ID,
       performanceId = PERFORMANCE_ID,
       venueSeatIds = listOf(101L, 102L),
       cancelledAtEpochMillis = System.currentTimeMillis(),
@@ -224,75 +227,11 @@ class RedisVenueSeatHoldServiceTest {
   }
 
   @Test
-  fun `만료된 개인 결제 대기를 정리하면 EXPIRED로 변경하고 Hold를 대체한다`() {
-    val paymentPending = Reservation(
-      id = RESERVATION_ID,
-      performance = mock(),
-      booker = mock(),
-      groupId = null,
-      orderId = "order-$RESERVATION_ID",
-      orderName = "테스트 예매",
-      amount = 10_000,
-      paymentExpiresAt = LocalDateTime.now().minusSeconds(1),
-    )
-    given(
-      reservationRepository.findPaymentInProgressByScopeForUpdate(
-        null,
-        USER_ID,
-        PERFORMANCE_ID,
-        listOf(ReservationStatus.PAYMENT_PENDING),
-      ),
-    ).willReturn(paymentPending)
-    executeResult = 1L
-
-    service.cancelPersonalPaymentPending(null, USER_ID, PERFORMANCE_ID)
-
-    assertThat(paymentPending.status).isEqualTo(ReservationStatus.EXPIRED)
-    assertThat(lastExecuteArguments.drop(1)).containsExactly(
-      listOf("hold:scope:$GROUP_ID", VERSION_KEY),
-      "hold:detail:",
-      GROUP_ID,
-      RESERVATION_ID.toString(),
-    )
-  }
-
-  @Test
-  fun `개인 결제 대기 Hold 대체 결과가 없으면 내부 오류를 반환한다`() {
-    val paymentPending = Reservation(
-      id = RESERVATION_ID,
-      performance = mock(),
-      booker = mock(),
-      groupId = null,
-      orderId = "order-$RESERVATION_ID",
-      orderName = "테스트 예매",
-      amount = 10_000,
-      paymentExpiresAt = LocalDateTime.now().plusMinutes(5),
-    )
-    given(
-      reservationRepository.findPaymentInProgressByScopeForUpdate(
-        null,
-        USER_ID,
-        PERFORMANCE_ID,
-        listOf(ReservationStatus.PAYMENT_PENDING),
-      ),
-    ).willReturn(paymentPending)
-    executeResult = null
-    preserveNullExecuteResult = true
-
-    val exception = assertThrows<CustomException> {
-      service.cancelPersonalPaymentPending(null, USER_ID, PERFORMANCE_ID)
-    }
-
-    assertThat(exception.errorCode).isEqualTo(ErrorCode.INTERNAL_SERVER_ERROR)
-    assertThat(paymentPending.status).isEqualTo(ReservationStatus.CANCELLED)
-  }
-
-  @Test
   fun `이미 처리된 취소 좌석 해제와 빈 좌석 결과를 반환한다`() {
     executeResult = "3:9|"
 
     val result = service.releaseCancelledReservationSeats(
-      scopeId = GROUP_ID,
+      scopeId = SCOPE_ID,
       performanceId = PERFORMANCE_ID,
       venueSeatIds = listOf(101L),
       cancelledAtEpochMillis = System.currentTimeMillis(),
@@ -323,7 +262,7 @@ class RedisVenueSeatHoldServiceTest {
 
       assertThrows<IllegalStateException> {
         service.releaseCancelledReservationSeats(
-          scopeId = GROUP_ID,
+          scopeId = SCOPE_ID,
           performanceId = PERFORMANCE_ID,
           venueSeatIds = listOf(101L),
           cancelledAtEpochMillis = System.currentTimeMillis(),
@@ -379,7 +318,7 @@ class RedisVenueSeatHoldServiceTest {
       objectMapper.writeValueAsString(
         VenueSeatHoldDetail(
           EXPIRED_HOLD_ID,
-          GROUP_ID,
+          SCOPE_ID,
           PERFORMANCE_ID,
           listOf(103L),
           LocalDateTime.now().minusMinutes(1),
@@ -390,7 +329,7 @@ class RedisVenueSeatHoldServiceTest {
       objectMapper.writeValueAsString(
         VenueSeatHoldDetail(
           SAME_GROUP_ACTIVE_HOLD_ID,
-          GROUP_ID,
+          SCOPE_ID,
           PERFORMANCE_ID,
           listOf(104L),
           LocalDateTime.now().plusMinutes(1),
@@ -405,9 +344,9 @@ class RedisVenueSeatHoldServiceTest {
 
   @Test
   fun `개인과 그룹 scope를 실제 형식으로 생성한다`() {
-    assertThat(VenueSeatHoldScope.id(null, USER_ID, PERFORMANCE_ID)).isEqualTo(GROUP_ID)
+    assertThat(VenueSeatHoldScope.id(null, USER_ID, PERFORMANCE_ID)).isEqualTo(SCOPE_ID)
     assertThat(VenueSeatHoldScope.id(123L, USER_ID, PERFORMANCE_ID)).isEqualTo("group:123")
-    assertThat(VenueSeatHoldScope.getGroupId(GROUP_ID)).isNull()
+    assertThat(VenueSeatHoldScope.getGroupId(SCOPE_ID)).isNull()
     assertThat(VenueSeatHoldScope.getGroupId("group:123")).isEqualTo(123L)
     assertThat(VenueSeatHoldScope.getGroupId("group:invalid")).isNull()
   }
@@ -418,7 +357,7 @@ class RedisVenueSeatHoldServiceTest {
     val constructor = snapshotClass.declaredConstructors.single().apply { isAccessible = true }
     val arguments = arrayOf<Any?>(
       "REVIEW",
-      GROUP_ID,
+      SCOPE_ID,
       PERFORMANCE_ID,
       listOf(HOLD_ID),
       listOf(VENUE_SEAT_ID),
@@ -525,7 +464,7 @@ class RedisVenueSeatHoldServiceTest {
 
   @Test
   fun `만료된 Hold는 Lua 결과의 version으로 해제 이벤트를 발행한다`() {
-    val hold = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(VENUE_SEAT_ID), LocalDateTime.now().minusMinutes(1))
+    val hold = VenueSeatHoldDetail(HOLD_ID, SCOPE_ID, PERFORMANCE_ID, listOf(VENUE_SEAT_ID), LocalDateTime.now().minusMinutes(1))
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
     given(valueOperations.get("hold:detail:$HOLD_ID")).willReturn(objectMapper.writeValueAsString(hold))
     executeResult = """{"version":8,"venueSeatIds":[$VENUE_SEAT_ID]}"""
@@ -540,7 +479,7 @@ class RedisVenueSeatHoldServiceTest {
 
   @Test
   fun `만료 알림이 늦게 도착했으면 해제 이벤트를 발행하지 않는다`() {
-    val hold = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(VENUE_SEAT_ID), LocalDateTime.now().minusMinutes(1))
+    val hold = VenueSeatHoldDetail(HOLD_ID, SCOPE_ID, PERFORMANCE_ID, listOf(VENUE_SEAT_ID), LocalDateTime.now().minusMinutes(1))
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
     given(valueOperations.get("hold:detail:$HOLD_ID")).willReturn(objectMapper.writeValueAsString(hold))
     executeResult = null
@@ -582,14 +521,6 @@ class RedisVenueSeatHoldServiceTest {
   @Test
   fun `결제 승인 진행 중에는 좌석을 추가할 수 없다`() {
     given(
-      reservationRepository.findPaymentInProgressByScopeForUpdate(
-        null,
-        USER_ID,
-        PERFORMANCE_ID,
-        listOf(ReservationStatus.PAYMENT_PENDING),
-      ),
-    ).willReturn(null)
-    given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, listOf(ReservationStatus.PAYMENT_CONFIRMING)),
     ).willReturn(mock())
 
@@ -621,14 +552,6 @@ class RedisVenueSeatHoldServiceTest {
 
   @Test
   fun `결제 승인 진행 중에는 좌석을 부분 해제할 수 없다`() {
-    given(
-      reservationRepository.findPaymentInProgressByScopeForUpdate(
-        null,
-        USER_ID,
-        PERFORMANCE_ID,
-        listOf(ReservationStatus.PAYMENT_PENDING),
-      ),
-    ).willReturn(null)
     given(
       reservationRepository.findPaymentInProgressByScopeForUpdate(null, USER_ID, PERFORMANCE_ID, listOf(ReservationStatus.PAYMENT_CONFIRMING)),
     ).willReturn(mock())
@@ -705,16 +628,6 @@ class RedisVenueSeatHoldServiceTest {
 
   @Test
   fun `개인 결제 대기 중 새 점유를 요청하면 기존 결제 Hold를 대체하고 새 Hold를 만든다`() {
-    val paymentPending = mock(Reservation::class.java)
-    given(paymentPending.paymentExpiresAt).willReturn(LocalDateTime.now().plusMinutes(5))
-    given(
-      reservationRepository.findPaymentInProgressByScopeForUpdate(
-        null,
-        USER_ID,
-        PERFORMANCE_ID,
-        listOf(ReservationStatus.PAYMENT_PENDING),
-      ),
-    ).willReturn(paymentPending)
     given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance())
     given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(listOf(venueSeat(101L)))
     given(
@@ -728,12 +641,8 @@ class RedisVenueSeatHoldServiceTest {
 
     val result = service.holdSeats(USER_ID, PERFORMANCE_ID, listOf(101L))
 
-    then(reservationRepository).should().findPaymentInProgressByScopeForUpdate(
-      null,
-      USER_ID,
-      PERFORMANCE_ID,
-      listOf(ReservationStatus.PAYMENT_PENDING),
-    )
+    then(personalPaymentCancellationService).should()
+      .cancelPersonalPaymentPending(SCOPE_ID, USER_ID, PERFORMANCE_ID)
   }
 
   @Test
@@ -850,7 +759,7 @@ class RedisVenueSeatHoldServiceTest {
   fun `같은 scope라도 HOLDING 상태가 아닌 좌석은 해제할 수 없다`() {
     val hold = VenueSeatHoldDetail(
       HOLD_ID,
-      GROUP_ID,
+      SCOPE_ID,
       PERFORMANCE_ID,
       listOf(101L),
       LocalDateTime.now().plusMinutes(5),
@@ -871,7 +780,7 @@ class RedisVenueSeatHoldServiceTest {
 
   @Test
   fun `다른 예매 그룹의 점유 좌석은 해제할 수 없다`() {
-    val hold = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
+    val hold = VenueSeatHoldDetail(HOLD_ID, SCOPE_ID, PERFORMANCE_ID, listOf(101L), LocalDateTime.now().plusMinutes(5))
     given(stringRedisTemplate.opsForValue()).willReturn(valueOperations)
     given(valueOperations.multiGet(listOf("hold:venue-seat:$PERFORMANCE_ID:101"))).willReturn(listOf(HOLD_ID))
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(objectMapper.writeValueAsString(hold)))
@@ -958,7 +867,7 @@ class RedisVenueSeatHoldServiceTest {
       assertThat(
         service.releaseVenueSeats(
           holdId = HOLD_ID,
-          scopeId = GROUP_ID,
+          scopeId = SCOPE_ID,
           performanceId = PERFORMANCE_ID,
           venueSeatIds = listOf(101L),
           eventId = eventId,
@@ -974,7 +883,7 @@ class RedisVenueSeatHoldServiceTest {
     assertThrows<IllegalStateException> {
       service.releaseVenueSeats(
         holdId = HOLD_ID,
-        scopeId = GROUP_ID,
+        scopeId = SCOPE_ID,
         performanceId = PERFORMANCE_ID,
         venueSeatIds = listOf(101L),
         eventId = UUID.randomUUID(),
@@ -986,7 +895,7 @@ class RedisVenueSeatHoldServiceTest {
     assertThrows<IllegalStateException> {
       service.releaseVenueSeats(
         holdId = HOLD_ID,
-        scopeId = GROUP_ID,
+        scopeId = SCOPE_ID,
         performanceId = PERFORMANCE_ID,
         venueSeatIds = listOf(101L),
         eventId = UUID.randomUUID(),
@@ -1002,7 +911,7 @@ class RedisVenueSeatHoldServiceTest {
       assertThrows<IllegalStateException> {
         service.releaseVenueSeats(
           holdId = HOLD_ID,
-          scopeId = GROUP_ID,
+          scopeId = SCOPE_ID,
           performanceId = PERFORMANCE_ID,
           venueSeatIds = listOf(101L),
           eventId = UUID.randomUUID(),
@@ -1023,7 +932,7 @@ class RedisVenueSeatHoldServiceTest {
       assertThat(
         service.finalizeVenueSeats(
           holdId = HOLD_ID,
-          scopeId = GROUP_ID,
+          scopeId = SCOPE_ID,
           performanceId = PERFORMANCE_ID,
           venueSeatIds = listOf(101L),
           eventId = UUID.randomUUID(),
@@ -1039,7 +948,7 @@ class RedisVenueSeatHoldServiceTest {
     assertThrows<IllegalStateException> {
       service.finalizeVenueSeats(
         holdId = HOLD_ID,
-        scopeId = GROUP_ID,
+        scopeId = SCOPE_ID,
         performanceId = PERFORMANCE_ID,
         venueSeatIds = listOf(101L),
         eventId = UUID.randomUUID(),
@@ -1051,7 +960,7 @@ class RedisVenueSeatHoldServiceTest {
     assertThrows<IllegalStateException> {
       service.finalizeVenueSeats(
         holdId = HOLD_ID,
-        scopeId = GROUP_ID,
+        scopeId = SCOPE_ID,
         performanceId = PERFORMANCE_ID,
         venueSeatIds = listOf(101L),
         eventId = UUID.randomUUID(),
@@ -1087,7 +996,7 @@ class RedisVenueSeatHoldServiceTest {
   fun `다른 review token으로 결제 전환을 요청하면 충돌을 반환한다`() {
     val detail = VenueSeatHoldDetail(
       HOLD_ID,
-      GROUP_ID,
+      SCOPE_ID,
       PERFORMANCE_ID,
       listOf(101L),
       LocalDateTime.now().plusMinutes(5),
@@ -1098,7 +1007,7 @@ class RedisVenueSeatHoldServiceTest {
 
     val exception = assertThrows<CustomException> {
       service.transitionForPayment(
-        GROUP_ID,
+        SCOPE_ID,
         LocalDateTime.now().plusMinutes(10),
         UUID.fromString("480068a6-7544-4194-b13b-d75f82bbb26d"),
         RESERVATION_ID,
@@ -1159,7 +1068,7 @@ class RedisVenueSeatHoldServiceTest {
     given(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble())).willReturn(emptySet())
     assertThat(
       assertThrows<CustomException> {
-        service.findActiveHoldDataByScopeId(GROUP_ID)
+        service.findActiveHoldDataByScopeId(SCOPE_ID)
       }.errorCode,
     ).isEqualTo(ErrorCode.NOT_FOUND)
 
@@ -1168,17 +1077,17 @@ class RedisVenueSeatHoldServiceTest {
     given(valueOperations.multiGet(listOf("hold:detail:$HOLD_ID"))).willReturn(listOf(null))
     assertThat(
       assertThrows<CustomException> {
-        service.findActiveHoldDataByScopeId(GROUP_ID)
+        service.findActiveHoldDataByScopeId(SCOPE_ID)
       }.errorCode,
     ).isEqualTo(ErrorCode.INTERNAL_SERVER_ERROR)
   }
 
   @Test
   fun `그룹 Hold 상세를 조회하면 좌석 엔트리를 생성한다`() {
-    val detail = VenueSeatHoldDetail(HOLD_ID, GROUP_ID, PERFORMANCE_ID, listOf(101L, 102L), LocalDateTime.now().plusMinutes(5))
+    val detail = VenueSeatHoldDetail(HOLD_ID, SCOPE_ID, PERFORMANCE_ID, listOf(101L, 102L), LocalDateTime.now().plusMinutes(5))
     givenActiveHoldData(detail)
 
-    val result = service.findActiveHoldDataByScopeId(GROUP_ID)
+    val result = service.findActiveHoldDataByScopeId(SCOPE_ID)
 
     assertThat(result.performanceId).isEqualTo(PERFORMANCE_ID)
     assertThat(result.holdVenueSeatEntries.map { it.venueSeatId }).containsExactly(101L, 102L)
@@ -1192,7 +1101,7 @@ class RedisVenueSeatHoldServiceTest {
     executeResult = """
     {
       "phase": "REVIEW",
-      "scopeId": "$GROUP_ID",
+      "scopeId": "$SCOPE_ID",
       "performanceId": $PERFORMANCE_ID,
       "holdIds": ["$HOLD_ID"],
       "venueSeatIds": [101],
@@ -1201,9 +1110,9 @@ class RedisVenueSeatHoldServiceTest {
     }
     """.trimIndent()
 
-    val result = service.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    val result = service.beginCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)
 
-    assertThat(result.scopeId).isEqualTo(GROUP_ID)
+    assertThat(result.scopeId).isEqualTo(SCOPE_ID)
     assertThat(result.performanceId).isEqualTo(PERFORMANCE_ID)
     assertThat(result.venueSeatIds).containsExactly(101L)
     assertThat(result.reviewToken).isEqualTo(REVIEW_TOKEN)
@@ -1215,7 +1124,7 @@ class RedisVenueSeatHoldServiceTest {
 
     assertThat(
       assertThrows<IllegalStateException> {
-        service.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+        service.beginCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       },
     ).hasMessage("예매 정보 확인 결과를 확인하지 못했습니다.")
   }
@@ -1226,7 +1135,7 @@ class RedisVenueSeatHoldServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+        service.beginCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
   }
@@ -1237,7 +1146,7 @@ class RedisVenueSeatHoldServiceTest {
 
     assertThat(
       assertThrows<CustomException> {
-        service.beginCheckoutReview(GROUP_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+        service.beginCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)
       }.errorCode,
     ).isEqualTo(ErrorCode.CONFLICT)
   }
@@ -1246,30 +1155,30 @@ class RedisVenueSeatHoldServiceTest {
   fun `예매 정보 확인 종료 성공을 처리한다`() {
     executeResult = 0L
 
-    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isTrue()
+    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isTrue()
   }
 
   @Test
   fun `END 응답 유실 뒤 같은 토큰으로 재요청하면 기존 해제 성공을 복구한다`() {
     executeResult = 0L
-    service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)
+    service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)
 
     executeResult = 0L
-    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isTrue()
+    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isTrue()
   }
 
   @Test
   fun `이미 결제 대기 중이거나 잠금이 없으면 이전 점유로 복귀하지 않는다`() {
     executeResult = 2L
 
-    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isFalse()
+    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isFalse()
   }
 
   @Test
   fun `다른 토큰의 예매 정보 확인 잠금이면 이전 점유를 복원하지 않는다`() {
     executeResult = 1L
 
-    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isFalse()
+    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isFalse()
   }
 
   @Test
@@ -1277,7 +1186,7 @@ class RedisVenueSeatHoldServiceTest {
     executeResult = null
     preserveNullExecuteResult = true
 
-    assertThat(service.endCheckoutReview(GROUP_ID, REVIEW_TOKEN)).isFalse()
+    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isFalse()
   }
 
   private fun givenActiveHoldData(detail: VenueSeatHoldDetail) {
@@ -1323,7 +1232,7 @@ class RedisVenueSeatHoldServiceTest {
     private const val PERFORMANCE_ID = 10L
     private const val VENUE_SEAT_ID = 101L
     private const val VENUE_ID = 20L
-    private const val GROUP_ID = "personal:1:10"
+    private const val SCOPE_ID = "personal:1:10"
     private const val HOLD_ID = "hold-1"
     private const val EXPIRED_HOLD_ID = "hold-expired"
     private const val SAME_GROUP_ACTIVE_HOLD_ID = "hold-same-group-active"
