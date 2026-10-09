@@ -835,24 +835,24 @@ class ReservationCheckoutServiceTest {
   @Test
   fun `예매 정보 확인 종료는 그룹 ID와 review token을 Redis에 전달한다`() {
     given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
-    given(redisVenueSeatHoldService.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).willReturn(true)
+    given(redisVenueSeatHoldService.endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(true)
 
     assertThat(service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isTrue()
 
-    then(redisVenueSeatHoldService).should().endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)
+    then(redisVenueSeatHoldService).should().endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)
   }
 
   @Test
   fun `다른 예매 정보 확인이 진행 중이면 예매 정보 확인 종료를 거부한다`() {
     given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
-    given(redisVenueSeatHoldService.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).willReturn(false)
+    given(redisVenueSeatHoldService.endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(false)
 
     val exception = assertThrows<CustomException> {
       service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
     }
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
-    then(redisVenueSeatHoldService).should().endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)
+    then(redisVenueSeatHoldService).should().endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)
   }
 
   @Test

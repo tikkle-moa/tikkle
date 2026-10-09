@@ -2,6 +2,7 @@ package com.example.server.reservation
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.performance.types.VenueSeatHoldRedisDefinitions
 import com.example.server.performance.types.VenueSeatHoldScope
 import com.example.server.reservation.repository.ReservationRepository
@@ -16,6 +17,7 @@ import java.time.LocalDateTime
 class PersonalPaymentCancellationService(
   private val reservationRepository: ReservationRepository,
   private val stringRedisTemplate: StringRedisTemplate,
+  private val performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher,
 ) {
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   fun cancelPersonalPaymentPending(scopeId: String, userId: Long, performanceId: Long) {
@@ -33,13 +35,15 @@ class PersonalPaymentCancellationService(
         ReservationStatus.EXPIRED
       }
 
-      stringRedisTemplate.execute(
+      val version = stringRedisTemplate.execute(
         VenueSeatHoldRedisDefinitions.supersedePaymentHoldsScript,
         listOf(VenueSeatHoldRedisDefinitions.holdScopeKey(scopeId), VenueSeatHoldRedisDefinitions.versionKey(performanceId)),
         VenueSeatHoldRedisDefinitions.HOLD_DETAIL_KEY_PREFIX,
         scopeId,
         reservation.id.toString(),
       ) ?: throw CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "기존 결제 좌석 점유 정보를 갱신하지 못했습니다.")
+
+      performanceVenueSeatStompPublisher.publishSeatStatusChanged(performanceId, version)
     }
   }
 }

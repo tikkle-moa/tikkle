@@ -354,7 +354,7 @@ class RedisVenueSeatHoldServiceTest {
   @Test
   fun `Checkout review snapshot은 phase와 Hold ID를 제공하고 null을 거부한다`() {
     val snapshotClass = Class.forName("${RedisVenueSeatHoldService::class.java.name}\$CheckoutReviewSnapshot")
-    val constructor = snapshotClass.declaredConstructors.single().apply { isAccessible = true }
+    val constructor = snapshotClass.declaredConstructors.single { it.parameterCount == 8 }.apply { isAccessible = true }
     val arguments = arrayOf<Any?>(
       "REVIEW",
       SCOPE_ID,
@@ -363,6 +363,7 @@ class RedisVenueSeatHoldServiceTest {
       listOf(VENUE_SEAT_ID),
       System.currentTimeMillis(),
       REVIEW_TOKEN,
+      1L,
     )
     val snapshot = constructor.newInstance(*arguments)
 
@@ -1106,7 +1107,8 @@ class RedisVenueSeatHoldServiceTest {
       "holdIds": ["$HOLD_ID"],
       "venueSeatIds": [101],
       "expiresAtEpochMillis": $expiresAtEpochMillis,
-      "reviewToken": "$REVIEW_TOKEN"
+      "reviewToken": "$REVIEW_TOKEN",
+      "version": 1
     }
     """.trimIndent()
 
@@ -1155,30 +1157,30 @@ class RedisVenueSeatHoldServiceTest {
   fun `예매 정보 확인 종료 성공을 처리한다`() {
     executeResult = 0L
 
-    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isTrue()
+    assertThat(service.endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isTrue()
   }
 
   @Test
   fun `END 응답 유실 뒤 같은 토큰으로 재요청하면 기존 해제 성공을 복구한다`() {
     executeResult = 0L
-    service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)
+    service.endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)
 
     executeResult = 0L
-    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isTrue()
+    assertThat(service.endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isTrue()
   }
 
   @Test
   fun `이미 결제 대기 중이거나 잠금이 없으면 이전 점유로 복귀하지 않는다`() {
-    executeResult = 2L
+    executeResult = -1L
 
-    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isFalse()
+    assertThat(service.endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isFalse()
   }
 
   @Test
   fun `다른 토큰의 예매 정보 확인 잠금이면 이전 점유를 복원하지 않는다`() {
-    executeResult = 1L
+    executeResult = -1L
 
-    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isFalse()
+    assertThat(service.endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isFalse()
   }
 
   @Test
@@ -1186,7 +1188,7 @@ class RedisVenueSeatHoldServiceTest {
     executeResult = null
     preserveNullExecuteResult = true
 
-    assertThat(service.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).isFalse()
+    assertThat(service.endCheckoutReview(SCOPE_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isFalse()
   }
 
   private fun givenActiveHoldData(detail: VenueSeatHoldDetail) {

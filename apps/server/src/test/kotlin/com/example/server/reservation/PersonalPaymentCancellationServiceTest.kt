@@ -2,6 +2,7 @@ package com.example.server.reservation
 
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
@@ -20,6 +21,8 @@ import java.time.LocalDateTime
 @ExtendWith(MockitoExtension::class)
 class PersonalPaymentCancellationServiceTest {
   @Mock lateinit var reservationRepository: ReservationRepository
+
+  @Mock lateinit var performanceVenueSeatStompPublisher: PerformanceVenueSeatStompPublisher
 
   private lateinit var stringRedisTemplate: StringRedisTemplate
   private var executeResult: Long? = 0L
@@ -81,7 +84,11 @@ class PersonalPaymentCancellationServiceTest {
     if (!::stringRedisTemplate.isInitialized) {
       givenRedisExecution()
     }
-    return PersonalPaymentCancellationService(reservationRepository, stringRedisTemplate)
+    return PersonalPaymentCancellationService(
+      reservationRepository,
+      stringRedisTemplate,
+      performanceVenueSeatStompPublisher,
+    )
   }
 
   private fun givenRedisExecution(result: Long? = executeResult) {

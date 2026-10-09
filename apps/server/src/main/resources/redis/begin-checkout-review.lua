@@ -1,6 +1,6 @@
 -- scope의 HOLDING Hold 전체를 REVIEW로 전환하고 예매 정보를 고정합니다.
 -- 같은 reviewToken의 재시도는 그 token의 REVIEW Hold만 반환합니다.
--- KEYS[1]: holdScopeKey
+-- KEYS[1]: holdScopeKey, KEYS[2]: versionKey
 -- ARGV: holdDetailKeyPrefix, holdVenueSeatKeyPrefix, scopeId, performanceId, reviewToken
 -- 반환값: snapshot JSON, NOT_FOUND, CONFLICT
 
@@ -14,6 +14,7 @@ end
 
 local candidates = {}
 local hasSameReview = false
+local changed = false
 local isPersonalScope = string.sub(ARGV[3], 1, 9) == 'personal:'
 
 for _, holdId in ipairs(holdIds) do
@@ -83,11 +84,17 @@ for _, candidate in ipairs(candidates) do
       detail.phase = 'REVIEW'
       detail.reviewToken = ARGV[5]
       redis.call('SET', candidate.detailKey, cjson.encode(detail), 'KEEPTTL')
+      changed = true
     end
   end
 end
 
 table.sort(venueSeatIds)
+local version = tonumber(redis.call('GET', KEYS[2])) or 0
+if changed then
+  version = redis.call('INCR', KEYS[2])
+end
+
 return cjson.encode({
   phase = 'REVIEW',
   scopeId = ARGV[3],
@@ -96,4 +103,5 @@ return cjson.encode({
   venueSeatIds = venueSeatIds,
   expiresAtEpochMillis = earliestExpiry,
   reviewToken = ARGV[5],
+  version = version,
 })

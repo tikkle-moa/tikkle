@@ -76,7 +76,10 @@ class RedisVenueSeatHoldService(
   fun beginCheckoutReview(scopeId: String, performanceId: Long, reviewToken: UUID): BeginCheckoutReviewMessageData {
     val result = stringRedisTemplate.execute(
       VenueSeatHoldRedisDefinitions.beginCheckoutReviewScript,
-      listOf(VenueSeatHoldRedisDefinitions.holdScopeKey(scopeId)),
+      listOf(
+        VenueSeatHoldRedisDefinitions.holdScopeKey(scopeId),
+        VenueSeatHoldRedisDefinitions.versionKey(performanceId),
+      ),
       VenueSeatHoldRedisDefinitions.HOLD_DETAIL_KEY_PREFIX,
       "${VenueSeatHoldRedisDefinitions.HOLD_VENUE_SEAT_KEY_PREFIX}$performanceId:",
       scopeId,
@@ -90,6 +93,10 @@ class RedisVenueSeatHoldService(
     }
 
     val snapshot = objectMapper.readValue(result, CheckoutReviewSnapshot::class.java)
+    performanceVenueSeatStompPublisher.publishSeatStatusChanged(
+      performanceId = snapshot.performanceId,
+      version = snapshot.version,
+    )
     return BeginCheckoutReviewMessageData(
       scopeId = snapshot.scopeId,
       performanceId = snapshot.performanceId,
@@ -99,14 +106,21 @@ class RedisVenueSeatHoldService(
     )
   }
 
-  fun endCheckoutReview(scopeId: String, reviewToken: UUID): Boolean {
+  fun endCheckoutReview(scopeId: String, performanceId: Long, reviewToken: UUID): Boolean {
     val result = stringRedisTemplate.execute(
       VenueSeatHoldRedisDefinitions.endCheckoutReviewScript,
-      listOf(VenueSeatHoldRedisDefinitions.holdScopeKey(scopeId)),
+      listOf(
+        VenueSeatHoldRedisDefinitions.holdScopeKey(scopeId),
+        VenueSeatHoldRedisDefinitions.versionKey(performanceId),
+      ),
       reviewToken.toString(),
       VenueSeatHoldRedisDefinitions.HOLD_DETAIL_KEY_PREFIX,
-    )
-    return result == 0L
+    ) ?: return false
+
+    if (result < 0L) return false
+
+    performanceVenueSeatStompPublisher.publishSeatStatusChanged(performanceId, result)
+    return true
   }
 
   @Transactional
@@ -294,6 +308,11 @@ class RedisVenueSeatHoldService(
     if (mutation?.code != 0L) {
       throw CustomException(ErrorCode.CONFLICT, "좌석 점유 상태가 변경되어 결제 전환을 할 수 없습니다.")
     }
+
+    performanceVenueSeatStompPublisher.publishSeatStatusChanged(
+      performanceId = activeHoldData.performanceId,
+      version = mutation.version,
+    )
 
     return transitionedHoldDetails
   }
@@ -583,6 +602,7 @@ class RedisVenueSeatHoldService(
     val venueSeatIds: List<Long>,
     val expiresAtEpochMillis: Long,
     val reviewToken: UUID,
+    val version: Long,
   )
 
   data class VenueSeatHoldActionResult(val action: OutboxHoldActionResult, val version: Long)
