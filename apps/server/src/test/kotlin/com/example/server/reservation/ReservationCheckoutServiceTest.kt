@@ -843,12 +843,15 @@ class ReservationCheckoutServiceTest {
   }
 
   @Test
-  fun `결제 대기 그룹에서 예매 정보 확인 종료 시 이전 점유를 복원하지 않는다`() {
+  fun `다른 예매 정보 확인이 진행 중이면 예매 정보 확인 종료를 거부한다`() {
     given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn(SCOPE_ID)
     given(redisVenueSeatHoldService.endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)).willReturn(false)
 
-    assertThat(service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).isFalse()
+    val exception = assertThrows<CustomException> {
+      service.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    }
 
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
     then(redisVenueSeatHoldService).should().endCheckoutReview(SCOPE_ID, REVIEW_TOKEN)
   }
 

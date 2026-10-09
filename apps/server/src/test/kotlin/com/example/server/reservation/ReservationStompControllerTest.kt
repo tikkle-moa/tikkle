@@ -101,12 +101,14 @@ class ReservationStompControllerTest {
   }
 
   @Test
-  fun `결제 대기 이후 복귀에서는 이전 점유를 다시 조작하지 않는다`() {
+  fun `예매 정보 확인 종료 실패는 예외를 전달한다`() {
     val request = EndCheckoutReviewCommand(REQUEST_ID, EndCheckoutReviewData(PERFORMANCE_ID, REVIEW_TOKEN))
-    given(reservationCheckoutService.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)).willReturn(false)
+    given(reservationCheckoutService.endCheckoutReview(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN))
+      .willThrow(CustomException(ErrorCode.CONFLICT, "다른 예매 정보 확인이 진행 중입니다."))
 
-    assertThat(controller.endCheckoutReview(request, authentication))
-      .isEqualTo(EndCheckoutReviewMessage(REQUEST_ID, EndCheckoutReviewMessageData(PERFORMANCE_ID)))
+    assertThrows<CustomException> {
+      controller.endCheckoutReview(request, authentication)
+    }
   }
 
   @Nested

@@ -53,7 +53,10 @@ class ReservationCheckoutService(
 
   fun endCheckoutReview(userId: Long, performanceId: Long, reviewToken: UUID): Boolean {
     val scopeId = redisVenueSeatHoldService.getScopeId(userId, performanceId)
-    return redisVenueSeatHoldService.endCheckoutReview(scopeId, reviewToken)
+    if (!redisVenueSeatHoldService.endCheckoutReview(scopeId, reviewToken)) {
+      throw CustomException(ErrorCode.CONFLICT, "다른 예매 정보 확인이 진행 중입니다.")
+    }
+    return true
   }
 
   @Transactional
