@@ -18,6 +18,7 @@ import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Component
+import java.security.Principal
 import java.time.Instant
 import java.util.UUID
 
@@ -56,7 +57,7 @@ class StompAuthenticationChannelInterceptor(
     try {
       validateTopicSubscription(accessTokenPayload, accessor)
     } catch (exception: AccessDeniedException) {
-      sendSubscriptionFailure(accessor, exception)
+      sendSubscriptionFailure(authentication, accessor, exception)
       return null
     }
 
@@ -93,8 +94,7 @@ class StompAuthenticationChannelInterceptor(
     }
   }
 
-  private fun sendSubscriptionFailure(accessor: StompHeaderAccessor, exception: AccessDeniedException) {
-    val principal = accessor.user ?: return
+  private fun sendSubscriptionFailure(principal: Principal, accessor: StompHeaderAccessor, exception: AccessDeniedException) {
     val sessionId = accessor.sessionId ?: return
 
     val headers = SimpMessageHeaderAccessor.create().apply {

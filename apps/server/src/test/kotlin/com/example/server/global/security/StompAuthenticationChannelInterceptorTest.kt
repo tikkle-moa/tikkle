@@ -3,20 +3,25 @@ package com.example.server.global.security
 import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.refreshTokenKey
 import com.example.server.auth.types.UserRole
+import com.example.server.global.stomp.StompFailureMessage
 import com.example.server.group.GroupService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentCaptor
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.then
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.MessageBuilder
@@ -24,6 +29,9 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import java.time.Instant
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 
 @ExtendWith(MockitoExtension::class)
@@ -40,11 +48,17 @@ class StompAuthenticationChannelInterceptorTest {
   @Mock
   lateinit var channel: MessageChannel
 
+  @Mock
+  lateinit var messagingTemplateProvider: ObjectProvider<SimpMessagingTemplate>
+
+  @Mock
+  lateinit var messagingTemplate: SimpMessagingTemplate
+
   private lateinit var interceptor: StompAuthenticationChannelInterceptor
 
   @BeforeEach
   fun setUp() {
-    interceptor = StompAuthenticationChannelInterceptor(stringRedisTemplate, groupService)
+    interceptor = StompAuthenticationChannelInterceptor(stringRedisTemplate, groupService, messagingTemplateProvider)
   }
 
   @Nested
@@ -124,9 +138,7 @@ class StompAuthenticationChannelInterceptorTest {
         nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
       )
 
-      assertThrows<AccessDeniedException> {
-        interceptor.preSend(message, channel)
-      }
+      assertSubscriptionFailure(message)
 
       then(groupService).should().getGroupId(payload.userId, PERFORMANCE_ID)
     }
@@ -141,9 +153,7 @@ class StompAuthenticationChannelInterceptorTest {
         destination = "/topic/groups/**/chat",
       )
 
-      assertThrows<AccessDeniedException> {
-        interceptor.preSend(message, channel)
-      }
+      assertSubscriptionFailure(message)
 
       then(groupService).shouldHaveNoInteractions()
     }
@@ -158,9 +168,7 @@ class StompAuthenticationChannelInterceptorTest {
         destination = "/topic*/groups/**/chat",
       )
 
-      assertThrows<AccessDeniedException> {
-        interceptor.preSend(message, channel)
-      }
+      assertSubscriptionFailure(message)
 
       then(groupService).shouldHaveNoInteractions()
     }
@@ -175,9 +183,7 @@ class StompAuthenticationChannelInterceptorTest {
         destination = "/topic/**",
       )
 
-      assertThrows<AccessDeniedException> {
-        interceptor.preSend(message, channel)
-      }
+      assertSubscriptionFailure(message)
 
       then(groupService).shouldHaveNoInteractions()
     }
@@ -192,9 +198,7 @@ class StompAuthenticationChannelInterceptorTest {
         destination = "/topic/groups/$GROUP_ID/chat",
       )
 
-      assertThrows<AccessDeniedException> {
-        interceptor.preSend(message, channel)
-      }
+      assertSubscriptionFailure(message)
 
       then(groupService).shouldHaveNoInteractions()
     }
@@ -210,9 +214,7 @@ class StompAuthenticationChannelInterceptorTest {
         nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to "invalid-performance-id"),
       )
 
-      assertThrows<AccessDeniedException> {
-        interceptor.preSend(message, channel)
-      }
+      assertSubscriptionFailure(message)
 
       then(groupService).shouldHaveNoInteractions()
     }
@@ -228,9 +230,7 @@ class StompAuthenticationChannelInterceptorTest {
         nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
       )
 
-      assertThrows<AccessDeniedException> {
-        interceptor.preSend(message, channel)
-      }
+      assertSubscriptionFailure(message)
 
       then(groupService).shouldHaveNoInteractions()
     }
@@ -247,9 +247,7 @@ class StompAuthenticationChannelInterceptorTest {
         nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
       )
 
-      assertThrows<AccessDeniedException> {
-        interceptor.preSend(message, channel)
-      }
+      assertSubscriptionFailure(message)
     }
 
     @Test
@@ -347,6 +345,59 @@ class StompAuthenticationChannelInterceptorTest {
     }
   }
 
+  @Test
+  fun `세션 ID가 없으면 구독을 차단하고 오류 전송은 생략한다`() {
+    val payload = validPayload()
+    mockStoredSession(payload)
+    val message = stompMessage(
+      command = StompCommand.SUBSCRIBE,
+      authentication = authentication(payload),
+      destination = "/topic/**",
+      sessionId = null,
+    )
+    assertNull(interceptor.preSend(message, channel))
+    then(messagingTemplateProvider).shouldHaveNoInteractions()
+    then(messagingTemplate).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `메시지가 없는 구독 권한 예외는 기본 오류 메시지로 전송한다`() {
+    val payload = validPayload()
+    mockStoredSession(payload)
+    given(groupService.getGroupId(payload.userId, PERFORMANCE_ID))
+      .willThrow(object : AccessDeniedException("권한 오류") {
+        override val message: String? = null
+      })
+    val message = stompMessage(
+      command = StompCommand.SUBSCRIBE,
+      authentication = authentication(payload),
+      destination = "/topic/groups/$GROUP_ID/chat",
+      nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
+    )
+
+    val failure = assertSubscriptionFailure(message)
+
+    assertEquals("구독 권한이 없습니다.", failure.error.message)
+  }
+
+  private fun assertSubscriptionFailure(message: Message<*>): StompFailureMessage {
+    given(messagingTemplateProvider.getObject()).willReturn(messagingTemplate)
+    assertNull(interceptor.preSend(message, channel))
+
+    val failureCaptor = ArgumentCaptor.forClass(StompFailureMessage::class.java)
+    val headersCaptor = ArgumentCaptor.forClass(org.springframework.messaging.MessageHeaders::class.java)
+    then(messagingTemplate).should().convertAndSendToUser(
+      org.mockito.ArgumentMatchers.eq("1"),
+      org.mockito.ArgumentMatchers.eq("/queue/stomp-errors"),
+      failureCaptor.capture(),
+      headersCaptor.capture(),
+    )
+    assertFalse(failureCaptor.value.success)
+    assertEquals("ACCESS_DENIED", failureCaptor.value.error.code)
+    assertEquals("session-id", headersCaptor.value[SimpMessageHeaderAccessor.SESSION_ID_HEADER])
+    return failureCaptor.value
+  }
+
   private fun validPayload(
     userId: Long = 1L,
     tokenId: String = "refresh-token-id",
@@ -377,8 +428,10 @@ class StompAuthenticationChannelInterceptorTest {
     authentication: Authentication? = null,
     destination: String? = null,
     nativeHeaders: Map<String, String> = emptyMap(),
+    sessionId: String? = "session-id",
   ): Message<String> {
     val accessor = StompHeaderAccessor.create(command)
+    accessor.sessionId = sessionId
 
     if (authentication != null) {
       accessor.user = authentication
