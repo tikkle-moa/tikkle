@@ -1,5 +1,5 @@
 -- Outbox PAYMENT_CONFIRMED 이벤트를 특정 Hold에만 적용합니다.
--- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdExpiryKey -> holdPerformanceKey -> holdGroupKey -> outbox marker key -> versionKey
+-- KEYS: holdVenueSeatKey 목록 -> finalizingVenueSeatKey 목록 -> holdDetailKey -> holdExpiryKey -> holdPerformanceKey -> holdScopeKey -> outbox marker key -> versionKey
 -- ARGV[1]: 예상 holdId
 -- ARGV[2]: 좌석 키 수
 -- 반환값: "결과 코드:version" (0=확정, 1=좌석 소유권 충돌, 2=이미 확정·해제됨)
@@ -9,7 +9,7 @@ local finalizingKeyStartIndex = seatCount + 1
 local holdDetailKey = KEYS[seatCount * 2 + 1]
 local holdExpiryKey = KEYS[seatCount * 2 + 2]
 local holdPerformanceKey = KEYS[seatCount * 2 + 3]
-local holdGroupKey = KEYS[seatCount * 2 + 4]
+local holdScopeKey = KEYS[seatCount * 2 + 4]
 local markerKey = KEYS[seatCount * 2 + 5]
 local versionKey = KEYS[seatCount * 2 + 6]
 local expectedHoldId = ARGV[1]
@@ -33,7 +33,7 @@ if missingSeatCount == seatCount then
   redis.call('DEL', holdDetailKey)
   redis.call('DEL', holdExpiryKey)
   redis.call('ZREM', holdPerformanceKey, expectedHoldId)
-  redis.call('ZREM', holdGroupKey, expectedHoldId)
+  redis.call('ZREM', holdScopeKey, expectedHoldId)
   local version = redis.call('INCR', versionKey)
   redis.call('SET', markerKey, version, 'PX', 86400000)
   return '2:' .. version
@@ -57,7 +57,7 @@ end
 redis.call('DEL', holdDetailKey)
 redis.call('DEL', holdExpiryKey)
 redis.call('ZREM', holdPerformanceKey, expectedHoldId)
-redis.call('ZREM', holdGroupKey, expectedHoldId)
+redis.call('ZREM', holdScopeKey, expectedHoldId)
 local version = redis.call('INCR', versionKey)
 redis.call('SET', markerKey, version, 'PX', 86400000)
 

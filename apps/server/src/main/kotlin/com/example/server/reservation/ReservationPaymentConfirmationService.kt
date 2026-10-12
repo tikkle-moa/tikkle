@@ -4,6 +4,8 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
+import com.example.server.performance.dto.paymentFor
+import com.example.server.performance.types.VenueSeatHoldScope
 import com.example.server.reservation.dto.ConfirmPaymentMessageData
 import com.example.server.reservation.entity.ReservationSeat
 import com.example.server.reservation.payment.dto.ActiveHoldsSnapshot
@@ -87,8 +89,11 @@ class ReservationPaymentConfirmationService(
       throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
     }
 
+    val scopeId = VenueSeatHoldScope.id(reservation.groupId, reservation.booker.id, reservation.performance.id)
     val activeHoldData = try {
-      redisVenueSeatHoldService.findActiveHoldDataByGroupId(reservation.groupId)
+      redisVenueSeatHoldService.findActiveHoldDataByScopeId(scopeId)
+        .paymentFor(reservation.id)
+        ?: throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었거나 변경되었습니다.")
     } catch (exception: CustomException) {
       if (exception.errorCode == ErrorCode.NOT_FOUND) {
         throw CustomException(ErrorCode.CONFLICT, "좌석 점유가 만료되었습니다.")
@@ -104,7 +109,7 @@ class ReservationPaymentConfirmationService(
       )
     }
 
-    if (activeHoldData.holdDetails.any { it.groupId != reservation.groupId || it.performanceId != reservation.performance.id }) {
+    if (activeHoldData.holdDetails.any { it.scopeId != scopeId || it.performanceId != reservation.performance.id }) {
       throw CustomException(ErrorCode.CONFLICT, "예매와 좌석 점유 정보가 일치하지 않습니다.")
     }
 
@@ -182,7 +187,8 @@ class ReservationPaymentConfirmationService(
     }
 
     val holds = findActiveHoldsSnapshot(
-      groupId = reservation.groupId,
+      scopeId = VenueSeatHoldScope.id(reservation.groupId, reservation.booker.id, reservation.performance.id),
+      reservationId = reservation.id,
       expectedPerformanceId = reservation.performance.id,
     )
 
@@ -278,7 +284,10 @@ class ReservationPaymentConfirmationService(
       return null
     }
 
-    val holds = findActiveHoldsSnapshot(reservation.groupId)
+    val holds = findActiveHoldsSnapshot(
+      scopeId = VenueSeatHoldScope.id(reservation.groupId, reservation.booker.id, reservation.performance.id),
+      reservationId = reservation.id,
+    )
 
     reservation.status = ReservationStatus.REFUNDED
 
@@ -329,7 +338,10 @@ class ReservationPaymentConfirmationService(
       return null
     }
 
-    val holds = findActiveHoldsSnapshot(reservation.groupId)
+    val holds = findActiveHoldsSnapshot(
+      scopeId = VenueSeatHoldScope.id(reservation.groupId, reservation.booker.id, reservation.performance.id),
+      reservationId = reservation.id,
+    )
 
     reservation.status = ReservationStatus.FAILED
 
@@ -343,9 +355,11 @@ class ReservationPaymentConfirmationService(
     return holds
   }
 
-  private fun findActiveHoldsSnapshot(groupId: String, expectedPerformanceId: Long? = null): ActiveHoldsSnapshot? {
+  private fun findActiveHoldsSnapshot(scopeId: String, reservationId: Long, expectedPerformanceId: Long? = null): ActiveHoldsSnapshot? {
     val activeHoldData = try {
-      redisVenueSeatHoldService.findActiveHoldDataByGroupId(groupId)
+      redisVenueSeatHoldService.findActiveHoldDataByScopeId(scopeId)
+        .paymentFor(reservationId)
+        ?: return null
     } catch (exception: CustomException) {
       if (exception.errorCode == ErrorCode.NOT_FOUND) {
         return null
@@ -356,7 +370,7 @@ class ReservationPaymentConfirmationService(
 
     if (
       activeHoldData.holdDetails.any {
-        it.groupId != groupId ||
+        it.scopeId != scopeId ||
           it.performanceId != activeHoldData.performanceId ||
           (expectedPerformanceId != null && it.performanceId != expectedPerformanceId)
       }
@@ -370,7 +384,7 @@ class ReservationPaymentConfirmationService(
     }
 
     return ActiveHoldsSnapshot(
-      groupId = groupId,
+      scopeId = scopeId,
       performanceId = activeHoldData.performanceId,
       venueSeatIds = venueSeatIds,
       holdDetails = activeHoldData.holdDetails,

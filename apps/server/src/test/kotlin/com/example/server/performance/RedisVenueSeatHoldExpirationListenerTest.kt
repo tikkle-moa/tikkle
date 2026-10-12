@@ -28,7 +28,7 @@ class RedisVenueSeatHoldExpirationListenerTest {
   @ValueSource(
     strings = [
       "hold:detail:hold-123",
-      "hold:group:user:10",
+      "hold:scope:group:10",
       "hold:venue-seat:10:101",
       "hold:venue-seat-finalizing:10:101",
       "oauth:state:abc",

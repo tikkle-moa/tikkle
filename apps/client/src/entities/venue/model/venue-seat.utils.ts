@@ -1,7 +1,7 @@
 import type { VenueSeatStatus } from "./venue-seat.types";
 
 export const isHeldSeatStatus = (status: VenueSeatStatus) => {
-  return status === "held_by_my_group" || status === "held_by_other_group";
+  return status === "held_by_me" || status === "held_by_other";
 };
 
 export const areSeatIdsEqual = (first: ReadonlySet<number> | undefined, second: ReadonlySet<number> | undefined) => {

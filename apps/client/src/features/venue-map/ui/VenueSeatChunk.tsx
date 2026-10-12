@@ -46,7 +46,7 @@ const VenueSeatChunk = ({
   return venueSeats.map((seat) => {
     const { status, expiresAt } = venueSeatStates?.get(seat.id) ?? { status: "available" };
     const isSelected = visibleSelectedSeatIds ? visibleSelectedSeatIds.has(seat.id) : selectedSeat?.id === seat.id;
-    const isSeatSelectable = !isHoldMode || status === "available" || status === "held_by_my_group";
+    const isSeatSelectable = !isHoldMode || status === "available" || status === "held_by_me";
     const isHeld = isHeldSeatStatus(status);
     const statusKey = `${status}:${expiresAt?.getTime() ?? ""}:${isHeld ? serverTimeOffset : 0}`;
     let statusMessage = statusMessageByKey.get(statusKey);

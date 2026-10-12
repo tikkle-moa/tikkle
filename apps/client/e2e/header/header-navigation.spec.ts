@@ -66,6 +66,11 @@ test.describe("로그인 데스크톱 사용자 메뉴", () => {
         json: { success: true },
       }),
     );
+    await page.route("**/api/reservations", (route) =>
+      route.fulfill({
+        json: { success: true, data: [] },
+      }),
+    );
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/");
   });

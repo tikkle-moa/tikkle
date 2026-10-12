@@ -88,19 +88,19 @@ describe("seat status utilities", () => {
   it("좌석 상태별 메시지를 반환한다", () => {
     expect(getSeatStatusMessage("available")).toBe("선택 가능한 좌석입니다.");
     expect(getSeatStatusMessage("booked")).toBe("예약이 완료된 좌석입니다.");
-    expect(getSeatStatusMessage("held_by_other_group")).toContain("다른 그룹이 점유");
-    expect(getSeatStatusMessage("held_by_other_group", new Date(120_000), 0)).toContain("점유 중입니다.");
-    expect(getSeatStatusMessage("held_by_my_group", new Date(120_000), 0)).toContain("점유 중입니다.");
-    expect(getSeatStatusMessage("held_by_my_group")).toBe("점유 중인 좌석입니다.");
-    expect(getSeatStatusMessage("held_by_other_group", new Date(Number.NaN), 0)).toBe("다른 그룹이 점유 중인 좌석입니다.");
-    expect(getSeatStatusMessage("held_by_my_group", new Date(15_000), 0)).toContain("15초 남음");
-    expect(getSeatStatusMessage("held_by_my_group", new Date(0), 1_000)).toContain("곧 만료");
+    expect(getSeatStatusMessage("held_by_other")).toContain("다른 사용자가 점유");
+    expect(getSeatStatusMessage("held_by_other", new Date(120_000), 0)).toContain("점유 중입니다.");
+    expect(getSeatStatusMessage("held_by_me", new Date(120_000), 0)).toContain("점유 중입니다.");
+    expect(getSeatStatusMessage("held_by_me")).toBe("점유 중인 좌석입니다.");
+    expect(getSeatStatusMessage("held_by_other", new Date(Number.NaN), 0)).toBe("다른 사용자가 점유 중인 좌석입니다.");
+    expect(getSeatStatusMessage("held_by_me", new Date(15_000), 0)).toContain("15초 남음");
+    expect(getSeatStatusMessage("held_by_me", new Date(0), 1_000)).toContain("곧 만료");
   });
 
   it.each([
     ["available", true],
-    ["held_by_my_group", true],
-    ["held_by_other_group", false],
+    ["held_by_me", true],
+    ["held_by_other", false],
     ["booked", false],
     [undefined, false],
   ] as const)("%s 상태의 현재 선택 가능 여부를 반환한다", (status, expected) => {

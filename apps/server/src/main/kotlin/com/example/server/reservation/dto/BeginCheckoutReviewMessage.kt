@@ -8,10 +8,9 @@ data class BeginCheckoutReviewMessage(override val requestId: UUID, override val
   StompSuccessMessage<BeginCheckoutReviewMessageData>
 
 data class BeginCheckoutReviewMessageData(
-  val groupId: String,
+  val scopeId: String,
   val performanceId: Long,
   val venueSeatIds: List<Long>,
   val expiresAt: LocalDateTime,
   val reviewToken: UUID,
-  val sessionId: UUID? = null,
 )

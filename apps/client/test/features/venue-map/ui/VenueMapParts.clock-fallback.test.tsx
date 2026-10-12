@@ -19,10 +19,10 @@ describe("venue map clock fallback", () => {
   it("시계 값이 없으면 hold 안내가 만료 시각만으로 렌더링된다", () => {
     render(
       <>
-        <VenueMapSelectedSeatStatus status="held_by_my_group" expiresAt={new Date(Date.now() + 60000)} serverTimeOffset={0} />
+        <VenueMapSelectedSeatStatus status="held_by_me" expiresAt={new Date(Date.now() + 60000)} serverTimeOffset={0} />
         <VenueMapSeatTooltip
           seat={seat}
-          status="held_by_my_group"
+          status="held_by_me"
           expiresAt={new Date(Date.now() + 60000)}
           position={{ left: 20, top: 28, bottom: 31.5 }}
           serverTimeOffset={0}

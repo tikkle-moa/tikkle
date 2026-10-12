@@ -25,7 +25,7 @@ const PerformanceSeatHoldInfo = () => {
 
         <div className="flex items-start gap-2">
           <LockKeyhole className="mt-0.5 size-3.5 shrink-0 text-violet-500" aria-hidden />
-          <p>다른 그룹이 점유 중인 좌석은 만료 후 선택할 수 있습니다.</p>
+          <p>다른 사용자가 점유 중인 좌석은 만료 후 선택할 수 있습니다.</p>
         </div>
       </div>
     </section>

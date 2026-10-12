@@ -23,10 +23,10 @@ const connectionStyle = {
 const createPanelState = () => ({
   isRefreshing: false,
   refreshError: null,
-  myGroupHolds: [],
-  myGroupHeldSeatInfoBySeatId: new Map(),
+  myHolds: [],
+  myHeldSeatInfoBySeatId: new Map(),
   selectedSeatIdsToRelease: [],
-  myGroupHeldSeatTotalPrice: 0,
+  myHeldSeatTotalPrice: 0,
   venueSeatById: new Map([[1, seat]]),
   handleRefresh: vi.fn(),
   handleReleaseSeats: vi.fn(),
@@ -43,7 +43,6 @@ const renderPanel = ({ onCheckout = vi.fn(), onHoldSeatToggle = vi.fn(), selecte
     <MemoryRouter>
       <PerformanceSeatHoldPanel
         performanceId={1}
-        sessionId="session-1"
         venueSeats={[seat]}
         venueSeatStates={new Map()}
         selectedSeatIds={selectedSeatIds}
@@ -68,9 +67,7 @@ describe("PerformanceSeatHoldPanel", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("실시간 연결됨");
     expect(screen.getByRole("region", { name: "좌석 점유 안내" })).toBeInTheDocument();
-    expect(mockUsePerformanceSeatHoldPanel).toHaveBeenCalledWith(
-      expect.objectContaining({ performanceId: 1, sessionId: "session-1", venueSeats: [seat] }),
-    );
+    expect(mockUsePerformanceSeatHoldPanel).toHaveBeenCalledWith(expect.objectContaining({ performanceId: 1, venueSeats: [seat] }));
     expect(mockUsePerformanceSeatHoldPanel).toHaveBeenCalledWith(expect.objectContaining({ onCheckout: expect.any(Function) }));
   });
 
@@ -95,9 +92,9 @@ describe("PerformanceSeatHoldPanel", () => {
     const expiresAt = new Date("2026-09-16T20:00:00");
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
-      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
-      myGroupHeldSeatTotalPrice: 15000,
+      myHeldSeatInfoBySeatId: new Map([[1, { scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myHolds: [{ scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+      myHeldSeatTotalPrice: 15000,
       handleCheckout,
     });
     renderPanel({ onCheckout });
@@ -114,8 +111,8 @@ describe("PerformanceSeatHoldPanel", () => {
     const expiresAt = new Date("2026-09-16T20:00:00");
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
-      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+      myHeldSeatInfoBySeatId: new Map([[1, { scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myHolds: [{ scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
     });
     renderPanel({ onCheckout: null as never });
 
@@ -127,8 +124,8 @@ describe("PerformanceSeatHoldPanel", () => {
   it("예매 정보 스냅샷 요청 중에는 CTA를 잠그고 오류를 표시한다", () => {
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
-      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date(), venueSeatIds: [1] }],
+      myHeldSeatInfoBySeatId: new Map([[1, { scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
+      myHolds: [{ scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date(), venueSeatIds: [1] }],
       isCheckoutReviewBeginning: true,
       checkoutReviewErrorMessage: "다른 화면에서 예매 정보를 확인하고 있습니다.",
     });
@@ -143,8 +140,8 @@ describe("PerformanceSeatHoldPanel", () => {
     const expiresAt = new Date("2026-09-16T20:00:00");
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
-      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+      myHeldSeatInfoBySeatId: new Map([[1, { scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myHolds: [{ scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
     });
 
     renderPanel({ selectedSeatIds: new Set([1]) });
@@ -160,8 +157,8 @@ describe("PerformanceSeatHoldPanel", () => {
     const onHoldSeatToggle = vi.fn();
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
-      myGroupHolds: [{ groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
+      myHeldSeatInfoBySeatId: new Map([[1, { scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt }]]),
+      myHolds: [{ scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt, venueSeatIds: [1] }],
     });
 
     renderPanel({ onHoldSeatToggle });
@@ -174,9 +171,9 @@ describe("PerformanceSeatHoldPanel", () => {
     const user = userEvent.setup();
     mockUsePerformanceSeatHoldPanel.mockReturnValue({
       ...createPanelState(),
-      myGroupHeldSeatInfoBySeatId: new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
-      myGroupHolds: Array.from({ length: 6 }, (_, index) => ({
-        groupId: "group-1",
+      myHeldSeatInfoBySeatId: new Map([[1, { scopeId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
+      myHolds: Array.from({ length: 6 }, (_, index) => ({
+        scopeId: "group-1",
         holdId: `hold-${index + 1}`,
         performanceId: 1,
         expiresAt: new Date("2026-09-16T20:00:00"),
@@ -214,7 +211,6 @@ describe("PerformanceSeatHoldPanel", () => {
       <MemoryRouter>
         <PerformanceSeatHoldPanel
           performanceId={1}
-          sessionId="session-1"
           venueSeats={[seat]}
           venueSeatStates={new Map()}
           selectedSeatIds={new Set()}

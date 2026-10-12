@@ -1,5 +1,5 @@
 -- 만료 트리거가 가리키는 Hold를 정리하고, 상태 변경과 version 증가를 함께 수행합니다.
--- KEYS: holdVenueSeatKey 목록 -> holdDetailKey -> holdPerformanceKey -> holdGroupKey -> versionKey
+-- KEYS: holdVenueSeatKey 목록 -> holdDetailKey -> holdPerformanceKey -> holdScopeKey -> versionKey
 -- ARGV[1]: 예상 holdId
 -- ARGV[2]: 예상 Hold 상세 JSON
 -- ARGV[3]: 현재 시각(epoch millis)
@@ -14,7 +14,7 @@ local seatCount = tonumber(ARGV[4])
 
 local holdDetailKey = KEYS[seatCount + 1]
 local holdPerformanceKey = KEYS[seatCount + 2]
-local holdGroupKey = KEYS[seatCount + 3]
+local holdScopeKey = KEYS[seatCount + 3]
 local versionKey = KEYS[seatCount + 4]
 
 if redis.call('GET', holdDetailKey) ~= expectedHoldDetail then
@@ -36,7 +36,7 @@ end
 
 redis.call('DEL', holdDetailKey)
 redis.call('ZREM', holdPerformanceKey, expectedHoldId)
-redis.call('ZREM', holdGroupKey, expectedHoldId)
+redis.call('ZREM', holdScopeKey, expectedHoldId)
 
 if #releasedSeatIds == 0 then
   return nil

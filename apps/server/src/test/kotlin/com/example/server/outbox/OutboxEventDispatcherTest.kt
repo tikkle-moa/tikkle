@@ -6,10 +6,10 @@ import com.example.server.outbox.dto.ReservationSeatEventPayload
 import com.example.server.outbox.entity.OutboxEvent
 import com.example.server.outbox.types.OutboxEventType
 import com.example.server.outbox.types.OutboxHoldActionResult
-import com.example.server.performance.CancelledReservationSeatReleaseResult
 import com.example.server.performance.PerformanceVenueSeatStompPublisher
 import com.example.server.performance.RedisVenueSeatHoldService
-import com.example.server.performance.VenueSeatHoldActionResult
+import com.example.server.performance.RedisVenueSeatHoldService.CancelledReservationSeatReleaseResult
+import com.example.server.performance.RedisVenueSeatHoldService.VenueSeatHoldActionResult
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
@@ -86,7 +86,7 @@ class OutboxEventDispatcherTest {
     given(
       redisVenueSeatHoldService.finalizeVenueSeats(
         holdId = payload.holdId,
-        groupId = payload.groupId,
+        scopeId = payload.scopeId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
         eventId = java.util.UUID.fromString(event.eventId),
@@ -109,7 +109,7 @@ class OutboxEventDispatcherTest {
     val event = event(OutboxEventType.PAYMENT_CANCELLED)
     val payload = PaymentCancelledSeatEventPayload(
       reservationId = 501L,
-      groupId = "1:10",
+      scopeId = "1:10",
       performanceId = 10L,
       seatIds = listOf(101L, 102L),
       cancelledAtEpochMillis = 1_798_700_000_000,
@@ -119,7 +119,7 @@ class OutboxEventDispatcherTest {
       .willReturn(payload)
     given(
       redisVenueSeatHoldService.releaseCancelledReservationSeats(
-        groupId = payload.groupId,
+        scopeId = payload.scopeId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
         cancelledAtEpochMillis = payload.cancelledAtEpochMillis,
@@ -156,7 +156,7 @@ class OutboxEventDispatcherTest {
     val event = event(OutboxEventType.PAYMENT_CANCELLED)
     val payload = PaymentCancelledSeatEventPayload(
       reservationId = 501L,
-      groupId = "1:10",
+      scopeId = "1:10",
       performanceId = 10L,
       seatIds = listOf(101L, 102L),
       cancelledAtEpochMillis = 1_798_700_000_000,
@@ -165,7 +165,7 @@ class OutboxEventDispatcherTest {
     given(objectMapper.readValue(event.payload, PaymentCancelledSeatEventPayload::class.java)).willReturn(payload)
     given(
       redisVenueSeatHoldService.releaseCancelledReservationSeats(
-        groupId = payload.groupId,
+        scopeId = payload.scopeId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
         cancelledAtEpochMillis = payload.cancelledAtEpochMillis,
@@ -204,7 +204,7 @@ class OutboxEventDispatcherTest {
     given(objectMapper.readValue(event.payload, PaymentCancelledSeatEventPayload::class.java)).willReturn(payload)
     given(
       redisVenueSeatHoldService.releaseCancelledReservationSeats(
-        groupId = payload.groupId,
+        scopeId = payload.scopeId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
         cancelledAtEpochMillis = payload.cancelledAtEpochMillis,
@@ -226,7 +226,7 @@ class OutboxEventDispatcherTest {
     given(objectMapper.readValue(event.payload, PaymentCancelledSeatEventPayload::class.java)).willReturn(payload)
     given(
       redisVenueSeatHoldService.releaseCancelledReservationSeats(
-        groupId = payload.groupId,
+        scopeId = payload.scopeId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
         cancelledAtEpochMillis = payload.cancelledAtEpochMillis,
@@ -269,7 +269,7 @@ class OutboxEventDispatcherTest {
     given(
       redisVenueSeatHoldService.finalizeVenueSeats(
         holdId = payload.holdId,
-        groupId = payload.groupId,
+        scopeId = payload.scopeId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
         eventId = java.util.UUID.fromString(event.eventId),
@@ -292,7 +292,7 @@ class OutboxEventDispatcherTest {
     given(
       redisVenueSeatHoldService.finalizeVenueSeats(
         holdId = payload.holdId,
-        groupId = payload.groupId,
+        scopeId = payload.scopeId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
         eventId = java.util.UUID.fromString(event.eventId),
@@ -339,7 +339,7 @@ class OutboxEventDispatcherTest {
       given(
         redisVenueSeatHoldService.releaseVenueSeats(
           holdId = payload.holdId,
-          groupId = payload.groupId,
+          scopeId = payload.scopeId,
           performanceId = payload.performanceId,
           venueSeatIds = payload.seatIds,
           eventId = java.util.UUID.fromString(event.eventId),
@@ -412,7 +412,7 @@ class OutboxEventDispatcherTest {
     given(
       redisVenueSeatHoldService.finalizeVenueSeats(
         holdId = payload.holdId,
-        groupId = payload.groupId,
+        scopeId = payload.scopeId,
         performanceId = payload.performanceId,
         venueSeatIds = payload.seatIds,
         eventId = java.util.UUID.fromString(event.eventId),
@@ -433,7 +433,7 @@ class OutboxEventDispatcherTest {
     given(objectMapper.readValue(event.payload, ReservationSeatEventPayload::class.java)).willReturn(payload)
     willThrow(failure).given(redisVenueSeatHoldService).releaseVenueSeats(
       holdId = payload.holdId,
-      groupId = payload.groupId,
+      scopeId = payload.scopeId,
       performanceId = payload.performanceId,
       venueSeatIds = payload.seatIds,
       eventId = java.util.UUID.fromString(event.eventId),
@@ -463,14 +463,14 @@ class OutboxEventDispatcherTest {
   private fun payload() = ReservationSeatEventPayload(
     reservationId = 501L,
     holdId = "hold-1",
-    groupId = "1:10",
+    scopeId = "1:10",
     performanceId = 10L,
     seatIds = listOf(101L, 102L),
   )
 
   private fun cancelledPayload() = PaymentCancelledSeatEventPayload(
     reservationId = 501L,
-    groupId = "1:10",
+    scopeId = "1:10",
     performanceId = 10L,
     seatIds = listOf(101L, 102L),
     cancelledAtEpochMillis = 1_798_700_000_000,

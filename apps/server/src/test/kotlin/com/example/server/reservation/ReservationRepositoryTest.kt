@@ -63,11 +63,11 @@ class ReservationRepositoryTest {
   lateinit var transactionManager: PlatformTransactionManager
 
   @Test
-  fun `동일 Hold 그룹 upsert는 두 번째 요청을 대기시키고 기존 예매를 반환한다`() {
+  fun `동일 개인 예매 scope upsert는 두 번째 요청을 대기시키고 기존 예매를 반환한다`() {
     val fixture = createFixture()
     val performanceId = fixture.performanceId
     val userId = fixture.userId
-    val groupId = "group-checkout-${UUID.randomUUID()}"
+    val groupId: Long? = null
     val firstOrderId = "tikkle-first-${UUID.randomUUID()}"
     val secondOrderId = "tikkle-second-${UUID.randomUUID()}"
     val transactionTemplate = TransactionTemplate(transactionManager)
@@ -105,7 +105,7 @@ class ReservationRepositoryTest {
             orderId = secondOrderId,
           )
 
-          reservationRepository.findByGroupIdForUpdate(groupId)
+          reservationRepository.findByScopeForUpdate(groupId, userId, performanceId)
         }
       }
 
@@ -219,7 +219,7 @@ class ReservationRepositoryTest {
       .containsExactlyInAnyOrder(ReservationStatus.SUCCEEDED, ReservationStatus.REFUNDED)
   }
 
-  private fun insertPaymentPending(performanceId: Long, userId: Long, groupId: String, orderId: String) {
+  private fun insertPaymentPending(performanceId: Long, userId: Long, groupId: Long?, orderId: String) {
     reservationRepository.insertPaymentPendingIfAbsent(
       performanceId = performanceId,
       bookerUserId = userId,
@@ -277,7 +277,7 @@ class ReservationRepositoryTest {
   private fun reservation(performance: Performance, user: User, status: ReservationStatus): Reservation = Reservation(
     performance = performance,
     booker = user,
-    groupId = "group-${UUID.randomUUID()}",
+    groupId = null,
     orderId = "tikkle-${UUID.randomUUID()}",
     orderName = "좌석 조회 테스트 공연 1회차 1석",
     amount = 66_000,

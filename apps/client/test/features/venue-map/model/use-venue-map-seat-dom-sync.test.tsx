@@ -64,8 +64,8 @@ describe("useVenueMapSeatDomSync", () => {
     expect(second).toHaveClass("cursor-not-allowed");
 
     const held = new Map<number, VenueSeatState>([
-      [1, { status: "held_by_my_group", expiresAt: new Date("2026-09-16T20:00:00") }],
-      [2, { status: "held_by_other_group", expiresAt: new Date("2026-09-16T20:00:00") }],
+      [1, { status: "held_by_me", expiresAt: new Date("2026-09-16T20:00:00") }],
+      [2, { status: "held_by_other", expiresAt: new Date("2026-09-16T20:00:00") }],
     ]);
     rerender({ states: held, offset: 1000, holdMode: false });
 

@@ -10,7 +10,7 @@ sealed interface PaymentConfirmationCompletion {
 }
 
 data class ActiveHoldsSnapshot(
-  val groupId: String,
+  val scopeId: String,
   val performanceId: Long,
   val venueSeatIds: List<Long>,
   val holdDetails: List<VenueSeatHoldDetail> = emptyList(),

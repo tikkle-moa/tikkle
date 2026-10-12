@@ -27,7 +27,6 @@ vi.mock("@features/performance-booking", () => ({
 
 const props = {
   performanceId: 10,
-  sessionId: "session-1",
   venueSeats: [],
   venueSeatStates: new Map(),
   selectedSeatIds: new Set<number>(),
@@ -39,8 +38,7 @@ const props = {
 };
 const review: BeginCheckoutReviewMessageData = {
   reviewToken: "review-token",
-  groupId: "group-1",
-  sessionId: "session-1",
+  scopeId: "group-1",
   performanceId: 10,
   venueSeatIds: [101],
   expiresAt: "2026-09-01T20:00:00.000Z",
@@ -48,15 +46,15 @@ const review: BeginCheckoutReviewMessageData = {
 
 const setMocks = (selectedSeatIdsToHold: number[]) => {
   mockAvailability.mockReturnValue({
-    myGroupHoldInfoByHoldId: new Map(),
-    myGroupHeldSeatInfoBySeatId: new Map(),
+    myHoldInfoByHoldId: new Map(),
+    myHeldSeatInfoBySeatId: new Map(),
     selectedSeatIdsToHold,
     selectedSeatIdsToRelease: [],
-    myGroupHeldSeatTotalPrice: 0,
+    myHeldSeatTotalPrice: 0,
     venueSeatById: new Map(),
     setBookedSeatIds: vi.fn(),
     setHeldSeatExpiresAtBySeatId: vi.fn(),
-    setMyGroupHeldSeatInfoBySeatId: vi.fn(),
+    setMyHeldSeatInfoBySeatId: vi.fn(),
   });
   mockActions.mockReturnValue({
     isRefreshing: false,
@@ -90,8 +88,8 @@ describe("usePerformanceSeatHoldPanel", () => {
     setMocks([]);
     renderHook(() => usePerformanceSeatHoldPanel(props));
 
-    expect(mockActions).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1" }));
-    expect(mockSubscriptions).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1" }));
+    expect(mockActions).toHaveBeenCalledWith(expect.objectContaining({ performanceId: 10 }));
+    expect(mockSubscriptions).toHaveBeenCalledWith(expect.objectContaining({ performanceId: 10 }));
     act(() => vi.advanceTimersByTime(500));
     expect(handleHoldSeats).not.toHaveBeenCalled();
   });

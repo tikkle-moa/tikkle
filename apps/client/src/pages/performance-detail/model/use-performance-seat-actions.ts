@@ -8,7 +8,6 @@ import type { PerformanceSeatRequestIds, SeatOperation, SeatOperationState } fro
 interface UsePerformanceSeatActionsProps {
   performanceId: number;
   performanceSeatRequestIdsRef: RefObject<PerformanceSeatRequestIds>;
-  sessionId: string;
   selectedSeatIdsToHold: number[];
   selectedSeatIdsToRelease: number[];
   seatOperationState: SeatOperationState;
@@ -18,7 +17,6 @@ interface UsePerformanceSeatActionsProps {
 export const usePerformanceSeatActions = ({
   performanceId,
   performanceSeatRequestIdsRef,
-  sessionId,
   selectedSeatIdsToHold,
   selectedSeatIdsToRelease,
   seatOperationState,
@@ -93,9 +91,9 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/get-seat-status",
       pathParams: { performanceId },
-      command: { requestId, sessionId },
+      command: { requestId },
     });
-  }, [performanceId, performanceSeatRequestIdsRef, sessionId, stompClient, validateSeatHoldAction]);
+  }, [performanceId, performanceSeatRequestIdsRef, stompClient, validateSeatHoldAction]);
 
   const handleHoldSeats = useCallback(() => {
     if (!validateSeatHoldAction(stompClient, "hold")) return;
@@ -108,9 +106,9 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/hold-seats",
       pathParams: { performanceId },
-      command: { requestId, data: selectedSeatIdsToHold, sessionId },
+      command: { requestId, data: selectedSeatIdsToHold },
     });
-  }, [performanceId, performanceSeatRequestIdsRef, selectedSeatIdsToHold, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
+  }, [performanceId, performanceSeatRequestIdsRef, selectedSeatIdsToHold, setSeatOperationState, stompClient, validateSeatHoldAction]);
 
   const handleReleaseSeats = useCallback(() => {
     if (!validateSeatHoldAction(stompClient, "release")) return;
@@ -123,9 +121,9 @@ export const usePerformanceSeatActions = ({
     stompClient.publish({
       path: "/performances/{performanceId}/release-seats",
       pathParams: { performanceId },
-      command: { requestId, data: selectedSeatIdsToRelease, sessionId },
+      command: { requestId, data: selectedSeatIdsToRelease },
     });
-  }, [performanceId, performanceSeatRequestIdsRef, selectedSeatIdsToRelease, sessionId, setSeatOperationState, stompClient, validateSeatHoldAction]);
+  }, [performanceId, performanceSeatRequestIdsRef, selectedSeatIdsToRelease, setSeatOperationState, stompClient, validateSeatHoldAction]);
 
   const visibleSeatOperationState = useMemo(
     () =>

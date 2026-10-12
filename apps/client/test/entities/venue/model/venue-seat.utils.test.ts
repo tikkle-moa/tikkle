@@ -2,8 +2,8 @@ import { areSeatIdsEqual, isHeldSeatStatus } from "@entities/venue";
 
 describe("venue seat utils", () => {
   it.each([
-    ["held_by_my_group", true],
-    ["held_by_other_group", true],
+    ["held_by_me", true],
+    ["held_by_other", true],
     ["available", false],
     ["booked", false],
   ] as const)("%s의 Hold 여부를 반환한다", (status, expected) => {

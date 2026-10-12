@@ -1,5 +1,5 @@
 -- Outbox HOLD_RELEASED 이벤트를 특정 Hold에만 적용합니다.
--- KEYS: holdVenueSeatKey 목록 -> holdDetailKey -> holdExpiryKey -> holdPerformanceKey -> holdGroupKey -> outbox marker key -> versionKey
+-- KEYS: holdVenueSeatKey 목록 -> holdDetailKey -> holdExpiryKey -> holdPerformanceKey -> holdScopeKey -> outbox marker key -> versionKey
 -- ARGV[1]: 예상 holdId
 -- ARGV[2]: 좌석 키 수
 -- ARGV[3]: outbox event ID
@@ -9,7 +9,7 @@ local seatCount = tonumber(ARGV[2])
 local holdDetailKey = KEYS[seatCount + 1]
 local holdExpiryKey = KEYS[seatCount + 2]
 local holdPerformanceKey = KEYS[seatCount + 3]
-local holdGroupKey = KEYS[seatCount + 4]
+local holdScopeKey = KEYS[seatCount + 4]
 local markerKey = KEYS[seatCount + 5]
 local versionKey = KEYS[seatCount + 6]
 local expectedHoldId = ARGV[1]
@@ -33,9 +33,9 @@ if missingSeatCount == seatCount then
   redis.call('DEL', holdDetailKey)
   redis.call('DEL', holdExpiryKey)
   local removedPerformance = redis.call('ZREM', holdPerformanceKey, expectedHoldId)
-  local removedGroup = redis.call('ZREM', holdGroupKey, expectedHoldId)
+  local removedScope = redis.call('ZREM', holdScopeKey, expectedHoldId)
   local version = tonumber(redis.call('GET', versionKey)) or 0
-  if removedPerformance + removedGroup > 0 then
+  if removedPerformance + removedScope > 0 then
     version = redis.call('INCR', versionKey)
   end
   return '2:' .. version
@@ -52,7 +52,7 @@ end
 redis.call('DEL', holdDetailKey)
 redis.call('DEL', holdExpiryKey)
 redis.call('ZREM', holdPerformanceKey, expectedHoldId)
-redis.call('ZREM', holdGroupKey, expectedHoldId)
+redis.call('ZREM', holdScopeKey, expectedHoldId)
 local version = redis.call('INCR', versionKey)
 redis.call('SET', markerKey, version, 'PX', 86400000)
 

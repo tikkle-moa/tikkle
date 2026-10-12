@@ -35,8 +35,7 @@ const venueDetail: VenueDetailResponse = {
 
 const review: BeginCheckoutReviewMessageData = {
   reviewToken: "92334384-52d0-41f2-a3c1-3d54047c35b8",
-  groupId: "group-1",
-  sessionId: "session-1",
+  scopeId: "group-1",
   performanceId: 1,
   venueSeatIds: [101],
   expiresAt: "2026-09-01T20:00:00.000Z",

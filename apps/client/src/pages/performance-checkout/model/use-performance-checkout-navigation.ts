@@ -3,7 +3,7 @@ import { generatePath, useBlocker, useNavigate } from "react-router";
 
 import { ROUTE_PATHS } from "@shared/config/router.config";
 
-import { clearPerformanceSeatSelectionSession, useCheckoutReview, useStartCheckout } from "@features/performance-booking";
+import { useCheckoutReview, useStartCheckout } from "@features/performance-booking";
 import type { PerformanceCheckoutLocationState } from "@features/performance-booking";
 
 interface UsePerformanceCheckoutNavigationProps {
@@ -30,31 +30,26 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
     blockerRef.current = blocker;
   }, [blocker]);
 
-  const handleReviewEnd = useCallback(
-    (canResumeHold: boolean) => {
-      const pendingNavigation = pendingNavigationRef.current;
-      pendingNavigationRef.current = null;
+  const handleReviewEnd = useCallback(() => {
+    const pendingNavigation = pendingNavigationRef.current;
+    pendingNavigationRef.current = null;
 
-      if (!canResumeHold) clearPerformanceSeatSelectionSession(performanceId);
+    if (pendingNavigation === "leave_review") {
+      isPopNavigationRef.current = false;
+      isPopEndRequestedRef.current = false;
+      setIsPopNavigation(false);
+      blockerRef.current.proceed?.();
+      return;
+    }
 
-      if (pendingNavigation === "leave_review") {
-        isPopNavigationRef.current = false;
-        isPopEndRequestedRef.current = false;
-        setIsPopNavigation(false);
-        blockerRef.current.proceed?.();
-        return;
-      }
-
-      if (pendingNavigation === "return_to_seats") {
-        isPopNavigationRef.current = false;
-        isPopEndRequestedRef.current = false;
-        setIsPopNavigation(false);
-        allowNextNavigationRef.current = true;
-        navigate(generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(performanceId) }), { replace: true });
-      }
-    },
-    [navigate, performanceId],
-  );
+    if (pendingNavigation === "return_to_seats") {
+      isPopNavigationRef.current = false;
+      isPopEndRequestedRef.current = false;
+      setIsPopNavigation(false);
+      allowNextNavigationRef.current = true;
+      navigate(generatePath(ROUTE_PATHS.PERFORMANCE_DETAIL, { performanceId: String(performanceId) }), { replace: true });
+    }
+  }, [navigate, performanceId]);
 
   const {
     errorMessage: reviewErrorMessage,
@@ -62,7 +57,6 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
     endReview,
   } = useCheckoutReview({
     performanceId,
-    sessionId: review?.sessionId ?? null,
     onEndSuccess: handleReviewEnd,
   });
 
@@ -71,7 +65,7 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
 
     isPopEndRequestedRef.current = true;
     pendingNavigationRef.current = "leave_review";
-    endReview(review.reviewToken, review.groupId);
+    endReview(review.reviewToken);
   }, [blocker.state, endReview, isEnding, review]);
 
   useEffect(() => {
@@ -94,11 +88,10 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
 
   const handleCheckoutSuccess = useCallback(
     (reservationId: number) => {
-      clearPerformanceSeatSelectionSession(performanceId);
       allowNextNavigationRef.current = true;
       navigate(generatePath(ROUTE_PATHS.PAYMENT_CHECKOUT, { reservationId: String(reservationId) }));
     },
-    [navigate, performanceId],
+    [navigate],
   );
   const {
     errorMessage: checkoutErrorMessage,
@@ -107,7 +100,6 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
   } = useStartCheckout({
     performanceId,
     reviewToken: review?.reviewToken ?? "",
-    groupId: review?.groupId ?? null,
     enabled: Boolean(review),
     onSuccess: handleCheckoutSuccess,
   });
@@ -118,13 +110,13 @@ export const usePerformanceCheckoutNavigation = ({ performanceId, review }: UseP
     isPopEndRequestedRef.current = false;
     setIsPopNavigation(false);
     pendingNavigationRef.current = "return_to_seats";
-    endReview(review.reviewToken, review.groupId);
+    endReview(review.reviewToken);
   };
 
   const handleLeaveReview = () => {
     if (!review || blockerRef.current.state !== "blocked" || isEnding) return;
     pendingNavigationRef.current = "leave_review";
-    endReview(review.reviewToken, review.groupId);
+    endReview(review.reviewToken);
   };
 
   const handleStayOnReview = () => {

@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
-import type { MyGroupHeldSeatInfo, SeatOperationState } from "@pages/performance-detail/model/seat-map.types";
+import type { MyHeldSeatInfo, SeatOperationState } from "@pages/performance-detail/model/seat-map.types";
 import { usePerformanceSeatAvailability } from "@pages/performance-detail/model/use-performance-seat-availability";
 
 const venueSeats = [{ id: 1, price: 10000 }] as VenueSeatResponse[];
@@ -37,13 +37,11 @@ describe("usePerformanceSeatAvailability", () => {
     expect(result.current.selectedSeatIds).toEqual(new Set([1]));
 
     act(() => {
-      result.current.setMyGroupHeldSeatInfoBySeatId(
-        new Map<number, MyGroupHeldSeatInfo>([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date() }]]),
-      );
+      result.current.setMyHeldSeatInfoBySeatId(new Map<number, MyHeldSeatInfo>([[1, { holdId: "hold-1", expiresAt: new Date() }]]));
       rerender({ status: "success" });
     });
 
-    await waitFor(() => expect(result.current.venueSeatStates.get(1)?.status).toBe("held_by_my_group"));
+    await waitFor(() => expect(result.current.venueSeatStates.get(1)?.status).toBe("held_by_me"));
     expect(result.current.selectedSeatIds).toEqual(new Set([1]));
   });
 
@@ -82,9 +80,7 @@ describe("usePerformanceSeatAvailability", () => {
     const { result } = renderHook(() => useSeatAvailability("idle"));
 
     act(() => {
-      result.current.setMyGroupHeldSeatInfoBySeatId(
-        new Map([[1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date(Date.now() + 60000) }]]),
-      );
+      result.current.setMyHeldSeatInfoBySeatId(new Map([[1, { holdId: "hold-1", expiresAt: new Date(Date.now() + 60000) }]]));
     });
     await waitFor(() => expect(result.current.selectedSeatIdsToRelease).toEqual([1]));
     const selectedSeatIdsToRelease = result.current.selectedSeatIdsToRelease;
@@ -123,16 +119,16 @@ describe("usePerformanceSeatAvailability", () => {
     expect(result.current.selectedSeatIds).toEqual(new Set([1]));
 
     act(() =>
-      result.current.setMyGroupHeldSeatInfoBySeatId(
+      result.current.setMyHeldSeatInfoBySeatId(
         new Map([
-          [1, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date("2026-09-16T20:00:00") }],
-          [2, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date("2026-09-16T20:00:00") }],
-          [3, { groupId: "group-1", holdId: "hold-1", performanceId: 1, expiresAt: new Date("2026-09-16T20:00:00") }],
+          [1, { holdId: "hold-1", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [2, { holdId: "hold-1", expiresAt: new Date("2026-09-16T20:00:00") }],
+          [3, { holdId: "hold-1", expiresAt: new Date("2026-09-16T20:00:00") }],
         ]),
       ),
     );
 
-    expect(result.current.myGroupHeldSeatTotalPrice).toBe(22000);
-    expect(result.current.myGroupHolds.map(({ venueSeatIds }) => venueSeatIds).flat()).toEqual([1, 2, 3]);
+    expect(result.current.myHeldSeatTotalPrice).toBe(22000);
+    expect(result.current.myHolds.map(({ venueSeatIds }) => venueSeatIds).flat()).toEqual([1, 2, 3]);
   });
 });

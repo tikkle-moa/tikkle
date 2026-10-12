@@ -1,5 +1,5 @@
 -- 조회 이후 좌석 소유권이나 Hold 정보가 변경되었다면 해제하지 않습니다.
--- KEYS: holdVenueSeatKey 목록 -> 삭제할 holdDetailKey 목록 -> 갱신할 holdDetailKey 목록 -> 삭제할 holdExpiryKey 목록 -> holdPerformanceKey -> holdGroupKey -> versionKey -> holdGroupControlKey
+-- KEYS: holdVenueSeatKey 목록 -> 삭제할 holdDetailKey 목록 -> 갱신할 holdDetailKey 목록 -> 삭제할 holdExpiryKey 목록 -> holdPerformanceKey -> holdScopeKey -> versionKey
 -- ARGV[1]: holdVenueSeatKey 수
 -- ARGV[2]: 삭제할 holdDetailKey 수
 -- ARGV[3]: 갱신할 holdDetailKey 수
@@ -13,12 +13,9 @@ local remainingHoldDetailKeyCount = tonumber(ARGV[3])
 local emptyKeyStartIndex = venueSeatKeyCount + 1
 local remainingKeyStartIndex = emptyKeyStartIndex + emptyHoldDetailKeyCount
 local expiryKeyStartIndex = remainingKeyStartIndex + remainingHoldDetailKeyCount
-local holdPerformanceKey = KEYS[#KEYS - 3]
-local holdGroupKey = KEYS[#KEYS - 2]
-local versionKey = KEYS[#KEYS - 1]
-if redis.call('EXISTS', KEYS[#KEYS]) == 1 then
-  return '1:0'
-end
+local holdPerformanceKey = KEYS[#KEYS - 2]
+local holdScopeKey = KEYS[#KEYS - 1]
+local versionKey = KEYS[#KEYS]
 
 local expectedValueStartIndex = 4
 local emptyHoldIdStartIndex = expectedValueStartIndex + venueSeatKeyCount + emptyHoldDetailKeyCount + remainingHoldDetailKeyCount
@@ -46,7 +43,7 @@ for i = 0, emptyHoldDetailKeyCount - 1 do
   redis.call('DEL', KEYS[emptyKeyStartIndex + i])
   redis.call('DEL', KEYS[expiryKeyStartIndex + i])
   redis.call('ZREM', holdPerformanceKey, ARGV[emptyHoldIdStartIndex + i])
-  redis.call('ZREM', holdGroupKey, ARGV[emptyHoldIdStartIndex + i])
+  redis.call('ZREM', holdScopeKey, ARGV[emptyHoldIdStartIndex + i])
 end
 
 -- 부분 해제로 점유 시간이 늘어나지 않도록 기존 TTL을 유지합니다.

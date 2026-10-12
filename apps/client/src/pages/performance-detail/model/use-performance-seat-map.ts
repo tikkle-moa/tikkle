@@ -1,18 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { type VenueSeatState, areSeatIdsEqual } from "@entities/venue";
-
-import { getOrCreatePerformanceSeatSelectionSession } from "@features/performance-booking";
 
 import type { SeatOperationState } from "./seat-map.types";
 import { filterSelectableSeatIds } from "./seat-map.utils";
 
-interface UsePerformanceSeatMapProps {
-  performanceId?: number;
-}
-
-export const usePerformanceSeatMap = ({ performanceId = 0 }: UsePerformanceSeatMapProps = {}) => {
-  const sessionId = useMemo(() => getOrCreatePerformanceSeatSelectionSession(performanceId), [performanceId]);
+export const usePerformanceSeatMap = () => {
   const [selectedSeatIds, setSelectedSeatIds] = useState<Set<number>>(new Set());
   const [serverTimeOffset, setServerTimeOffset] = useState(0);
 
@@ -30,7 +23,7 @@ export const usePerformanceSeatMap = ({ performanceId = 0 }: UsePerformanceSeatM
 
   const toggleSeat = useCallback((seatId: number) => {
     const status = venueSeatStatesRef.current.get(seatId)?.status;
-    if ((status !== "available" && status !== "held_by_my_group") || seatOperationStatusRef.current === "loading") return;
+    if ((status !== "available" && status !== "held_by_me") || seatOperationStatusRef.current === "loading") return;
 
     setSelectedSeatIds((current) => {
       const updated = new Set(current);
@@ -47,7 +40,7 @@ export const usePerformanceSeatMap = ({ performanceId = 0 }: UsePerformanceSeatM
   const toggleHeldSeats = useCallback((seatIds: readonly number[]) => {
     if (seatOperationStatusRef.current === "loading") return;
 
-    const heldSeatIds = [...new Set(seatIds)].filter((seatId) => venueSeatStatesRef.current.get(seatId)?.status === "held_by_my_group");
+    const heldSeatIds = [...new Set(seatIds)].filter((seatId) => venueSeatStatesRef.current.get(seatId)?.status === "held_by_me");
     if (heldSeatIds.length === 0) return;
 
     setSelectedSeatIds((current) => {
@@ -71,7 +64,6 @@ export const usePerformanceSeatMap = ({ performanceId = 0 }: UsePerformanceSeatM
   }, []);
 
   return {
-    sessionId,
     selectedSeatIds,
     setSelectedSeatIds,
     seatOperationState,

@@ -12,7 +12,47 @@ import org.springframework.data.repository.query.Param
 import java.time.LocalDateTime
 
 interface ReservationRepository : JpaRepository<Reservation, Long> {
-  fun existsByGroupId(groupId: String): Boolean
+  @Query(
+    """
+    SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END
+    FROM Reservation r
+    WHERE (:groupId IS NOT NULL AND r.groupId = :groupId)
+       OR (
+         :groupId IS NULL
+         AND r.groupId IS NULL
+         AND r.booker.id = :bookerUserId
+         AND r.performance.id = :performanceId
+       )
+    """,
+  )
+  fun existsByScope(
+    @Param("groupId") groupId: Long?,
+    @Param("bookerUserId") bookerUserId: Long,
+    @Param("performanceId") performanceId: Long,
+  ): Boolean
+
+  @Query(
+    """
+    SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END
+    FROM Reservation r
+    WHERE r.status IN :statuses
+      AND (
+        (:groupId IS NOT NULL AND r.groupId = :groupId)
+        OR (
+          :groupId IS NULL
+          AND r.groupId IS NULL
+          AND r.booker.id = :bookerUserId
+          AND r.performance.id = :performanceId
+        )
+      )
+    """,
+  )
+  fun existsPaymentInProgressByScope(
+    @Param("groupId") groupId: Long?,
+    @Param("bookerUserId") bookerUserId: Long,
+    @Param("performanceId") performanceId: Long,
+    @Param("statuses") statuses: Collection<ReservationStatus>,
+  ): Boolean
 
   @Query(
     """
@@ -65,8 +105,48 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
   fun findByIdForUpdate(reservationId: Long): Reservation?
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT r FROM Reservation r WHERE r.groupId = :groupId")
-  fun findByGroupIdForUpdate(groupId: String): Reservation?
+  @Query(
+    """
+    SELECT r
+    FROM Reservation r
+    WHERE (:groupId IS NOT NULL AND r.groupId = :groupId)
+       OR (
+         :groupId IS NULL
+         AND r.groupId IS NULL
+         AND r.booker.id = :bookerUserId
+         AND r.performance.id = :performanceId
+       )
+    """,
+  )
+  fun findByScopeForUpdate(
+    @Param("groupId") groupId: Long?,
+    @Param("bookerUserId") bookerUserId: Long,
+    @Param("performanceId") performanceId: Long,
+  ): Reservation?
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+    """
+    SELECT r
+    FROM Reservation r
+    WHERE r.status IN :statuses
+      AND (
+        (:groupId IS NOT NULL AND r.groupId = :groupId)
+        OR (
+          :groupId IS NULL
+          AND r.groupId IS NULL
+          AND r.booker.id = :bookerUserId
+          AND r.performance.id = :performanceId
+        )
+      )
+    """,
+  )
+  fun findPaymentInProgressByScopeForUpdate(
+    @Param("groupId") groupId: Long?,
+    @Param("bookerUserId") bookerUserId: Long,
+    @Param("performanceId") performanceId: Long,
+    @Param("statuses") statuses: Collection<ReservationStatus>,
+  ): Reservation?
 
   @Modifying(
     flushAutomatically = true,
@@ -103,7 +183,7 @@ interface ReservationRepository : JpaRepository<Reservation, Long> {
   fun insertPaymentPendingIfAbsent(
     @Param("performanceId") performanceId: Long,
     @Param("bookerUserId") bookerUserId: Long,
-    @Param("groupId") groupId: String,
+    @Param("groupId") groupId: Long?,
     @Param("orderId") orderId: String,
     @Param("orderName") orderName: String,
     @Param("amount") amount: Int,

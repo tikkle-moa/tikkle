@@ -19,7 +19,6 @@ interface PerformanceSeatMapProps {
 
 const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: PerformanceSeatMapProps) => {
   const {
-    sessionId,
     selectedSeatIds,
     setSelectedSeatIds,
     seatOperationState,
@@ -31,7 +30,7 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
     toggleSeat,
     toggleHeldSeats,
     selectSeats,
-  } = usePerformanceSeatMap({ performanceId: performance.id });
+  } = usePerformanceSeatMap();
 
   const isAvailable = performance.status === "AVAILABLE";
 
@@ -51,7 +50,6 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
       {isAvailable && (
         <PerformanceSeatHoldPanel
           performanceId={performance.id}
-          sessionId={sessionId}
           venueSeats={venueDetail.venueSeats}
           venueSeatStates={venueSeatStates}
           selectedSeatIds={selectedSeatIds}

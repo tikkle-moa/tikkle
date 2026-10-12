@@ -82,7 +82,7 @@ const bookSeatToPaymentOrder = async (
   await expect(findSeat(page)).toHaveAttribute("data-seat-status", "available");
 
   await findSeat(page).click();
-  await expect(findSeat(page)).toHaveAttribute("data-seat-status", "held_by_my_group");
+  await expect(findSeat(page)).toHaveAttribute("data-seat-status", "held_by_me");
   await page.getByRole("button", { name: "예매 정보 확인하기" }).click();
   await expect(page).toHaveURL(new RegExp(`/performances/${performanceId}/checkout$`));
   await expect(page.getByRole("heading", { name: "예매자와 공연 정보를 확인해 주세요" })).toBeVisible();

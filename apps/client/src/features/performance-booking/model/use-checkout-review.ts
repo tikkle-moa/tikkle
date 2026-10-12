@@ -6,16 +6,14 @@ import { useStompStore } from "@shared/realtime/stomp.store";
 
 import { CHECKOUT_REVIEW_MAX_REQUEST_ATTEMPTS, CHECKOUT_REVIEW_RESPONSE_TIMEOUT_MS } from "./performance-booking.constants";
 import type { PendingReviewRequest } from "./performance-booking.types";
-import { clearPerformanceCheckoutReviewToken, getOrCreatePerformanceCheckoutReviewToken } from "./performance-booking.utils";
 
 interface UseCheckoutReviewProps {
   performanceId: number;
-  sessionId: string | null;
   onBeginSuccess?: (review: BeginCheckoutReviewMessageData) => void;
-  onEndSuccess?: (canResumeHold: boolean) => void;
+  onEndSuccess?: () => void;
 }
 
-export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, onEndSuccess }: UseCheckoutReviewProps) => {
+export const useCheckoutReview = ({ performanceId, onBeginSuccess, onEndSuccess }: UseCheckoutReviewProps) => {
   const stompClient = useStompStore((state) => state.stompClient);
   const connectionStatus = useStompStore((state) => state.connectionStatus);
   const getStompClient = useStompStore((state) => state.getStompClient);
@@ -90,8 +88,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
           return;
         }
 
-        if (sessionId) clearPerformanceCheckoutReviewToken(performanceId, sessionId, request.reviewToken);
-        onEndSuccess?.(message.data.canResumeHold);
+        onEndSuccess?.();
       },
       errorCallback: (message) => {
         if (message.requestId !== endRequestRef.current?.requestId) return;
@@ -108,7 +105,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
       beginSubscription.unsubscribe();
       endSubscription.unsubscribe();
     };
-  }, [connectionStatus, onBeginSuccess, onEndSuccess, performanceId, sessionId, stompClient]);
+  }, [connectionStatus, onBeginSuccess, onEndSuccess, performanceId, stompClient]);
 
   const beginReview = () => {
     if (beginRequestRef.current || endRequestRef.current) return;
@@ -117,9 +114,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
       return;
     }
 
-    const reviewToken = sessionId
-      ? getOrCreatePerformanceCheckoutReviewToken(performanceId, sessionId)
-      : (beginTokenRef.current ?? crypto.randomUUID());
+    const reviewToken = beginTokenRef.current ?? crypto.randomUUID();
     beginTokenRef.current = reviewToken;
     const request = { requestId: crypto.randomUUID(), reviewToken, attempts: 1 };
     beginRequestRef.current = request;
@@ -136,7 +131,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
           waitForResponse();
           activeClient.publish({
             path: "/reservation/begin-checkout-review",
-            command: { requestId: request.requestId, data: { performanceId, reviewToken, sessionId } },
+            command: { requestId: request.requestId, data: { performanceId, reviewToken } },
           });
           return;
         }
@@ -151,11 +146,11 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
     waitForResponse();
     stompClient.publish({
       path: "/reservation/begin-checkout-review",
-      command: { requestId: request.requestId, data: { performanceId, reviewToken, sessionId } },
+      command: { requestId: request.requestId, data: { performanceId, reviewToken } },
     });
   };
 
-  const endReview = (reviewToken: string, groupId: string) => {
+  const endReview = (reviewToken: string) => {
     if (beginRequestRef.current || endRequestRef.current) return;
     if (!stompClient || connectionStatus !== "connected") {
       setErrorMessage("서버 연결 후 다시 시도해 주세요.");
@@ -177,7 +172,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
           waitForResponse();
           activeClient.publish({
             path: "/reservation/end-checkout-review",
-            command: { requestId: request.requestId, data: { performanceId, reviewToken, groupId } },
+            command: { requestId: request.requestId, data: { performanceId, reviewToken } },
           });
           return;
         }
@@ -192,7 +187,7 @@ export const useCheckoutReview = ({ performanceId, sessionId, onBeginSuccess, on
     waitForResponse();
     stompClient.publish({
       path: "/reservation/end-checkout-review",
-      command: { requestId: request.requestId, data: { performanceId, reviewToken, groupId } },
+      command: { requestId: request.requestId, data: { performanceId, reviewToken } },
     });
   };
 

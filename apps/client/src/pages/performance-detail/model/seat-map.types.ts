@@ -1,16 +1,12 @@
-export interface MyGroupHeldSeatInfo {
-  groupId: string;
+export interface MyHeldSeatInfo {
   holdId: string;
-  performanceId: number;
   expiresAt: Date;
 }
 
-export interface MyGroupHoldInfo {
-  groupId: string;
+export interface MyHoldInfo {
   holdId: string;
-  performanceId: number;
-  expiresAt: Date;
   venueSeatIds: number[];
+  expiresAt: Date;
 }
 
 export interface PerformanceSeatRequestIds {

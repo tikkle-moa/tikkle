@@ -1,10 +1,10 @@
--- 결제 전환을 위한 Lua 스크립트입니다.
--- KEYS: holdVenueSeatKey 목록 -> holdDetailKey 목록 -> holdExpiryKey 목록 -> holdPerformanceKey -> holdGroupKey -> versionKey -> holdGroupControlKey
+-- REVIEW Hold를 PAYMENT로 원자적으로 전환합니다.
+-- KEYS: holdVenueSeatKey 목록 -> holdDetailKey 목록 -> holdExpiryKey 목록 -> holdPerformanceKey -> holdScopeKey -> versionKey
 -- ARGV[1]: holdVenueSeatKey 수
 -- ARGV[2]: holdDetailKey 수
 -- ARGV[3]: 만료 시각(epoch millis)
--- 이후 ARGV: 좌석별 예상 holdId 목록 -> 예상 원본 JSON 목록 -> 갱신할 JSON 목록 -> 갱신할 holdId 목록 -> reviewToken -> reservationId
--- 반환값: "결과 코드:version" (성공 "0:version", 충돌 또는 유효하지 않은 만료 시각 "1:0")
+-- 이후 ARGV: 좌석별 예상 holdId -> 예상 원본 JSON -> 갱신 JSON -> 갱신 holdId -> reservationId
+-- 반환값: "결과 코드:version" (성공 "0:version", 충돌 "1:0")
 
 local venueSeatKeyCount = tonumber(ARGV[1])
 local holdDetailKeyCount = tonumber(ARGV[2])
@@ -12,93 +12,46 @@ local expiresAt = tonumber(ARGV[3])
 
 local holdDetailKeyStartIndex = venueSeatKeyCount + 1
 local holdExpiryKeyStartIndex = holdDetailKeyStartIndex + holdDetailKeyCount
-local holdPerformanceKey = KEYS[#KEYS - 3]
-local holdGroupKey = KEYS[#KEYS - 2]
-local versionKey = KEYS[#KEYS - 1]
-local holdGroupControlKey = KEYS[#KEYS]
+local holdPerformanceKey = KEYS[#KEYS - 2]
+local holdScopeKey = KEYS[#KEYS - 1]
+local versionKey = KEYS[#KEYS]
 local stateRetentionMillis = 86400000
 
 local expectedValueStartIndex = 4
 local updatedJsonStartIndex = expectedValueStartIndex + venueSeatKeyCount + holdDetailKeyCount
 local updatedHoldIdStartIndex = updatedJsonStartIndex + holdDetailKeyCount
-local reviewToken = ARGV[updatedHoldIdStartIndex + holdDetailKeyCount]
-local reservationId = ARGV[updatedHoldIdStartIndex + holdDetailKeyCount + 1]
 
--- 이미 지난 시각으로 연장하여 점유가 즉시 삭제되는 것을 방지합니다.
 local now = redis.call('TIME')
 local nowMillis = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
-
 if not expiresAt or expiresAt <= nowMillis then
   return '1:0'
 end
 
-local reviewJson = redis.call('GET', holdGroupControlKey)
-if not reviewJson then
-  return '1:0'
-end
-local review = cjson.decode(reviewJson)
-if review.phase ~= 'REVIEW' or review.reviewToken ~= reviewToken then
-  return '1:0'
-end
-
-local activeHoldIds = redis.call('ZRANGEBYSCORE', holdGroupKey, nowMillis + 1, '+inf')
-if #activeHoldIds ~= holdDetailKeyCount or #review.holdIds ~= holdDetailKeyCount or #review.venueSeatIds ~= venueSeatKeyCount then
-  return '1:0'
-end
-table.sort(activeHoldIds)
-table.sort(review.holdIds)
-for i = 1, holdDetailKeyCount do
-  if activeHoldIds[i] ~= review.holdIds[i] then
-    return '1:0'
-  end
-end
-
-local reviewedSeatIds = {}
-for _, seatId in ipairs(review.venueSeatIds) do
-  reviewedSeatIds[tostring(seatId)] = true
-end
-for i = 1, venueSeatKeyCount do
-  local seatId = string.match(KEYS[i], ':(%d+)$')
-  if not reviewedSeatIds[seatId] then
-    return '1:0'
-  end
-  reviewedSeatIds[seatId] = nil
-end
-
--- 조회 이후 좌석 소유권이나 Hold 정보가 변경되었다면 결제 전환을 수행하지 않습니다.
+-- 조회 시점 이후 좌석 소유권이나 REVIEW Hold가 바뀌었다면 전환하지 않습니다.
 for i = 0, venueSeatKeyCount + holdDetailKeyCount - 1 do
-  local currentValue = redis.call('GET', KEYS[i + 1])
-  local expectedValue = ARGV[expectedValueStartIndex + i]
-
-  if currentValue ~= expectedValue then
+  if redis.call('GET', KEYS[i + 1]) ~= ARGV[expectedValueStartIndex + i] then
     return '1:0'
   end
 end
 
--- 상태 키는 만료 알림 이후 정리할 수 있도록 충분히 오래 보존합니다.
 local stateExpiresAt = expiresAt + stateRetentionMillis
 for i = 1, venueSeatKeyCount do
   redis.call('PEXPIREAT', KEYS[i], stateExpiresAt)
 end
 
--- Hold 본문, 만료 트리거, 인덱스의 만료 시각을 함께 갱신합니다.
 for i = 0, holdDetailKeyCount - 1 do
   redis.call('SET', KEYS[holdDetailKeyStartIndex + i], ARGV[updatedJsonStartIndex + i], 'PXAT', stateExpiresAt)
   redis.call('PEXPIREAT', KEYS[holdExpiryKeyStartIndex + i], expiresAt)
   redis.call('ZADD', holdPerformanceKey, expiresAt, ARGV[updatedHoldIdStartIndex + i])
-  redis.call('ZADD', holdGroupKey, expiresAt, ARGV[updatedHoldIdStartIndex + i])
+  redis.call('ZADD', holdScopeKey, expiresAt, ARGV[updatedHoldIdStartIndex + i])
 end
-local performanceTtl = redis.call('PTTL', holdPerformanceKey)
+
 local requestedPerformanceTtl = stateExpiresAt - nowMillis
-if performanceTtl < requestedPerformanceTtl then
+if redis.call('PTTL', holdPerformanceKey) < requestedPerformanceTtl then
   redis.call('PEXPIREAT', holdPerformanceKey, stateExpiresAt)
 end
-local groupTtl = redis.call('PTTL', holdGroupKey)
-if groupTtl < requestedPerformanceTtl then
-  redis.call('PEXPIREAT', holdGroupKey, stateExpiresAt)
+if redis.call('PTTL', holdScopeKey) < requestedPerformanceTtl then
+  redis.call('PEXPIREAT', holdScopeKey, stateExpiresAt)
 end
-local version = redis.call('INCR', versionKey)
 
-redis.call('SET', holdGroupControlKey, cjson.encode({phase = 'PAYMENT', reservationId = reservationId}), 'PXAT', expiresAt)
-
-return '0:' .. version
+return '0:' .. redis.call('INCR', versionKey)

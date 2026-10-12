@@ -2,8 +2,8 @@ import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from
 
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
-import type { MyGroupHeldSeatInfo, SeatOperationStatus } from "./seat-map.types";
-import { areVenueSeatStatesEqual, createVenueSeatStates, filterSelectableSeatIds, getMyGroupHoldSummary } from "./seat-map.utils";
+import type { MyHeldSeatInfo, SeatOperationStatus } from "./seat-map.types";
+import { areVenueSeatStatesEqual, createVenueSeatStates, filterSelectableSeatIds, getMyHoldSummary } from "./seat-map.utils";
 
 interface UsePerformanceSeatAvailabilityProps {
   venueSeats: VenueSeatResponse[];
@@ -24,11 +24,11 @@ export const usePerformanceSeatAvailability = ({
 }: UsePerformanceSeatAvailabilityProps) => {
   const [bookedSeatIds, setBookedSeatIds] = useState<Set<number>>(new Set());
   const [heldSeatExpiresAtBySeatId, setHeldSeatExpiresAtBySeatId] = useState<Map<number, Date>>(new Map());
-  const [myGroupHeldSeatInfoBySeatId, setMyGroupHeldSeatInfoBySeatId] = useState<Map<number, MyGroupHeldSeatInfo>>(new Map());
+  const [myHeldSeatInfoBySeatId, setMyHeldSeatInfoBySeatId] = useState<Map<number, MyHeldSeatInfo>>(new Map());
 
   const nextVenueSeatStates = useMemo(
-    () => createVenueSeatStates(venueSeats, bookedSeatIds, heldSeatExpiresAtBySeatId, myGroupHeldSeatInfoBySeatId),
-    [bookedSeatIds, heldSeatExpiresAtBySeatId, myGroupHeldSeatInfoBySeatId, venueSeats],
+    () => createVenueSeatStates(venueSeats, bookedSeatIds, heldSeatExpiresAtBySeatId, myHeldSeatInfoBySeatId),
+    [bookedSeatIds, heldSeatExpiresAtBySeatId, myHeldSeatInfoBySeatId, venueSeats],
   );
 
   useEffect(() => {
@@ -52,24 +52,24 @@ export const usePerformanceSeatAvailability = ({
   );
 
   const selectedSeatIdsToRelease = useMemo(
-    () => Array.from(selectedSeatIds).filter((seatId) => myGroupHeldSeatInfoBySeatId.has(seatId)),
-    [myGroupHeldSeatInfoBySeatId, selectedSeatIds],
+    () => Array.from(selectedSeatIds).filter((seatId) => myHeldSeatInfoBySeatId.has(seatId)),
+    [myHeldSeatInfoBySeatId, selectedSeatIds],
   );
 
-  const { myGroupHolds, myGroupHeldSeatTotalPrice } = useMemo(
-    () => getMyGroupHoldSummary(myGroupHeldSeatInfoBySeatId, venueSeatById),
-    [myGroupHeldSeatInfoBySeatId, venueSeatById],
+  const { myHolds, myHeldSeatTotalPrice } = useMemo(
+    () => getMyHoldSummary(myHeldSeatInfoBySeatId, venueSeatById),
+    [myHeldSeatInfoBySeatId, venueSeatById],
   );
 
   return {
-    myGroupHolds,
-    myGroupHeldSeatInfoBySeatId,
+    myHolds,
+    myHeldSeatInfoBySeatId,
     selectedSeatIdsToHold,
     selectedSeatIdsToRelease,
-    myGroupHeldSeatTotalPrice,
+    myHeldSeatTotalPrice,
     venueSeatById,
     setBookedSeatIds,
     setHeldSeatExpiresAtBySeatId,
-    setMyGroupHeldSeatInfoBySeatId,
+    setMyHeldSeatInfoBySeatId,
   };
 };

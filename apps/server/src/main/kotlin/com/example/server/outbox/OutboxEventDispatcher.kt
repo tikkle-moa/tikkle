@@ -91,7 +91,7 @@ class OutboxEventDispatcher(
 
         val result = redisVenueSeatHoldService.finalizeVenueSeats(
           holdId = payload.holdId,
-          groupId = payload.groupId,
+          scopeId = payload.scopeId,
           performanceId = payload.performanceId,
           venueSeatIds = payload.seatIds,
           eventId = eventId,
@@ -116,7 +116,7 @@ class OutboxEventDispatcher(
         val payload = objectMapper.readValue(event.payload, ReservationSeatEventPayload::class.java)
         val result = redisVenueSeatHoldService.releaseVenueSeats(
           holdId = payload.holdId,
-          groupId = payload.groupId,
+          scopeId = payload.scopeId,
           performanceId = payload.performanceId,
           venueSeatIds = payload.seatIds,
           eventId = eventId,
@@ -137,7 +137,7 @@ class OutboxEventDispatcher(
       OutboxEventType.PAYMENT_CANCELLED -> {
         val cancellation = objectMapper.readValue(event.payload, PaymentCancelledSeatEventPayload::class.java)
         val result = redisVenueSeatHoldService.releaseCancelledReservationSeats(
-          groupId = cancellation.groupId,
+          scopeId = cancellation.scopeId,
           performanceId = cancellation.performanceId,
           venueSeatIds = cancellation.seatIds,
           cancelledAtEpochMillis = cancellation.cancelledAtEpochMillis,

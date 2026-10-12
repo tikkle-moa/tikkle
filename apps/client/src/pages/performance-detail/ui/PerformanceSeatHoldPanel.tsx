@@ -7,14 +7,13 @@ import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 import PerformanceSeatHoldActions from "./PerformanceSeatHoldActions";
 import PerformanceSeatHoldHeader from "./PerformanceSeatHoldHeader";
 import PerformanceSeatHoldInfo from "./PerformanceSeatHoldInfo";
-import PerformanceSeatMyGroupHolds from "./PerformanceSeatMyGroupHolds";
+import PerformanceSeatMyHolds from "./PerformanceSeatMyHolds";
 
 import type { SeatOperationState } from "../model/seat-map.types";
 import { usePerformanceSeatHoldPanel } from "../model/use-performance-seat-hold-panel";
 
 interface PerformanceSeatHoldPanelProps {
   performanceId: number;
-  sessionId: string;
   venueSeats: VenueSeatResponse[];
   venueSeatStates: Map<number, VenueSeatState>;
   selectedSeatIds: Set<number>;
@@ -29,7 +28,6 @@ interface PerformanceSeatHoldPanelProps {
 
 const PerformanceSeatHoldPanel = ({
   performanceId,
-  sessionId,
   venueSeats,
   venueSeatStates,
   selectedSeatIds,
@@ -44,10 +42,10 @@ const PerformanceSeatHoldPanel = ({
   const {
     isRefreshing,
     refreshError,
-    myGroupHolds,
-    myGroupHeldSeatInfoBySeatId,
+    myHolds,
+    myHeldSeatInfoBySeatId,
     selectedSeatIdsToRelease,
-    myGroupHeldSeatTotalPrice,
+    myHeldSeatTotalPrice,
     venueSeatById,
     handleRefresh,
     handleReleaseSeats,
@@ -59,7 +57,6 @@ const PerformanceSeatHoldPanel = ({
     handleCheckout,
   } = usePerformanceSeatHoldPanel({
     performanceId,
-    sessionId,
     venueSeats,
     venueSeatStates,
     selectedSeatIds,
@@ -86,8 +83,8 @@ const PerformanceSeatHoldPanel = ({
 
       <div className="space-y-3 px-3 py-4 sm:px-5">
         <PerformanceSeatHoldActions
-          myGroupHeldSeatSize={myGroupHeldSeatInfoBySeatId.size}
-          myGroupHeldSeatTotalPrice={myGroupHeldSeatTotalPrice}
+          myHeldSeatSize={myHeldSeatInfoBySeatId.size}
+          myHeldSeatTotalPrice={myHeldSeatTotalPrice}
           selectedSeatIdsToReleaseSize={selectedSeatIdsToRelease.length}
           isConnected={isConnected}
           isCheckoutReviewBeginning={isCheckoutReviewBeginning}
@@ -101,11 +98,11 @@ const PerformanceSeatHoldPanel = ({
           </p>
         )}
 
-        {myGroupHeldSeatInfoBySeatId.size > 0 && (
-          <PerformanceSeatMyGroupHolds
+        {myHeldSeatInfoBySeatId.size > 0 && (
+          <PerformanceSeatMyHolds
             venueSeatById={venueSeatById}
-            myGroupHolds={myGroupHolds}
-            myGroupHeldSeatSize={myGroupHeldSeatInfoBySeatId.size}
+            myHolds={myHolds}
+            myHeldSeatSize={myHeldSeatInfoBySeatId.size}
             selectedSeatIds={selectedSeatIds}
             onSelect={onHoldSeatToggle}
           />

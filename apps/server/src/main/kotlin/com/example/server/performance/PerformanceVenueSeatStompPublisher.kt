@@ -13,6 +13,14 @@ import java.util.UUID
 
 @Component
 class PerformanceVenueSeatStompPublisher(private val messagingTemplate: SimpMessagingTemplate) {
+  /**
+   * Hold phase changed without changing the physical seat ownership.
+   * The client uses the existing HELD_SEATS event as a status refresh trigger.
+   */
+  fun publishSeatStatusChanged(performanceId: Long, version: Long, eventId: UUID = UUID.randomUUID()) {
+    publishHeldSeats(performanceId, emptyList(), version, eventId)
+  }
+
   fun publishHeldSeats(performanceId: Long, heldSeats: List<PerformanceHeldSeatsEvent.HeldSeat>, version: Long, eventId: UUID = UUID.randomUUID()) {
     publish(
       performanceId = performanceId,
