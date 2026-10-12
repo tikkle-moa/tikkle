@@ -114,7 +114,7 @@ const PerformanceSeatHoldPanel = ({
         <PerformanceSeatHoldInfo />
       </div>
 
-      {groupId && <GroupChat performanceId={performanceId} groupId={groupId} />}
+      {groupId && <GroupChat key={`${performanceId}:${groupId}`} performanceId={performanceId} groupId={groupId} />}
     </aside>
   );
 };

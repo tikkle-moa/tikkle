@@ -79,4 +79,18 @@ describe("PerformanceSeatMap", () => {
 
     expect(screen.queryByRole("complementary", { name: "좌석 선택 및 Hold" })).not.toBeInTheDocument();
   });
+
+  it("캐시된 다른 공연으로 이동하면 이전 그룹 상태를 가진 좌석 패널을 새로 생성한다", () => {
+    const availablePerformance = { ...performance, status: "AVAILABLE" as const };
+    const { rerender } = render(<PerformanceSeatMap performance={availablePerformance} venueDetail={venueDetail} />);
+    const previousPanel = screen.getByRole("complementary", { name: "좌석 선택 및 Hold" });
+
+    rerender(<PerformanceSeatMap performance={{ ...availablePerformance, id: 2 }} venueDetail={venueDetail} />);
+
+    const nextPanel = screen.getByRole("complementary", { name: "좌석 선택 및 Hold" });
+    expect(nextPanel).not.toBe(previousPanel);
+    expect(previousPanel).not.toBeInTheDocument();
+    expect(nextPanel).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /그룹 채팅 열기/ })).not.toBeInTheDocument();
+  });
 });

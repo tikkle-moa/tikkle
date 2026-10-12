@@ -32,6 +32,21 @@ export const useGroupChat = ({ groupId, performanceId }: UseGroupChatProps) => {
   const getStompClient = useStompStore((state) => state.getStompClient);
 
   useEffect(() => {
+    const resetChatState = () => {
+      setMessages([]);
+      setContent("");
+      setUnreadCount(0);
+      setIsOpen(false);
+      isOpenRef.current = false;
+      isAtBottomRef.current = true;
+      savedScrollTopRef.current = 0;
+      wasOpenRef.current = false;
+    };
+
+    resetChatState();
+  }, [groupId, performanceId]);
+
+  useEffect(() => {
     if (isConnected) return;
     getStompClient();
   }, [isConnected, getStompClient]);

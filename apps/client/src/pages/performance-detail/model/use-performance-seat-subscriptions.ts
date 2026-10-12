@@ -37,6 +37,7 @@ export const usePerformanceSeatSubscriptions = ({
   const latestSeatVersionRef = useRef<number | null>(null);
   const requiredSeatVersionRef = useRef<number | null>(null);
   const hasSeatStatusRef = useRef(false);
+  const previousPerformanceIdRef = useRef(performanceId);
 
   useEffect(() => {
     latestSeatVersionRef.current = null;
@@ -51,6 +52,18 @@ export const usePerformanceSeatSubscriptions = ({
     if (isConnected) return;
     getStompClient();
   }, [isConnected, getStompClient]);
+
+  useEffect(() => {
+    if (previousPerformanceIdRef.current === performanceId) return;
+    previousPerformanceIdRef.current = performanceId;
+
+    setSelectedSeatIds(new Set());
+    setServerTimeOffset(0);
+    setGroupId(null);
+    setBookedSeatIds(new Set());
+    setHeldSeatExpiresAtBySeatId(new Map());
+    setMyHeldSeatInfoBySeatId(new Map());
+  }, [performanceId, setBookedSeatIds, setGroupId, setHeldSeatExpiresAtBySeatId, setMyHeldSeatInfoBySeatId, setSelectedSeatIds, setServerTimeOffset]);
 
   useEffect(() => {
     if (!isConnected || !stompClient) return;

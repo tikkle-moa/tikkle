@@ -59,6 +59,37 @@ describe("useGroupChat", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
+  it.each([
+    { groupId: 2, performanceId: 10 },
+    { groupId: 1, performanceId: 20 },
+  ])("방이 바뀌면 메시지, 초안, 알림, 열림 및 스크롤 위치를 초기화한다: %j", (nextRoom) => {
+    const { result, rerender } = renderHook((props) => useGroupChat(props), {
+      initialProps: { groupId: 1, performanceId: 10 },
+    });
+    const list = createList();
+    Object.assign(result.current.messageListRef, { current: list });
+    act(() => result.current.handleToggleChat());
+    list.scrollTop = 100;
+    act(() => result.current.handleMessageScroll());
+    act(() => result.current.setContent("이전 방 초안"));
+    act(() => receive({ data: message }));
+    expect(result.current.unreadCount).toBe(1);
+    rerender(nextRoom);
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.content).toBe("");
+    expect(result.current.unreadCount).toBe(0);
+    expect(result.current.isOpen).toBe(false);
+    act(() => result.current.handleToggleChat());
+    expect(list.scrollTop).toBe(0);
+    expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(mocks.subscribeEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pathParams: { groupId: nextRoom.groupId },
+        headerParams: { performanceId: nextRoom.performanceId },
+      }),
+    );
+  });
+
   it("입력창은 한 줄에서 늘어나고 세 줄을 넘으면 스크롤되며 지우면 줄어든다", () => {
     const { result } = renderHook(() => useGroupChat({ groupId: 1, performanceId: 10 }));
     const textarea = document.createElement("textarea");
