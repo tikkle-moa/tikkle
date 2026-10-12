@@ -3,6 +3,10 @@ import type StompClient from "@shared/realtime/stomp-client";
 import { STOMP_RETRY_DELAY_MS } from "@shared/realtime/stomp.constants";
 import { useStompStore } from "@shared/realtime/stomp.store";
 
+const mockSubscribeError = vi.hoisted(() => vi.fn());
+const mockToastError = vi.hoisted(() => vi.fn());
+vi.mock("react-hot-toast", () => ({ default: { error: mockToastError } }));
+
 type StompClientCallbacks = ConstructorParameters<typeof StompClient>[0];
 
 const { mockActivate, mockCreateStompClient, mockDeactivate, mockRefreshAccessToken, mockSubscribeAccessTokenRefresh, getRefreshListener } =
@@ -35,6 +39,7 @@ vi.mock("@shared/realtime/stomp-client", () => ({
 }));
 
 const mockClient = {
+  subscribeError: mockSubscribeError,
   activate: mockActivate,
   deactivate: mockDeactivate,
 } as unknown as StompClient;
@@ -88,11 +93,13 @@ describe("useStompStore", () => {
 
   it("refresh 성공 알림을 받으면 기존 Client를 해제하고 새 Client로 교체한다", async () => {
     const firstClient = {
+      subscribeError: mockSubscribeError,
       activate: mockActivate,
       deactivate: mockDeactivate,
     } as unknown as StompClient;
 
     const secondClient = {
+      subscribeError: mockSubscribeError,
       activate: mockActivate,
       deactivate: mockDeactivate,
     } as unknown as StompClient;
@@ -118,6 +125,11 @@ describe("useStompStore", () => {
     callbacks.onConnect();
 
     expect(useStompStore.getState().connectionStatus).toBe("connected");
+    expect(mockSubscribeError).toHaveBeenCalledWith({ path: "/stomp-errors", errorCallback: expect.any(Function) });
+    const { errorCallback } = mockSubscribeError.mock.calls[0][0];
+    errorCallback({ requestId: "request", success: false, error: { code: "ACCESS_DENIED", message: "구독 권한이 없습니다." } });
+    expect(console.error).toHaveBeenCalledWith("STOMP 요청 오류:", "구독 권한이 없습니다.");
+    expect(mockToastError).toHaveBeenCalledWith("STOMP 요청 오류: 구독 권한이 없습니다.");
   });
 
   it("예상하지 못한 종료는 직접 재연결하고 연결 실패 시에만 토큰을 갱신한다", async () => {
@@ -125,16 +137,19 @@ describe("useStompStore", () => {
     let secondCallbacks!: StompClientCallbacks;
 
     const firstClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
 
     const secondClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
 
     const thirdClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
@@ -332,16 +347,19 @@ describe("useStompStore", () => {
     let thirdCallbacks!: StompClientCallbacks;
 
     const secondClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
 
     const thirdClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
 
     const fourthClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
@@ -391,16 +409,19 @@ describe("useStompStore", () => {
     let resolveSecondRefresh!: (result: RefreshResult) => void;
 
     const firstClient = {
+      subscribeError: mockSubscribeError,
       activate: mockActivate,
       deactivate: mockDeactivate,
     } as unknown as StompClient;
 
     const secondClient = {
+      subscribeError: mockSubscribeError,
       activate: mockActivate,
       deactivate: mockDeactivate,
     } as unknown as StompClient;
 
     const thirdClient = {
+      subscribeError: mockSubscribeError,
       activate: mockActivate,
       deactivate: mockDeactivate,
     } as unknown as StompClient;
@@ -457,11 +478,13 @@ describe("useStompStore", () => {
 
   it("교체된 이전 Client의 connect 콜백은 연결 상태를 변경하지 않는다", async () => {
     const firstClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
 
     const secondClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
@@ -477,11 +500,13 @@ describe("useStompStore", () => {
     const secondCallbacks = mockCreateStompClient.mock.calls[1][0] as StompClientCallbacks;
 
     firstCallbacks.onConnect();
+    expect(mockSubscribeError).not.toHaveBeenCalled();
 
     expect(useStompStore.getState().stompClient).toBe(secondClient);
     expect(useStompStore.getState().connectionStatus).toBe("connecting");
 
     secondCallbacks.onConnect();
+    expect(mockSubscribeError).toHaveBeenCalledOnce();
 
     expect(useStompStore.getState().connectionStatus).toBe("connected");
   });
@@ -682,6 +707,7 @@ describe("useStompStore", () => {
 
   it("새 Client 생성 실패 시 backoff 재연결을 예약한다", async () => {
     const recoveredClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;
@@ -707,6 +733,7 @@ describe("useStompStore", () => {
 
   it("예약된 재연결 중 Client 생성 실패 시 다음 backoff로 재시도한다", async () => {
     const recoveredClient = {
+      subscribeError: mockSubscribeError,
       activate: vi.fn(),
       deactivate: vi.fn().mockResolvedValue(undefined),
     } as unknown as StompClient;

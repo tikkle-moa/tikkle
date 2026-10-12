@@ -92,42 +92,73 @@ describe("StompClient", () => {
     });
   });
 
-  it("subscribe와 event subscribe는 성공 및 실패 frame을 전달한다", () => {
-    const subscribe = vi.fn();
+  it("응답 구독은 성공과 오류를 각각의 콜백으로 전달한다", () => {
+    const subscribe = vi.fn().mockReturnValue({ id: "response", unsubscribe: vi.fn() });
     mockClientConstructor.mockImplementationOnce(function (this: Record<string, unknown>) {
       Object.assign(this, { subscribe });
     });
     const client = new StompClient({ onConnect: vi.fn(), onWebSocketClose: vi.fn() });
     const callback = vi.fn();
     const errorCallback = vi.fn();
-    const subscription = { id: "subscription-id", unsubscribe: vi.fn() };
-    subscribe.mockImplementation((_destination, handler) => {
-      handler({ body: JSON.stringify({ requestId: "ok", success: true }) });
-      handler({ body: JSON.stringify({ requestId: "error", error: { code: "ERROR", message: "failed" } }) });
-      return subscription;
+    client.subscribe({ path: "/performances/{performanceId}/get-seat-status", pathParams: { performanceId: 10 }, callback, errorCallback });
+    expect(subscribe).toHaveBeenCalledWith("/user/queue/performances/10/get-seat-status", expect.any(Function), undefined);
+    const handler = subscribe.mock.calls[0][1];
+    const success = { requestId: "ok", success: true, data: {} };
+    const failure = { requestId: "error", success: false, error: { code: "ERROR", message: "failed" } };
+    handler({ body: JSON.stringify(success) });
+    expect(callback).toHaveBeenCalledExactlyOnceWith(success);
+    expect(errorCallback).not.toHaveBeenCalled();
+    handler({ body: JSON.stringify(failure) });
+    expect(errorCallback).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("이벤트 구독은 공연 헤더를 문자열로 보내고 이벤트만 전달한다", () => {
+    const subscribe = vi.fn().mockReturnValue({ id: "event", unsubscribe: vi.fn() });
+    mockClientConstructor.mockImplementationOnce(function (this: Record<string, unknown>) {
+      Object.assign(this, { subscribe });
     });
+    const client = new StompClient({ onConnect: vi.fn(), onWebSocketClose: vi.fn() });
+    const callback = vi.fn();
+    client.subscribeEvent({ path: "/groups/{groupId}/chat", pathParams: { groupId: 1 }, headerParams: { performanceId: 10 }, callback });
+    expect(subscribe).toHaveBeenCalledWith("/topic/groups/1/chat", expect.any(Function), { performanceId: "10" });
+    const handler = subscribe.mock.calls[0][1];
+    const event = { data: { content: "안녕하세요" } };
+    handler({ body: JSON.stringify(event) });
+    handler({ body: JSON.stringify({ error: { message: "failed" } }) });
+    expect(callback).toHaveBeenCalledExactlyOnceWith(event);
+  });
 
-    expect(client.subscribe({ path: "/orders", callback, errorCallback } as never)).toEqual({
-      id: "subscription-id",
-      unsubscribe: expect.any(Function),
+  it.each([
+    { path: "/stomp-errors" as const, destination: "/user/queue/stomp-errors" },
+    { path: "/groups/chat" as const, destination: "/user/queue/groups/chat" },
+    {
+      path: "/performances/{performanceId}/hold-seats" as const,
+      pathParams: { performanceId: 10 },
+      destination: "/user/queue/performances/10/hold-seats",
+    },
+  ])("오류 구독은 $destination 오류를 전달하고 구독을 해제한다", ({ destination, ...props }) => {
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn().mockReturnValue({ id: "error-subscription", unsubscribe });
+    mockClientConstructor.mockImplementationOnce(function (this: Record<string, unknown>) {
+      Object.assign(this, { connected: true, subscribe });
     });
-    expect(
-      client.subscribeEvent({ path: "/performances/{performanceId}", pathParams: { performanceId: 10 }, callback, errorCallback } as never),
-    ).toEqual({
-      id: "subscription-id",
-      unsubscribe: expect.any(Function),
-    });
-
-    expect(subscribe).toHaveBeenCalledWith("/user/queue/orders", expect.any(Function), undefined);
-    expect(subscribe).toHaveBeenCalledWith("/topic/performances/10", expect.any(Function), undefined);
-    expect(callback).toHaveBeenCalledWith({ requestId: "ok", success: true });
-    expect(errorCallback).toHaveBeenCalledWith({ requestId: "error", error: { code: "ERROR", message: "failed" } });
-
-    client.subscribe({ path: "/orders/{orderId}", pathParams: { orderId: 10 }, callback } as never);
-    client.subscribeEvent({ path: "/performances", callback } as never);
-
-    expect(subscribe).toHaveBeenCalledWith("/user/queue/orders/10", expect.any(Function), undefined);
-    expect(subscribe).toHaveBeenCalledWith("/topic/performances", expect.any(Function), undefined);
+    const client = new StompClient({ onConnect: vi.fn(), onWebSocketClose: vi.fn() });
+    const errorCallback = vi.fn();
+    const subscription =
+      props.path === "/performances/{performanceId}/hold-seats"
+        ? client.subscribeError({ path: props.path, pathParams: { performanceId: 10 }, errorCallback })
+        : client.subscribeError({ path: props.path, errorCallback });
+    expect(subscribe).toHaveBeenCalledWith(destination, expect.any(Function));
+    const handler = subscribe.mock.calls[0][1];
+    handler({ body: JSON.stringify({ success: true }) });
+    expect(errorCallback).not.toHaveBeenCalled();
+    const failure = { requestId: "request", success: false, error: { code: "ACCESS_DENIED", message: "권한이 없습니다." } };
+    handler({ body: JSON.stringify(failure) });
+    expect(errorCallback).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(subscription.id).toBe("error-subscription");
+    subscription.unsubscribe();
+    expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
   it("필수 path parameter가 없으면 오류를 던진다", () => {

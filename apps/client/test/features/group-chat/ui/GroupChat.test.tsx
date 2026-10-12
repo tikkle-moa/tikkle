@@ -32,6 +32,11 @@ describe("GroupChat", () => {
   });
   afterEach(cleanup);
 
+  it("입력창은 최대 1,000자로 제한한다", () => {
+    render(<GroupChat groupId={1} performanceId={10} />);
+    expect(screen.getByRole("textbox")).toHaveAttribute("maxlength", "1000");
+  });
+
   it("수신한 메시지를 내 메시지와 상대 메시지로 구분하고 스크롤을 전달한다", () => {
     const base = { groupId: 1, senderProfileImageUrl: null, sentAt: "2026-10-12T08:00:00Z" };
     chat.messages = [

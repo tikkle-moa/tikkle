@@ -5,6 +5,9 @@ import { useGroupChat } from "@features/group-chat/model/use-group-chat";
 
 const mocks = vi.hoisted(() => ({
   subscribeEvent: vi.fn(),
+  subscribeError: vi.fn(),
+  unsubscribeError: vi.fn(),
+  toastError: vi.fn(),
   publish: vi.fn(),
   getStompClient: vi.fn(),
   unsubscribe: vi.fn(),
@@ -20,6 +23,8 @@ vi.mock("@shared/realtime/stomp.store", () => ({
       getStompClient: mocks.getStompClient,
     }),
 }));
+vi.mock("react-hot-toast", () => ({ default: { error: mocks.toastError } }));
+
 vi.mock("@entities/session", () => ({
   useSessionStore: (selector: (state: unknown) => unknown) => selector({ user: { id: 1 } }),
 }));
@@ -52,12 +57,35 @@ describe("useGroupChat", () => {
     vi.clearAllMocks();
     mocks.connected = true;
     mocks.hasClient = true;
+    mocks.subscribeError.mockReturnValue({ unsubscribe: mocks.unsubscribeError });
     mocks.subscribeEvent.mockImplementation(({ callback }) => {
       receive = callback;
       return { unsubscribe: mocks.unsubscribe };
     });
   });
   afterEach(() => vi.unstubAllGlobals());
+
+  it("1,001자는 전송하지 않고 초안을 보존한다", () => {
+    const { result } = renderHook(() => useGroupChat({ groupId: 1, performanceId: 10 }));
+    const draft = "가".repeat(1001);
+    act(() => result.current.setContent(draft));
+    act(() => result.current.handleSendMessage());
+    expect(mocks.publish).not.toHaveBeenCalled();
+    expect(result.current.content).toBe(draft);
+  });
+
+  it("정확히 1,000자인 메시지는 전송하고 입력을 비운다", () => {
+    const { result } = renderHook(() => useGroupChat({ groupId: 1, performanceId: 10 }));
+    const content = "가".repeat(1000);
+    act(() => result.current.setContent(content));
+    act(() => result.current.handleSendMessage());
+    expect(mocks.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: { requestId: expect.any(String), data: { content, performanceId: 10 } },
+      }),
+    );
+    expect(result.current.content).toBe("");
+  });
 
   it.each([
     { groupId: 2, performanceId: 10 },
@@ -82,6 +110,7 @@ describe("useGroupChat", () => {
     act(() => result.current.handleToggleChat());
     expect(list.scrollTop).toBe(0);
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(mocks.unsubscribeError).toHaveBeenCalledTimes(1);
     expect(mocks.subscribeEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         pathParams: { groupId: nextRoom.groupId },
@@ -129,6 +158,7 @@ describe("useGroupChat", () => {
     act(() => result.current.setContent("보낼 메시지"));
     act(() => result.current.handleSendMessage());
     expect(mocks.subscribeEvent).not.toHaveBeenCalled();
+    expect(mocks.subscribeError).not.toHaveBeenCalled();
     expect(mocks.publish).not.toHaveBeenCalled();
     expect(result.current.content).toBe("보낼 메시지");
   });
@@ -146,8 +176,20 @@ describe("useGroupChat", () => {
     );
     rerender({ groupId: 2, performanceId: 10 });
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(mocks.unsubscribeError).toHaveBeenCalledTimes(1);
     unmount();
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(2);
+    expect(mocks.unsubscribeError).toHaveBeenCalledTimes(2);
+  });
+
+  it("개인 채팅 오류 큐를 구독하고 전송 오류를 알린다", () => {
+    const { result } = renderHook(() => useGroupChat({ groupId: 1, performanceId: 10 }));
+    expect(mocks.subscribeError).toHaveBeenCalledWith({ path: "/groups/chat", errorCallback: expect.any(Function) });
+    const { errorCallback } = mocks.subscribeError.mock.calls[0][0];
+    act(() => errorCallback({ requestId: "request", success: false, error: { code: "ACCESS_DENIED", message: "채팅 전송 권한이 없습니다." } }));
+    expect(mocks.toastError).toHaveBeenCalledWith("채팅 전송 권한이 없습니다.");
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.unreadCount).toBe(0);
   });
 
   it("닫힌 상태에서는 상대 메시지만 읽지 않은 개수에 포함한다", () => {
@@ -263,6 +305,7 @@ describe("useGroupChat", () => {
     act(() => result.current.handleSendMessage());
     expect(mocks.getStompClient).toHaveBeenCalled();
     expect(mocks.subscribeEvent).not.toHaveBeenCalled();
+    expect(mocks.subscribeError).not.toHaveBeenCalled();
     expect(mocks.publish).not.toHaveBeenCalled();
     expect(result.current.content).toBe("메시지");
   });
