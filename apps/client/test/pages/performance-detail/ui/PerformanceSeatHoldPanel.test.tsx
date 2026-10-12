@@ -12,6 +12,11 @@ const { mockUsePerformanceSeatHoldPanel } = vi.hoisted(() => ({
 vi.mock("@pages/performance-detail/model/use-performance-seat-hold-panel", () => ({
   usePerformanceSeatHoldPanel: mockUsePerformanceSeatHoldPanel,
 }));
+vi.mock("@features/group-chat", () => ({
+  GroupChat: ({ performanceId, groupId }: { performanceId: number; groupId: number }) => (
+    <div data-testid="group-chat" data-performance-id={performanceId} data-group-id={groupId} />
+  ),
+}));
 const seat = { id: 1, seatLabel: "A구역 1번", price: 15000 } as never;
 const connectionStyle = {
   label: "실시간 연결됨",
@@ -21,6 +26,7 @@ const connectionStyle = {
 };
 
 const createPanelState = () => ({
+  groupId: null as number | null,
   isRefreshing: false,
   refreshError: null,
   myHolds: [],
@@ -60,6 +66,18 @@ const renderPanel = ({ onCheckout = vi.fn(), onHoldSeatToggle = vi.fn(), selecte
 describe("PerformanceSeatHoldPanel", () => {
   beforeEach(() => {
     mockUsePerformanceSeatHoldPanel.mockReturnValue(createPanelState());
+  });
+
+  it("그룹이 있으면 공연과 그룹 ID를 전달해 채팅을 표시한다", () => {
+    mockUsePerformanceSeatHoldPanel.mockReturnValue({ ...createPanelState(), groupId: 7 });
+    renderPanel();
+    expect(screen.getByTestId("group-chat")).toHaveAttribute("data-performance-id", "1");
+    expect(screen.getByTestId("group-chat")).toHaveAttribute("data-group-id", "7");
+  });
+
+  it("그룹이 없으면 채팅을 표시하지 않는다", () => {
+    renderPanel();
+    expect(screen.queryByTestId("group-chat")).not.toBeInTheDocument();
   });
 
   it("연결 상태와 점유 안내를 표시한다", () => {

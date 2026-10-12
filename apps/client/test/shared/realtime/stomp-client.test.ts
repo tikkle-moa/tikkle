@@ -82,7 +82,7 @@ describe("StompClient", () => {
       path: "/performances/{performanceId}/seats",
       pathParams: { performanceId: 10 },
       command: { requestId: "request", data: { venueSeatIds: [1] } },
-      headers: { receipt: "receipt-1" },
+      headerParams: { receipt: "receipt-1" },
     } as never);
 
     expect(publish).toHaveBeenCalledWith({

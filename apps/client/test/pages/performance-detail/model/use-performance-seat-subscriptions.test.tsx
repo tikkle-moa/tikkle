@@ -73,6 +73,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatSubscriptions({
         performanceId: 10,
+        setGroupId: vi.fn(),
         ...requestIdRefs(),
         handleRefreshFinish: vi.fn(),
         setSelectedSeatIds: vi.fn(),
@@ -93,6 +94,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     const { client, subscriptions, unsubscribe, getEventCallback } = createClient();
     act(() => useStompStore.setState({ stompClient: client as never, connectionStatus: "connected" }));
     const handleRefreshFinish = vi.fn();
+    const setGroupId = vi.fn();
     const requestRefs = requestIdRefs();
     const { result, unmount } = renderHook(() => {
       const [selectedSeatIds, setSelectedSeatIds] = useState(new Set([1, 2]));
@@ -103,6 +105,7 @@ describe("usePerformanceSeatSubscriptions", () => {
       const [myHeldSeatInfoBySeatId, setMyHeldSeatInfoBySeatId] = useState(new Map<number, MyHeldSeatInfo>());
       const subscription = usePerformanceSeatSubscriptions({
         performanceId: 10,
+        setGroupId,
         ...requestRefs,
         handleRefreshFinish,
         setSelectedSeatIds,
@@ -256,6 +259,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     renderHook(() =>
       usePerformanceSeatSubscriptions({
         performanceId: 10,
+        setGroupId: vi.fn(),
         ...requestIdRefs(),
         handleRefreshFinish: vi.fn(),
         setSelectedSeatIds: vi.fn(),
@@ -277,6 +281,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     const { client, subscriptions } = createClient();
     act(() => useStompStore.setState({ stompClient: client as never, connectionStatus: "connected" }));
     const requestRefs = requestIdRefs();
+    const setGroupId = vi.fn();
     const { result } = renderHook(() => {
       const [selectedSeatIds, setSelectedSeatIds] = useState(new Set([1, 2]));
       const [seatOperationState, setSeatOperationState] = useState<SeatOperationState>({ status: "idle" });
@@ -290,6 +295,7 @@ describe("usePerformanceSeatSubscriptions", () => {
       const [myHeldSeatInfoBySeatId, setMyHeldSeatInfoBySeatId] = useState(new Map<number, MyHeldSeatInfo>());
       usePerformanceSeatSubscriptions({
         performanceId: 10,
+        setGroupId,
         ...requestRefs,
         handleRefreshFinish: vi.fn(),
         setSelectedSeatIds,
