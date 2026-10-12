@@ -187,7 +187,7 @@ describe("useGroupChat", () => {
     expect(mocks.subscribeError).toHaveBeenCalledWith({ path: "/groups/chat", errorCallback: expect.any(Function) });
     const { errorCallback } = mocks.subscribeError.mock.calls[0][0];
     act(() => errorCallback({ requestId: "request", success: false, error: { code: "ACCESS_DENIED", message: "채팅 전송 권한이 없습니다." } }));
-    expect(mocks.toastError).toHaveBeenCalledWith("채팅 전송 권한이 없습니다.");
+    expect(mocks.toastError).toHaveBeenCalledWith("메세지 전송 실패\n채팅 전송 권한이 없습니다.");
     expect(result.current.messages).toEqual([]);
     expect(result.current.unreadCount).toBe(0);
   });
