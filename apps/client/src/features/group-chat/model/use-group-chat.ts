@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 
 import type { GroupChatEventData } from "@tikkle/api-types";
 
@@ -6,7 +7,7 @@ import { useStompStore } from "@shared/realtime/stomp.store";
 
 import { useSessionStore } from "@entities/session";
 
-import { MAX_CHAT_TEXTAREA_ROWS } from "./group-chat.constants";
+import { MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_TEXTAREA_ROWS } from "./group-chat.constants";
 import { countMessagesBelow } from "./group-chat.utils";
 
 interface UseGroupChatProps {
@@ -68,8 +69,16 @@ export const useGroupChat = ({ groupId, performanceId }: UseGroupChatProps) => {
       },
     });
 
+    const errorSubscription = stompClient.subscribeError({
+      path: "/groups/chat",
+      errorCallback: (errorData) => {
+        toast.error("메세지 전송 실패\n" + errorData.error.message);
+      },
+    });
+
     return () => {
       chatSubscription.unsubscribe();
+      errorSubscription.unsubscribe();
     };
   }, [groupId, isConnected, performanceId, stompClient, userId]);
 
@@ -124,7 +133,7 @@ export const useGroupChat = ({ groupId, performanceId }: UseGroupChatProps) => {
 
   const handleSendMessage = () => {
     const trimmedContent = content.trim();
-    if (!stompClient || !isConnected || !trimmedContent) return;
+    if (!stompClient || !isConnected || !trimmedContent || trimmedContent.length > MAX_CHAT_MESSAGE_LENGTH) return;
 
     stompClient.publish({
       path: "/groups/chat",

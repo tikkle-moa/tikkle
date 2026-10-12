@@ -2,6 +2,8 @@ import { ArrowDown, MessageCircle, Send, X } from "lucide-react";
 
 import GroupChatMessage from "./GroupChatMessage";
 
+import { MAX_CHAT_MESSAGE_LENGTH } from "../model/group-chat.constants";
+import { getMessageLengthClass } from "../model/group-chat.utils";
 import { useGroupChat } from "../model/use-group-chat";
 
 interface GroupChatProps {
@@ -82,6 +84,7 @@ const GroupChat = ({ performanceId, groupId }: GroupChatProps) => {
                 ref={textareaRef}
                 aria-label="메시지 입력"
                 rows={1}
+                maxLength={MAX_CHAT_MESSAGE_LENGTH}
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 onKeyDown={(event) => {
@@ -89,7 +92,7 @@ const GroupChat = ({ performanceId, groupId }: GroupChatProps) => {
                   event.preventDefault();
                   handleSendMessage();
                 }}
-                placeholder="메시지 입력 (Shift+Enter 줄바꿈)"
+                placeholder="메시지 입력"
                 className="min-w-0 flex-1 resize-none scrollbar-thin rounded-xl border-0 bg-transparent px-2 py-2 text-sm leading-5 text-gray-800 placeholder:text-gray-400 focus:outline-none"
               />
               <button
@@ -101,6 +104,29 @@ const GroupChat = ({ performanceId, groupId }: GroupChatProps) => {
               >
                 <Send aria-hidden="true" size={18} />
               </button>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[10px] leading-4">
+              <span className="hidden items-center gap-2 text-gray-400 pointer-fine:inline-flex">
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="rounded border border-gray-200 bg-gray-50 px-1 font-sans text-[9px] text-gray-500">Shift</kbd>
+                  <span>+</span>
+                  <kbd className="rounded border border-gray-200 bg-gray-50 px-1 font-sans text-[9px] text-gray-500">Enter</kbd>
+                  <span>줄바꿈</span>
+                </span>
+                <span aria-hidden="true" className="h-2.5 w-px bg-gray-200" />
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="rounded border border-gray-200 bg-gray-50 px-1 font-sans text-[9px] text-gray-500">Enter</kbd>
+                  <span>전송</span>
+                </span>
+              </span>
+              <span
+                aria-label={`입력 ${content.length}자, 최대 ${MAX_CHAT_MESSAGE_LENGTH}자`}
+                className={`ml-auto ${getMessageLengthClass(content)}`}
+              >
+                <span className="font-semibold">{content.length.toLocaleString()}</span>
+                <span className="opacity-50">/</span>
+                <span>{MAX_CHAT_MESSAGE_LENGTH.toLocaleString()}</span>
+              </span>
             </div>
           </div>
         </section>
