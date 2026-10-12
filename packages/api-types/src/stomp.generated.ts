@@ -32,6 +32,7 @@ export interface PerformanceSeatStatusMessage {
 
 export interface PerformanceSeatStatusMessageData {
   bookedSeatIds: number[];
+  groupId: number | null;
   myHolds: VenueSeatHoldSummary[];
   otherHoldSeats: HeldSeat[];
   serverTime: string;
@@ -265,6 +266,7 @@ export interface GroupChatEvent {
 export interface GroupChatEventData {
   content: string;
   groupId: number;
+  senderId: number;
   senderNickname: string;
   senderProfileImageUrl: string | null;
   sentAt: string;

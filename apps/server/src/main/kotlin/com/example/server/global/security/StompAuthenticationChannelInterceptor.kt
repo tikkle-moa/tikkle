@@ -2,21 +2,34 @@ package com.example.server.global.security
 
 import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.refreshTokenKey
+import com.example.server.global.stomp.StompError
+import com.example.server.global.stomp.StompFailureMessage
 import com.example.server.group.GroupService
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Component
+import java.security.Principal
 import java.time.Instant
+import java.util.UUID
 
 @Component
-class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: StringRedisTemplate, private val groupService: GroupService) :
-  ChannelInterceptor {
+class StompAuthenticationChannelInterceptor(
+  private val stringRedisTemplate: StringRedisTemplate,
+  private val groupService: GroupService,
+  private val messagingTemplateProvider: ObjectProvider<SimpMessagingTemplate>,
+) : ChannelInterceptor {
+  private val log = LoggerFactory.getLogger(StompAuthenticationChannelInterceptor::class.java)
+
   override fun preSend(message: Message<*>, channel: MessageChannel): Message<*>? {
     val accessor = StompHeaderAccessor.wrap(message)
 
@@ -41,7 +54,12 @@ class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: Str
       throw AccessDeniedException("유효하지 않은 인증 세션입니다.")
     }
 
-    validateTopicSubscription(accessTokenPayload, accessor)
+    try {
+      validateTopicSubscription(accessTokenPayload, accessor)
+    } catch (exception: AccessDeniedException) {
+      sendSubscriptionFailure(authentication, accessor, exception)
+      return null
+    }
 
     return message
   }
@@ -74,6 +92,35 @@ class StompAuthenticationChannelInterceptor(private val stringRedisTemplate: Str
     if (memberGroupId != groupId) {
       throw AccessDeniedException("그룹 채팅 구독 권한이 없습니다.")
     }
+  }
+
+  private fun sendSubscriptionFailure(principal: Principal, accessor: StompHeaderAccessor, exception: AccessDeniedException) {
+    val sessionId = accessor.sessionId ?: return
+
+    val headers = SimpMessageHeaderAccessor.create().apply {
+      this.sessionId = sessionId
+      setLeaveMutable(true)
+    }
+
+    log.warn(
+      "Subscription failure: sessionId={}, user={}, headers={}",
+      sessionId,
+      principal.name,
+      accessor.toNativeHeaderMap(),
+      exception,
+    )
+    messagingTemplateProvider.getObject().convertAndSendToUser(
+      principal.name,
+      "/queue/stomp-errors",
+      StompFailureMessage(
+        requestId = UUID.randomUUID(),
+        error = StompError(
+          code = "ACCESS_DENIED",
+          message = exception.message ?: "구독 권한이 없습니다.",
+        ),
+      ),
+      headers.messageHeaders,
+    )
   }
 
   companion object {

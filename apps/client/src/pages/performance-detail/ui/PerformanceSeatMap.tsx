@@ -49,6 +49,7 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
 
       {isAvailable && (
         <PerformanceSeatHoldPanel
+          key={performance.id}
           performanceId={performance.id}
           venueSeats={venueDetail.venueSeats}
           venueSeatStates={venueSeatStates}

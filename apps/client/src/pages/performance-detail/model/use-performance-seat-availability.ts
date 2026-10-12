@@ -22,6 +22,7 @@ export const usePerformanceSeatAvailability = ({
   setVenueSeatStates,
   setSelectedSeatIds,
 }: UsePerformanceSeatAvailabilityProps) => {
+  const [groupId, setGroupId] = useState<number | null>(null);
   const [bookedSeatIds, setBookedSeatIds] = useState<Set<number>>(new Set());
   const [heldSeatExpiresAtBySeatId, setHeldSeatExpiresAtBySeatId] = useState<Map<number, Date>>(new Map());
   const [myHeldSeatInfoBySeatId, setMyHeldSeatInfoBySeatId] = useState<Map<number, MyHeldSeatInfo>>(new Map());
@@ -62,12 +63,14 @@ export const usePerformanceSeatAvailability = ({
   );
 
   return {
+    groupId,
     myHolds,
     myHeldSeatInfoBySeatId,
     selectedSeatIdsToHold,
     selectedSeatIdsToRelease,
     myHeldSeatTotalPrice,
     venueSeatById,
+    setGroupId,
     setBookedSeatIds,
     setHeldSeatExpiresAtBySeatId,
     setMyHeldSeatInfoBySeatId,
