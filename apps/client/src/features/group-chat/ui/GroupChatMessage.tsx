@@ -12,7 +12,7 @@ const GroupChatMessage = ({ messageData, isMine }: GroupChatMessageProps) => {
   const { senderNickname, senderProfileImageUrl, sentAt, content } = messageData;
 
   return (
-    <div className={`flex items-start gap-2 ${isMine ? "justify-end" : "justify-start"}`}>
+    <div data-other-message={isMine ? undefined : ""} className={`flex items-start gap-2 ${isMine ? "justify-end" : "justify-start"}`}>
       {!isMine && <ProfileImage src={senderProfileImageUrl} alt={senderNickname} className="size-8" />}
       <div className={`flex min-w-0 flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}>
         <p className="max-w-full truncate px-1 text-xs font-semibold text-gray-500">{isMine ? "나" : senderNickname}</p>

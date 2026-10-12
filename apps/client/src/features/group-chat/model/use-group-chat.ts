@@ -7,6 +7,7 @@ import { useStompStore } from "@shared/realtime/stomp.store";
 import { useSessionStore } from "@entities/session";
 
 import { MAX_CHAT_TEXTAREA_ROWS } from "./group-chat.constants";
+import { countMessagesBelow } from "./group-chat.utils";
 
 interface UseGroupChatProps {
   groupId: number;
@@ -43,8 +44,8 @@ export const useGroupChat = ({ groupId, performanceId }: UseGroupChatProps) => {
       pathParams: { groupId },
       headerParams: { performanceId },
       callback: (event) => {
-        if (event.data.senderId === userId && isOpenRef.current) {
-          isAtBottomRef.current = true;
+        if (event.data.senderId === userId) {
+          if (isOpenRef.current) isAtBottomRef.current = true;
         } else if (!isOpenRef.current || !isAtBottomRef.current) {
           setUnreadCount((prev) => prev + 1);
         }
@@ -67,7 +68,8 @@ export const useGroupChat = ({ groupId, performanceId }: UseGroupChatProps) => {
       }
       savedScrollTopRef.current = list.scrollTop;
       isAtBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight <= 24;
-      if (isAtBottomRef.current) setUnreadCount(0);
+      const remainingCount = countMessagesBelow(list);
+      setUnreadCount((count) => Math.min(count, remainingCount));
     }
     wasOpenRef.current = isOpen;
   }, [messages, isOpen, content]);
@@ -78,7 +80,8 @@ export const useGroupChat = ({ groupId, performanceId }: UseGroupChatProps) => {
 
     savedScrollTopRef.current = list.scrollTop;
     isAtBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight <= 24;
-    if (isAtBottomRef.current) setUnreadCount(0);
+    const remainingCount = countMessagesBelow(list);
+    setUnreadCount((count) => Math.min(count, remainingCount));
   };
 
   const handleScrollToBottom = () => {
