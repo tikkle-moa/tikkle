@@ -27,11 +27,11 @@ const GroupChat = ({ performanceId, groupId }: GroupChatProps) => {
   } = useGroupChat({ groupId, performanceId });
 
   return (
-    <div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-3">
+    <div className="fixed right-4 bottom-20 z-50 flex flex-col items-end gap-3 md:bottom-4">
       {isOpen && (
         <section
           aria-label="그룹 채팅"
-          className="flex h-[min(28rem,calc(100dvh-7rem))] w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl"
+          className="flex h-[min(28rem,calc(100dvh-11rem))] w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl md:h-[min(28rem,calc(100dvh-7rem))]"
         >
           <header className="border-b border-gray-100 px-4 py-3">
             <h2 className="text-sm font-bold text-gray-900">그룹 채팅</h2>
