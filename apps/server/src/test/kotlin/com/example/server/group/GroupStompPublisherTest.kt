@@ -25,6 +25,7 @@ class GroupStompPublisherTest {
   fun `그룹 채팅 이벤트를 그룹 전용 topic으로 발행한다`() {
     val eventData = GroupChatEventData(
       groupId = GROUP_ID,
+      senderId = 1L,
       senderNickname = "티클",
       senderProfileImageUrl = "https://example.com/profile.png",
       content = "같이 예매해요",

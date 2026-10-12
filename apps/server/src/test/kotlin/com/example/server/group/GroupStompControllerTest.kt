@@ -37,6 +37,7 @@ class GroupStompControllerTest {
     val command = GroupChatCommand(REQUEST_ID, GroupChatData(PERFORMANCE_ID, "같이 예매해요"))
     val eventData = GroupChatEventData(
       groupId = GROUP_ID,
+      senderId = USER_ID,
       senderNickname = "티클",
       senderProfileImageUrl = null,
       content = command.data.content,
