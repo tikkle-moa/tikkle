@@ -1,3 +1,5 @@
+import toast from "react-hot-toast";
+
 import { create } from "zustand";
 
 import { refreshAccessToken, subscribeAccessTokenRefresh } from "@shared/api/refresh-token";
@@ -96,6 +98,14 @@ export const useStompStore = create<StompStore>((set, get) => {
           if (get().stompClient !== stompClient) {
             return;
           }
+
+          stompClient.subscribeError({
+            path: "/stomp-errors",
+            errorCallback: (error) => {
+              console.error("STOMP 요청 오류:", error.error.message);
+              toast.error("STOMP 요청 오류: " + error.error.message);
+            },
+          });
 
           recoveryPhase = "idle";
           retryAttempt = 0;

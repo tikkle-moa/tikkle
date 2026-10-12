@@ -3,10 +3,12 @@ import type { StompFailureMessage } from "@tikkle/api-types";
 
 import { STOMP_BROKER_URL, STOMP_HEARTBEAT_INTERVAL_MS } from "./stomp.constants";
 import type {
+  ErrorPath,
   EventPath,
   HeaderParams,
   PathParams,
   PublishPath,
+  StompErrorSubscribeProps,
   StompEventSubscribeProps,
   StompPublishProps,
   StompSubscribeProps,
@@ -65,11 +67,19 @@ class StompClient {
   }
 
   subscribeEvent<TPath extends EventPath>(props: StompEventSubscribeProps<TPath>): StompSubscription {
-    const { path, pathParams, callback, errorCallback, headerParams } = props;
+    const { path, pathParams, callback, headerParams } = props;
     const destination = this.buildDestination(StompClient.EVENT_PREFIX, path, pathParams);
     const stompHeaders = this.buildHeaders(headerParams);
 
-    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback, errorCallback), stompHeaders);
+    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback), stompHeaders);
+    return this.createSafeSubscription(subscription);
+  }
+
+  subscribeError<TPath extends ErrorPath>(props: StompErrorSubscribeProps<TPath>): StompSubscription {
+    const { path, pathParams, errorCallback } = props;
+    const destination = this.buildDestination(StompClient.SUBSCRIBE_PREFIX, path, pathParams);
+
+    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, () => {}, errorCallback));
     return this.createSafeSubscription(subscription);
   }
 

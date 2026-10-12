@@ -27,6 +27,7 @@ export type StompConnectionStatus = "disconnected" | "connecting" | "connected";
 export type StompRecoveryPhase = "idle" | "refresh-on-next-failure" | "reconnect-only";
 
 interface StompPaths {
+  "/stomp-errors": object;
   "/groups/chat": {
     command: GroupChatCommand;
   };
@@ -104,6 +105,7 @@ type PathsWith<TKind extends StompKind> = {
 export type PublishPath = PathsWith<"command">;
 export type SubscribePath = PathsWith<"message">;
 export type EventPath = PathsWith<"event">;
+export type ErrorPath = keyof StompPaths;
 
 type CommandOf<TPath extends PublishPath> = StompPaths[TPath] extends { command: infer TCommand } ? TCommand : never;
 
@@ -120,13 +122,18 @@ export type StompPublishProps<TPath extends PublishPath> = {
 export type StompSubscribeProps<TPath extends SubscribePath> = {
   path: TPath;
   callback: (message: MessageOf<TPath>) => void;
-  errorCallback?: (errorMessage: StompFailureMessage) => void;
+  errorCallback?: (errorData: StompFailureMessage) => void;
 } & WithPathParams<TPath> &
   WithHeaderParams<TPath, "message">;
 
 export type StompEventSubscribeProps<TPath extends EventPath> = {
   path: TPath;
   callback: (event: EventOf<TPath>) => void;
-  errorCallback?: (errorMessage: StompFailureMessage) => void;
 } & WithPathParams<TPath> &
   WithHeaderParams<TPath, "event">;
+
+export type StompErrorSubscribeProps<TPath extends ErrorPath> = {
+  path: TPath;
+  errorCallback: (errorData: StompFailureMessage) => void;
+} & WithPathParams<TPath> &
+  WithHeaderParams<TPath, "message">;
