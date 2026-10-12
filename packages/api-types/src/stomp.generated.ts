@@ -266,6 +266,7 @@ export interface GroupChatEvent {
 export interface GroupChatEventData {
   content: string;
   groupId: number;
+  senderId: number;
   senderNickname: string;
   senderProfileImageUrl: string | null;
   sentAt: string;
