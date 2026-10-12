@@ -32,6 +32,7 @@ export interface PerformanceSeatStatusMessage {
 
 export interface PerformanceSeatStatusMessageData {
   bookedSeatIds: number[];
+  groupId: number | null;
   myHolds: VenueSeatHoldSummary[];
   otherHoldSeats: HeldSeat[];
   serverTime: string;

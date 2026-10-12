@@ -51,18 +51,21 @@ class RedisVenueSeatHoldService(
 
     repeat(3) {
       val beforeVersion = getCurrentVersion(performanceId)
+      val scopeId = getScopeId(userId, performanceId)
+      val groupId = VenueSeatHoldScope.getGroupId(scopeId)
       val bookedSeatIds = reservationSeatRepository.findVenueSeatIdsByPerformanceIdAndReservationStatusIn(
         performanceId = performanceId,
         statuses = ReservationStatus.BOOKED_SEAT_STATUSES,
       )
-      val otherHeldSeats = findOtherHeldSeats(userId, performanceId)
-      val myHolds = findMyHolds(userId, performanceId)
+      val otherHeldSeats = findOtherHeldSeats(scopeId, performanceId)
+      val myHolds = findMyHolds(scopeId, groupId, userId, performanceId)
       val afterVersion = getCurrentVersion(performanceId)
 
       if (beforeVersion == afterVersion) {
         return PerformanceSeatStatusMessageData(
           version = afterVersion,
           serverTime = LocalDateTime.now(),
+          groupId = groupId,
           bookedSeatIds = bookedSeatIds,
           otherHoldSeats = otherHeldSeats,
           myHolds = myHolds,
@@ -488,9 +491,7 @@ class RedisVenueSeatHoldService(
     return VenueSeatHoldScope.id(groupId, userId, performanceId)
   }
 
-  private fun findOtherHeldSeats(userId: Long, performanceId: Long): List<PerformanceSeatStatusMessageData.HeldSeat> {
-    val scopeId = getScopeId(userId, performanceId)
-
+  private fun findOtherHeldSeats(scopeId: String, performanceId: Long): List<PerformanceSeatStatusMessageData.HeldSeat> {
     val now = LocalDateTime.now()
     val holdIds = stringRedisTemplate.opsForZSet()
       .rangeByScore(
@@ -522,10 +523,7 @@ class RedisVenueSeatHoldService(
       }
   }
 
-  private fun findMyHolds(userId: Long, performanceId: Long): List<VenueSeatHoldSummary> {
-    val scopeId = getScopeId(userId, performanceId)
-    val groupId = VenueSeatHoldScope.getGroupId(scopeId)
-
+  private fun findMyHolds(scopeId: String, groupId: Long?, userId: Long, performanceId: Long): List<VenueSeatHoldSummary> {
     if (reservationRepository.existsPaymentInProgressByScope(
         groupId,
         userId,
