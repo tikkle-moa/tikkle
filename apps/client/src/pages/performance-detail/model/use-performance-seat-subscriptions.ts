@@ -12,6 +12,7 @@ interface UsePerformanceSeatSubscriptionsProps {
   setSelectedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setServerTimeOffset: Dispatch<SetStateAction<number>>;
   setSeatOperationState: Dispatch<SetStateAction<SeatOperationState>>;
+  setGroupId: Dispatch<SetStateAction<number | null>>;
   setBookedSeatIds: Dispatch<SetStateAction<Set<number>>>;
   setHeldSeatExpiresAtBySeatId: Dispatch<SetStateAction<Map<number, Date>>>;
   setMyHeldSeatInfoBySeatId: Dispatch<SetStateAction<Map<number, MyHeldSeatInfo>>>;
@@ -24,6 +25,7 @@ export const usePerformanceSeatSubscriptions = ({
   setSelectedSeatIds,
   setServerTimeOffset,
   setSeatOperationState,
+  setGroupId,
   setBookedSeatIds,
   setHeldSeatExpiresAtBySeatId,
   setMyHeldSeatInfoBySeatId,
@@ -35,6 +37,7 @@ export const usePerformanceSeatSubscriptions = ({
   const latestSeatVersionRef = useRef<number | null>(null);
   const requiredSeatVersionRef = useRef<number | null>(null);
   const hasSeatStatusRef = useRef(false);
+  const previousPerformanceIdRef = useRef(performanceId);
 
   useEffect(() => {
     latestSeatVersionRef.current = null;
@@ -49,6 +52,18 @@ export const usePerformanceSeatSubscriptions = ({
     if (isConnected) return;
     getStompClient();
   }, [isConnected, getStompClient]);
+
+  useEffect(() => {
+    if (previousPerformanceIdRef.current === performanceId) return;
+    previousPerformanceIdRef.current = performanceId;
+
+    setSelectedSeatIds(new Set());
+    setServerTimeOffset(0);
+    setGroupId(null);
+    setBookedSeatIds(new Set());
+    setHeldSeatExpiresAtBySeatId(new Map());
+    setMyHeldSeatInfoBySeatId(new Map());
+  }, [performanceId, setBookedSeatIds, setGroupId, setHeldSeatExpiresAtBySeatId, setMyHeldSeatInfoBySeatId, setSelectedSeatIds, setServerTimeOffset]);
 
   useEffect(() => {
     if (!isConnected || !stompClient) return;
@@ -85,6 +100,7 @@ export const usePerformanceSeatSubscriptions = ({
         hasSeatStatusRef.current = true;
         const serverTime = Date.parse(message.data.serverTime);
         if (Number.isFinite(serverTime)) setServerTimeOffset(serverTime - Date.now());
+        setGroupId(message.data.groupId);
         setBookedSeatIds(new Set(message.data.bookedSeatIds));
         setHeldSeatExpiresAtBySeatId(new Map(message.data.otherHoldSeats.map(({ id, expiresAt }) => [id, new Date(expiresAt)])));
         setMyHeldSeatInfoBySeatId(
@@ -184,6 +200,7 @@ export const usePerformanceSeatSubscriptions = ({
     isConnected,
     performanceId,
     performanceSeatRequestIdsRef,
+    setGroupId,
     setBookedSeatIds,
     setMyHeldSeatInfoBySeatId,
     setHeldSeatExpiresAtBySeatId,

@@ -48,6 +48,7 @@ class PerformanceStompControllerTest {
     fun `공연 좌석 상태를 조회해 성공 메시지로 반환한다`() {
       val command = PerformanceSeatStatusCommand(REQUEST_ID)
       val result = PerformanceSeatStatusMessageData(
+        groupId = null,
         version = 7L,
         serverTime = LocalDateTime.of(2026, 9, 10, 12, 0),
         bookedSeatIds = listOf(1L),

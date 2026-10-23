@@ -1,9 +1,10 @@
 import { MemoryRouter } from "react-router";
 
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 
 import { formatDateTime } from "@shared/lib/date.utils";
 
+import { usePerformanceSeatMap } from "@pages/performance-detail/model/use-performance-seat-map";
 import PerformanceDetailPage from "@pages/performance-detail/ui/PerformanceDetailPage";
 
 const { mockUsePerformanceDetail } = vi.hoisted(() => ({
@@ -13,6 +14,11 @@ const { mockUsePerformanceDetail } = vi.hoisted(() => ({
 vi.mock("@pages/performance-detail/model/use-performance-detail", () => ({
   usePerformanceDetail: mockUsePerformanceDetail,
 }));
+
+vi.mock("@pages/performance-detail/model/use-performance-seat-map", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@pages/performance-detail/model/use-performance-seat-map")>();
+  return { ...actual, usePerformanceSeatMap: vi.fn(actual.usePerformanceSeatMap) };
+});
 
 const venue = {
   id: 1,
@@ -56,6 +62,38 @@ describe("PerformanceDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUsePerformanceDetail.mockReturnValue(pageState);
+  });
+
+  it("같은 공연에서는 좌석 상태를 유지하고 다른 공연으로 이동하면 모두 초기화한다", () => {
+    const { rerender } = renderPage();
+    const latestSeatMap = () => vi.mocked(usePerformanceSeatMap).mock.results.at(-1)!.value;
+
+    act(() => {
+      const state = latestSeatMap();
+      state.setSelectedSeatIds(new Set([101]));
+      state.setSeatOperationState({ status: "loading" });
+      state.setServerTimeOffset(500);
+      state.setVenueSeatStates(new Map([[101, { status: "available" }]]));
+    });
+
+    const rerenderPage = () =>
+      rerender(
+        <MemoryRouter>
+          <PerformanceDetailPage />
+        </MemoryRouter>,
+      );
+
+    mockUsePerformanceDetail.mockReturnValue({ ...pageState, performance: { ...pageState.performance } });
+    rerenderPage();
+    expect(latestSeatMap().selectedSeatIds).toEqual(new Set([101]));
+    expect(latestSeatMap().seatOperationState).toEqual({ status: "loading" });
+
+    mockUsePerformanceDetail.mockReturnValue({ ...pageState, performance: { ...pageState.performance, id: 2 } });
+    rerenderPage();
+    expect(latestSeatMap().selectedSeatIds).toEqual(new Set());
+    expect(latestSeatMap().seatOperationState).toEqual({ status: "idle" });
+    expect(latestSeatMap().serverTimeOffset).toBe(0);
+    expect(latestSeatMap().venueSeatStates).toEqual(new Map());
   });
 
   it("공연 회차와 예매 오픈 일시를 표시한다", () => {

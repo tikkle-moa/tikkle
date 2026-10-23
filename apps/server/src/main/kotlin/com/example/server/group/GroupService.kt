@@ -18,6 +18,7 @@ class GroupService(private val userRepository: UserRepository, private val group
 
     return GroupChatEventData(
       groupId = groupId,
+      senderId = userId,
       senderNickname = user.nickname,
       senderProfileImageUrl = user.profileImageUrl,
       content = data.content,

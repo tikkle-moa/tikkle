@@ -3,9 +3,12 @@ import type { StompFailureMessage } from "@tikkle/api-types";
 
 import { STOMP_BROKER_URL, STOMP_HEARTBEAT_INTERVAL_MS } from "./stomp.constants";
 import type {
+  ErrorPath,
   EventPath,
+  HeaderParams,
   PathParams,
   PublishPath,
+  StompErrorSubscribeProps,
   StompEventSubscribeProps,
   StompPublishProps,
   StompSubscribeProps,
@@ -47,28 +50,36 @@ class StompClient {
   }
 
   publish<TPath extends PublishPath>(props: StompPublishProps<TPath>) {
-    const { path, command, headers } = props;
-    const pathParams = "pathParams" in props ? props.pathParams : undefined;
+    const { path, pathParams, command, headerParams } = props;
     const destination = this.buildDestination(StompClient.PUBLISH_PREFIX, path, pathParams);
+    const stompHeaders = this.buildHeaders(headerParams);
 
-    this.client.publish({ destination: destination, headers, body: JSON.stringify(command) });
+    this.client.publish({ destination, headers: stompHeaders, body: JSON.stringify(command) });
   }
 
   subscribe<TPath extends SubscribePath>(props: StompSubscribeProps<TPath>): StompSubscription {
-    const { path, callback, errorCallback, headers } = props;
-    const pathParams = "pathParams" in props ? props.pathParams : undefined;
+    const { path, pathParams, callback, errorCallback, headerParams } = props;
     const destination = this.buildDestination(StompClient.SUBSCRIBE_PREFIX, path, pathParams);
+    const stompHeaders = this.buildHeaders(headerParams);
 
-    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback, errorCallback), headers);
+    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback, errorCallback), stompHeaders);
     return this.createSafeSubscription(subscription);
   }
 
   subscribeEvent<TPath extends EventPath>(props: StompEventSubscribeProps<TPath>): StompSubscription {
-    const { path, callback, errorCallback, headers } = props;
-    const pathParams = "pathParams" in props ? props.pathParams : undefined;
+    const { path, pathParams, callback, headerParams } = props;
     const destination = this.buildDestination(StompClient.EVENT_PREFIX, path, pathParams);
+    const stompHeaders = this.buildHeaders(headerParams);
 
-    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback, errorCallback), headers);
+    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, callback), stompHeaders);
+    return this.createSafeSubscription(subscription);
+  }
+
+  subscribeError<TPath extends ErrorPath>(props: StompErrorSubscribeProps<TPath>): StompSubscription {
+    const { path, pathParams, errorCallback } = props;
+    const destination = this.buildDestination(StompClient.SUBSCRIBE_PREFIX, path, pathParams);
+
+    const subscription = this.client.subscribe(destination, (frame) => this.handleFrame(frame, () => {}, errorCallback));
     return this.createSafeSubscription(subscription);
   }
 
@@ -79,6 +90,11 @@ class StompClient {
       return String(value);
     });
     return `${prefix}${resolvedPath}`;
+  }
+
+  private buildHeaders(headerParams?: HeaderParams): StompHeaders | undefined {
+    if (!headerParams) return undefined;
+    return Object.fromEntries(Object.entries(headerParams).map(([key, value]) => [key, String(value)]));
   }
 
   private handleFrame<TMessage>(frame: IMessage, callback: (message: TMessage) => void, errorCallback?: (errorMessage: StompFailureMessage) => void) {

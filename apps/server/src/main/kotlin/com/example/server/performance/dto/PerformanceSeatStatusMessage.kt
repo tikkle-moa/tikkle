@@ -10,6 +10,7 @@ data class PerformanceSeatStatusMessage(override val requestId: UUID, override v
 data class PerformanceSeatStatusMessageData(
   val version: Long,
   val serverTime: LocalDateTime,
+  val groupId: Long?,
   val bookedSeatIds: List<Long>,
   val otherHoldSeats: List<HeldSeat>,
   val myHolds: List<VenueSeatHoldSummary>,

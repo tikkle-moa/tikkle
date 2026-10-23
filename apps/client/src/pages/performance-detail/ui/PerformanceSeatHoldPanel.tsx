@@ -4,6 +4,8 @@ import type { BeginCheckoutReviewMessageData } from "@tikkle/api-types";
 
 import type { VenueSeatResponse, VenueSeatState } from "@entities/venue";
 
+import { GroupChat } from "@features/group-chat";
+
 import PerformanceSeatHoldActions from "./PerformanceSeatHoldActions";
 import PerformanceSeatHoldHeader from "./PerformanceSeatHoldHeader";
 import PerformanceSeatHoldInfo from "./PerformanceSeatHoldInfo";
@@ -42,6 +44,7 @@ const PerformanceSeatHoldPanel = ({
   const {
     isRefreshing,
     refreshError,
+    groupId,
     myHolds,
     myHeldSeatInfoBySeatId,
     selectedSeatIdsToRelease,
@@ -110,6 +113,8 @@ const PerformanceSeatHoldPanel = ({
 
         <PerformanceSeatHoldInfo />
       </div>
+
+      {groupId && <GroupChat key={`${performanceId}:${groupId}`} performanceId={performanceId} groupId={groupId} />}
     </aside>
   );
 };

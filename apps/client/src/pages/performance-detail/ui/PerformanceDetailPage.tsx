@@ -101,7 +101,7 @@ const PerformanceDetailPage = () => {
         <Ticket className="absolute top-5 right-5 size-8 text-white/10 sm:size-12" aria-hidden />
       </section>
 
-      <PerformanceSeatMap performance={performance} venueDetail={venueDetail} onCheckout={handleCheckout} />
+      <PerformanceSeatMap key={performance.id} performance={performance} venueDetail={venueDetail} onCheckout={handleCheckout} />
     </div>
   );
 };

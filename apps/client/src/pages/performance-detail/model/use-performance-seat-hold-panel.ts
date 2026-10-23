@@ -43,12 +43,14 @@ export const usePerformanceSeatHoldPanel = ({
   });
 
   const {
+    groupId,
     myHolds,
     myHeldSeatInfoBySeatId,
     selectedSeatIdsToHold,
     selectedSeatIdsToRelease,
     myHeldSeatTotalPrice,
     venueSeatById,
+    setGroupId,
     setBookedSeatIds,
     setHeldSeatExpiresAtBySeatId,
     setMyHeldSeatInfoBySeatId,
@@ -78,6 +80,7 @@ export const usePerformanceSeatHoldPanel = ({
     setSelectedSeatIds,
     setServerTimeOffset,
     setSeatOperationState,
+    setGroupId,
     setBookedSeatIds,
     setHeldSeatExpiresAtBySeatId,
     setMyHeldSeatInfoBySeatId,
@@ -112,6 +115,7 @@ export const usePerformanceSeatHoldPanel = ({
   return {
     isRefreshing,
     refreshError,
+    groupId,
     myHolds,
     myHeldSeatInfoBySeatId,
     selectedSeatIdsToRelease,

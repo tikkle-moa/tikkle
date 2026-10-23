@@ -1,4 +1,3 @@
-import type { StompHeaders } from "@stomp/stompjs";
 import type {
   BeginCheckoutReviewCommand,
   BeginCheckoutReviewMessage,
@@ -9,6 +8,8 @@ import type {
   EndCheckoutReviewCommand,
   EndCheckoutReviewMessage,
   GetPaymentOrderCommand,
+  GroupChatCommand,
+  GroupChatEvent,
   HoldVenueSeatsCommand,
   HoldVenueSeatsMessage,
   PaymentOrderMessage,
@@ -26,6 +27,15 @@ export type StompConnectionStatus = "disconnected" | "connecting" | "connected";
 export type StompRecoveryPhase = "idle" | "refresh-on-next-failure" | "reconnect-only";
 
 interface StompPaths {
+  "/stomp-errors": object;
+  "/groups/chat": {
+    command: GroupChatCommand;
+  };
+  "/groups/{groupId}/chat": {
+    event: GroupChatEvent;
+    path: { groupId: number };
+    headers: { event: { performanceId: number } };
+  };
   "/performances/{performanceId}/get-seat-status": {
     command: PerformanceSeatStatusCommand;
     message: PerformanceSeatStatusMessage;
@@ -71,15 +81,10 @@ interface StompPaths {
   };
 }
 
+type StompKind = "command" | "message" | "event";
+
 export type PathParams = Record<string, string | number>;
-
-type PathsWith<TKey extends "command" | "message" | "event"> = {
-  [TPath in keyof StompPaths]: TKey extends keyof StompPaths[TPath] ? TPath : never;
-}[keyof StompPaths];
-
-export type PublishPath = PathsWith<"command">;
-export type SubscribePath = PathsWith<"message">;
-export type EventPath = PathsWith<"event">;
+export type HeaderParams = Record<string, string | number>;
 
 type WithPathParams<TPath extends keyof StompPaths> = StompPaths[TPath] extends {
   path: infer TParams extends PathParams;
@@ -87,26 +92,48 @@ type WithPathParams<TPath extends keyof StompPaths> = StompPaths[TPath] extends 
   ? { pathParams: TParams }
   : { pathParams?: undefined };
 
+type WithHeaderParams<TPath extends keyof StompPaths, TKind extends StompKind> = StompPaths[TPath] extends {
+  headers: { [K in TKind]: infer TParams extends HeaderParams };
+}
+  ? { headerParams: TParams }
+  : { headerParams?: undefined };
+
+type PathsWith<TKind extends StompKind> = {
+  [TPath in keyof StompPaths]: TKind extends keyof StompPaths[TPath] ? TPath : never;
+}[keyof StompPaths];
+
+export type PublishPath = PathsWith<"command">;
+export type SubscribePath = PathsWith<"message">;
+export type EventPath = PathsWith<"event">;
+export type ErrorPath = keyof StompPaths;
+
+type CommandOf<TPath extends PublishPath> = StompPaths[TPath] extends { command: infer TCommand } ? TCommand : never;
+
+type MessageOf<TPath extends SubscribePath> = StompPaths[TPath] extends { message: infer TMessage } ? TMessage : never;
+
+type EventOf<TPath extends EventPath> = StompPaths[TPath] extends { event: infer TEvent } ? TEvent : never;
+
 export type StompPublishProps<TPath extends PublishPath> = {
   path: TPath;
-  command: StompPaths[TPath] extends { command: infer TCommand } ? TCommand : never;
-  headers?: StompHeaders;
-} & WithPathParams<TPath>;
-
-export type MessageOf<TPath extends SubscribePath> = StompPaths[TPath] extends { message: infer TMessage } ? TMessage : never;
-
-export type EventOf<TPath extends EventPath> = StompPaths[TPath] extends { event: infer TEvent } ? TEvent : never;
+  command: CommandOf<TPath>;
+} & WithPathParams<TPath> &
+  WithHeaderParams<TPath, "command">;
 
 export type StompSubscribeProps<TPath extends SubscribePath> = {
   path: TPath;
   callback: (message: MessageOf<TPath>) => void;
-  errorCallback?: (errorMessage: StompFailureMessage) => void;
-  headers?: StompHeaders;
-} & WithPathParams<TPath>;
+  errorCallback?: (errorData: StompFailureMessage) => void;
+} & WithPathParams<TPath> &
+  WithHeaderParams<TPath, "message">;
 
 export type StompEventSubscribeProps<TPath extends EventPath> = {
   path: TPath;
   callback: (event: EventOf<TPath>) => void;
-  errorCallback?: (errorMessage: StompFailureMessage) => void;
-  headers?: StompHeaders;
-} & WithPathParams<TPath>;
+} & WithPathParams<TPath> &
+  WithHeaderParams<TPath, "event">;
+
+export type StompErrorSubscribeProps<TPath extends ErrorPath> = {
+  path: TPath;
+  errorCallback: (errorData: StompFailureMessage) => void;
+} & WithPathParams<TPath> &
+  WithHeaderParams<TPath, "message">;

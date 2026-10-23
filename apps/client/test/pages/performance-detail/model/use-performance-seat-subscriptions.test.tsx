@@ -73,6 +73,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     const { result } = renderHook(() =>
       usePerformanceSeatSubscriptions({
         performanceId: 10,
+        setGroupId: vi.fn(),
         ...requestIdRefs(),
         handleRefreshFinish: vi.fn(),
         setSelectedSeatIds: vi.fn(),
@@ -89,10 +90,47 @@ describe("usePerformanceSeatSubscriptions", () => {
     expect(result.current.connectionStyle.label).toBe("연결 중");
   });
 
+  it("같은 공연의 재렌더에서는 초기화하지 않고 공연 변경 시 한 번 초기화한다", () => {
+    act(() => useStompStore.setState({ getStompClient: vi.fn() }));
+    const setGroupId = vi.fn();
+    const setSelectedSeatIds = vi.fn();
+    const refs = requestIdRefs();
+    const { rerender } = renderHook(
+      ({ performanceId }) => {
+        const [bookedSeatIds, setBookedSeatIds] = useState(new Set<number>());
+        const [heldSeatExpiresAtBySeatId, setHeldSeatExpiresAtBySeatId] = useState(new Map<number, Date>());
+        const [myHeldSeatInfoBySeatId, setMyHeldSeatInfoBySeatId] = useState(new Map<number, MyHeldSeatInfo>());
+        usePerformanceSeatSubscriptions({
+          performanceId,
+          ...refs,
+          setGroupId,
+          setSelectedSeatIds,
+          handleRefreshFinish: vi.fn(),
+          setServerTimeOffset: vi.fn(),
+          setSeatOperationState: vi.fn(),
+          setBookedSeatIds,
+          setHeldSeatExpiresAtBySeatId,
+          setMyHeldSeatInfoBySeatId,
+        });
+        return { bookedSeatIds, heldSeatExpiresAtBySeatId, myHeldSeatInfoBySeatId };
+      },
+      { initialProps: { performanceId: 10 } },
+    );
+    expect(setGroupId).not.toHaveBeenCalled();
+    rerender({ performanceId: 10 });
+    expect(setGroupId).not.toHaveBeenCalled();
+    rerender({ performanceId: 20 });
+    expect(setGroupId).toHaveBeenCalledExactlyOnceWith(null);
+    expect(setSelectedSeatIds).toHaveBeenCalledExactlyOnceWith(new Set());
+    rerender({ performanceId: 20 });
+    expect(setGroupId).toHaveBeenCalledTimes(1);
+  });
+
   it("초기 상태와 실시간 좌석 이벤트를 반영하고 구독을 정리한다", () => {
     const { client, subscriptions, unsubscribe, getEventCallback } = createClient();
     act(() => useStompStore.setState({ stompClient: client as never, connectionStatus: "connected" }));
     const handleRefreshFinish = vi.fn();
+    const setGroupId = vi.fn();
     const requestRefs = requestIdRefs();
     const { result, unmount } = renderHook(() => {
       const [selectedSeatIds, setSelectedSeatIds] = useState(new Set([1, 2]));
@@ -103,6 +141,7 @@ describe("usePerformanceSeatSubscriptions", () => {
       const [myHeldSeatInfoBySeatId, setMyHeldSeatInfoBySeatId] = useState(new Map<number, MyHeldSeatInfo>());
       const subscription = usePerformanceSeatSubscriptions({
         performanceId: 10,
+        setGroupId,
         ...requestRefs,
         handleRefreshFinish,
         setSelectedSeatIds,
@@ -256,6 +295,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     renderHook(() =>
       usePerformanceSeatSubscriptions({
         performanceId: 10,
+        setGroupId: vi.fn(),
         ...requestIdRefs(),
         handleRefreshFinish: vi.fn(),
         setSelectedSeatIds: vi.fn(),
@@ -277,6 +317,7 @@ describe("usePerformanceSeatSubscriptions", () => {
     const { client, subscriptions } = createClient();
     act(() => useStompStore.setState({ stompClient: client as never, connectionStatus: "connected" }));
     const requestRefs = requestIdRefs();
+    const setGroupId = vi.fn();
     const { result } = renderHook(() => {
       const [selectedSeatIds, setSelectedSeatIds] = useState(new Set([1, 2]));
       const [seatOperationState, setSeatOperationState] = useState<SeatOperationState>({ status: "idle" });
@@ -290,6 +331,7 @@ describe("usePerformanceSeatSubscriptions", () => {
       const [myHeldSeatInfoBySeatId, setMyHeldSeatInfoBySeatId] = useState(new Map<number, MyHeldSeatInfo>());
       usePerformanceSeatSubscriptions({
         performanceId: 10,
+        setGroupId,
         ...requestRefs,
         handleRefreshFinish: vi.fn(),
         setSelectedSeatIds,
