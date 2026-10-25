@@ -5,7 +5,6 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.global.openapi.ErrorResponse
 import com.example.server.global.openapi.ErrorResponseItem
 import com.example.server.global.response.ApiResponse
-import com.example.server.global.security.WebSocketSessionRegistry
 import com.example.server.group.dto.CreateGroupRequest
 import com.example.server.group.dto.GroupMembershipData
 import com.example.server.group.dto.JoinGroupRequest
@@ -29,7 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 @RestController
 @RequestMapping("/groups")
 @Validated
-class GroupController(private val groupService: GroupService, private val webSocketSessionRegistry: WebSocketSessionRegistry) {
+class GroupController(private val groupService: GroupService, private val groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry) {
   @Operation(
     summary = "그룹 및 멤버 목록 조회",
     responses = [SwaggerApiResponse(responseCode = "200", description = "그룹 조회 성공")],
@@ -108,6 +107,7 @@ class GroupController(private val groupService: GroupService, private val webSoc
       ErrorResponseItem(ErrorCode.UNAUTHORIZED),
       ErrorResponseItem(ErrorCode.FORBIDDEN),
       ErrorResponseItem(ErrorCode.NOT_FOUND),
+      ErrorResponseItem(ErrorCode.CONFLICT, description = "만료된 그룹에서 탈퇴할 수 없음"),
     ],
   )
   @DeleteMapping("/{groupId}/leave")
@@ -116,7 +116,7 @@ class GroupController(private val groupService: GroupService, private val webSoc
     @AuthenticationPrincipal loginUser: LoginUserResult,
   ): ResponseEntity<ApiResponse.Success<GroupMembershipData>> {
     val result = groupService.leaveGroup(loginUser.userId, groupId)
-    webSocketSessionRegistry.closeUserSessions(loginUser.userId)
+    groupChatSubscriptionRegistry.unsubscribeGroupChat(loginUser.userId, groupId)
 
     return ResponseEntity.ok(ApiResponse.ok(result))
   }
@@ -142,7 +142,7 @@ class GroupController(private val groupService: GroupService, private val webSoc
     @AuthenticationPrincipal loginUser: LoginUserResult,
   ): ResponseEntity<ApiResponse.Success<GroupMembershipData>> {
     val result = groupService.kickMember(loginUser.userId, groupId, memberUserId)
-    webSocketSessionRegistry.closeUserSessions(memberUserId)
+    groupChatSubscriptionRegistry.unsubscribeGroupChat(memberUserId, groupId)
 
     return ResponseEntity.ok(ApiResponse.ok(result))
   }

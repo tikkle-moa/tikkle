@@ -3,6 +3,7 @@ package com.example.server.config
 import com.example.server.config.properties.AppProperties
 import com.example.server.global.security.StompAuthenticationChannelInterceptor
 import com.example.server.global.security.WebSocketSessionRegistry
+import com.example.server.group.GroupChatSubscriptionRegistry
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.simp.config.ChannelRegistration
 import org.springframework.messaging.simp.config.MessageBrokerRegistry
@@ -19,6 +20,7 @@ import org.springframework.web.socket.handler.WebSocketHandlerDecorator
 class WebSocketConfig(
   private val appProperties: AppProperties,
   private val stompAuthenticationChannelInterceptor: StompAuthenticationChannelInterceptor,
+  private val groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry,
   private val webSocketSessionRegistry: WebSocketSessionRegistry,
 ) : WebSocketMessageBrokerConfigurer {
   override fun registerStompEndpoints(registry: StompEndpointRegistry) {
@@ -36,6 +38,10 @@ class WebSocketConfig(
 
   override fun configureClientInboundChannel(registration: ChannelRegistration) {
     registration.interceptors(stompAuthenticationChannelInterceptor)
+  }
+
+  override fun configureClientOutboundChannel(registration: ChannelRegistration) {
+    registration.interceptors(groupChatSubscriptionRegistry)
   }
 
   override fun configureWebSocketTransport(registration: WebSocketTransportRegistration) {

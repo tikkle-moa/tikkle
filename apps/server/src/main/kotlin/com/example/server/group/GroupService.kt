@@ -87,6 +87,9 @@ class GroupService(
     requireUserForUpdate(userId)
     val group = groupRepository.findByIdForUpdate(groupId)
       ?: throw CustomException(ErrorCode.NOT_FOUND, "그룹을 찾을 수 없습니다.")
+    if (!group.expiresAt.isAfter(nowUtc())) {
+      throw CustomException(ErrorCode.CONFLICT, "만료된 그룹에서는 탈퇴할 수 없습니다.")
+    }
     val groupMember = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
       ?: throw CustomException(ErrorCode.FORBIDDEN, "그룹 구성원이 아닙니다.")
 
@@ -143,6 +146,9 @@ class GroupService(
   }
 
   fun getGroupId(userId: Long, performanceId: Long): Long? = groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(userId, performanceId)
+
+  fun isActiveMemberOfGroup(userId: Long, groupId: Long): Boolean =
+    groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(userId, groupId) == groupId
 
   @Transactional(readOnly = true)
   fun getGroup(userId: Long, groupId: Long): GroupMembershipData {

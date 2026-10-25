@@ -2698,6 +2698,24 @@ export interface operations {
           "application/json": components["schemas"]["Failure"];
         };
       };
+      /** @description 만료된 그룹에서 탈퇴할 수 없음 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 409,
+           *         "message": "예상치 못한 충돌이 발생했습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
     };
   };
 }
