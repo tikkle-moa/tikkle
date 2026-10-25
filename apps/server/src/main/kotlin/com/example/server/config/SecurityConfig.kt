@@ -60,6 +60,7 @@ class SecurityConfig(
         configurePerformanceAuthorization(auth)
         configureVenueAuthorization(auth)
         configureReservationAuthorization(auth)
+        configureGroupAuthorization(auth)
 
         auth.anyRequest().hasRole(UserRole.ADMIN.name)
       }
@@ -116,6 +117,10 @@ class SecurityConfig(
   private fun configureReservationAuthorization(auth: AuthorizationRegistry) {
     auth.requestMatchers(HttpMethod.GET, "/api/reservations", "/api/reservations/*").authenticated()
     auth.requestMatchers(HttpMethod.POST, "/api/reservations/*/cancel").authenticated()
+  }
+
+  private fun configureGroupAuthorization(auth: AuthorizationRegistry) {
+    auth.requestMatchers("/api/groups/**").authenticated()
   }
 
   @Bean
