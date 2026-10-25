@@ -7,6 +7,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.group.dto.GroupChatCommand
 import com.example.server.group.dto.GroupChatData
 import com.example.server.group.dto.GroupChatEventData
+import com.example.server.group.dto.GroupChatMessage
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -17,6 +18,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.messaging.simp.annotation.SendToUser
 import org.springframework.security.core.Authentication
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -46,8 +48,11 @@ class GroupStompControllerTest {
     given(authentication.principal).willReturn(LoginUserResult(USER_ID, UserRole.USER))
     given(groupService.createGroupChatMessage(USER_ID, command.data)).willReturn(eventData)
 
-    controller.sendGroupChatMessage(command, authentication)
+    val response = controller.sendGroupChatMessage(command, authentication)
 
+    assertThat(response).isEqualTo(GroupChatMessage(REQUEST_ID, eventData))
+    assertThat(response.requestId).isEqualTo(command.requestId)
+    assertThat(response.success).isTrue()
     then(groupStompPublisher).should().publishGroupChatMessage(GROUP_ID, eventData)
   }
 
@@ -78,6 +83,8 @@ class GroupStompControllerTest {
 
     assertThat(classMapping.value).containsExactly("/groups")
     assertThat(method.getAnnotation(MessageMapping::class.java).value).containsExactly("/chat")
+    assertThat(method.getAnnotation(SendToUser::class.java).value).containsExactly("/queue/groups/chat")
+    assertThat(method.getAnnotation(SendToUser::class.java).broadcast).isFalse()
   }
 
   companion object {
