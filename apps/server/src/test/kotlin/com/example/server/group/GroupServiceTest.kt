@@ -62,6 +62,18 @@ class GroupServiceTest {
   }
 
   @Test
+  fun `그룹이 없으면 조회할 수 없다`() {
+    given(groupRepository.findById(GROUP_ID)).willReturn(Optional.empty())
+
+    val exception = assertThrows<CustomException> {
+      service.getGroup(USER_ID, GROUP_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+    then(groupMemberRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
   fun `활성 그룹 구성원이 아니면 그룹 조회를 거부한다`() {
     given(groupRepository.findById(GROUP_ID)).willReturn(Optional.of(group(performance())))
     given(groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(USER_ID, GROUP_ID)).willReturn(null)
@@ -148,6 +160,59 @@ class GroupServiceTest {
   }
 
   @Test
+  fun `사용자가 없으면 그룹을 생성할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(null)
+
+    val exception = assertThrows<CustomException> {
+      service.createGroup(USER_ID, PERFORMANCE_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+    then(groupMemberRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `이미 활성 그룹에 속한 사용자는 새 그룹을 만들 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+
+    val exception = assertThrows<CustomException> {
+      service.createGroup(USER_ID, PERFORMANCE_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(performanceRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `공연 회차가 없으면 그룹을 생성할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(null)
+    given(performanceRepository.findById(PERFORMANCE_ID)).willReturn(Optional.empty())
+
+    val exception = assertThrows<CustomException> {
+      service.createGroup(USER_ID, PERFORMANCE_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+  }
+
+  @Test
+  fun `이미 시작한 공연에는 그룹을 만들 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(null)
+    given(performanceRepository.findById(PERFORMANCE_ID))
+      .willReturn(Optional.of(performance(LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1))))
+
+    val exception = assertThrows<CustomException> {
+      service.createGroup(USER_ID, PERFORMANCE_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(groupRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
   fun `유효한 초대 코드로 그룹에 참여한다`() {
     val user = user(USER_ID)
     val leader = user(LEADER_ID)
@@ -173,6 +238,32 @@ class GroupServiceTest {
       assertThat(member.userId).isEqualTo(USER_ID)
       assertThat(member.isLeader).isFalse()
     }
+  }
+
+  @Test
+  fun `초대 코드에 해당하는 그룹이 없으면 참여를 거부한다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupRepository.findByInviteCodeForUpdate(INVITE_CODE)).willReturn(null)
+
+    val exception = assertThrows<CustomException> {
+      service.joinGroup(USER_ID, GROUP_ID, INVITE_CODE)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+    then(groupMemberRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `초대 코드가 다른 그룹의 것이면 참여를 거부한다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupRepository.findByInviteCodeForUpdate(INVITE_CODE)).willReturn(group(performance()))
+
+    val exception = assertThrows<CustomException> {
+      service.joinGroup(USER_ID, GROUP_ID + 1, INVITE_CODE)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+    then(groupMemberRepository).shouldHaveNoInteractions()
   }
 
   @Test
@@ -221,6 +312,57 @@ class GroupServiceTest {
 
     assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
     then(groupMemberRepository).should(org.mockito.Mockito.never()).save(any(GroupMember::class.java))
+  }
+
+  @Test
+  fun `같은 공연의 다른 활성 그룹에 참여한 사용자는 가입할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupRepository.findByInviteCodeForUpdate(INVITE_CODE)).willReturn(group(performance()))
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID + 1)
+
+    val exception = assertThrows<CustomException> {
+      service.joinGroup(USER_ID, GROUP_ID, INVITE_CODE)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(groupMemberRepository).should(org.mockito.Mockito.never()).findAllByGroupId(GROUP_ID)
+  }
+
+  @Test
+  fun `그룹장이 없는 그룹에 가입하면 기존 첫 멤버에게 그룹장을 지정한다`() {
+    val firstMember = user(OWNER_ID)
+    val group = group(performance())
+    val members = mutableListOf(GroupMember(group = group, member = firstMember))
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupRepository.findByInviteCodeForUpdate(INVITE_CODE)).willReturn(group)
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(null)
+    given(groupMemberRepository.findAllByGroupId(GROUP_ID)).willReturn(members)
+    given(groupMemberRepository.save(any(GroupMember::class.java))).willAnswer { invocation ->
+      invocation.getArgument<GroupMember>(0).apply { members.add(this) }
+    }
+
+    val result = service.joinGroup(USER_ID, GROUP_ID, INVITE_CODE)
+
+    assertThat(result.leaderUserId).isEqualTo(OWNER_ID)
+    assertThat(result.members.first().isLeader).isTrue()
+  }
+
+  @Test
+  fun `멤버가 없는 그룹에 가입하면 가입자를 그룹장으로 지정한다`() {
+    val group = group(performance())
+    val members = mutableListOf<GroupMember>()
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupRepository.findByInviteCodeForUpdate(INVITE_CODE)).willReturn(group)
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(null)
+    given(groupMemberRepository.findAllByGroupId(GROUP_ID)).willReturn(members)
+    given(groupMemberRepository.save(any(GroupMember::class.java))).willAnswer { invocation ->
+      invocation.getArgument<GroupMember>(0).apply { members.add(this) }
+    }
+
+    val result = service.joinGroup(USER_ID, GROUP_ID, INVITE_CODE)
+
+    assertThat(result.leaderUserId).isEqualTo(USER_ID)
+    assertThat(result.members.single().isLeader).isTrue()
   }
 
   @Test
@@ -273,6 +415,79 @@ class GroupServiceTest {
   }
 
   @Test
+  fun `그룹이 없으면 탈퇴할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(null)
+
+    val exception = assertThrows<CustomException> {
+      service.leaveGroup(USER_ID, GROUP_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+    then(groupMemberRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `그룹 멤버가 아니면 탈퇴할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(group(performance()))
+    given(groupMemberRepository.findByGroupIdAndUserId(GROUP_ID, USER_ID)).willReturn(null)
+
+    val exception = assertThrows<CustomException> {
+      service.leaveGroup(USER_ID, GROUP_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+    then(groupMemberRepository).should(org.mockito.Mockito.never()).delete(any(GroupMember::class.java))
+  }
+
+  @Test
+  fun `그룹장이 아닌 멤버가 탈퇴하면 그룹장을 유지한다`() {
+    val leader = user(LEADER_ID)
+    val member = user(USER_ID)
+    val group = group(performance(), leader = leader)
+    val memberRow = GroupMember(group = group, member = member)
+    val remainingMembers = mutableListOf(GroupMember(group = group, member = leader), memberRow)
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(member)
+    given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(group)
+    given(groupMemberRepository.findByGroupIdAndUserId(GROUP_ID, USER_ID)).willReturn(memberRow)
+    given(groupMemberRepository.findAllByGroupId(GROUP_ID)).willReturn(remainingMembers)
+    doAnswer {
+      remainingMembers.remove(memberRow)
+      null
+    }
+      .`when`(groupMemberRepository).delete(memberRow)
+
+    val result = service.leaveGroup(USER_ID, GROUP_ID)
+
+    assertThat(group.leader?.id).isEqualTo(LEADER_ID)
+    assertThat(result.members.single().isLeader).isTrue()
+  }
+
+  @Test
+  fun `그룹장이 지정되지 않은 그룹에서 멤버가 탈퇴해도 잔여 그룹장을 지정하지 않는다`() {
+    val member = user(USER_ID)
+    val remainingMember = user(LEADER_ID)
+    val group = group(performance())
+    val memberRow = GroupMember(group = group, member = member)
+    val remainingMembers = mutableListOf(memberRow, GroupMember(group = group, member = remainingMember))
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(member)
+    given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(group)
+    given(groupMemberRepository.findByGroupIdAndUserId(GROUP_ID, USER_ID)).willReturn(memberRow)
+    given(groupMemberRepository.findAllByGroupId(GROUP_ID)).willReturn(remainingMembers)
+    doAnswer {
+      remainingMembers.remove(memberRow)
+      null
+    }
+      .`when`(groupMemberRepository).delete(memberRow)
+
+    val result = service.leaveGroup(USER_ID, GROUP_ID)
+
+    assertThat(result.leaderUserId).isNull()
+    assertThat(result.members.single().isLeader).isFalse()
+  }
+
+  @Test
   fun `비그룹장은 멤버를 강퇴할 수 없다`() {
     val actor = user(USER_ID)
     val target = user(LEADER_ID)
@@ -281,6 +496,59 @@ class GroupServiceTest {
     given(userRepository.findByIdForUpdate(USER_ID)).willReturn(actor)
     given(userRepository.findByIdForUpdate(LEADER_ID)).willReturn(target)
     given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(group)
+
+    val exception = assertThrows<CustomException> {
+      service.kickMember(USER_ID, GROUP_ID, LEADER_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.FORBIDDEN)
+    then(groupMemberRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `그룹장은 본인을 강퇴할 수 없다`() {
+    val exception = assertThrows<CustomException> {
+      service.kickMember(USER_ID, GROUP_ID, USER_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.BAD_REQUEST)
+    then(userRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `그룹이 없으면 멤버를 강퇴할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(userRepository.findByIdForUpdate(LEADER_ID)).willReturn(user(LEADER_ID))
+    given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(null)
+
+    val exception = assertThrows<CustomException> {
+      service.kickMember(USER_ID, GROUP_ID, LEADER_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.NOT_FOUND)
+    then(groupMemberRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `만료된 그룹에서는 멤버를 강퇴할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(userRepository.findByIdForUpdate(LEADER_ID)).willReturn(user(LEADER_ID))
+    given(groupRepository.findByIdForUpdate(GROUP_ID))
+      .willReturn(group(performance(), expiresAt = LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1), leader = user(USER_ID)))
+
+    val exception = assertThrows<CustomException> {
+      service.kickMember(USER_ID, GROUP_ID, LEADER_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(groupMemberRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `그룹장이 지정되지 않은 그룹에서는 멤버를 강퇴할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(userRepository.findByIdForUpdate(LEADER_ID)).willReturn(user(LEADER_ID))
+    given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(group(performance()))
 
     val exception = assertThrows<CustomException> {
       service.kickMember(USER_ID, GROUP_ID, LEADER_ID)
