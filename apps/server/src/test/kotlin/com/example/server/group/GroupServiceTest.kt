@@ -54,11 +54,20 @@ class GroupServiceTest {
     given(groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(USER_ID, GROUP_ID)).willReturn(GROUP_ID)
     given(groupMemberRepository.findAllByGroupId(GROUP_ID)).willReturn(members)
 
+    assertThat(service.isActiveMemberOfGroup(USER_ID, GROUP_ID)).isTrue()
+
     val result = service.getGroup(USER_ID, GROUP_ID)
 
     assertThat(result.groupId).isEqualTo(GROUP_ID)
     assertThat(result.members.single().userId).isEqualTo(USER_ID)
     assertThat(result.members.single().isLeader).isTrue()
+  }
+
+  @Test
+  fun `요청한 그룹이 사용자의 활성 그룹과 다르면 구성원이 아니다`() {
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(USER_ID, GROUP_ID)).willReturn(OTHER_GROUP_ID)
+
+    assertThat(service.isActiveMemberOfGroup(USER_ID, GROUP_ID)).isFalse()
   }
 
   @Test
@@ -77,6 +86,8 @@ class GroupServiceTest {
   fun `활성 그룹 구성원이 아니면 그룹 조회를 거부한다`() {
     given(groupRepository.findById(GROUP_ID)).willReturn(Optional.of(group(performance())))
     given(groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(USER_ID, GROUP_ID)).willReturn(null)
+
+    assertThat(service.isActiveMemberOfGroup(USER_ID, GROUP_ID)).isFalse()
 
     val exception = assertThrows<CustomException> {
       service.getGroup(USER_ID, GROUP_ID)
@@ -428,6 +439,21 @@ class GroupServiceTest {
   }
 
   @Test
+  fun `만료된 그룹에서는 탈퇴할 수 없다`() {
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
+    given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(
+      group(performance(), expiresAt = LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1)),
+    )
+
+    val exception = assertThrows<CustomException> {
+      service.leaveGroup(USER_ID, GROUP_ID)
+    }
+
+    assertThat(exception.errorCode).isEqualTo(ErrorCode.CONFLICT)
+    then(groupMemberRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
   fun `그룹 멤버가 아니면 탈퇴할 수 없다`() {
     given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
     given(groupRepository.findByIdForUpdate(GROUP_ID)).willReturn(group(performance()))
@@ -641,6 +667,7 @@ class GroupServiceTest {
     private const val OWNER_ID = 3L
     private const val PERFORMANCE_ID = 10L
     private const val GROUP_ID = 100L
+    private const val OTHER_GROUP_ID = 101L
     private const val INVITE_CODE = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"
   }
 }

@@ -4,7 +4,6 @@ import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
-import com.example.server.global.security.WebSocketSessionRegistry
 import com.example.server.group.dto.CreateGroupRequest
 import com.example.server.group.dto.GroupMemberData
 import com.example.server.group.dto.GroupMembershipData
@@ -29,7 +28,7 @@ import java.time.LocalDateTime
 class GroupControllerTest {
   @Mock lateinit var groupService: GroupService
 
-  @Mock lateinit var webSocketSessionRegistry: WebSocketSessionRegistry
+  @Mock lateinit var groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry
 
   @InjectMocks lateinit var controller: GroupController
 
@@ -42,7 +41,7 @@ class GroupControllerTest {
 
     assertThat(response.statusCode).isEqualTo(HttpStatus.CREATED)
     assertThat(response.body?.data).isEqualTo(snapshot)
-    then(webSocketSessionRegistry).shouldHaveNoInteractions()
+    then(groupChatSubscriptionRegistry).shouldHaveNoInteractions()
   }
 
   @Test
@@ -68,34 +67,34 @@ class GroupControllerTest {
   }
 
   @Test
-  fun `탈퇴 후 요청 사용자의 WebSocket 연결을 종료한다`() {
+  fun `탈퇴 후 요청 사용자의 해당 그룹 채팅 구독을 해제한다`() {
     given(groupService.leaveGroup(USER_ID, GROUP_ID)).willReturn(snapshot())
 
     val response = controller.leaveGroup(GROUP_ID, loginUser())
 
     assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-    then(webSocketSessionRegistry).should().closeUserSessions(USER_ID)
+    then(groupChatSubscriptionRegistry).should().unsubscribeGroupChat(USER_ID, GROUP_ID)
   }
 
   @Test
-  fun `강퇴 후 대상 사용자의 WebSocket 연결을 종료한다`() {
+  fun `강퇴 후 대상 사용자의 해당 그룹 채팅 구독을 해제한다`() {
     given(groupService.kickMember(USER_ID, GROUP_ID, MEMBER_ID)).willReturn(snapshot())
 
     val response = controller.kickMember(GROUP_ID, MEMBER_ID, loginUser())
 
     assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-    then(webSocketSessionRegistry).should().closeUserSessions(MEMBER_ID)
+    then(groupChatSubscriptionRegistry).should().unsubscribeGroupChat(MEMBER_ID, GROUP_ID)
   }
 
   @Test
-  fun `서비스 실패 시 WebSocket 연결을 종료하지 않는다`() {
+  fun `서비스 실패 시 그룹 채팅 구독을 해제하지 않는다`() {
     given(groupService.leaveGroup(USER_ID, GROUP_ID)).willThrow(CustomException(ErrorCode.FORBIDDEN))
 
     assertThrows<CustomException> {
       controller.leaveGroup(GROUP_ID, loginUser())
     }
 
-    then(webSocketSessionRegistry).shouldHaveNoInteractions()
+    then(groupChatSubscriptionRegistry).shouldHaveNoInteractions()
   }
 
   @Test

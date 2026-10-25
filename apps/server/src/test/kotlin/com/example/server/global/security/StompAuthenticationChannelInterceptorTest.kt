@@ -4,6 +4,7 @@ import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.refreshTokenKey
 import com.example.server.auth.types.UserRole
 import com.example.server.global.stomp.StompFailureMessage
+import com.example.server.group.GroupChatSubscriptionRegistry
 import com.example.server.group.GroupService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -54,11 +55,14 @@ class StompAuthenticationChannelInterceptorTest {
   @Mock
   lateinit var messagingTemplate: SimpMessagingTemplate
 
+  private lateinit var groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry
+
   private lateinit var interceptor: StompAuthenticationChannelInterceptor
 
   @BeforeEach
   fun setUp() {
-    interceptor = StompAuthenticationChannelInterceptor(stringRedisTemplate, groupService, messagingTemplateProvider)
+    groupChatSubscriptionRegistry = GroupChatSubscriptionRegistry(channel)
+    interceptor = StompAuthenticationChannelInterceptor(stringRedisTemplate, groupService, groupChatSubscriptionRegistry, messagingTemplateProvider)
   }
 
   @Nested
@@ -113,12 +117,11 @@ class StompAuthenticationChannelInterceptorTest {
     fun `그룹 구성원은 그룹 채팅 topic을 구독할 수 있다`() {
       val payload = validPayload()
       mockStoredSession(payload)
-      given(groupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(GROUP_ID)
+      given(groupService.isActiveMemberOfGroup(payload.userId, GROUP_ID)).willReturn(true)
       val message = stompMessage(
         command = StompCommand.SUBSCRIBE,
         authentication = authentication(payload),
         destination = "/topic/groups/$GROUP_ID/chat",
-        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
       )
 
       val result = interceptor.preSend(message, channel)
@@ -130,17 +133,16 @@ class StompAuthenticationChannelInterceptorTest {
     fun `그룹에 속하지 않은 사용자는 그룹 채팅 topic을 구독할 수 없다`() {
       val payload = validPayload()
       mockStoredSession(payload)
-      given(groupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(null)
+      given(groupService.isActiveMemberOfGroup(payload.userId, GROUP_ID)).willReturn(false)
       val message = stompMessage(
         command = StompCommand.SUBSCRIBE,
         authentication = authentication(payload),
         destination = "/topic/groups/$GROUP_ID/chat",
-        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
       )
 
       assertSubscriptionFailure(message)
 
-      then(groupService).should().getGroupId(payload.userId, PERFORMANCE_ID)
+      then(groupService).should().isActiveMemberOfGroup(payload.userId, GROUP_ID)
     }
 
     @Test
@@ -189,34 +191,19 @@ class StompAuthenticationChannelInterceptorTest {
     }
 
     @Test
-    fun `공연 ID 헤더 없이 그룹 채팅 topic을 구독할 수 없다`() {
+    fun `그룹 ID만으로 그룹 채팅 topic을 구독할 수 있다`() {
       val payload = validPayload()
       mockStoredSession(payload)
+      given(groupService.isActiveMemberOfGroup(payload.userId, GROUP_ID)).willReturn(true)
       val message = stompMessage(
         command = StompCommand.SUBSCRIBE,
         authentication = authentication(payload),
         destination = "/topic/groups/$GROUP_ID/chat",
       )
 
-      assertSubscriptionFailure(message)
+      assertSame(message, interceptor.preSend(message, channel))
 
-      then(groupService).shouldHaveNoInteractions()
-    }
-
-    @Test
-    fun `숫자가 아닌 공연 ID 헤더로 그룹 채팅 topic을 구독할 수 없다`() {
-      val payload = validPayload()
-      mockStoredSession(payload)
-      val message = stompMessage(
-        command = StompCommand.SUBSCRIBE,
-        authentication = authentication(payload),
-        destination = "/topic/groups/$GROUP_ID/chat",
-        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to "invalid-performance-id"),
-      )
-
-      assertSubscriptionFailure(message)
-
-      then(groupService).shouldHaveNoInteractions()
+      then(groupService).should().isActiveMemberOfGroup(payload.userId, GROUP_ID)
     }
 
     @Test
@@ -227,7 +214,6 @@ class StompAuthenticationChannelInterceptorTest {
         command = StompCommand.SUBSCRIBE,
         authentication = authentication(payload),
         destination = "/topic/groups/not-a-number/chat",
-        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
       )
 
       assertSubscriptionFailure(message)
@@ -239,12 +225,11 @@ class StompAuthenticationChannelInterceptorTest {
     fun `다른 그룹의 채팅 topic을 구독할 수 없다`() {
       val payload = validPayload()
       mockStoredSession(payload)
-      given(groupService.getGroupId(payload.userId, PERFORMANCE_ID)).willReturn(GROUP_ID)
+      given(groupService.isActiveMemberOfGroup(payload.userId, GROUP_ID + 1)).willReturn(false)
       val message = stompMessage(
         command = StompCommand.SUBSCRIBE,
         authentication = authentication(payload),
         destination = "/topic/groups/${GROUP_ID + 1}/chat",
-        nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
       )
 
       assertSubscriptionFailure(message)
@@ -361,10 +346,39 @@ class StompAuthenticationChannelInterceptorTest {
   }
 
   @Test
+  fun `서버 구독 해제 후에도 클라이언트의 구독 해제 전까지 차단 상태를 유지한다`() {
+    val payload = validPayload()
+    mockStoredSession(payload)
+    given(groupService.isActiveMemberOfGroup(payload.userId, GROUP_ID)).willReturn(true)
+    val subscribeMessage = stompMessage(
+      command = StompCommand.SUBSCRIBE,
+      authentication = authentication(payload),
+      destination = "/topic/groups/$GROUP_ID/chat",
+    )
+    interceptor.preSend(subscribeMessage, channel)
+    groupChatSubscriptionRegistry.unsubscribeGroupChat(payload.userId, GROUP_ID)
+
+    val outboundMessage = groupChatOutboundMessage()
+    assertNull(groupChatSubscriptionRegistry.preSend(outboundMessage, channel))
+
+    val serverUnsubscribe = StompHeaderAccessor.create(StompCommand.UNSUBSCRIBE).apply {
+      sessionId = "session-id"
+      subscriptionId = "subscription-id"
+      setHeader(GroupChatSubscriptionRegistry.SERVER_REVOCATION_HEADER, true)
+    }
+    interceptor.preSend(MessageBuilder.createMessage("", serverUnsubscribe.messageHeaders), channel)
+    assertNull(groupChatSubscriptionRegistry.preSend(outboundMessage, channel))
+
+    val clientUnsubscribe = stompMessage(command = StompCommand.UNSUBSCRIBE)
+    interceptor.preSend(clientUnsubscribe, channel)
+    assertSame(outboundMessage, groupChatSubscriptionRegistry.preSend(outboundMessage, channel))
+  }
+
+  @Test
   fun `메시지가 없는 구독 권한 예외는 기본 오류 메시지로 전송한다`() {
     val payload = validPayload()
     mockStoredSession(payload)
-    given(groupService.getGroupId(payload.userId, PERFORMANCE_ID))
+    given(groupService.isActiveMemberOfGroup(payload.userId, GROUP_ID))
       .willThrow(object : AccessDeniedException("권한 오류") {
         override val message: String? = null
       })
@@ -372,7 +386,6 @@ class StompAuthenticationChannelInterceptorTest {
       command = StompCommand.SUBSCRIBE,
       authentication = authentication(payload),
       destination = "/topic/groups/$GROUP_ID/chat",
-      nativeHeaders = mapOf(PERFORMANCE_ID_HEADER to PERFORMANCE_ID.toString()),
     )
 
     val failure = assertSubscriptionFailure(message)
@@ -427,11 +440,11 @@ class StompAuthenticationChannelInterceptorTest {
     command: StompCommand,
     authentication: Authentication? = null,
     destination: String? = null,
-    nativeHeaders: Map<String, String> = emptyMap(),
     sessionId: String? = "session-id",
   ): Message<String> {
     val accessor = StompHeaderAccessor.create(command)
     accessor.sessionId = sessionId
+    accessor.subscriptionId = "subscription-id"
 
     if (authentication != null) {
       accessor.user = authentication
@@ -439,19 +452,23 @@ class StompAuthenticationChannelInterceptorTest {
     if (destination != null) {
       accessor.destination = destination
     }
-    nativeHeaders.forEach { (name, value) ->
-      accessor.addNativeHeader(name, value)
-    }
-
     return MessageBuilder.createMessage(
       "",
       accessor.messageHeaders,
     )
   }
 
+  private fun groupChatOutboundMessage(): Message<String> {
+    val accessor = SimpMessageHeaderAccessor.create(org.springframework.messaging.simp.SimpMessageType.MESSAGE).apply {
+      sessionId = "session-id"
+      subscriptionId = "subscription-id"
+      destination = "/topic/groups/$GROUP_ID/chat"
+      setLeaveMutable(true)
+    }
+    return MessageBuilder.createMessage("chat", accessor.messageHeaders)
+  }
+
   companion object {
-    private const val PERFORMANCE_ID_HEADER = "performanceId"
-    private const val PERFORMANCE_ID = 10L
     private const val GROUP_ID = 100L
   }
 }
