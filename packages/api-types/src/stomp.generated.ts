@@ -10,6 +10,10 @@ export type PerformanceIdHoldMinusSeats = HoldVenueSeatsMessage | StompFailureMe
 
 export type PerformanceIdReleaseMinusSeats = ReleaseVenueSeatsMessage | StompFailureMessage;
 
+export type Chat = GroupChatMessage | StompFailureMessage;
+
+export type Groups = GroupChatMessage | StompFailureMessage;
+
 export type ReservationBeginMinusCheckoutMinusReview = BeginCheckoutReviewMessage | StompFailureMessage;
 
 export type ReservationCancelMinusPayment = CancelCheckoutMessage | StompFailureMessage;
@@ -85,6 +89,21 @@ export interface ReleaseVenueSeatsMessage {
 export interface ReleaseVenueSeatsCommand {
   data: number[];
   requestId: string;
+}
+
+export interface GroupChatMessage {
+  data: GroupChatEventData;
+  requestId: string;
+  success: boolean;
+}
+
+export interface GroupChatEventData {
+  content: string;
+  groupId: number;
+  senderId: number;
+  senderNickname: string;
+  senderProfileImageUrl: string | null;
+  sentAt: string;
 }
 
 export interface GroupChatCommand {
@@ -261,15 +280,6 @@ export interface GroupChatEvent {
   occurredAt: string;
   type: GroupChatEventType;
   version: number;
-}
-
-export interface GroupChatEventData {
-  content: string;
-  groupId: number;
-  senderId: number;
-  senderNickname: string;
-  senderProfileImageUrl: string | null;
-  sentAt: string;
 }
 
 export type GroupChatEventType = "GROUP_CHAT";
