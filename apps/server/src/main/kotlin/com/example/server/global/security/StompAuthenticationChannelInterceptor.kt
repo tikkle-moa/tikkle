@@ -73,12 +73,11 @@ class StompAuthenticationChannelInterceptor(
       throw AccessDeniedException("topic 패턴 구독은 지원하지 않습니다.")
     }
 
-    when (val groupChatDestination = GROUP_CHAT_DESTINATION.matchEntire(destination)) {
-      null -> return
-      else -> {
-        val groupId = groupChatDestination.groupValues[1].toLongOrNull() ?: throw AccessDeniedException("그룹 채팅 구독에 올바른 그룹 ID가 필요합니다.")
-        validateGroupChatSubscription(accessTokenPayload, accessor, groupId)
-      }
+    val groupChatDestination = GROUP_CHAT_DESTINATION.matchEntire(destination)
+    if (groupChatDestination != null) {
+      val groupId = groupChatDestination.groupValues[1].toLongOrNull() ?: throw AccessDeniedException("그룹 채팅 구독에 올바른 그룹 ID가 필요합니다.")
+      validateGroupChatSubscription(accessTokenPayload, accessor, groupId)
+      return
     }
   }
 

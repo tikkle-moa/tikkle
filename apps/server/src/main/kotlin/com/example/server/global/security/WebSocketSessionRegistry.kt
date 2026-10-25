@@ -79,6 +79,14 @@ class WebSocketSessionRegistry(
     }
   }
 
+  fun closeUserSessions(userId: Long) {
+    sessionsByTokenId.values
+      .asSequence()
+      .flatMap { it.values.asSequence() }
+      .filter { session -> accessTokenPayload(session)?.userId == userId }
+      .forEach { session -> close(session, CloseStatus.POLICY_VIOLATION) }
+  }
+
   private fun scheduleExpiration(payload: AccessTokenPayload, session: WebSocketSession) {
     val expirationTask = taskScheduler.schedule(
       Runnable {
