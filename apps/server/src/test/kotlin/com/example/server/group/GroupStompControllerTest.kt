@@ -7,7 +7,6 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.group.dto.GroupChatCommand
 import com.example.server.group.dto.GroupChatData
 import com.example.server.group.dto.GroupChatEventData
-import com.example.server.group.dto.GroupChatMessage
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -48,11 +47,8 @@ class GroupStompControllerTest {
     given(authentication.principal).willReturn(LoginUserResult(USER_ID, UserRole.USER))
     given(groupService.createGroupChatMessage(USER_ID, command.data)).willReturn(eventData)
 
-    val response = controller.sendGroupChatMessage(command, authentication)
+    controller.sendGroupChatMessage(command, authentication)
 
-    assertThat(response).isEqualTo(GroupChatMessage(REQUEST_ID, eventData))
-    assertThat(response.requestId).isEqualTo(command.requestId)
-    assertThat(response.success).isTrue()
     then(groupStompPublisher).should().publishGroupChatMessage(GROUP_ID, eventData)
   }
 
@@ -83,8 +79,10 @@ class GroupStompControllerTest {
 
     assertThat(classMapping.value).containsExactly("/groups")
     assertThat(method.getAnnotation(MessageMapping::class.java).value).containsExactly("/chat")
-    assertThat(method.getAnnotation(SendToUser::class.java).value).containsExactly("/queue/groups/chat")
-    assertThat(method.getAnnotation(SendToUser::class.java).broadcast).isFalse()
+    assertThat(method.returnType).isEqualTo(java.lang.Void.TYPE)
+    assertThat(method.getAnnotation(org.springframework.messaging.simp.annotation.SendToUser::class.java).value)
+      .containsExactly("/queue/groups/chat")
+    assertThat(method.getAnnotation(org.springframework.messaging.simp.annotation.SendToUser::class.java).broadcast).isFalse()
   }
 
   companion object {

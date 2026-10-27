@@ -4,7 +4,6 @@ import com.example.server.auth.dto.LoginUserResult
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.group.dto.GroupChatCommand
-import com.example.server.group.dto.GroupChatMessage
 import jakarta.validation.Valid
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
@@ -17,16 +16,11 @@ import org.springframework.stereotype.Controller
 class GroupStompController(private val groupService: GroupService, private val groupStompPublisher: GroupStompPublisher) {
   @MessageMapping("/chat")
   @SendToUser(value = ["/queue/groups/chat"], broadcast = false)
-  fun sendGroupChatMessage(@Payload @Valid command: GroupChatCommand, authentication: Authentication): GroupChatMessage {
+  fun sendGroupChatMessage(@Payload @Valid command: GroupChatCommand, authentication: Authentication) {
     val user = loginUser(authentication)
     val result = groupService.createGroupChatMessage(user.userId, command.data)
 
     groupStompPublisher.publishGroupChatMessage(result.groupId, result)
-
-    return GroupChatMessage(
-      requestId = command.requestId,
-      data = result,
-    )
   }
 
   private fun loginUser(authentication: Authentication): LoginUserResult = authentication.principal as? LoginUserResult
