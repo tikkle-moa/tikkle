@@ -571,8 +571,8 @@ export interface components {
       profileImageUrl: string | null;
       isLeader: boolean;
     };
-    /** GroupMembershipData */
-    GroupMembershipData: {
+    /** GroupMembershipResponse */
+    GroupMembershipResponse: {
       /** Format: int64 */
       groupId: number;
       /** Format: int64 */
@@ -585,10 +585,10 @@ export interface components {
       members: components["schemas"]["GroupMemberData"][];
     };
     /** Success */
-    SuccessGroupMembershipData: {
+    SuccessGroupMembershipResponse: {
       /** @enum {boolean} */
       success: true;
-      data: components["schemas"]["GroupMembershipData"];
+      data: components["schemas"]["GroupMembershipResponse"];
     };
     /** JoinGroupRequest */
     JoinGroupRequest: {
@@ -1167,7 +1167,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SuccessGroupMembershipData"];
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
         };
       };
       /** @description 잘못된 요청입니다. */
@@ -1283,7 +1283,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SuccessGroupMembershipData"];
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
         };
       };
       /** @description 잘못된 요청입니다. */
@@ -2365,7 +2365,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SuccessGroupMembershipData"];
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
         };
       };
       /** @description 인증이 필요합니다. */
@@ -2529,7 +2529,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SuccessGroupMembershipData"];
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
         };
       };
       /** @description 잘못된 요청입니다. */
@@ -2641,7 +2641,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SuccessGroupMembershipData"];
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
         };
       };
       /** @description 인증이 필요합니다. */

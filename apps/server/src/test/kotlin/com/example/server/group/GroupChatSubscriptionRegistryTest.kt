@@ -9,9 +9,12 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
+import org.springframework.messaging.MessageHandler
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessageType
 import org.springframework.messaging.support.MessageBuilder
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @ExtendWith(MockitoExtension::class)
 class GroupChatSubscriptionRegistryTest {
@@ -29,14 +32,16 @@ class GroupChatSubscriptionRegistryTest {
     registry.registerIfMember(USER_ID, GROUP_ID, SESSION_ID, GROUP_SUBSCRIPTION_ID) { true }
     registry.registerIfMember(USER_ID, OTHER_GROUP_ID, SESSION_ID, OTHER_SUBSCRIPTION_ID) { true }
 
-    registry.unsubscribeGroupChat(USER_ID, GROUP_ID)
+    registry.revokeGroupChat(USER_ID, GROUP_ID)
 
     val revokedMessage = outboundMessage(SESSION_ID, GROUP_SUBSCRIPTION_ID, "/topic/groups/$GROUP_ID/chat")
     val otherGroupMessage = outboundMessage(SESSION_ID, OTHER_SUBSCRIPTION_ID, "/topic/groups/$OTHER_GROUP_ID/chat")
     val otherTopicMessage = outboundMessage(SESSION_ID, GROUP_SUBSCRIPTION_ID, "/topic/performances/1/status")
 
     assertThat(registry.preSend(revokedMessage, channel)).isNull()
+    assertThat(registry.beforeHandle(revokedMessage, channel, MessageHandler { _ -> })).isNull()
     assertThat(registry.preSend(otherGroupMessage, channel)).isSameAs(otherGroupMessage)
+    assertThat(registry.beforeHandle(otherGroupMessage, channel, MessageHandler { _ -> })).isSameAs(otherGroupMessage)
     assertThat(registry.preSend(otherTopicMessage, channel)).isSameAs(otherTopicMessage)
 
     val unsubscribeCaptor = ArgumentCaptor.forClass(Message::class.java)
@@ -60,6 +65,61 @@ class GroupChatSubscriptionRegistryTest {
     then(clientInboundChannel).shouldHaveNoInteractions()
   }
 
+  @Test
+  fun `트랜잭션 중에는 새 구독을 막고 커밋 후 기존 브로커 구독을 해제한다`() {
+    registry = GroupChatSubscriptionRegistry(clientInboundChannel)
+    registry.registerIfMember(USER_ID, GROUP_ID, SESSION_ID, GROUP_SUBSCRIPTION_ID) { true }
+
+    withTransactionSynchronization {
+      registry.revokeGroupChat(USER_ID, GROUP_ID)
+
+      assertThat(registry.preSend(outboundMessage(SESSION_ID, GROUP_SUBSCRIPTION_ID, "/topic/groups/$GROUP_ID/chat"), channel)).isNull()
+      assertThat(registry.registerIfMember(USER_ID, GROUP_ID, SESSION_ID, "new-subscription") { true }).isFalse()
+
+      TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+      TransactionSynchronizationManager.getSynchronizations().single().afterCompletion(TransactionSynchronization.STATUS_COMMITTED)
+    }
+
+    val unsubscribeCaptor = ArgumentCaptor.forClass(Message::class.java)
+    then(clientInboundChannel).should().send(unsubscribeCaptor.capture())
+    assertThat(SimpMessageHeaderAccessor.getMessageType(unsubscribeCaptor.value.headers)).isEqualTo(SimpMessageType.UNSUBSCRIBE)
+    assertThat(registry.registerIfMember(USER_ID, GROUP_ID, SESSION_ID, "new-subscription") { true }).isTrue()
+  }
+
+  @Test
+  fun `트랜잭션 롤백 시 기존 구독 차단을 복구한다`() {
+    registry = GroupChatSubscriptionRegistry(clientInboundChannel)
+    registry.registerIfMember(USER_ID, GROUP_ID, SESSION_ID, GROUP_SUBSCRIPTION_ID) { true }
+
+    withTransactionSynchronization {
+      registry.revokeGroupChat(USER_ID, GROUP_ID)
+      TransactionSynchronizationManager.getSynchronizations().single().afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK)
+    }
+
+    val message = outboundMessage(SESSION_ID, GROUP_SUBSCRIPTION_ID, "/topic/groups/$GROUP_ID/chat")
+    assertThat(registry.preSend(message, channel)).isSameAs(message)
+    assertThat(registry.beforeHandle(message, channel, MessageHandler { _ -> })).isSameAs(message)
+    assertThat(registry.registerIfMember(USER_ID, GROUP_ID, SESSION_ID, "new-subscription") { true }).isTrue()
+    then(clientInboundChannel).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `트랜잭션 상태를 알 수 없으면 새 구독에서 멤버십을 다시 확인한다`() {
+    registry = GroupChatSubscriptionRegistry(clientInboundChannel)
+    registry.registerIfMember(USER_ID, GROUP_ID, SESSION_ID, GROUP_SUBSCRIPTION_ID) { true }
+
+    withTransactionSynchronization {
+      registry.revokeGroupChat(USER_ID, GROUP_ID)
+      TransactionSynchronizationManager.getSynchronizations().single()
+        .afterCompletion(TransactionSynchronization.STATUS_UNKNOWN)
+    }
+
+    val revokedMessage = outboundMessage(SESSION_ID, GROUP_SUBSCRIPTION_ID, "/topic/groups/$GROUP_ID/chat")
+    assertThat(registry.preSend(revokedMessage, channel)).isNull()
+    assertThat(registry.registerIfMember(USER_ID, GROUP_ID, SESSION_ID, "new-subscription") { true }).isTrue()
+    then(clientInboundChannel).shouldHaveNoInteractions()
+  }
+
   private fun outboundMessage(sessionId: String, subscriptionId: String, destination: String): Message<String> {
     val accessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE).apply {
       this.sessionId = sessionId
@@ -68,6 +128,15 @@ class GroupChatSubscriptionRegistryTest {
       setLeaveMutable(true)
     }
     return MessageBuilder.createMessage("chat", accessor.messageHeaders)
+  }
+
+  private fun withTransactionSynchronization(action: () -> Unit) {
+    TransactionSynchronizationManager.initSynchronization()
+    try {
+      action()
+    } finally {
+      TransactionSynchronizationManager.clearSynchronization()
+    }
   }
 
   companion object {

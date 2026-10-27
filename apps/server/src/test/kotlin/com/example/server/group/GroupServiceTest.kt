@@ -43,6 +43,8 @@ class GroupServiceTest {
 
   @Mock lateinit var performanceRepository: PerformanceRepository
 
+  @Mock lateinit var groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry
+
   @InjectMocks lateinit var service: GroupService
 
   @Test
@@ -359,7 +361,7 @@ class GroupServiceTest {
   }
 
   @Test
-  fun `멤버가 없는 그룹에 가입하면 가입자를 그룹장으로 지정한다`() {
+  fun `마이그레이션으로 그룹장이 비어 있는 기존 빈 그룹은 첫 가입자를 그룹장으로 지정한다`() {
     val group = group(performance())
     val members = mutableListOf<GroupMember>()
     given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(USER_ID))
@@ -399,6 +401,7 @@ class GroupServiceTest {
     assertThat(group.leader?.id).isEqualTo(LEADER_ID)
     assertThat(result.members).hasSize(1)
     assertThat(result.members.single().isLeader).isTrue()
+    then(groupChatSubscriptionRegistry).should().revokeGroupChat(USER_ID, GROUP_ID)
   }
 
   @Test
@@ -624,6 +627,7 @@ class GroupServiceTest {
     val result = service.kickMember(USER_ID, GROUP_ID, LEADER_ID)
 
     assertThat(result.members).hasSize(1)
+    then(groupChatSubscriptionRegistry).should().revokeGroupChat(LEADER_ID, GROUP_ID)
     assertThat(result.members.single().userId).isEqualTo(USER_ID)
   }
 

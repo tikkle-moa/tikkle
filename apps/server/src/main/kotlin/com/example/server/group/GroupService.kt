@@ -7,7 +7,7 @@ import com.example.server.global.exception.ErrorCode
 import com.example.server.group.dto.GroupChatData
 import com.example.server.group.dto.GroupChatEventData
 import com.example.server.group.dto.GroupMemberData
-import com.example.server.group.dto.GroupMembershipData
+import com.example.server.group.dto.GroupMembershipResponse
 import com.example.server.group.entity.Group
 import com.example.server.group.entity.GroupMember
 import com.example.server.group.repository.GroupMemberRepository
@@ -26,9 +26,10 @@ class GroupService(
   private val groupRepository: GroupRepository,
   private val groupMemberRepository: GroupMemberRepository,
   private val performanceRepository: PerformanceRepository,
+  private val groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry,
 ) {
   @Transactional
-  fun createGroup(userId: Long, performanceId: Long): GroupMembershipData {
+  fun createGroup(userId: Long, performanceId: Long): GroupMembershipResponse {
     val user = requireUserForUpdate(userId)
     ensureNoActiveGroup(userId, performanceId)
     val performance = performanceRepository.findById(performanceId)
@@ -52,7 +53,7 @@ class GroupService(
   }
 
   @Transactional
-  fun joinGroup(userId: Long, groupId: Long, inviteCode: String): GroupMembershipData {
+  fun joinGroup(userId: Long, groupId: Long, inviteCode: String): GroupMembershipResponse {
     val user = requireUserForUpdate(userId)
     val group = groupRepository.findByInviteCodeForUpdate(inviteCode.trim().lowercase())
       ?: throw CustomException(ErrorCode.NOT_FOUND, "초대 코드에 해당하는 그룹을 찾을 수 없습니다.")
@@ -83,7 +84,7 @@ class GroupService(
   }
 
   @Transactional
-  fun leaveGroup(userId: Long, groupId: Long): GroupMembershipData {
+  fun leaveGroup(userId: Long, groupId: Long): GroupMembershipResponse {
     requireUserForUpdate(userId)
     val group = groupRepository.findByIdForUpdate(groupId)
       ?: throw CustomException(ErrorCode.NOT_FOUND, "그룹을 찾을 수 없습니다.")
@@ -93,6 +94,7 @@ class GroupService(
     val groupMember = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
       ?: throw CustomException(ErrorCode.FORBIDDEN, "그룹 구성원이 아닙니다.")
 
+    groupChatSubscriptionRegistry.revokeGroupChat(userId, groupId)
     groupMemberRepository.delete(groupMember)
     val remainingMembers = groupMemberRepository.findAllByGroupId(groupId)
     val wasLeader = group.leader?.id == userId
@@ -109,7 +111,7 @@ class GroupService(
   }
 
   @Transactional
-  fun kickMember(userId: Long, groupId: Long, memberUserId: Long): GroupMembershipData {
+  fun kickMember(userId: Long, groupId: Long, memberUserId: Long): GroupMembershipResponse {
     if (userId == memberUserId) {
       throw CustomException(ErrorCode.BAD_REQUEST, "그룹장은 본인을 강퇴할 수 없습니다. 탈퇴를 이용해 주세요.")
     }
@@ -126,6 +128,7 @@ class GroupService(
 
     val groupMember = groupMemberRepository.findByGroupIdAndUserId(groupId, memberUserId)
       ?: throw CustomException(ErrorCode.NOT_FOUND, "해당 사용자는 그룹 구성원이 아닙니다.")
+    groupChatSubscriptionRegistry.revokeGroupChat(memberUserId, groupId)
     groupMemberRepository.delete(groupMember)
 
     return membershipData(group)
@@ -151,7 +154,7 @@ class GroupService(
     groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(userId, groupId) == groupId
 
   @Transactional(readOnly = true)
-  fun getGroup(userId: Long, groupId: Long): GroupMembershipData {
+  fun getGroup(userId: Long, groupId: Long): GroupMembershipResponse {
     val group = groupRepository.findById(groupId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "그룹을 찾을 수 없습니다.") }
     if (groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(userId, groupId) == null) {
@@ -160,9 +163,9 @@ class GroupService(
     return membershipData(group)
   }
 
-  private fun membershipData(group: Group): GroupMembershipData {
+  private fun membershipData(group: Group): GroupMembershipResponse {
     val members = groupMemberRepository.findAllByGroupId(group.id)
-    return GroupMembershipData(
+    return GroupMembershipResponse(
       groupId = group.id,
       performanceId = group.performance.id,
       inviteCode = group.inviteCode,

@@ -2,18 +2,14 @@ package com.example.server.group
 
 import com.example.server.auth.dto.LoginUserResult
 import com.example.server.auth.types.UserRole
-import com.example.server.global.exception.CustomException
-import com.example.server.global.exception.ErrorCode
 import com.example.server.group.dto.CreateGroupRequest
 import com.example.server.group.dto.GroupMemberData
-import com.example.server.group.dto.GroupMembershipData
+import com.example.server.group.dto.GroupMembershipResponse
 import com.example.server.group.dto.JoinGroupRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
-import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
@@ -28,8 +24,6 @@ import java.time.LocalDateTime
 class GroupControllerTest {
   @Mock lateinit var groupService: GroupService
 
-  @Mock lateinit var groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry
-
   @InjectMocks lateinit var controller: GroupController
 
   @Test
@@ -41,7 +35,6 @@ class GroupControllerTest {
 
     assertThat(response.statusCode).isEqualTo(HttpStatus.CREATED)
     assertThat(response.body?.data).isEqualTo(snapshot)
-    then(groupChatSubscriptionRegistry).shouldHaveNoInteractions()
   }
 
   @Test
@@ -64,37 +57,6 @@ class GroupControllerTest {
 
     assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
     assertThat(response.body?.data).isEqualTo(snapshot)
-  }
-
-  @Test
-  fun `탈퇴 후 요청 사용자의 해당 그룹 채팅 구독을 해제한다`() {
-    given(groupService.leaveGroup(USER_ID, GROUP_ID)).willReturn(snapshot())
-
-    val response = controller.leaveGroup(GROUP_ID, loginUser())
-
-    assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-    then(groupChatSubscriptionRegistry).should().unsubscribeGroupChat(USER_ID, GROUP_ID)
-  }
-
-  @Test
-  fun `강퇴 후 대상 사용자의 해당 그룹 채팅 구독을 해제한다`() {
-    given(groupService.kickMember(USER_ID, GROUP_ID, MEMBER_ID)).willReturn(snapshot())
-
-    val response = controller.kickMember(GROUP_ID, MEMBER_ID, loginUser())
-
-    assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-    then(groupChatSubscriptionRegistry).should().unsubscribeGroupChat(MEMBER_ID, GROUP_ID)
-  }
-
-  @Test
-  fun `서비스 실패 시 그룹 채팅 구독을 해제하지 않는다`() {
-    given(groupService.leaveGroup(USER_ID, GROUP_ID)).willThrow(CustomException(ErrorCode.FORBIDDEN))
-
-    assertThrows<CustomException> {
-      controller.leaveGroup(GROUP_ID, loginUser())
-    }
-
-    then(groupChatSubscriptionRegistry).shouldHaveNoInteractions()
   }
 
   @Test
@@ -138,7 +100,7 @@ class GroupControllerTest {
     assertThat(kickMethod.getAnnotation(DeleteMapping::class.java).value).containsExactly("/{groupId}/members/{memberUserId}")
   }
 
-  private fun snapshot() = GroupMembershipData(
+  private fun snapshot() = GroupMembershipResponse(
     groupId = GROUP_ID,
     performanceId = PERFORMANCE_ID,
     inviteCode = INVITE_CODE,
@@ -151,7 +113,6 @@ class GroupControllerTest {
 
   companion object {
     private const val USER_ID = 1L
-    private const val MEMBER_ID = 2L
     private const val PERFORMANCE_ID = 10L
     private const val GROUP_ID = 100L
     private const val INVITE_CODE = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"

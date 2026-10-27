@@ -356,7 +356,7 @@ class StompAuthenticationChannelInterceptorTest {
       destination = "/topic/groups/$GROUP_ID/chat",
     )
     interceptor.preSend(subscribeMessage, channel)
-    groupChatSubscriptionRegistry.unsubscribeGroupChat(payload.userId, GROUP_ID)
+    groupChatSubscriptionRegistry.revokeGroupChat(payload.userId, GROUP_ID)
 
     val outboundMessage = groupChatOutboundMessage()
     assertNull(groupChatSubscriptionRegistry.preSend(outboundMessage, channel))

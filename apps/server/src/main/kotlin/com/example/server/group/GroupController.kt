@@ -6,7 +6,7 @@ import com.example.server.global.openapi.ErrorResponse
 import com.example.server.global.openapi.ErrorResponseItem
 import com.example.server.global.response.ApiResponse
 import com.example.server.group.dto.CreateGroupRequest
-import com.example.server.group.dto.GroupMembershipData
+import com.example.server.group.dto.GroupMembershipResponse
 import com.example.server.group.dto.JoinGroupRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -28,7 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 @RestController
 @RequestMapping("/groups")
 @Validated
-class GroupController(private val groupService: GroupService, private val groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry) {
+class GroupController(private val groupService: GroupService) {
   @Operation(
     summary = "그룹 및 멤버 목록 조회",
     responses = [SwaggerApiResponse(responseCode = "200", description = "그룹 조회 성공")],
@@ -45,7 +45,8 @@ class GroupController(private val groupService: GroupService, private val groupC
   fun getGroup(
     @PathVariable("groupId") @Positive groupId: Long,
     @AuthenticationPrincipal loginUser: LoginUserResult,
-  ): ResponseEntity<ApiResponse.Success<GroupMembershipData>> = ResponseEntity.ok(ApiResponse.ok(groupService.getGroup(loginUser.userId, groupId)))
+  ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse>> =
+    ResponseEntity.ok(ApiResponse.ok(groupService.getGroup(loginUser.userId, groupId)))
 
   @Operation(
     summary = "공연 그룹 생성",
@@ -65,7 +66,7 @@ class GroupController(private val groupService: GroupService, private val groupC
   fun createGroup(
     @Valid @RequestBody request: CreateGroupRequest,
     @AuthenticationPrincipal loginUser: LoginUserResult,
-  ): ResponseEntity<ApiResponse.Success<GroupMembershipData>> {
+  ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse>> {
     val result = groupService.createGroup(loginUser.userId, request.performanceId)
 
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -91,7 +92,7 @@ class GroupController(private val groupService: GroupService, private val groupC
     @PathVariable("groupId") @Positive groupId: Long,
     @Valid @RequestBody request: JoinGroupRequest,
     @AuthenticationPrincipal loginUser: LoginUserResult,
-  ): ResponseEntity<ApiResponse.Success<GroupMembershipData>> {
+  ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse>> {
     val result = groupService.joinGroup(loginUser.userId, groupId, request.inviteCode)
 
     return ResponseEntity.ok(ApiResponse.ok(result))
@@ -114,9 +115,8 @@ class GroupController(private val groupService: GroupService, private val groupC
   fun leaveGroup(
     @PathVariable("groupId") @Positive groupId: Long,
     @AuthenticationPrincipal loginUser: LoginUserResult,
-  ): ResponseEntity<ApiResponse.Success<GroupMembershipData>> {
+  ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse>> {
     val result = groupService.leaveGroup(loginUser.userId, groupId)
-    groupChatSubscriptionRegistry.unsubscribeGroupChat(loginUser.userId, groupId)
 
     return ResponseEntity.ok(ApiResponse.ok(result))
   }
@@ -140,9 +140,8 @@ class GroupController(private val groupService: GroupService, private val groupC
     @PathVariable("groupId") @Positive groupId: Long,
     @PathVariable("memberUserId") @Positive memberUserId: Long,
     @AuthenticationPrincipal loginUser: LoginUserResult,
-  ): ResponseEntity<ApiResponse.Success<GroupMembershipData>> {
+  ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse>> {
     val result = groupService.kickMember(loginUser.userId, groupId, memberUserId)
-    groupChatSubscriptionRegistry.unsubscribeGroupChat(memberUserId, groupId)
 
     return ResponseEntity.ok(ApiResponse.ok(result))
   }
