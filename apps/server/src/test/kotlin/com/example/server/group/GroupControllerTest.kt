@@ -10,6 +10,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
+import org.mockito.BDDMockito.then
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
@@ -57,6 +58,30 @@ class GroupControllerTest {
 
     assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
     assertThat(response.body?.data).isEqualTo(snapshot)
+  }
+
+  @Test
+  fun `그룹 탈퇴를 서비스에 위임하고 변경된 스냅샷을 반환한다`() {
+    val snapshot = snapshot()
+    given(groupService.leaveGroup(USER_ID, GROUP_ID)).willReturn(snapshot)
+
+    val response = controller.leaveGroup(GROUP_ID, loginUser())
+
+    assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+    assertThat(response.body?.data).isEqualTo(snapshot)
+    then(groupService).should().leaveGroup(USER_ID, GROUP_ID)
+  }
+
+  @Test
+  fun `그룹원 강퇴를 서비스에 위임하고 변경된 스냅샷을 반환한다`() {
+    val snapshot = snapshot()
+    given(groupService.kickMember(USER_ID, GROUP_ID, MEMBER_ID)).willReturn(snapshot)
+
+    val response = controller.kickMember(GROUP_ID, MEMBER_ID, loginUser())
+
+    assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+    assertThat(response.body?.data).isEqualTo(snapshot)
+    then(groupService).should().kickMember(USER_ID, GROUP_ID, MEMBER_ID)
   }
 
   @Test
@@ -113,6 +138,7 @@ class GroupControllerTest {
 
   companion object {
     private const val USER_ID = 1L
+    private const val MEMBER_ID = 2L
     private const val PERFORMANCE_ID = 10L
     private const val GROUP_ID = 100L
     private const val INVITE_CODE = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"
