@@ -10,10 +10,6 @@ export type PerformanceIdHoldMinusSeats = HoldVenueSeatsMessage | StompFailureMe
 
 export type PerformanceIdReleaseMinusSeats = ReleaseVenueSeatsMessage | StompFailureMessage;
 
-export type Chat = StompFailureMessage;
-
-export type Groups = StompFailureMessage;
-
 export type ReservationBeginMinusCheckoutMinusReview = BeginCheckoutReviewMessage | StompFailureMessage;
 
 export type ReservationCancelMinusPayment = CancelCheckoutMessage | StompFailureMessage;

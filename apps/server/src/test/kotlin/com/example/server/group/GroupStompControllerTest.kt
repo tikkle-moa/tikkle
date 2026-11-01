@@ -80,9 +80,7 @@ class GroupStompControllerTest {
     assertThat(classMapping.value).containsExactly("/groups")
     assertThat(method.getAnnotation(MessageMapping::class.java).value).containsExactly("/chat")
     assertThat(method.returnType).isEqualTo(java.lang.Void.TYPE)
-    assertThat(method.getAnnotation(org.springframework.messaging.simp.annotation.SendToUser::class.java).value)
-      .containsExactly("/queue/groups/chat")
-    assertThat(method.getAnnotation(org.springframework.messaging.simp.annotation.SendToUser::class.java).broadcast).isFalse()
+    assertThat(method.getAnnotation(SendToUser::class.java)).isNull()
   }
 
   companion object {

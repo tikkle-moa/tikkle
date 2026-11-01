@@ -7,7 +7,6 @@ import com.example.server.group.dto.GroupChatCommand
 import jakarta.validation.Valid
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
-import org.springframework.messaging.simp.annotation.SendToUser
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Controller
 
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Controller
 @MessageMapping("/groups")
 class GroupStompController(private val groupService: GroupService, private val groupStompPublisher: GroupStompPublisher) {
   @MessageMapping("/chat")
-  @SendToUser(value = ["/queue/groups/chat"], broadcast = false)
   fun sendGroupChatMessage(@Payload @Valid command: GroupChatCommand, authentication: Authentication) {
     val user = loginUser(authentication)
     val result = groupService.createGroupChatMessage(user.userId, command.data)

@@ -16,20 +16,13 @@ import java.net.URI
 @Import(TestcontainersConfig::class)
 class GroupStompAsyncApiTest(@LocalServerPort private val port: Int, @Autowired private val objectMapper: ObjectMapper) {
   @Test
-  fun `그룹 채팅 명령은 성공 응답 없이 오류 응답만 명세한다`() {
+  fun `그룹 채팅 명령은 별도 응답 채널을 명세하지 않는다`() {
     val document = URI("http://localhost:$port/api/springwolf/docs").toURL().readText()
     val asyncApi = objectMapper.readTree(document)
     val operationId = asyncApi["operations"].fieldNames().asSequence()
       .first { it.contains("sendGroupChatMessage") }
     val operation = asyncApi["operations"][operationId]
-    val channelId = operation["reply"]["channel"]["\$ref"].asText().substringAfterLast('/')
-    val channel = asyncApi["channels"][channelId]
 
-    assertThat(channel["messages"].fieldNames().asSequence().toList())
-      .containsExactly("StompFailureMessage")
-    assertThat(operation["reply"]["messages"].size()).isEqualTo(1)
-    assertThat(operation["reply"]["messages"][0]["\$ref"].asText())
-      .endsWith("/StompFailureMessage")
-    assertThat(asyncApi["components"]["messages"].has("void")).isFalse()
+    assertThat(operation.has("reply")).isFalse()
   }
 }

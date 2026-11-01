@@ -44,23 +44,8 @@ class SpringwolfResponseCustomizer(
 
   override fun customize(operation: Operation, method: Method) {
     val sendToUser = method.getAnnotation(SendToUser::class.java) ?: return
-    val failureMessageName = registerFailureMessage()
-    val responseChannelId = stompBindingSendToUserFactory.getChannelId(sendToUser)
-
-    if (method.returnType == Void.TYPE) {
-      responseMessagesByOperationId[operation.operationId] = ResponseMessage(
-        channelId = responseChannelId,
-        successMessageName = null,
-        failureMessageName = failureMessageName,
-      )
-      operation.reply = OperationReply.builder()
-        .channel(ChannelReference.fromChannel(responseChannelId))
-        .messages(listOf(MessageReference.toComponentMessage(failureMessageName)))
-        .build()
-      return
-    }
-
     val payloadSchema = payloadService.buildSchema(method.returnType)
+    val failureMessageName = registerFailureMessage()
 
     val headerSchema = asyncHeadersBuilder.buildHeaders(payloadSchema)
     val headerSchemaName = componentsService.registerSchema(headerSchema)
@@ -80,6 +65,8 @@ class SpringwolfResponseCustomizer(
       .build()
 
     componentsService.registerMessage(responseMessage)
+
+    val responseChannelId = stompBindingSendToUserFactory.getChannelId(sendToUser)
 
     responseMessagesByOperationId[operation.operationId] = ResponseMessage(
       channelId = responseChannelId,
@@ -115,28 +102,29 @@ class SpringwolfResponseCustomizer(
       val messages = (channel.messages ?: emptyMap()).toMutableMap()
 
       messages.remove("StompSuccessMessage")
-      if (responseMessage.successMessageName == null) messages.remove("void")
-      responseMessage.successMessageName?.let { successMessageName ->
-        messages[successMessageName] = MessageReference.toComponentMessage(successMessageName)
-      }
+      messages[responseMessage.successMessageName] =
+        MessageReference.toComponentMessage(responseMessage.successMessageName)
       messages[responseMessage.failureMessageName] =
         MessageReference.toComponentMessage(responseMessage.failureMessageName)
       channel.messages = messages
-      val replyMessages = mutableListOf<MessageReference>()
-      responseMessage.successMessageName?.let { successMessageName ->
-        replyMessages.add(MessageReference.toChannelMessage(responseMessage.channelId, successMessageName))
-      }
-      replyMessages.add(MessageReference.toChannelMessage(responseMessage.channelId, responseMessage.failureMessageName))
       operation.reply = OperationReply.builder()
         .channel(ChannelReference.fromChannel(responseMessage.channelId))
-        .messages(replyMessages)
+        .messages(
+          listOf(
+            MessageReference.toChannelMessage(
+              responseMessage.channelId,
+              responseMessage.successMessageName,
+            ),
+            MessageReference.toChannelMessage(
+              responseMessage.channelId,
+              responseMessage.failureMessageName,
+            ),
+          ),
+        )
         .build()
     }
 
     asyncAPI.components?.messages?.remove("StompSuccessMessage")
-    if (responseMessagesByOperationId.values.any { it.successMessageName == null }) {
-      asyncAPI.components?.messages?.remove("void")
-    }
   }
 
   private fun registerFailureMessage(): String {
@@ -159,5 +147,5 @@ class SpringwolfResponseCustomizer(
     return failureMessage.messageId
   }
 
-  private data class ResponseMessage(val channelId: String, val successMessageName: String?, val failureMessageName: String)
+  private data class ResponseMessage(val channelId: String, val successMessageName: String, val failureMessageName: String)
 }
