@@ -89,7 +89,8 @@ class GroupChatSubscriptionRegistry(@Lazy @Qualifier("clientInboundChannel") pri
 
     val sessionId = accessor.sessionId ?: return false
     val subscriptionId = accessor.subscriptionId ?: return false
-    return subscriptions[SubscriptionKey(sessionId, subscriptionId)]?.revoked == true
+    val subscription = subscriptions[SubscriptionKey(sessionId, subscriptionId)] ?: return true
+    return subscription.revoked
   }
 
   private fun completeRevocation(membershipKey: MembershipKey, subscriptionKeys: List<SubscriptionKey>) {

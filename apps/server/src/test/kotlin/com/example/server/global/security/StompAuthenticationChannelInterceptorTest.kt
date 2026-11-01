@@ -346,7 +346,7 @@ class StompAuthenticationChannelInterceptorTest {
   }
 
   @Test
-  fun `서버 구독 해제 후에도 클라이언트의 구독 해제 전까지 차단 상태를 유지한다`() {
+  fun `서버와 클라이언트 구독 해제 후 미등록 그룹 메시지를 차단한다`() {
     val payload = validPayload()
     mockStoredSession(payload)
     given(groupService.isActiveMemberOfGroup(payload.userId, GROUP_ID)).willReturn(true)
@@ -371,7 +371,7 @@ class StompAuthenticationChannelInterceptorTest {
 
     val clientUnsubscribe = stompMessage(command = StompCommand.UNSUBSCRIBE)
     interceptor.preSend(clientUnsubscribe, channel)
-    assertSame(outboundMessage, groupChatSubscriptionRegistry.preSend(outboundMessage, channel))
+    assertNull(groupChatSubscriptionRegistry.preSend(outboundMessage, channel))
   }
 
   @Test

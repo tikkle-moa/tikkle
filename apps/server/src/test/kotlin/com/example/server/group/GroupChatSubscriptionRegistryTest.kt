@@ -61,7 +61,17 @@ class GroupChatSubscriptionRegistryTest {
     val message = outboundMessage(SESSION_ID, GROUP_SUBSCRIPTION_ID, "/topic/groups/$GROUP_ID/chat")
 
     assertThat(registered).isFalse()
-    assertThat(registry.preSend(message, channel)).isSameAs(message)
+    assertThat(registry.preSend(message, channel)).isNull()
+    then(clientInboundChannel).shouldHaveNoInteractions()
+  }
+
+  @Test
+  fun `등록되지 않은 그룹 채팅 구독으로 전달되는 메시지를 차단한다`() {
+    registry = GroupChatSubscriptionRegistry(clientInboundChannel)
+    val message = outboundMessage(SESSION_ID, GROUP_SUBSCRIPTION_ID, "/topic/groups/$GROUP_ID/chat")
+
+    assertThat(registry.preSend(message, channel)).isNull()
+    assertThat(registry.beforeHandle(message, channel, MessageHandler { _ -> })).isNull()
     then(clientInboundChannel).shouldHaveNoInteractions()
   }
 
