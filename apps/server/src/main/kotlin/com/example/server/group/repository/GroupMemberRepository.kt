@@ -16,4 +16,36 @@ interface GroupMemberRepository : JpaRepository<GroupMember, Long> {
     """,
   )
   fun findActiveGroupIdByUserIdAndPerformanceId(@Param("userId") userId: Long, @Param("performanceId") performanceId: Long): Long?
+
+  @Query(
+    """
+    SELECT groupMember
+    FROM GroupMember groupMember
+    JOIN FETCH groupMember.member
+    WHERE groupMember.group.id = :groupId
+    ORDER BY groupMember.createdAt ASC, groupMember.id ASC
+    """,
+  )
+  fun findAllByGroupId(@Param("groupId") groupId: Long): List<GroupMember>
+
+  @Query(
+    """
+    SELECT groupMember
+    FROM GroupMember groupMember
+    WHERE groupMember.group.id = :groupId
+      AND groupMember.member.id = :userId
+    """,
+  )
+  fun findByGroupIdAndUserId(@Param("groupId") groupId: Long, @Param("userId") userId: Long): GroupMember?
+
+  @Query(
+    """
+    SELECT groupMember.group.id
+    FROM GroupMember groupMember
+    WHERE groupMember.group.id = :groupId
+      AND groupMember.member.id = :userId
+      AND groupMember.group.expiresAt > CURRENT_TIMESTAMP
+    """,
+  )
+  fun findActiveGroupIdByUserIdAndGroupId(@Param("userId") userId: Long, @Param("groupId") groupId: Long): Long?
 }

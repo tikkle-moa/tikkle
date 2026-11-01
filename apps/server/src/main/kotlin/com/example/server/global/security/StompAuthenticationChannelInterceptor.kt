@@ -4,6 +4,7 @@ import com.example.server.auth.dto.AccessTokenPayload
 import com.example.server.auth.refreshTokenKey
 import com.example.server.global.stomp.StompError
 import com.example.server.global.stomp.StompFailureMessage
+import com.example.server.group.GroupChatSubscriptionRegistry
 import com.example.server.group.GroupService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
@@ -26,12 +27,20 @@ import java.util.UUID
 class StompAuthenticationChannelInterceptor(
   private val stringRedisTemplate: StringRedisTemplate,
   private val groupService: GroupService,
+  private val groupChatSubscriptionRegistry: GroupChatSubscriptionRegistry,
   private val messagingTemplateProvider: ObjectProvider<SimpMessagingTemplate>,
 ) : ChannelInterceptor {
   private val log = LoggerFactory.getLogger(StompAuthenticationChannelInterceptor::class.java)
 
   override fun preSend(message: Message<*>, channel: MessageChannel): Message<*>? {
     val accessor = StompHeaderAccessor.wrap(message)
+
+    if (
+      accessor.command == StompCommand.UNSUBSCRIBE &&
+      accessor.getHeader(GroupChatSubscriptionRegistry.SERVER_REVOCATION_HEADER) != true
+    ) {
+      groupChatSubscriptionRegistry.unregister(accessor.sessionId, accessor.subscriptionId)
+    }
 
     if (accessor.command !in setOf(StompCommand.SEND, StompCommand.SUBSCRIBE)) {
       return message
@@ -73,23 +82,24 @@ class StompAuthenticationChannelInterceptor(
       throw AccessDeniedException("topic 패턴 구독은 지원하지 않습니다.")
     }
 
-    when (val groupChatDestination = GROUP_CHAT_DESTINATION.matchEntire(destination)) {
-      null -> return
-      else -> {
-        val groupId = groupChatDestination.groupValues[1].toLongOrNull() ?: throw AccessDeniedException("그룹 채팅 구독에 올바른 그룹 ID가 필요합니다.")
-        validateGroupChatSubscription(accessTokenPayload, accessor, groupId)
-      }
+    val groupChatDestination = GROUP_CHAT_DESTINATION.matchEntire(destination)
+    if (groupChatDestination != null) {
+      val groupId = groupChatDestination.groupValues[1].toLongOrNull() ?: throw AccessDeniedException("그룹 채팅 구독에 올바른 그룹 ID가 필요합니다.")
+      validateGroupChatSubscription(accessTokenPayload, accessor, groupId)
+      return
     }
   }
 
   private fun validateGroupChatSubscription(accessTokenPayload: AccessTokenPayload, accessor: StompHeaderAccessor, groupId: Long) {
-    val performanceId = accessor.getFirstNativeHeader(PERFORMANCE_ID_HEADER)
-      ?.toLongOrNull()
-      ?: throw AccessDeniedException("그룹 채팅 구독에 공연 ID가 필요합니다.")
-
-    val memberGroupId = groupService.getGroupId(accessTokenPayload.userId, performanceId)
-      ?: throw AccessDeniedException("그룹 채팅 구독 권한이 없습니다.")
-    if (memberGroupId != groupId) {
+    val registered = groupChatSubscriptionRegistry.registerIfMember(
+      userId = accessTokenPayload.userId,
+      groupId = groupId,
+      sessionId = accessor.sessionId,
+      subscriptionId = accessor.subscriptionId,
+    ) {
+      groupService.isActiveMemberOfGroup(accessTokenPayload.userId, groupId)
+    }
+    if (!registered) {
       throw AccessDeniedException("그룹 채팅 구독 권한이 없습니다.")
     }
   }
@@ -124,7 +134,6 @@ class StompAuthenticationChannelInterceptor(
   }
 
   companion object {
-    private const val PERFORMANCE_ID_HEADER = "performanceId"
     private const val TOPIC_DESTINATION_PREFIX = "/topic"
 
     private val GROUP_CHAT_DESTINATION = Regex("^/topic/groups/([^/]+)/chat$")

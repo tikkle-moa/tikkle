@@ -72,6 +72,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/groups": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 공연 그룹 생성 */
+    post: operations["createGroup"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/groups/{groupId}/join": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 초대 코드로 그룹 참여 */
+    post: operations["joinGroup"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/concerts": {
     parameters: {
       query?: never;
@@ -260,6 +294,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/groups/{groupId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 그룹 및 멤버 목록 조회 */
+    get: operations["getGroup"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/auth/oauth/{oauth_provider}": {
     parameters: {
       query?: never;
@@ -315,6 +366,40 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/groups/{groupId}/members/{memberUserId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** 그룹 멤버 강퇴 */
+    delete: operations["kickMember"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/groups/{groupId}/leave": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** 그룹 탈퇴 */
+    delete: operations["leaveGroup"];
     options?: never;
     head?: never;
     patch?: never;
@@ -472,6 +557,42 @@ export interface components {
       /** @enum {boolean} */
       success: true;
       data: components["schemas"]["PerformanceResponse"];
+    };
+    /** CreateGroupRequest */
+    CreateGroupRequest: {
+      /** Format: int64 */
+      performanceId: number;
+    };
+    /** GroupMemberData */
+    GroupMemberData: {
+      /** Format: int64 */
+      userId: number;
+      nickname: string;
+      profileImageUrl: string | null;
+      isLeader: boolean;
+    };
+    /** GroupMembershipResponse */
+    GroupMembershipResponse: {
+      /** Format: int64 */
+      groupId: number;
+      /** Format: int64 */
+      performanceId: number;
+      inviteCode: string;
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: int64 */
+      leaderUserId: number | null;
+      members: components["schemas"]["GroupMemberData"][];
+    };
+    /** Success */
+    SuccessGroupMembershipResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["GroupMembershipResponse"];
+    };
+    /** JoinGroupRequest */
+    JoinGroupRequest: {
+      inviteCode: string;
     };
     /**
      * ConcertGenre
@@ -1019,6 +1140,236 @@ export interface operations {
            *       "error": {
            *         "code": 404,
            *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  createGroup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateGroupRequest"];
+      };
+    };
+    responses: {
+      /** @description 그룹 생성 성공 */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
+        };
+      };
+      /** @description 잘못된 요청입니다. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 공연 회차를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 이미 같은 공연의 활성 그룹에 참여 중이거나 공연이 시작됨 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 409,
+           *         "message": "예상치 못한 충돌이 발생했습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  joinGroup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        groupId: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JoinGroupRequest"];
+      };
+    };
+    responses: {
+      /** @description 그룹 참여 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
+        };
+      };
+      /** @description 잘못된 요청입니다. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 그룹 또는 초대 코드를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 만료·정원 초과·중복 가입 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 409,
+           *         "message": "예상치 못한 충돌이 발생했습니다."
            *       }
            *     }
            */
@@ -1997,6 +2348,82 @@ export interface operations {
       };
     };
   };
+  getGroup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        groupId: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 그룹 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 활성 그룹 구성원이 아님 */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 대상을 찾을 수 없습니다. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
   getAuthorizationUrl: {
     parameters: {
       query?: {
@@ -2076,6 +2503,213 @@ export interface operations {
            *       "error": {
            *         "code": 401,
            *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  kickMember: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        groupId: number;
+        memberUserId: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 그룹 멤버 강퇴 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
+        };
+      };
+      /** @description 잘못된 요청입니다. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 400,
+           *         "message": "잘못된 요청입니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 대상을 찾을 수 없습니다. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 예상치 못한 충돌이 발생했습니다. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 409,
+           *         "message": "예상치 못한 충돌이 발생했습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  leaveGroup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        groupId: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 그룹 탈퇴 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 401,
+           *         "message": "인증이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 403,
+           *         "message": "접근 권한이 필요합니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 대상을 찾을 수 없습니다. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 404,
+           *         "message": "대상을 찾을 수 없습니다."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 만료된 그룹에서 탈퇴할 수 없음 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "success": false,
+           *       "error": {
+           *         "code": 409,
+           *         "message": "예상치 못한 충돌이 발생했습니다."
            *       }
            *     }
            */

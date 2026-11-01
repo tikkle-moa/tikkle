@@ -87,6 +87,15 @@ export interface ReleaseVenueSeatsCommand {
   requestId: string;
 }
 
+export interface GroupChatEventData {
+  content: string;
+  groupId: number;
+  senderId: number;
+  senderNickname: string;
+  senderProfileImageUrl: string | null;
+  sentAt: string;
+}
+
 export interface GroupChatCommand {
   data: GroupChatData;
   requestId: string;
@@ -261,15 +270,6 @@ export interface GroupChatEvent {
   occurredAt: string;
   type: GroupChatEventType;
   version: number;
-}
-
-export interface GroupChatEventData {
-  content: string;
-  groupId: number;
-  senderId: number;
-  senderNickname: string;
-  senderProfileImageUrl: string | null;
-  sentAt: string;
 }
 
 export type GroupChatEventType = "GROUP_CHAT";

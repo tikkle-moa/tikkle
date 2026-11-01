@@ -17,6 +17,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.messaging.simp.annotation.SendToUser
 import org.springframework.security.core.Authentication
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -78,6 +79,8 @@ class GroupStompControllerTest {
 
     assertThat(classMapping.value).containsExactly("/groups")
     assertThat(method.getAnnotation(MessageMapping::class.java).value).containsExactly("/chat")
+    assertThat(method.returnType).isEqualTo(java.lang.Void.TYPE)
+    assertThat(method.getAnnotation(SendToUser::class.java)).isNull()
   }
 
   companion object {

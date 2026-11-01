@@ -63,6 +63,32 @@ class GroupMemberRepositoryTest {
   }
 
   @Test
+  fun `활성 그룹 구성원인지 그룹 ID로 조회한다`() {
+    val user = userRepository.save(user())
+    val performance = performanceRepository.save(performance())
+    val group = groupRepository.save(group(performance, utcNow().plusMinutes(10)))
+    groupMemberRepository.save(GroupMember(group = group, member = user))
+    groupMemberRepository.flush()
+
+    val result = groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(user.id, group.id)
+
+    assertThat(result).isEqualTo(group.id)
+  }
+
+  @Test
+  fun `만료된 그룹 구성원은 그룹 멤버십 검증을 통과하지 않는다`() {
+    val user = userRepository.save(user())
+    val performance = performanceRepository.save(performance())
+    val group = groupRepository.save(group(performance, utcNow().minusMinutes(10)))
+    groupMemberRepository.save(GroupMember(group = group, member = user))
+    groupMemberRepository.flush()
+
+    val result = groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(user.id, group.id)
+
+    assertThat(result).isNull()
+  }
+
+  @Test
   fun `만료된 그룹은 조회하지 않는다`() {
     val user = userRepository.save(user())
     val performance = performanceRepository.save(performance())
