@@ -118,4 +118,80 @@ describe("GroupDetailPage", () => {
     expect(screen.getByText("활성 그룹 구성원이 아닙니다.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "그룹 나가기" })).not.toBeInTheDocument();
   });
+
+  it("잘못된 그룹 ID와 로딩 상태를 각각 표시한다", () => {
+    mockUseGroupDetailPage.mockReturnValueOnce({ ...pageState, isParamValid: false });
+    const invalidPage = render(
+      <MemoryRouter>
+        <GroupDetailPage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("잘못된 그룹입니다.")).toBeInTheDocument();
+    invalidPage.unmount();
+
+    mockUseGroupDetailPage.mockReturnValueOnce({ ...pageState, isPending: true });
+    render(
+      <MemoryRouter>
+        <GroupDetailPage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByLabelText("그룹 정보를 불러오는 중")).toBeInTheDocument();
+  });
+
+  it("그룹과 공연 정보를 각각 찾지 못했을 때 대체 안내를 표시한다", () => {
+    mockUseGroupDetailPage.mockReturnValue({ ...pageState, group: null, isError: false, errorMessage: undefined });
+    const missingGroup = render(
+      <MemoryRouter>
+        <GroupDetailPage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("초대 링크가 만료되었거나 그룹에 접근할 수 없습니다.")).toBeInTheDocument();
+    missingGroup.unmount();
+
+    mockUseGroupDetailPage.mockReturnValue({ ...pageState, performance: undefined });
+    render(
+      <MemoryRouter>
+        <GroupDetailPage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("공연 회차 5")).toBeInTheDocument();
+  });
+
+  it("그룹장이 아닌 사용자는 내보내기 버튼을 볼 수 없고 새로고침은 동작한다", async () => {
+    const user = userEvent.setup();
+    mockUseGroupDetailPage.mockReturnValue({ ...pageState, isLeader: false });
+    render(
+      <MemoryRouter>
+        <GroupDetailPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole("button", { name: "일행 내보내기" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "그룹 정보 새로고침" }));
+    expect(pageState.handleRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("강퇴 확인창은 그룹원 이름과 강퇴 동작을 표시한다", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    mockUseGroupDetailPage.mockReturnValue({
+      ...pageState,
+      confirmation: { type: "kick", memberUserId: 8, nickname: "일행" },
+      handleConfirmAction: onConfirm,
+      handleDismissConfirmation: onCancel,
+    });
+    render(
+      <MemoryRouter>
+        <GroupDetailPage />
+      </MemoryRouter>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "일행님을 내보낼까요?" });
+    expect(dialog).toHaveTextContent("내보낸 그룹원은 초대 코드로 다시 참여할 수 있어요.");
+    await user.click(within(dialog).getByRole("button", { name: "취소" }));
+    await user.click(within(dialog).getByRole("button", { name: "내보내기" }));
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
 });
