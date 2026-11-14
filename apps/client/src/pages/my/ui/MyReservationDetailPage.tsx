@@ -2,6 +2,7 @@ import { formatDateTime } from "@shared/lib/date.utils";
 import { formatPrice } from "@shared/lib/number.utils";
 import ConfirmationDialog from "@shared/ui/ConfirmationDialog";
 import DetailMessage from "@shared/ui/DetailMessage";
+import ProfileImage from "@shared/ui/ProfileImage";
 
 import { MY_RESERVATION_STATUS_MAP, ReservationPoster } from "@entities/reservation";
 import { VenueLocationLink } from "@entities/venue";
@@ -113,6 +114,26 @@ const MyReservationDetailPage = () => {
             <dd className="text-right font-bold text-gray-900">{formatPrice(reservation.amount)}</dd>
           </div>
         </dl>
+
+        {reservation.group && (
+          <section aria-labelledby="reservation-group-title" className="mt-5 rounded-2xl border border-violet-100 bg-violet-50/50 p-4">
+            <h2 id="reservation-group-title" className="text-sm font-bold text-gray-900">
+              함께 예매한 그룹원
+            </h2>
+            {reservation.group.members.length > 0 ? (
+              <ul className="mt-3 space-y-3">
+                {reservation.group.members.map((member) => (
+                  <li key={member.userId} className="flex items-center gap-3">
+                    <ProfileImage src={member.profileImageUrl} alt={`${member.nickname} 프로필 이미지`} className="size-9" />
+                    <span className="text-sm font-semibold text-gray-800">{member.nickname}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-gray-500">이 예매에는 당시 그룹원 기록이 남아 있지 않습니다.</p>
+            )}
+          </section>
+        )}
 
         {reservation.status === "SUCCEEDED" && (
           <button
