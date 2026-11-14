@@ -100,6 +100,31 @@ class GroupServiceTest {
   }
 
   @Test
+  fun `공연 회차에서 사용자의 활성 그룹을 조회한다`() {
+    val leader = user(USER_ID)
+    val group = group(performance(), leader = leader)
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(GROUP_ID)
+    given(groupRepository.findById(GROUP_ID)).willReturn(Optional.of(group))
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(USER_ID, GROUP_ID)).willReturn(GROUP_ID)
+    given(groupMemberRepository.findAllByGroupId(GROUP_ID)).willReturn(listOf(GroupMember(group = group, member = leader)))
+
+    val result = service.getCurrentGroup(USER_ID, PERFORMANCE_ID)
+
+    assertThat(result?.groupId).isEqualTo(GROUP_ID)
+    assertThat(result?.members?.single()?.isLeader).isTrue()
+  }
+
+  @Test
+  fun `공연 회차에 활성 그룹이 없으면 null을 반환한다`() {
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(null)
+
+    val result = service.getCurrentGroup(USER_ID, PERFORMANCE_ID)
+
+    assertThat(result).isNull()
+    then(groupRepository).shouldHaveNoInteractions()
+  }
+
+  @Test
   fun `그룹 구성원의 채팅 메시지 데이터를 생성한다`() {
     val user = user(USER_ID)
     val commandData = GroupChatData(performanceId = PERFORMANCE_ID, content = "같이 예매해요")
@@ -168,6 +193,7 @@ class GroupServiceTest {
     assertThat(result.members.single().userId).isEqualTo(USER_ID)
     assertThat(result.members.single().isLeader).isTrue()
     assertThat(result.inviteCode).isNotBlank()
+    assertThat(result.inviteCode).matches("[a-hjklmnp-z2-9]{${GroupService.INVITE_CODE_LENGTH}}")
     assertThat(result.expiresAt).isEqualTo(performance.startsAt)
     then(groupRepository).should(times(2)).existsByInviteCode(anyString())
   }
@@ -251,6 +277,27 @@ class GroupServiceTest {
       assertThat(member.userId).isEqualTo(USER_ID)
       assertThat(member.isLeader).isFalse()
     }
+  }
+
+  @Test
+  fun `그룹 ID 없이 초대 코드로 그룹에 참여한다`() {
+    val user = user(USER_ID)
+    val leader = user(LEADER_ID)
+    val group = group(performance(), leader = leader).apply { inviteCode = INVITE_CODE }
+    val members = mutableListOf(GroupMember(group = group, member = leader))
+    given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user)
+    given(groupRepository.findByInviteCodeForUpdate(INVITE_CODE)).willReturn(group)
+    given(groupMemberRepository.findActiveGroupIdByUserIdAndPerformanceId(USER_ID, PERFORMANCE_ID)).willReturn(null)
+    given(groupMemberRepository.findAllByGroupId(GROUP_ID)).willReturn(members)
+    given(groupMemberRepository.save(any(GroupMember::class.java))).willAnswer { invocation ->
+      invocation.getArgument<GroupMember>(0).apply { members.add(this) }
+    }
+
+    val result = service.joinGroupByInviteCode(USER_ID, INVITE_CODE.uppercase())
+
+    assertThat(result.groupId).isEqualTo(GROUP_ID)
+    assertThat(result.inviteCode).isEqualTo(INVITE_CODE)
+    assertThat(result.members).hasSize(2)
   }
 
   @Test
@@ -672,6 +719,6 @@ class GroupServiceTest {
     private const val PERFORMANCE_ID = 10L
     private const val GROUP_ID = 100L
     private const val OTHER_GROUP_ID = 101L
-    private const val INVITE_CODE = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"
+    private const val INVITE_CODE = "abcd2345"
   }
 }
