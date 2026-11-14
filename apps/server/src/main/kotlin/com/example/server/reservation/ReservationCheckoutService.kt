@@ -3,6 +3,7 @@ package com.example.server.reservation
 import com.example.server.auth.repository.UserRepository
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.group.repository.GroupMemberRepository
 import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.dto.paymentFor
@@ -13,6 +14,8 @@ import com.example.server.reservation.dto.BeginCheckoutReviewMessageData
 import com.example.server.reservation.dto.CancelCheckoutMessageData
 import com.example.server.reservation.dto.StartCheckoutMessageData
 import com.example.server.reservation.entity.Reservation
+import com.example.server.reservation.entity.ReservationGroupMember
+import com.example.server.reservation.repository.ReservationGroupMemberRepository
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
 import com.example.server.venue.repository.VenueSeatRepository
@@ -25,6 +28,8 @@ import java.util.UUID
 @Service
 class ReservationCheckoutService(
   private val userRepository: UserRepository,
+  private val groupMemberRepository: GroupMemberRepository,
+  private val reservationGroupMemberRepository: ReservationGroupMemberRepository,
   private val performanceRepository: PerformanceRepository,
   private val venueSeatRepository: VenueSeatRepository,
   private val reservationRepository: ReservationRepository,
@@ -154,6 +159,19 @@ class ReservationCheckoutService(
         groupId = groupId,
         userId = userId,
         performanceId = performanceId,
+      )
+    }
+
+    if (groupId != null) {
+      reservationGroupMemberRepository.saveAll(
+        groupMemberRepository.findAllByGroupId(groupId).map { groupMember ->
+          ReservationGroupMember(
+            reservation = reservation,
+            userId = groupMember.member.id,
+            nickname = groupMember.member.nickname,
+            profileImageUrl = groupMember.member.profileImageUrl,
+          )
+        },
       )
     }
 

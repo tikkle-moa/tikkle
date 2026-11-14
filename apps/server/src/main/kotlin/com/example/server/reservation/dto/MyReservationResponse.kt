@@ -3,6 +3,7 @@ package com.example.server.reservation.dto
 import com.example.server.reservation.entity.Reservation
 import com.example.server.reservation.entity.ReservationSeat
 import com.example.server.reservation.types.ReservationStatus
+import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDateTime
 
 data class MyReservationResponse(
@@ -17,6 +18,8 @@ data class MyReservationResponse(
   val amount: Int,
   val status: ReservationStatus,
   val createdAt: LocalDateTime,
+  @field:Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  val group: ReservationGroupResponse? = null,
 ) {
   companion object {
     fun from(reservation: Reservation, reservationSeats: List<ReservationSeat>) = MyReservationResponse(
@@ -41,3 +44,7 @@ data class MyReservationResponse(
 }
 
 data class ReservationSeatResponse(val sectionName: String, val seatLabel: String)
+
+data class ReservationGroupResponse(val groupId: Long, val members: List<ReservationGroupMemberResponse>)
+
+data class ReservationGroupMemberResponse(val userId: Long, val nickname: String, val profileImageUrl: String?)

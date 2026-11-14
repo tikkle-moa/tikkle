@@ -15,10 +15,10 @@ import com.example.server.group.repository.GroupRepository
 import com.example.server.performance.repository.PerformanceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.security.SecureRandom
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.util.UUID
 
 @Service
 class GroupService(
@@ -53,11 +53,16 @@ class GroupService(
   }
 
   @Transactional
-  fun joinGroup(userId: Long, groupId: Long, inviteCode: String): GroupMembershipResponse {
+  fun joinGroup(userId: Long, groupId: Long, inviteCode: String): GroupMembershipResponse = joinGroupInternal(userId, inviteCode, groupId)
+
+  @Transactional
+  fun joinGroupByInviteCode(userId: Long, inviteCode: String): GroupMembershipResponse = joinGroupInternal(userId, inviteCode, null)
+
+  private fun joinGroupInternal(userId: Long, inviteCode: String, expectedGroupId: Long?): GroupMembershipResponse {
     val user = requireUserForUpdate(userId)
     val group = groupRepository.findByInviteCodeForUpdate(inviteCode.trim().lowercase())
       ?: throw CustomException(ErrorCode.NOT_FOUND, "초대 코드에 해당하는 그룹을 찾을 수 없습니다.")
-    if (group.id != groupId) {
+    if (expectedGroupId != null && group.id != expectedGroupId) {
       throw CustomException(ErrorCode.NOT_FOUND, "초대 코드에 해당하는 그룹을 찾을 수 없습니다.")
     }
     if (!group.expiresAt.isAfter(nowUtc())) {
@@ -154,6 +159,12 @@ class GroupService(
     groupMemberRepository.findActiveGroupIdByUserIdAndGroupId(userId, groupId) == groupId
 
   @Transactional(readOnly = true)
+  fun getCurrentGroup(userId: Long, performanceId: Long): GroupMembershipResponse? {
+    val groupId = getGroupId(userId, performanceId) ?: return null
+    return getGroup(userId, groupId)
+  }
+
+  @Transactional(readOnly = true)
   fun getGroup(userId: Long, groupId: Long): GroupMembershipResponse {
     val group = groupRepository.findById(groupId)
       .orElseThrow { CustomException(ErrorCode.NOT_FOUND, "그룹을 찾을 수 없습니다.") }
@@ -195,7 +206,8 @@ class GroupService(
   private fun newInviteCode(): String {
     var inviteCode: String
     do {
-      inviteCode = UUID.randomUUID().toString()
+      inviteCode = CharArray(INVITE_CODE_LENGTH) { INVITE_CODE_ALPHABET[secureRandom.nextInt(INVITE_CODE_ALPHABET.length)] }
+        .concatToString()
     } while (groupRepository.existsByInviteCode(inviteCode))
     return inviteCode
   }
@@ -204,5 +216,8 @@ class GroupService(
 
   companion object {
     const val MAX_MEMBER_COUNT = 4
+    const val INVITE_CODE_LENGTH = 8
+    private const val INVITE_CODE_ALPHABET = "abcdefghjklmnpqrstuvwxyz23456789"
+    private val secureRandom = SecureRandom()
   }
 }

@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 
@@ -47,6 +48,23 @@ class GroupController(private val groupService: GroupService) {
     @AuthenticationPrincipal loginUser: LoginUserResult,
   ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse>> =
     ResponseEntity.ok(ApiResponse.ok(groupService.getGroup(loginUser.userId, groupId)))
+
+  @Operation(
+    summary = "공연 회차의 내 활성 그룹 조회",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "활성 그룹 조회 성공")],
+    security = [SecurityRequirement(name = "access_token")],
+  )
+  @ErrorResponse(
+    responses = [
+      ErrorResponseItem(ErrorCode.UNAUTHORIZED),
+    ],
+  )
+  @GetMapping("/current")
+  fun getCurrentGroup(
+    @RequestParam("performanceId") @Positive performanceId: Long,
+    @AuthenticationPrincipal loginUser: LoginUserResult,
+  ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse?>> =
+    ResponseEntity.ok(ApiResponse.ok(groupService.getCurrentGroup(loginUser.userId, performanceId)))
 
   @Operation(
     summary = "공연 그룹 생성",
@@ -94,6 +112,30 @@ class GroupController(private val groupService: GroupService) {
     @AuthenticationPrincipal loginUser: LoginUserResult,
   ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse>> {
     val result = groupService.joinGroup(loginUser.userId, groupId, request.inviteCode)
+
+    return ResponseEntity.ok(ApiResponse.ok(result))
+  }
+
+  @Operation(
+    summary = "초대 코드로 그룹 참여",
+    responses = [SwaggerApiResponse(responseCode = "200", description = "그룹 참여 성공")],
+    security = [SecurityRequirement(name = "access_token")],
+  )
+  @ErrorResponse(
+    responses = [
+      ErrorResponseItem(ErrorCode.BAD_REQUEST),
+      ErrorResponseItem(ErrorCode.UNAUTHORIZED),
+      ErrorResponseItem(ErrorCode.FORBIDDEN),
+      ErrorResponseItem(ErrorCode.NOT_FOUND, description = "초대 코드를 찾을 수 없음"),
+      ErrorResponseItem(ErrorCode.CONFLICT, description = "만료·정원 초과·중복 가입"),
+    ],
+  )
+  @PostMapping("/join")
+  fun joinGroupByInviteCode(
+    @Valid @RequestBody request: JoinGroupRequest,
+    @AuthenticationPrincipal loginUser: LoginUserResult,
+  ): ResponseEntity<ApiResponse.Success<GroupMembershipResponse>> {
+    val result = groupService.joinGroupByInviteCode(loginUser.userId, request.inviteCode)
 
     return ResponseEntity.ok(ApiResponse.ok(result))
   }
