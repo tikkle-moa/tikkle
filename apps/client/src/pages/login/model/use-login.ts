@@ -13,8 +13,17 @@ export const useLogin = () => {
   const errorContent = getOAuthErrorContent(errorCode);
 
   const handleLogin = (provider: OAuthProvider) => {
+    const requestedRedirectUri = searchParams.get("redirect_uri");
+    const redirectUri =
+      requestedRedirectUri &&
+      requestedRedirectUri.startsWith("/") &&
+      !requestedRedirectUri.startsWith("//") &&
+      !requestedRedirectUri.includes("://") &&
+      !requestedRedirectUri.includes("\\")
+        ? requestedRedirectUri
+        : ROUTE_PATHS.CONCERT_LIST;
     const params = new URLSearchParams({
-      redirect_uri: ROUTE_PATHS.CONCERT_LIST,
+      redirect_uri: redirectUri,
     });
 
     window.location.assign(`/api/auth/oauth/${provider}?${params.toString()}`);

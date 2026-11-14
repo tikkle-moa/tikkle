@@ -72,10 +72,7 @@ const PerformanceSeatHoldPanel = ({
   });
 
   return (
-    <aside
-      aria-label="좌석 선택 및 Hold"
-      className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg shadow-slate-200/60 lg:sticky lg:top-6"
-    >
+    <aside aria-label="좌석 선택 및 Hold" className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg shadow-slate-200/60">
       <PerformanceSeatHoldHeader
         connectionStyle={connectionStyle}
         isConnected={isConnected}
