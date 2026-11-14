@@ -242,4 +242,25 @@ describe("MyReservationDetailPage", () => {
 
     expect(screen.getByRole("button", { name: "환불을 요청하는 중..." })).toBeDisabled();
   });
+  it("함께 예매한 그룹원 기록을 표시한다", () => {
+    mockUseMyReservationDetail.mockReturnValue({
+      ...detailState,
+      reservation: {
+        ...reservation,
+        group: {
+          groupId: 7,
+          members: [{ userId: 3, nickname: "함께한 일행", profileImageUrl: null }],
+        },
+      },
+    });
+    renderPage();
+    expect(screen.getByRole("heading", { name: "함께 예매한 그룹원" })).toBeInTheDocument();
+    expect(screen.getByText("함께한 일행")).toBeInTheDocument();
+  });
+
+  it("기록이 없는 과거 그룹 예매에는 안내를 표시한다", () => {
+    mockUseMyReservationDetail.mockReturnValue({ ...detailState, reservation: { ...reservation, group: { groupId: 7, members: [] } } });
+    renderPage();
+    expect(screen.getByText("이 예매에는 당시 그룹원 기록이 남아 있지 않습니다.")).toBeInTheDocument();
+  });
 });
