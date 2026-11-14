@@ -27,10 +27,10 @@ export const useGroupDetailPage = () => {
   const [confirmation, setConfirmation] = useState<{ type: "leave" } | { type: "kick"; memberUserId: number; nickname: string } | null>(null);
 
   const joinMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (code: string) => {
       const { data, error, response } = await apiClient.POST("/api/groups/{groupId}/join", {
         params: { path: { groupId } },
-        body: { inviteCode: inviteCode ?? "" },
+        body: { inviteCode: code },
       });
       if (!response.ok || error || !data) throw createGroupRequestError(error, response.status, "그룹에 참여하지 못했습니다.");
       return data.data;
@@ -61,7 +61,7 @@ export const useGroupDetailPage = () => {
     }
 
     attemptedJoinRef.current = true;
-    requestJoin();
+    requestJoin(inviteCode);
   }, [groupQuery.error, groupQuery.isError, inviteCode, isParamValid, requestJoin]);
 
   useEffect(() => {
