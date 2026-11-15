@@ -7,7 +7,9 @@ import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.performance.entity.Performance
 import com.example.server.reservation.entity.Reservation
+import com.example.server.reservation.entity.ReservationGroupMember
 import com.example.server.reservation.entity.ReservationSeat
+import com.example.server.reservation.repository.ReservationGroupMemberRepository
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus
@@ -31,7 +33,21 @@ class ReservationServiceTest {
 
   @Mock lateinit var reservationSeatRepository: ReservationSeatRepository
 
+  @Mock lateinit var reservationGroupMemberRepository: ReservationGroupMemberRepository
+
   @InjectMocks lateinit var service: ReservationService
+
+  @Test
+  fun `상세는 현재 그룹 대신 예매에 저장된 그룹원 명단을 반환한다`() {
+    val reservation = reservation().apply { groupId = 7L }
+    given(reservationRepository.findReservationDetailsById(RESERVATION_ID)).willReturn(reservation)
+    given(reservationGroupMemberRepository.findAllByReservationIdOrderByIdAsc(RESERVATION_ID)).willReturn(
+      listOf(ReservationGroupMember(reservation = reservation, userId = 3L, nickname = "예매 당시 일행", profileImageUrl = null)),
+    )
+    val result = service.getMyReservation(USER_ID, RESERVATION_ID)
+    assertThat(result.group?.groupId).isEqualTo(7L)
+    assertThat(result.group?.members?.single()?.nickname).isEqualTo("예매 당시 일행")
+  }
 
   @Test
   fun `목록은 본인 예매와 공연 좌석 정보를 반환한다`() {

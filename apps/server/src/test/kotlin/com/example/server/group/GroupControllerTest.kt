@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestParam
 import tools.jackson.databind.ObjectMapper
 import java.time.LocalDateTime
 
@@ -50,6 +51,27 @@ class GroupControllerTest {
   }
 
   @Test
+  fun `공연 회차의 활성 그룹을 조회한다`() {
+    val snapshot = snapshot()
+    given(groupService.getCurrentGroup(USER_ID, PERFORMANCE_ID)).willReturn(snapshot)
+
+    val response = controller.getCurrentGroup(PERFORMANCE_ID, loginUser())
+
+    assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+    assertThat(response.body?.data).isEqualTo(snapshot)
+  }
+
+  @Test
+  fun `활성 그룹이 없으면 null을 반환한다`() {
+    given(groupService.getCurrentGroup(USER_ID, PERFORMANCE_ID)).willReturn(null)
+
+    val response = controller.getCurrentGroup(PERFORMANCE_ID, loginUser())
+
+    assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+    assertThat(response.body?.data).isNull()
+  }
+
+  @Test
   fun `초대 코드 참여는 변경된 그룹 스냅샷을 반환한다`() {
     val snapshot = snapshot()
     given(groupService.joinGroup(USER_ID, GROUP_ID, INVITE_CODE)).willReturn(snapshot)
@@ -58,6 +80,18 @@ class GroupControllerTest {
 
     assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
     assertThat(response.body?.data).isEqualTo(snapshot)
+  }
+
+  @Test
+  fun `그룹 ID 없이 초대 코드로 그룹에 참여한다`() {
+    val snapshot = snapshot()
+    given(groupService.joinGroupByInviteCode(USER_ID, INVITE_CODE)).willReturn(snapshot)
+
+    val response = controller.joinGroupByInviteCode(JoinGroupRequest(INVITE_CODE), loginUser())
+
+    assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+    assertThat(response.body?.data).isEqualTo(snapshot)
+    then(groupService).should().joinGroupByInviteCode(USER_ID, INVITE_CODE)
   }
 
   @Test
@@ -102,10 +136,20 @@ class GroupControllerTest {
   fun `그룹 조회와 생명주기 동작은 REST 경로로 등록한다`() {
     val classMapping = GroupController::class.java.getAnnotation(org.springframework.web.bind.annotation.RequestMapping::class.java)
     val getMethod = GroupController::class.java.getDeclaredMethod("getGroup", Long::class.javaPrimitiveType, LoginUserResult::class.java)
+    val getCurrentMethod = GroupController::class.java.getDeclaredMethod(
+      "getCurrentGroup",
+      Long::class.javaPrimitiveType,
+      LoginUserResult::class.java,
+    )
     val createMethod = GroupController::class.java.getDeclaredMethod("createGroup", CreateGroupRequest::class.java, LoginUserResult::class.java)
     val joinMethod = GroupController::class.java.getDeclaredMethod(
       "joinGroup",
       Long::class.javaPrimitiveType,
+      JoinGroupRequest::class.java,
+      LoginUserResult::class.java,
+    )
+    val joinByCodeMethod = GroupController::class.java.getDeclaredMethod(
+      "joinGroupByInviteCode",
       JoinGroupRequest::class.java,
       LoginUserResult::class.java,
     )
@@ -116,11 +160,17 @@ class GroupControllerTest {
       Long::class.javaPrimitiveType,
       LoginUserResult::class.java,
     )
+    val currentGroupPerformanceId = getCurrentMethod.parameterAnnotations.first()
+      .filterIsInstance<RequestParam>()
+      .single()
 
     assertThat(classMapping.value).containsExactly("/groups")
     assertThat(getMethod.getAnnotation(GetMapping::class.java).value).containsExactly("/{groupId}")
+    assertThat(getCurrentMethod.getAnnotation(GetMapping::class.java).value).containsExactly("/current")
+    assertThat(currentGroupPerformanceId.value).isEqualTo("performanceId")
     assertThat(createMethod.getAnnotation(PostMapping::class.java).value).isEmpty()
     assertThat(joinMethod.getAnnotation(PostMapping::class.java).value).containsExactly("/{groupId}/join")
+    assertThat(joinByCodeMethod.getAnnotation(PostMapping::class.java).value).containsExactly("/join")
     assertThat(leaveMethod.getAnnotation(DeleteMapping::class.java).value).containsExactly("/{groupId}/leave")
     assertThat(kickMethod.getAnnotation(DeleteMapping::class.java).value).containsExactly("/{groupId}/members/{memberUserId}")
   }
@@ -141,6 +191,6 @@ class GroupControllerTest {
     private const val MEMBER_ID = 2L
     private const val PERFORMANCE_ID = 10L
     private const val GROUP_ID = 100L
-    private const val INVITE_CODE = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"
+    private const val INVITE_CODE = "abcd2345"
   }
 }

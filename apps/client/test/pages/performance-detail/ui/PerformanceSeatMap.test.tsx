@@ -5,6 +5,10 @@ import type { VenueDetailResponse, VenueSeatResponse } from "@entities/venue";
 
 import PerformanceSeatMap from "@pages/performance-detail/ui/PerformanceSeatMap";
 
+vi.mock("@pages/performance-detail/ui/PerformanceGroupPanel", () => ({
+  default: () => <section aria-label="그룹 예매" />,
+}));
+
 const performance = {
   id: 1,
   concertId: 1,
@@ -64,6 +68,7 @@ describe("PerformanceSeatMap", () => {
     expect(screen.getByRole("heading", { name: "좌석 배치 정보" })).toBeInTheDocument();
     expect(screen.getByText("올림픽공원 KSPO DOME")).toBeInTheDocument();
     expect(screen.getByText("전체 2석")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "그룹 예매" })).toBeInTheDocument();
     expect(screen.getByText("STAGE")).toBeInTheDocument();
     expect(screen.queryByLabelText("좌석 상태 안내")).not.toBeInTheDocument();
   });

@@ -3,6 +3,9 @@ package com.example.server.reservation
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
 import com.example.server.reservation.dto.MyReservationResponse
+import com.example.server.reservation.dto.ReservationGroupMemberResponse
+import com.example.server.reservation.dto.ReservationGroupResponse
+import com.example.server.reservation.repository.ReservationGroupMemberRepository
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.repository.ReservationSeatRepository
 import com.example.server.reservation.types.ReservationStatus
@@ -13,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional
 class ReservationService(
   private val reservationRepository: ReservationRepository,
   private val reservationSeatRepository: ReservationSeatRepository,
+  private val reservationGroupMemberRepository: ReservationGroupMemberRepository,
 ) {
   @Transactional(readOnly = true)
   fun getMyReservations(userId: Long): List<MyReservationResponse> {
@@ -41,6 +45,14 @@ class ReservationService(
     }
 
     val seats = reservationSeatRepository.findAllDetailsByReservationIds(listOf(reservation.id))
-    return MyReservationResponse.from(reservation, seats)
+    val group = reservation.groupId?.let { groupId ->
+      ReservationGroupResponse(
+        groupId = groupId,
+        members = reservationGroupMemberRepository.findAllByReservationIdOrderByIdAsc(reservation.id).map { member ->
+          ReservationGroupMemberResponse(member.userId, member.nickname, member.profileImageUrl)
+        },
+      )
+    }
+    return MyReservationResponse.from(reservation, seats).copy(group = group)
   }
 }

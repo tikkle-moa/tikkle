@@ -117,6 +117,7 @@ class GroupMemberRepositoryTest {
 
   private fun group(performance: Performance, expiresAt: LocalDateTime): Group = Group(
     performance = performance,
+    inviteCode = UUID.randomUUID().toString().take(8),
     expiresAt = expiresAt,
   )
 

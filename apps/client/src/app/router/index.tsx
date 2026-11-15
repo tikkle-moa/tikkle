@@ -6,6 +6,7 @@ import { ConcertDetailPage } from "@pages/concert-detail";
 import { ConcertEditPage } from "@pages/concert-edit";
 import { ConcertListPage } from "@pages/concert-list";
 import { ConcertNewPage } from "@pages/concert-new";
+import { GroupDetailPage } from "@pages/group-detail";
 import { HomePage } from "@pages/home";
 import { LoginPage } from "@pages/login";
 import { FavoritePage, MyPage, MyReservationDetailPage, MyReservationPage } from "@pages/my";
@@ -49,7 +50,10 @@ export const router = createBrowserRouter([
           { path: ROUTE_PATHS.VENUE_DETAIL, element: <VenueDetailPage /> },
           {
             element: <AuthGuard />,
-            children: [{ path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> }],
+            children: [
+              { path: ROUTE_PATHS.PERFORMANCE_DETAIL, element: <PerformanceDetailPage /> },
+              { path: ROUTE_PATHS.GROUP_DETAIL, element: <GroupDetailPage /> },
+            ],
           },
           {
             element: <AdminGuard />,

@@ -31,8 +31,8 @@ class Group(
   @JoinColumn(name = "performance_id", nullable = false)
   var performance: Performance,
 
-  @Column(name = "invite_code", nullable = false, length = 36)
-  var inviteCode: String = java.util.UUID.randomUUID().toString(),
+  @Column(name = "invite_code", nullable = false, length = 8)
+  var inviteCode: String,
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "leader_user_id", nullable = true)

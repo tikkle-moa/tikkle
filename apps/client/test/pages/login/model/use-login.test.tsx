@@ -8,8 +8,11 @@ import { OAUTH_ERROR_CONTENT_MAP, UNKNOWN_OAUTH_ERROR_CONTENT } from "@pages/log
 import type { OAuthErrorCode } from "@pages/login/model/oauth-error.types";
 import { useLogin } from "@pages/login/model/use-login";
 
-const renderUseLogin = (oauthErrorCode?: OAuthErrorCode | "UNKNOWN_CODE") => {
-  const search = oauthErrorCode ? `?error_code=${oauthErrorCode}` : "";
+const renderUseLogin = (oauthErrorCode?: OAuthErrorCode | "UNKNOWN_CODE", redirectUri?: string) => {
+  const searchParams = new URLSearchParams();
+  if (oauthErrorCode) searchParams.set("error_code", oauthErrorCode);
+  if (redirectUri) searchParams.set("redirect_uri", redirectUri);
+  const search = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
   return renderHook(() => useLogin(), {
     wrapper: ({ children }) => <MemoryRouter initialEntries={[`/login${search}`]}>{children}</MemoryRouter>,
   });
@@ -62,6 +65,25 @@ describe("useLogin", () => {
       const url = new URL(calledUrl, "http://localhost");
       expect(url.pathname).toBe("/api/auth/oauth/google");
       expect(url.searchParams.get("redirect_uri")).toBe(ROUTE_PATHS.CONCERT_LIST);
+    });
+
+    it("로그인 후 원래 초대 URL로 돌아가도록 redirect_uri를 전달한다", () => {
+      const redirectUri = "/groups/12?inviteCode=abc123";
+      const { result } = renderUseLogin(undefined, redirectUri);
+
+      act(() => result.current.handleLogin("google"));
+
+      const calledUrl = (window.location.assign as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+      expect(new URL(calledUrl, "http://localhost").searchParams.get("redirect_uri")).toBe(redirectUri);
+    });
+
+    it("외부 URL을 redirect_uri로 받으면 기본 경로를 사용한다", () => {
+      const { result } = renderUseLogin(undefined, "//example.com/groups/12");
+
+      act(() => result.current.handleLogin("google"));
+
+      const calledUrl = (window.location.assign as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+      expect(new URL(calledUrl, "http://localhost").searchParams.get("redirect_uri")).toBe(ROUTE_PATHS.CONCERT_LIST);
     });
   });
 });

@@ -6,6 +6,9 @@ import com.example.server.concert.entity.Concert
 import com.example.server.concert.types.ConcertGenre
 import com.example.server.global.exception.CustomException
 import com.example.server.global.exception.ErrorCode
+import com.example.server.group.entity.Group
+import com.example.server.group.entity.GroupMember
+import com.example.server.group.repository.GroupMemberRepository
 import com.example.server.outbox.OutboxEventService
 import com.example.server.performance.RedisVenueSeatHoldService
 import com.example.server.performance.dto.ActiveHoldData
@@ -15,6 +18,8 @@ import com.example.server.performance.entity.Performance
 import com.example.server.performance.repository.PerformanceRepository
 import com.example.server.reservation.dto.BeginCheckoutReviewMessageData
 import com.example.server.reservation.entity.Reservation
+import com.example.server.reservation.entity.ReservationGroupMember
+import com.example.server.reservation.repository.ReservationGroupMemberRepository
 import com.example.server.reservation.repository.ReservationRepository
 import com.example.server.reservation.types.ReservationStatus
 import com.example.server.support.anyNonNull
@@ -40,6 +45,8 @@ import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class ReservationCheckoutServiceTest {
+  @Mock lateinit var groupMemberRepository: GroupMemberRepository
+
   @Mock lateinit var userRepository: UserRepository
 
   @Mock lateinit var performanceRepository: PerformanceRepository
@@ -54,7 +61,47 @@ class ReservationCheckoutServiceTest {
 
   @Mock lateinit var outboxEventService: OutboxEventService
 
+  @Mock lateinit var reservationGroupMemberRepository: ReservationGroupMemberRepository
+
   @InjectMocks lateinit var service: ReservationCheckoutService
+
+  @Test
+  fun `그룹 결제 대기를 생성할 때 당시 그룹원의 이름과 프로필을 저장한다`() {
+    val member = user()
+    val performance = performance()
+    val group = Group(id = 7L, performance = performance, inviteCode = "abcd2345", expiresAt = performance.startsAt)
+    val created = reservation(groupId = 7L)
+    val active = activeHoldData(holds = listOf(hold("hold-1", listOf(101L), "group:7")), scopeId = "group:7")
+    given(redisVenueSeatHoldService.getScopeId(USER_ID, PERFORMANCE_ID)).willReturn("group:7")
+    given(redisVenueSeatHoldService.findActiveHoldDataByScopeId("group:7")).willReturn(active)
+    given(reservationRepository.findPaymentInProgressByScopeForUpdate(7L, USER_ID, PERFORMANCE_ID, ReservationStatus.PAYMENT_IN_PROGRESS_STATUSES))
+      .willReturn(null, null, created)
+    given(performanceRepository.findByIdWithConcertAndVenue(PERFORMANCE_ID)).willReturn(performance)
+    given(venueSeatRepository.findAllByVenueIdAndIdIn(VENUE_ID, listOf(101L))).willReturn(listOf(venueSeat(101L, 66000)))
+    given(userRepository.findById(USER_ID)).willReturn(Optional.of(member))
+    given(groupMemberRepository.findAllByGroupId(7L)).willReturn(listOf(GroupMember(group = group, member = member)))
+    org.mockito.BDDMockito.willAnswer { invocation ->
+      created.orderId = invocation.getArgument(3)
+      1
+    }.given(reservationRepository).insertPaymentPendingIfAbsent(
+      org.mockito.ArgumentMatchers.anyLong(),
+      org.mockito.ArgumentMatchers.anyLong(),
+      org.mockito.ArgumentMatchers.eq(7L),
+      org.mockito.ArgumentMatchers.anyString(),
+      org.mockito.ArgumentMatchers.anyString(),
+      org.mockito.ArgumentMatchers.anyInt(),
+      anyNonNull(LocalDateTime::class.java, LocalDateTime.MIN),
+    )
+
+    service.startCheckout(USER_ID, PERFORMANCE_ID, REVIEW_TOKEN)
+    val saved = org.mockito.Mockito.mockingDetails(reservationGroupMemberRepository).invocations.single { it.method.name == "saveAll" }
+      .arguments[0] as List<*>
+    val snapshot = saved.single() as ReservationGroupMember
+    member.nickname = "변경된 이름"
+    assertThat(snapshot.reservation.id).isEqualTo(RESERVATION_ID)
+    assertThat(snapshot.userId).isEqualTo(USER_ID)
+    assertThat(snapshot.nickname).isEqualTo("사용자$USER_ID")
+  }
 
   @Test
   fun `여러 Hold detail의 좌석을 합산해 결제 대기 예매를 생성하고 결제용으로 전환한다`() {

@@ -7,6 +7,7 @@ import type { VenueDetailResponse } from "@entities/venue";
 
 import { VenueMap } from "@features/venue-map";
 
+import PerformanceGroupPanel from "./PerformanceGroupPanel";
 import PerformanceSeatHoldPanel from "./PerformanceSeatHoldPanel";
 
 import { usePerformanceSeatMap } from "../model/use-performance-seat-map";
@@ -35,7 +36,7 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
   const isAvailable = performance.status === "AVAILABLE";
 
   return (
-    <div className={`mt-6 grid items-start gap-6 ${isAvailable ? "lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-7" : "grid-cols-1"}`}>
+    <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-7">
       <VenueMap
         venue={venueDetail.venue}
         venueSeats={venueDetail.venueSeats}
@@ -47,21 +48,24 @@ const PerformanceSeatMap = ({ performance, venueDetail, onCheckout }: Performanc
         selectedSeatIds={isAvailable ? selectedSeatIds : undefined}
       />
 
-      {isAvailable && (
-        <PerformanceSeatHoldPanel
-          performanceId={performance.id}
-          venueSeats={venueDetail.venueSeats}
-          venueSeatStates={venueSeatStates}
-          selectedSeatIds={selectedSeatIds}
-          seatOperationState={seatOperationState}
-          setVenueSeatStates={setVenueSeatStates}
-          setSelectedSeatIds={setSelectedSeatIds}
-          onHoldSeatToggle={toggleHeldSeats}
-          setServerTimeOffset={setServerTimeOffset}
-          setSeatOperationState={setSeatOperationState}
-          onCheckout={onCheckout}
-        />
-      )}
+      <div className="min-w-0 space-y-4 lg:sticky lg:top-6">
+        <PerformanceGroupPanel performanceId={performance.id} />
+        {isAvailable && (
+          <PerformanceSeatHoldPanel
+            performanceId={performance.id}
+            venueSeats={venueDetail.venueSeats}
+            venueSeatStates={venueSeatStates}
+            selectedSeatIds={selectedSeatIds}
+            seatOperationState={seatOperationState}
+            setVenueSeatStates={setVenueSeatStates}
+            setSelectedSeatIds={setSelectedSeatIds}
+            onHoldSeatToggle={toggleHeldSeats}
+            setServerTimeOffset={setServerTimeOffset}
+            setSeatOperationState={setSeatOperationState}
+            onCheckout={onCheckout}
+          />
+        )}
+      </div>
     </div>
   );
 };

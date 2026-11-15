@@ -15,6 +15,10 @@ vi.mock("@pages/performance-detail/model/use-performance-detail", () => ({
   usePerformanceDetail: mockUsePerformanceDetail,
 }));
 
+vi.mock("@pages/performance-detail/ui/PerformanceGroupPanel", () => ({
+  default: () => <div>group panel</div>,
+}));
+
 vi.mock("@pages/performance-detail/model/use-performance-seat-map", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@pages/performance-detail/model/use-performance-seat-map")>();
   return { ...actual, usePerformanceSeatMap: vi.fn(actual.usePerformanceSeatMap) };

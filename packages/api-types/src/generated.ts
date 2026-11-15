@@ -89,6 +89,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/groups/current": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 공연 회차의 내 활성 그룹 조회 */
+    get: operations["getCurrentGroup"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/groups/{groupId}/join": {
     parameters: {
       query?: never;
@@ -100,6 +117,23 @@ export interface paths {
     put?: never;
     /** 초대 코드로 그룹 참여 */
     post: operations["joinGroup"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/groups/join": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 초대 코드로 그룹 참여 */
+    post: operations["joinGroupByInviteCode"];
     delete?: never;
     options?: never;
     head?: never;
@@ -590,6 +624,12 @@ export interface components {
       success: true;
       data: components["schemas"]["GroupMembershipResponse"];
     };
+    /** Success */
+    SuccessCurrentGroupResponse: {
+      /** @enum {boolean} */
+      success: true;
+      data: components["schemas"]["GroupMembershipResponse"] | null;
+    };
     /** JoinGroupRequest */
     JoinGroupRequest: {
       inviteCode: string;
@@ -706,6 +746,7 @@ export interface components {
     MyReservationResponse: {
       /** Format: int64 */
       id: number;
+      group?: components["schemas"]["ReservationGroupResponse"] | null;
       concertTitle: string;
       posterUrl: string | null;
       performanceName: string;
@@ -720,6 +761,15 @@ export interface components {
       status: components["schemas"]["ReservationStatus"];
       /** Format: date-time */
       createdAt: string;
+    };
+    ReservationGroupResponse: {
+      groupId: number;
+      members: components["schemas"]["ReservationGroupMemberResponse"][];
+    };
+    ReservationGroupMemberResponse: {
+      userId: number;
+      nickname: string;
+      profileImageUrl: string | null;
     };
     /** ReservationSeatResponse */
     ReservationSeatResponse: {
@@ -1373,6 +1423,75 @@ export interface operations {
            *       }
            *     }
            */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  joinGroupByInviteCode: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JoinGroupRequest"];
+      };
+    };
+    responses: {
+      /** @description 그룹 참여 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessGroupMembershipResponse"];
+        };
+      };
+      /** @description 잘못된 요청입니다. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 접근 권한이 필요합니다. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 초대 코드를 찾을 수 없음 */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+      /** @description 만료·정원 초과·중복 가입 */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
           "application/json": components["schemas"]["Failure"];
         };
       };
@@ -2419,6 +2538,38 @@ export interface operations {
            *       }
            *     }
            */
+          "application/json": components["schemas"]["Failure"];
+        };
+      };
+    };
+  };
+  getCurrentGroup: {
+    parameters: {
+      query: {
+        /** Format: int64 */
+        performanceId: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 활성 그룹 조회 성공 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessCurrentGroupResponse"];
+        };
+      };
+      /** @description 인증이 필요합니다. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
           "application/json": components["schemas"]["Failure"];
         };
       };
